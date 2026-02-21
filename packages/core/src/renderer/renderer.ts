@@ -157,7 +157,7 @@ export class Renderer {
         message: `Cannot iterate over non-array value: ${this.variableResolver.getType(iterable)}`,
         path: `for.iterable`,
         type: 'type_error',
-        location: node.location,
+        location: { start: node.start, end: node.end },
       };
       context.errors.push(error);
       if (this.options.throwOnError) {
@@ -174,7 +174,7 @@ export class Renderer {
         message: 'Maximum nesting depth exceeded',
         path: 'for',
         type: 'runtime_error',
-        location: node.location,
+        location: { start: node.start, end: node.end },
       };
       context.errors.push(error);
       if (this.options.throwOnError) {
@@ -278,7 +278,7 @@ export class Renderer {
           }
 
           if (segment.type === 'property') {
-            value = value[segment.value];
+            value = value[segment.value as string];
           } else if (segment.type === 'index') {
             if (typeof segment.value === 'string') {
               const index = parseInt(segment.value, 10);
@@ -304,7 +304,7 @@ export class Renderer {
         message: `Undefined variable: ${variableName}`,
         path: variableName,
         type: 'undefined_variable',
-        location: node.location,
+        location: { start: node.start, end: node.end },
       };
       context.errors.push(error);
       return undefined;
@@ -319,7 +319,7 @@ export class Renderer {
       }
 
       if (segment.type === 'property') {
-        value = value[segment.value];
+        value = value[segment.value as string];
       } else if (segment.type === 'index') {
         if (typeof segment.value === 'string') {
           const index = parseInt(segment.value, 10);
@@ -352,7 +352,7 @@ export class Renderer {
           message,
           path: `filter.${filter.name}`,
           type: 'filter_error',
-          location: node.location,
+          location: { start: node.start, end: node.end },
         };
         context.errors.push(renderError);
         if (this.options.throwOnError) {
