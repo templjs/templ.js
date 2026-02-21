@@ -1,0 +1,45 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "editor.formatOnSave": true,
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/*.pyc": true,
+      "**/.pytest_cache": true,
+      "**/node_modules": true,
+      "**/dist": true,
+    },
+    "chat.tools.terminal.autoApprove": {
+      "/mkdir\\s+(:?-p\\s+)?/Users/macos/dev/(?!.*\\.\\./).+/": true,
+      "/chmod \\+x (?:(?:/Users/macos/dev/)|(?:\\.?/?(?:[\\w]+)/)+)(?!.*\\.\\./).+/": true,
+      "git add": true,
+      "pnpm": true,
+      "test": true,
+      "act": true
+    },
+    "chat.agentSkillsLocations": {
+      "./.agents/skills/": true
+    },
+    "github.copilot.chat.agent.autoFix": true,
+    "github.copilot.chat.generateTests.codeLens": true,
+    "github.copilot.chat.githubMcpServer.enabled": true,
+    "github.copilot.chat.codesearch.enabled": true,
+    "github.copilot.chat.copilotMemory.enabled": false,
+    "github.copilot.chat.switchAgent.enabled": true,
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "ms-python.vscode-pylance",
+      "charliermarsh.ruff",
+      "bierner.github-markdown-preview",
+      "timonwong.shellcheck",
+    ],
+  },
+}

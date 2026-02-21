@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "status-reason-token.contract-1.0.0",
+  "title": "frontmatter/contracts/status-reason-token",
+  "description": "Extension contract for status reason tokens. Supports canonical tokens and x-* extension tokens.",
+  "oneOf": [
+    {
+      "type": "string",
+      "pattern": "^x-[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 128
+    },
+    {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+      "not": {
+        "pattern": "^x-[a-z0-9]+(?:-[a-z0-9]+)*$"
+      },
+      "maxLength": 128
+    }
+  ]
+}

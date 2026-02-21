@@ -1,0 +1,2 @@
+config:
+  extends: ../.markdownlint-cli2.yaml

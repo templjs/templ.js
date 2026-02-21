@@ -19,7 +19,7 @@
     "test": "nx run-many -t test",
     "test:coverage": "nx run-many -t test --coverage",
     "lint": "pnpm run lint:local",
-    "lint:local": "pnpm run lint:eslint && pnpm run lint:markdown && pnpm run format:check",
+    "lint:local": "pnpm run lint:eslint && pnpm run lint:markdown && pnpm run format:check && pnpm run lint:work-item-frontmatter",
     "lint:ci": "pnpm run lint:eslint:affected && pnpm run lint:markdown && pnpm run format:check",
     "lint:staged": "lint-staged",
     "lint:fix": "pnpm run lint:eslint:fix && pnpm run lint:markdown:fix && pnpm run format",
