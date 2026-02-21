@@ -37,7 +37,7 @@
     "type-check": "tsc --noEmit",
     "test:affected": "pnpm run test:affected:local",
     "test:affected:local": "nx affected -t test --base=main --parallel=3",
-    "test:affected:ci": "nx affected -t test --base=origin/main --parallel=3 --coverage --outputStyle=static",
+    "test:affected:ci": "nx affected -t test --base=origin/main --parallel=3 --outputStyle=static",
     "test:affected:pre-push": "sh -c 'BASE_BRANCH=main; if git rev-parse --verify origin/main >/dev/null 2>&1; then BASE_BRANCH=origin/main; fi; pnpm exec nx affected -t test --base=\"$BASE_BRANCH\" --outputStyle=static'",
     "build:affected": "pnpm run build:affected:local",
     "build:affected:local": "nx affected -t build --base=main --parallel=3",
