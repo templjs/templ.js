@@ -299,10 +299,7 @@ export class FilterEngine {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const err = new Error(`Filter '${name}' failed: ${message}`);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (err as any).cause = error;
-      throw err;
+      throw new Error(`Filter '${name}' failed: ${message}`, { cause: error });
     }
   }
 
