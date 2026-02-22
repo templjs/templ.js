@@ -94,6 +94,7 @@
   "dependencies": {
     "@templjs/volar": "workspace:*",
     "@volar/language-server": "~2.0.0",
+    "tslib": "^2.6.0",
     "vscode-languageclient": "^9.0.0"
   },
   "devDependencies": {
