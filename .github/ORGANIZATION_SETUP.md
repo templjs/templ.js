@@ -149,20 +149,7 @@ Or via web interface:
    - **Initialize**: Do not initialize (will push existing code)
 3. Click "Create repository"
 
-## Step 5: Disable Native CodeQL Enforcement
-
-CodeQL scanning is enabled for visibility, but enforcement happens via the CI/CD workflow to avoid race conditions.
-
-1. Navigate to `https://github.com/templjs/templ.js/settings/security_analysis`
-2. Find the **CodeQL analysis** section under "Tools"
-3. Click the **...** menu and select **"Advanced setup"** or scroll to "Code scanning"
-4. Locate **"Block pull requests when code scanning results are available"**
-5. **Uncheck this option** to disable native enforcement
-6. Save changes
-
-**Why?** Your `codeql.yml` workflow with `wait-for-processing: true` is now the authoritative enforcement point, preventing the race condition where the native check ran before SARIF processing completed.
-
-## Step 6: Configure Repository Settings
+## Step 5: Configure Repository Settings
 
 ### General Repository Settings
 
@@ -185,7 +172,21 @@ CodeQL scanning is enabled for visibility, but enforcement happens via the CI/CD
    - ✅ **Automatically delete head branches**
    - ✅ **Allow auto-merge**
 
-## Step 7: Setup Branch Protection Rules
+### Code Scanning
+
+The repository includes a custom CodeQL workflow (`.github/workflows/codeql.yml`) with Advanced setup.
+
+**After merging the initial PR to main**:
+
+1. Navigate to `https://github.com/templjs/templ.js/settings/security_analysis`
+2. GitHub will automatically recognize the custom `codeql.yml` workflow
+3. CodeQL will show as "Advanced" mode (not "Default")
+4. Keep **"Block pull requests when code scanning results are available"** enabled
+5. The workflow uses `wait-for-processing: true` to prevent race conditions
+
+**Why Advanced?** The custom workflow includes explicit build steps (`pnpm install && pnpm build`) required for accurate analysis of TypeScript monorepo packages.
+
+## Step 6: Setup Branch Protection Rules
 
 ### Automated Setup (Recommended)
 
