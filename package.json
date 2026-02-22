@@ -31,6 +31,7 @@
     "lint:markdown:fix": "sh scripts/ci/lint-markdown.sh --fix",
     "lint:work-item-frontmatter": "tsx scripts/ci/lint-work-item-frontmatter.ts",
     "validate:hybrid-decision-analysis": "python3 skills/hybrid-decision-analysis/scripts/test_score_with_guardrails.py",
+    "validate:local": "pnpm run type-check && pnpm run lint:ci && pnpm run build:affected:local && pnpm run test:affected:local",
     "lint:root": "pnpm run lint:eslint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",

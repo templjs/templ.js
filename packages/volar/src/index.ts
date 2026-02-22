@@ -19,19 +19,6 @@ export const version = '0.1.0';
  */
 export function createTempljsLanguagePlugin(): LanguagePlugin {
   return {
-    getLanguageId(uri: any) {
-      // TODO: Implement language ID detection
-      if (
-        uri.endsWith('.templ.yaml') ||
-        uri.endsWith('.templ.json') ||
-        uri.endsWith('.templ.md') ||
-        uri.endsWith('.templ.html')
-      ) {
-        return 'templjs';
-      }
-      return undefined;
-    },
-
     createVirtualCode(uri: any, languageId: any, _snapshot: any) {
       // TODO: Implement virtual code generation
       // This will strip template syntax and provide base format for delegation
