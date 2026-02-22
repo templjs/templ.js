@@ -38,8 +38,6 @@ export function activate(_context: vscode.ExtensionContext) {
 }
 
 export function deactivate(): Thenable<void> | undefined {
-  if (!client) {
-    return undefined;
-  }
-  return client.stop();
+  // TODO: Stop language client when implemented
+  return undefined;
 }
