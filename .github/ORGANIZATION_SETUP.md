@@ -39,7 +39,7 @@ This document outlines the manual steps required to set up the `templjs` GitHub 
    - ✅ **Enable GitHub Advanced Security** (if available on plan)
    - ✅ **Enable Dependabot alerts** for all repositories
    - ✅ **Enable Dependabot security updates**
-   - ✅ **Enable CodeQL analysis** on default branch
+   - ✅ **Enable CodeQL analysis** (for alerts visibility only)
 3. Configure allowed permissions:
    - Set default repository permissions: **Read** (explicit write access via teams)
    - Allow members to create repositories: **No** (controlled by admins)
@@ -149,7 +149,20 @@ Or via web interface:
    - **Initialize**: Do not initialize (will push existing code)
 3. Click "Create repository"
 
-## Step 5: Configure Repository Settings
+## Step 5: Disable Native CodeQL Enforcement
+
+CodeQL scanning is enabled for visibility, but enforcement happens via the CI/CD workflow to avoid race conditions.
+
+1. Navigate to `https://github.com/templjs/templ.js/settings/security_analysis`
+2. Find the **CodeQL analysis** section under "Tools"
+3. Click the **...** menu and select **"Advanced setup"** or scroll to "Code scanning"
+4. Locate **"Block pull requests when code scanning results are available"**
+5. **Uncheck this option** to disable native enforcement
+6. Save changes
+
+**Why?** Your `codeql.yml` workflow with `wait-for-processing: true` is now the authoritative enforcement point, preventing the race condition where the native check ran before SARIF processing completed.
+
+## Step 6: Configure Repository Settings
 
 ### General Repository Settings
 
@@ -163,7 +176,7 @@ Or via web interface:
 
 ### Pull Requests
 
-1. Navigate to `https://github.com/templjs/templ.js/settings`
+1. Navigate to `https://github.com/templjs/templ.js/settings/branches`
 2. Scroll to "Pull Requests" section:
    - ❌ **Allow merge commits** (disabled - requires conventional commits)
    - ✅ **Allow squash merging** (default merge method)
@@ -172,7 +185,7 @@ Or via web interface:
    - ✅ **Automatically delete head branches**
    - ✅ **Allow auto-merge**
 
-## Step 6: Setup Branch Protection Rules
+## Step 7: Setup Branch Protection Rules
 
 ### Automated Setup (Recommended)
 
@@ -201,12 +214,14 @@ cd /Users/macos/dev/templjs
    - ✅ **Require status checks to pass before merging**
    - ✅ Require branches to be up to date before merging
    - **Status checks required** (add as they become available):
-     - `ci / build`
-     - `ci / test`
-     - `ci / lint`
-     - `CodeQL`
-     - `codecov/patch`
-     - `codecov/project`
+     - `Install Dependencies`
+     - `Lint`
+     - `Type Check`
+     - `Lint Work Item Frontmatter`
+     - `Test (Node 18)`
+     - `Test (Node 20)`
+     - `Build`
+     - **Note**: CodeQL enforcement is handled by the `codeql.yml` workflow, not the native enforcement check
    - ✅ **Require signed commits**
    - ✅ **Require linear history**
    - ✅ **Require deployments to succeed before merging** (if deploying to GitHub Pages)
@@ -217,7 +232,7 @@ cd /Users/macos/dev/templjs
 
 4. Click "Create" to save the protection rule
 
-## Step 7: Configure Secrets
+## Step 8: Configure Secrets
 
 Secrets are required for CI/CD workflows. Add them via:
 
@@ -274,7 +289,7 @@ Your CI/CD workflows can now publish to npm without storing tokens as secrets.
    - How to obtain: <https://codecov.io/gh/templjs/templ.js/settings>
    - Required for private repos only (optional for public)
 
-## Step 8: Enable GitHub Pages
+## Step 9: Enable GitHub Pages
 
 ### Automated Setup
 
@@ -317,7 +332,7 @@ Your CI/CD workflows can now publish to npm without storing tokens as secrets.
 3. Click "Save"
 4. GitHub Pages will be available at: `https://templjs.github.io/templ.js/`
 
-## Step 9: Push Initial Code
+## Step 10: Push Initial Code
 
 ```bash
 cd /Users/macos/dev/templjs
@@ -326,7 +341,7 @@ git branch -M main
 git push -u origin main
 ```
 
-## Step 10: Verification Checklist
+## Step 11: Verification Checklist
 
 - [x] Organization visible at <https://github.com/templjs>
 - [x] Organization profile configured with logo, description, website

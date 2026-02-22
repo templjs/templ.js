@@ -142,7 +142,8 @@ add_status_checks() {
     
     # Note: Status checks are added when they first run
     # This updates the existing protection rule to require them
-    local status_checks='["ci / build", "ci / test", "ci / lint"]'
+    # CodeQL is enforced via codeql.yml workflow, not native enforcement
+    local status_checks='["Install Dependencies", "Lint", "Type Check", "Lint Work Item Frontmatter", "Test (Node 18)", "Test (Node 20)", "Build"]'
     
     local update_rules
     update_rules=$(cat <<EOF
