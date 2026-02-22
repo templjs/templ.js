@@ -74,3 +74,4 @@ jobs:
         with:
           category: '/language:${{ matrix.language }}'
           upload: true
+          wait-for-processing: true
