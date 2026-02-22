@@ -71,10 +71,31 @@ export function createQueryEngine() {
   };
 }
 
+/**
+ * Stub function for renderTemplate - to be implemented in Phase 2
+ * @param _template - Template string to render
+ * @param _data - Data for rendering
+ * @returns Rendered template
+ */
+export function renderTemplate(_template: string, _data: Record<string, unknown>): string {
+  throw new Error('renderTemplate not yet implemented - implement in Phase 2 (WI-007)');
+}
+
+/**
+ * Stub function for validateTemplate - to be implemented in Phase 2
+ * @param _template - Template string to validate
+ * @returns Validation result
+ */
+export function validateTemplate(_template: string): { valid: boolean; errors?: string[] } {
+  throw new Error('validateTemplate not yet implemented - implement in Phase 2 (WI-006, WI-025)');
+}
+
 export default {
   version,
   createLexer,
   createParser,
   createRenderer,
   createQueryEngine,
+  renderTemplate,
+  validateTemplate,
 };
