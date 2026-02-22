@@ -3,8 +3,6 @@
  * Run with: node benchmarks/schema-performance.js
  */
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 import { SchemaValidator } from '../src/schema/SchemaValidator';
 
 const complexSchema = {
@@ -110,7 +108,7 @@ console.log('=======================================\n');
 benchmark(
   'Schema Compilation',
   () => {
-    const validator = new SchemaValidator(complexSchema);
+    new SchemaValidator(complexSchema);
   },
   100
 );

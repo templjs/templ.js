@@ -124,7 +124,7 @@ export class TemplateParser {
     if (!startToken) throw new Error('Expected statement token');
 
     const content = this.extractStatementContent(startToken.content);
-    const conditionMatch = content.match(/^if\s+(.+)$/s);
+    const conditionMatch = content.match(/^if\s+(.+?)$/is);
     if (!conditionMatch) {
       this.addError('syntax', 'Invalid if statement', startToken.start);
       this.advance();
@@ -183,7 +183,7 @@ export class TemplateParser {
     if (!startToken) throw new Error('Expected statement token');
 
     const content = this.extractStatementContent(startToken.content);
-    const match = content.match(/^for\s+(\w+)\s+in\s+(.+)$/);
+    const match = content.match(/^for\s+(\w+)\s+in\s+(.+?)$/);
 
     if (!match) {
       this.addError('syntax', 'Invalid for statement syntax', startToken.start);
@@ -226,7 +226,7 @@ export class TemplateParser {
     if (!startToken) throw new Error('Expected statement token');
 
     const content = this.extractStatementContent(startToken.content);
-    const match = content.match(/^set\s+(\w+)\s*=\s*(.+)$/);
+    const match = content.match(/^set\s+(\w+)\s*=\s*(.+?)$/);
 
     if (!match) {
       this.addError('syntax', 'Invalid set statement syntax', startToken.start);
@@ -358,7 +358,7 @@ export class TemplateParser {
     }
 
     // Handle ternary operator (lowest precedence)
-    const ternaryMatch = expr.match(/^(.+?)\s*\?\s*(.+?)\s*:\s*(.+)$/);
+    const ternaryMatch = expr.match(/^(.+?)\s*\?\s*(.+?)\s*:\s*(.+?)$/);
     if (ternaryMatch) {
       return {
         type: 'ternary',
@@ -798,20 +798,30 @@ export class TemplateParser {
    * Extract statement content between delimiters
    */
   private extractStatementContent(content: string): string {
-    return content
-      .replace(/^{%\s*/, '')
-      .replace(/\s*%}$/, '')
-      .trim();
+    // Use flat string operations instead of regex to avoid ReDoS
+    let result = content;
+    if (result.startsWith('{%')) {
+      result = result.substring(2);
+    }
+    if (result.endsWith('%}')) {
+      result = result.substring(0, result.length - 2);
+    }
+    return result.trim();
   }
 
   /**
    * Extract expression content between delimiters
    */
   private extractExpressionContent(content: string): string {
-    return content
-      .replace(/^{{\s*/, '')
-      .replace(/\s*}}$/, '')
-      .trim();
+    // Use flat string operations instead of regex to avoid ReDoS
+    let result = content;
+    if (result.startsWith('{{')) {
+      result = result.substring(2);
+    }
+    if (result.endsWith('}}')) {
+      result = result.substring(0, result.length - 2);
+    }
+    return result.trim();
   }
 
   /**
