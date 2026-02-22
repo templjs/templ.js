@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "reconciliation-strategy-token.vocab.core-1.0.0",
+  "title": "frontmatter/overlays/reconciliation-strategy-token.vocab.core",
+  "$defs": {
+    "coreToken": {
+      "type": "string",
+      "enum": ["prompt", "auto", "intersection", "split", "advisory"]
+    },
+    "token": {
+      "oneOf": [
+        { "$ref": "#/$defs/coreToken" },
+        {
+          "type": "string",
+          "pattern": "^x-[A-Za-z][A-Za-z0-9_-]*$",
+          "maxLength": 64
+        }
+      ]
+    }
+  }
+}

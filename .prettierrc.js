@@ -2,10 +2,10 @@ export default {
   printWidth: 100,
   semi: true,
   singleQuote: true,
-  trailingComma: "all",
+  trailingComma: 'all',
   tabWidth: 2,
-  arrowParens: "always",
-  endOfLine: "lf",
+  arrowParens: 'always',
+  endOfLine: 'lf',
   bracketSpacing: true,
   useTabs: false,
 };

@@ -1,0 +1,19 @@
+extends: ../.markdownlint.yaml
+SH004:
+  conditions:
+    - states:
+        status:
+          - ready-for-review
+          - completed
+        status_reason:
+          - completed
+          - success
+      checked: true
+    - states:
+        status:
+          - ready-for-review
+          - completed
+        state_reason:
+          - completed
+          - success
+      checked: true

@@ -8,11 +8,9 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "importHelpers": true,
-    "target": "ES2021",
+    "target": "ES2022",
     "module": "ESNext",
-    "lib": [
-      "ES2021"
-    ],
+    "lib": ["ES2022"],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "strict": true,
@@ -20,17 +18,10 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@template/core": [
-        "packages/core/src/index.ts"
-      ],
-      "@template/cli": [
-        "packages/cli/src/index.ts"
-      ]
+      "@templjs/core": ["packages/core/src/index.ts"],
+      "@templjs/cli": ["packages/cli/src/index.ts"],
+      "@templjs/volar": ["packages/volar/src/index.ts"]
     }
   },
-  "exclude": [
-    "node_modules",
-    "tmp",
-    "dist"
-  ]
+  "exclude": ["node_modules", "tmp", "dist"]
 }

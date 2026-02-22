@@ -51,7 +51,7 @@ tags:
 
 - **OS**: <!-- e.g., macOS 14.2, Ubuntu 22.04, Windows 11 -->
 - **Node.js version**: <!-- e.g., v20.10.0 -->
-- **Package version**: <!-- e.g., @template/core@0.1.0 -->
+- **Package version**: <!-- e.g., @templjs/core@0.1.0 -->
 - **Package manager**: <!-- npm, pnpm, yarn, bun -->
 
 ## Minimal Reproduction

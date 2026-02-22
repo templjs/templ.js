@@ -1,0 +1,111 @@
+{
+  "name": "vscode-templjs",
+  "displayName": "Templjs",
+  "description": "Language support for templjs meta-templates",
+  "version": "0.1.0",
+  "publisher": "templjs",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "vscode-extension",
+    "template",
+    "templjs",
+    "language-server"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "templjs-yaml",
+        "aliases": [
+          "Templjs YAML",
+          "templjs-yaml"
+        ],
+        "extensions": [
+          ".templ.yaml",
+          ".templ.yml"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "templjs-json",
+        "aliases": [
+          "Templjs JSON",
+          "templjs-json"
+        ],
+        "extensions": [
+          ".templ.json"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "templjs-markdown",
+        "aliases": [
+          "Templjs Markdown",
+          "templjs-md"
+        ],
+        "extensions": [
+          ".templ.md"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "templjs-html",
+        "aliases": [
+          "Templjs HTML",
+          "templjs-html"
+        ],
+        "extensions": [
+          ".templ.html"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Templjs",
+      "properties": {
+        "templjs.trace.server": {
+          "scope": "window",
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Traces the communication between VS Code and the language server."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run build",
+    "build": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "echo 'No tests yet'",
+    "lint": "echo \"No linting configured yet\" && exit 0",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@templjs/volar": "workspace:*",
+    "@volar/language-server": "~2.0.0",
+    "tslib": "^2.6.0",
+    "vscode-languageclient": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/templjs.git",
+    "directory": "extensions/vscode"
+  },
+  "license": "Apache-2.0"
+}

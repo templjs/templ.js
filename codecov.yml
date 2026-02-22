@@ -1,0 +1,57 @@
+# Codecov Configuration
+# Documentation: https://docs.codecov.com/docs/codecov-yaml
+
+# Coverage thresholds
+coverage:
+  # File-level coverage requirements
+  range: 70..100
+  status:
+    project:
+      default:
+        target: 90%
+        threshold: 2%
+        informational: false
+    patch:
+      default:
+        target: 85%
+        threshold: 5%
+        informational: false
+
+  # Coverage precision (number of decimal places)
+  precision: 2
+
+  # Round coverage to nearest percentage
+  round: down
+
+# Pull request comments
+comment:
+  layout: 'reach, diff, flags, files'
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+
+# Ignore patterns
+ignore:
+  - '**/*.test.ts'
+  - '**/*.test.tsx'
+  - '**/*.spec.ts'
+  - '**/*.spec.tsx'
+  - '**/test/**'
+  - '**/tests/**'
+  - '**/dist/**'
+  - '**/node_modules/**'
+  - '**/__mocks__/**'
+  - '**/coverage/**'
+  - '**/*.d.ts'
+  - '**/vite.config.ts'
+  - '**/vitest.config.ts'
+  - '**/jest.config.ts'
+
+# Flags for different parts of the codebase
+flags:
+  unittests:
+    paths:
+      - packages/
+      - extensions/
+    carryforward: true

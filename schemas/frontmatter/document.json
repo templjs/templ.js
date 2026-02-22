@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "document-1.0.0",
+  "$versioningScheme": "semver",
+  "title": "frontmatter/document",
+  "description": "Defines the required and recommended frontmatter fields for all markdown documentation files in this project. Use this schema to validate and standardize document metadata.",
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-statusTransitions": {
+    "$ref": "./base.json#/$defs/statusTransitions"
+  },
+  "allOf": [
+    {
+      "$ref": "./base.json#/$defs/core"
+    },
+    {
+      "$ref": "./base.json#/$defs/lifecycleStatusCompatibility"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z]{2,}-\\d+$",
+          "description": "Unique identifier for the document."
+        },
+        "type": {
+          "type": "string",
+          "const": "document",
+          "description": "High-level type of the document (e.g., work-item, document)."
+        }
+      }
+    }
+  ]
+}

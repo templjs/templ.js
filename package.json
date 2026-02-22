@@ -19,28 +19,30 @@
     "test": "nx run-many -t test",
     "test:coverage": "nx run-many -t test --coverage",
     "lint": "pnpm run lint:local",
-    "lint:local": "pnpm run lint:eslint && pnpm run lint:markdown && pnpm run format:check",
+    "lint:local": "pnpm run lint:eslint && pnpm run lint:markdown && pnpm run format:check && pnpm run lint:work-item-frontmatter",
     "lint:ci": "pnpm run lint:eslint:affected && pnpm run lint:markdown && pnpm run format:check",
     "lint:staged": "lint-staged",
     "lint:fix": "pnpm run lint:eslint:fix && pnpm run lint:markdown:fix && pnpm run format",
     "lint:eslint": "nx run-many -t lint",
     "lint:eslint:affected": "nx affected -t lint --base=origin/main --parallel=3",
     "lint:eslint:fix": "pnpm run lint:eslint -- --fix",
-    "lint:eslint:staged:fix": "eslint --fix --resolve-plugins-relative-to .",
+    "lint:eslint:staged:fix": "eslint --fix",
     "lint:markdown": "sh scripts/ci/lint-markdown.sh",
     "lint:markdown:fix": "sh scripts/ci/lint-markdown.sh --fix",
-    "lint:work-item-frontmatter": "pnpm exec ts-node scripts/ci/lint-work-item-frontmatter.ts",
+    "lint:work-item-frontmatter": "tsx scripts/ci/lint-work-item-frontmatter.ts",
+    "validate:hybrid-decision-analysis": "python3 skills/hybrid-decision-analysis/scripts/test_score_with_guardrails.py",
+    "validate:local": "pnpm run type-check && pnpm run lint:ci && pnpm run build:affected:local && pnpm run test:affected:local",
     "lint:root": "pnpm run lint:eslint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "type-check": "tsc --noEmit",
     "test:affected": "pnpm run test:affected:local",
     "test:affected:local": "nx affected -t test --base=main --parallel=3",
-    "test:affected:ci": "nx affected -t test --base=origin/main --parallel=3 --coverage",
-    "test:affected:pre-push": "sh -c 'BASE_BRANCH=main; if git rev-parse --verify origin/main >/dev/null 2>&1; then BASE_BRANCH=origin/main; fi; pnpm exec nx affected -t test --base=\"$BASE_BRANCH\"'",
+    "test:affected:ci": "nx affected -t test --base=origin/main --parallel=3 --outputStyle=static",
+    "test:affected:pre-push": "sh -c 'BASE_BRANCH=main; if git rev-parse --verify origin/main >/dev/null 2>&1; then BASE_BRANCH=origin/main; fi; pnpm exec nx affected -t test --base=\"$BASE_BRANCH\" --outputStyle=static'",
     "build:affected": "pnpm run build:affected:local",
     "build:affected:local": "nx affected -t build --base=main --parallel=3",
-    "build:affected:ci": "nx affected -t build --base=origin/main --parallel=3",
+    "build:affected:ci": "nx affected -t build --base=origin/main --parallel=3 --outputStyle=static",
     "hooks:commit-msg": "commitlint --edit",
     "hooks:pre-commit": "pnpm run lint:staged && (pnpm run test:affected:local || echo \"⚠️  Some tests failed but commit allowed. Run 'pnpm test' for full results.\")",
     "hooks:pre-push": "pnpm run lint:work-item-frontmatter && pnpm run test:affected:pre-push",
@@ -51,17 +53,19 @@
     "ci:build": "pnpm run build:affected:ci",
     "clean": "nx reset && rm -rf node_modules packages/*/node_modules extensions/*/node_modules packages/*/dist extensions/*/dist",
     "graph": "nx graph",
-    "prepare": "husky install"
+    "prepare": "husky"
   },
   "devDependencies": {
     "@changesets/cli": "latest",
     "@commitlint/cli": "latest",
     "@commitlint/config-conventional": "latest",
+    "@eslint/js": "latest",
     "@nx/js": "latest",
     "@types/node": "latest",
     "@typescript-eslint/eslint-plugin": "latest",
     "@typescript-eslint/parser": "latest",
     "ajv": "latest",
+    "ajv-formats": "latest",
     "eslint": "latest",
     "eslint-config-prettier": "latest",
     "eslint-plugin-prettier": "latest",
@@ -71,9 +75,10 @@
     "nx": "latest",
     "prettier": "latest",
     "ts-node": "latest",
+    "tsx": "^4.21.0",
     "typescript": "latest",
-    "yaml": "latest",
-    "ajv-formats": "latest"
+    "typescript-eslint": "latest",
+    "yaml": "latest"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
@@ -93,8 +98,8 @@
     ]
   },
   "engines": {
-    "node": "latest",
-    "pnpm": "latest"
+    "node": "25.6.1",
+    "pnpm": "8.15.0"
   },
   "packageManager": "pnpm@8.15.0"
 }

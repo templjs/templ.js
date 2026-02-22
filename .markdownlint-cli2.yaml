@@ -1,0 +1,5 @@
+gitignore: true
+ignores:
+  - skills/**
+customRules:
+  - markdownlint-shell
