@@ -76,8 +76,21 @@ templjs/
 │       └── README.md
 ├── schemas/                    # JSON schemas
 │   └── frontmatter/            # Document frontmatter schemas
-│       ├── document.json       # Documentation file schema
-│       └── work-item.json      # Work item schema
+│       ├── by-type/            # Schemas selected by frontmatter `type`
+│       │   ├── document/
+│       │   │   ├── current.json
+│       │   │   ├── v1.0.0.json
+│       │   │   └── latest.json
+│       │   └── work-item/
+│       │       ├── current.json
+│       │       ├── v1.0.0.json
+│       │       └── latest.json
+│       ├── support/            # Shared schema building blocks
+│       │   ├── base/
+│       │   ├── contracts/
+│       │   ├── overlays/
+│       │   └── payloads/
+│       └── schema-map.json     # Type -> schema routing map
 ├── .detect-secrets             # Secret scanning configuration
 ├── .editorconfig               # Editor configuration
 ├── .eslintrc.json              # ESLint configuration
@@ -239,7 +252,7 @@ Sections:
 - Zero-padded to 3 digits (001, 002, ..., 099, 100)
 - Gaps are acceptable (deleted/rejected items)
 
-**Frontmatter** (see `schemas/frontmatter/work-item.json`):
+**Frontmatter** (see `schemas/frontmatter/by-type/work-item/latest.json`):
 
 ```yaml
 ---
@@ -554,6 +567,6 @@ This repository is the TypeScript rewrite of the original Python temple project.
 - **Naming Conventions**: This file
 - **Build System**: Nx (`nx.json`)
 - **Package Manager**: pnpm (`pnpm-workspace.yaml`)
-- **Work Item Schema**: `schemas/frontmatter/work-item.json`
-- **Document Schema**: `schemas/frontmatter/document.json`
+- **Work Item Schema**: `schemas/frontmatter/by-type/work-item/latest.json`
+- **Document Schema**: `schemas/frontmatter/by-type/document/latest.json`
 - **Migration Plan**: `MIGRATION_PLAN.md`

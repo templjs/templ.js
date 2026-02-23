@@ -109,7 +109,7 @@ Complete orchestration skill for implementing work items from creation through d
 
 **Validation:**
 
-- `pnpm run lint:work-item-frontmatter` confirms schema
+- `pnpm run lint:frontmatter` confirms schema
 - All dependencies have `status: closed`
 - Feature branch created with naming: `feature/wi-NNN-slug`, `bugfix/wi-NNN-slug`, etc.
 

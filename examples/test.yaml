@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../schemas/frontmatter/work-item.json
+# yaml-language-server: $schema=../schemas/frontmatter/by-type/work-item/latest.json
 title: 'Validate diagnostics pipeline and prepare patch release for templ-any mode'
 id: wi-088
 type: work-item

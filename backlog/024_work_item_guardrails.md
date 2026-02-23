@@ -48,7 +48,7 @@ Current backlog has `status: completed` items without merged PRs, test evidence,
 ## Tasks
 
 - [x] Create TypeScript validation script at `scripts/ci/validate-work-items.ts`
-- [x] Update backlog schema (`schemas/frontmatter/work-item.json`) to add `links.pull_requests` and `links.depends_on`
+- [x] Update backlog schema (`schemas/frontmatter/by-type/work-item/latest.json`) to add `links.pull_requests` and `links.depends_on`
 - [x] Rename work items: 001.5 → 025_schema_validation, 002.5 → 026_cicd_scaffolding_artifact, 012.5 → 027_virtual_code_mapping, 013.5 → 028_textmate_grammar, 018.5 → 029_cli_signal_handling
 - [ ] Update all wikilinks in backlog that reference renamed items
 - [ ] Add `links.depends_on` to all work items based on dependency analysis
@@ -73,7 +73,7 @@ Current backlog has `status: completed` items without merged PRs, test evidence,
 
 ## References
 
-- Schema: schemas/frontmatter/work-item.json
+- Schema: schemas/frontmatter/by-type/work-item/latest.json
 - Skills: .agents/skills/{create,update,finalize}-work-item/SKILL.md
 - Hooks: .husky/pre-push
 - CI: .github/workflows/ci.yml

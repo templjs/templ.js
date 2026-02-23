@@ -19,7 +19,7 @@
     "test": "nx run-many -t test",
     "test:coverage": "nx run-many -t test --coverage",
     "lint": "pnpm run lint:local",
-    "lint:local": "pnpm run lint:eslint && pnpm run lint:markdown && pnpm run format:check && pnpm run lint:work-item-frontmatter",
+    "lint:local": "pnpm run lint:eslint && pnpm run lint:markdown && pnpm run format:check && pnpm run lint:frontmatter",
     "lint:ci": "pnpm run lint:eslint:affected && pnpm run lint:markdown && pnpm run format:check",
     "lint:staged": "lint-staged",
     "lint:fix": "pnpm run lint:eslint:fix && pnpm run lint:markdown:fix && pnpm run format",
@@ -28,8 +28,9 @@
     "lint:eslint:fix": "pnpm run lint:eslint -- --fix",
     "lint:eslint:staged:fix": "eslint --fix",
     "lint:markdown": "sh scripts/ci/lint-markdown.sh",
+    "lint:markdown:docs": "sh scripts/ci/lint-markdown.sh",
     "lint:markdown:fix": "sh scripts/ci/lint-markdown.sh --fix",
-    "lint:work-item-frontmatter": "tsx scripts/ci/lint-work-item-frontmatter.ts",
+    "lint:frontmatter": "tsx scripts/ci/lint-frontmatter.ts",
     "validate:hybrid-decision-analysis": "python3 skills/hybrid-decision-analysis/scripts/test_score_with_guardrails.py",
     "validate:local": "pnpm run type-check && pnpm run lint:ci && pnpm run build:affected:local && pnpm run test:affected:local",
     "lint:root": "pnpm run lint:eslint",
@@ -45,10 +46,10 @@
     "build:affected:ci": "nx affected -t build --base=origin/main --parallel=3 --outputStyle=static",
     "hooks:commit-msg": "commitlint --edit",
     "hooks:pre-commit": "pnpm run lint:staged && (pnpm run test:affected:local || echo \"⚠️  Some tests failed but commit allowed. Run 'pnpm test' for full results.\")",
-    "hooks:pre-push": "pnpm run lint:work-item-frontmatter && pnpm run test:affected:pre-push",
+    "hooks:pre-push": "pnpm run lint:frontmatter && pnpm run test:affected:pre-push",
     "ci:lint": "pnpm run lint:ci",
     "ci:type-check": "pnpm run type-check",
-    "ci:work-item-frontmatter": "pnpm run lint:work-item-frontmatter",
+    "ci:frontmatter": "pnpm run lint:frontmatter",
     "ci:test": "pnpm run test:affected:ci",
     "ci:build": "pnpm run build:affected:ci",
     "clean": "nx reset && rm -rf node_modules packages/*/node_modules extensions/*/node_modules packages/*/dist extensions/*/dist",
@@ -90,7 +91,7 @@
     ],
     "backlog/**/*.{md,markdown}": [
       "prettier --write",
-      "pnpm run lint:work-item-frontmatter --"
+      "pnpm run lint:frontmatter --"
     ],
     "*.{md,markdown}": [
       "prettier --write",

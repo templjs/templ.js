@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/templjs/templ.js/main/schemas/frontmatter/support/overlays/governance-mode.vocab.core/current.json",
+  "title": "frontmatter/overlays/governance-mode.vocab.core",
+  "$defs": {
+    "coreToken": {
+      "type": "string",
+      "enum": ["strict", "advisory"]
+    },
+    "token": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/coreToken"
+        },
+        {
+          "type": "string",
+          "pattern": "^x-[A-Za-z][A-Za-z0-9_-]*$",
+          "maxLength": 64
+        }
+      ]
+    }
+  }
+}

@@ -2,9 +2,9 @@
   "extends": "./tsconfig.base.json",
   "files": [],
   "references": [
-    { "path": "./packages/core" },
-    { "path": "./packages/cli" },
-    { "path": "./packages/volar" },
-    { "path": "./extensions/vscode" }
+    { "path": "./src/packages/core" },
+    { "path": "./src/packages/cli" },
+    { "path": "./src/packages/volar" },
+    { "path": "./src/extensions/vscode" }
   ]
 }

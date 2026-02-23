@@ -18,9 +18,9 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@templjs/core": ["packages/core/src/index.ts"],
-      "@templjs/cli": ["packages/cli/src/index.ts"],
-      "@templjs/volar": ["packages/volar/src/index.ts"]
+      "@templjs/core": ["src/packages/core/src/index.ts"],
+      "@templjs/cli": ["src/packages/cli/src/index.ts"],
+      "@templjs/volar": ["src/packages/volar/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp", "dist"]

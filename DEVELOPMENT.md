@@ -195,7 +195,7 @@ test(lexer): add edge case for empty templates
    ```bash
    # Work items live in backlog/
    # Follow naming: NNN_description.md
-   # Use frontmatter schema from schemas/frontmatter/work-item.json
+   # Use frontmatter schema from schemas/frontmatter/by-type/work-item/latest.json
    ```
 
 2. **Create a feature branch**:

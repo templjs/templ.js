@@ -19,9 +19,9 @@ Comprehensive backlog health check that performs bidirectional dependency analys
 ## Prerequisites
 
 - Work items in `backlog/*.md` with YAML frontmatter
-- Work item schema at `schemas/frontmatter/work-item.json`
+- Work item schema at `schemas/frontmatter/by-type/work-item/latest.json`
 - Work items have `links.depends_on` arrays with `[[wikilink]]` format
-- Validation script via `pnpm run lint:work-item-frontmatter`
+- Validation script via `pnpm run lint:frontmatter`
 
 ## Step-by-Step Audit Workflow
 
@@ -31,7 +31,7 @@ Run the automated validation script first to catch schema violations:
 
 ```bash
 cd /path/to/repo
-pnpm run lint:work-item-frontmatter
+pnpm run lint:frontmatter
 ```
 
 **What it checks:**
@@ -217,7 +217,7 @@ Once gaps are identified:
 
 1. **Batch updates:** Use `multi_replace_string_in_file` for efficiency on multiple work items
 2. **Commit pattern:** `feat(backlog): enhance work item dependencies`
-3. **Re-run validation:** `pnpm run lint:work-item-frontmatter`
+3. **Re-run validation:** `pnpm run lint:frontmatter`
 
 **Example batch update:**
 
@@ -240,7 +240,7 @@ multi_replace_string_in_file({
 - **Audit Report:** Summary of findings (orphans, minimal-dep items, pattern violations)
 - **Updated Work Items:** Files with added dependencies
 - **Git Commit:** Conventional commit with audit rationale
-- **Validation Confirmation:** Clean run of `lint:work-item-frontmatter`
+- **Validation Confirmation:** Clean run of `lint:frontmatter`
 
 ## Common Pitfalls
 
@@ -292,7 +292,7 @@ Committed: feat(backlog): add comprehensive dependency graph and enhance validat
 
 ## References
 
-- [Work Item Schema](../../../schemas/frontmatter/work-item.json)
+- [Work Item Schema](../../../schemas/frontmatter/by-type/work-item/latest.json)
 - [Package Scripts](../../../package.json)
 - [Backlog Directory](../../../backlog/)
 

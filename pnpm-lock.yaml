@@ -78,7 +78,7 @@ importers:
         specifier: latest
         version: 2.8.2
 
-  extensions/vscode:
+  src/extensions/vscode:
     dependencies:
       '@templjs/volar':
         specifier: workspace:*
@@ -103,7 +103,7 @@ importers:
         specifier: ^5.3.0
         version: 5.9.3
 
-  packages/cli:
+  src/packages/cli:
     dependencies:
       '@templjs/core':
         specifier: workspace:*
@@ -116,7 +116,7 @@ importers:
         specifier: ^5.3.0
         version: 5.9.3
 
-  packages/core:
+  src/packages/core:
     dependencies:
       ajv:
         specifier: ^8.18.0
@@ -138,7 +138,7 @@ importers:
         specifier: ^1.1.0
         version: 1.6.1(@types/node@25.3.0)
 
-  packages/volar:
+  src/packages/volar:
     dependencies:
       '@templjs/core':
         specifier: workspace:*
