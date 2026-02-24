@@ -37,7 +37,7 @@ proposed → ready → in-progress → ready-for-review → closed
 
 ## Commands
 
-- Validate: `pnpm validate:work-items`
+- Validate: `pnpm run lint:frontmatter`
 - Create: Use `create-work-item` skill
 - Update: Use `update-work-item` skill
 - Finalize: Use `finalize-work-item` skill

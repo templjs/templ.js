@@ -284,7 +284,9 @@ function validateFrontmatter(): boolean {
       }
 
       const valid = validator(frontmatter);
-      hasItemViolations = !valid;
+      if (!valid) {
+        hasItemViolations = true;
+      }
 
       // Schema validation errors
       if (!valid && validator.errors) {

@@ -190,7 +190,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Validate work items
-        run: pnpm run ci:work-item-frontmatter
+        run: pnpm run ci:frontmatter
 
   test:
     name: Test (Node ${{ matrix.node-version }})
