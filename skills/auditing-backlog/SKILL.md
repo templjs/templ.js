@@ -1,5 +1,5 @@
 ---
-name: audit-backlog
+name: auditing-backlog
 description: 'Perform comprehensive dependency analysis and health checks on work item backlog. Use when asked to "audit backlog", "check work item dependencies", "find missing dependencies", "analyze work items", or before major releases to validate backlog integrity. Includes bidirectional dependency analysis, orphan detection, and consistency checks.'
 ---
 
@@ -292,9 +292,8 @@ Committed: feat(backlog): add comprehensive dependency graph and enhance validat
 
 ## References
 
-- [Work Item Schema](../../../schemas/frontmatter/by-type/work-item/latest.json)
-- [Package Scripts](../../../package.json)
-- [Backlog Directory](../../../backlog/)
+- [Package Scripts](package.json)
+- [Backlog Directory](backlog/)
 
 ## Troubleshooting
 

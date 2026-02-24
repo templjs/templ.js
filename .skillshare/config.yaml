@@ -1,0 +1,100 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/runkids/skillshare/main/schemas/project-config.schema.json
+targets:
+  - universal
+skills:
+  - name: _squirrel289-pax
+    source: https://github.com/squirrel289/pax.git
+    tracked: true
+  - name: _wshobson-agents
+    source: https://github.com/wshobson/agents.git
+    tracked: true
+  - name: agentic-eval
+    source: github.com/github/awesome-copilot/skills/agentic-eval
+  - name: agent-governance
+    source: github.com/github/awesome-copilot/skills/agent-governance
+  - name: excalidraw-diagram-generator
+    source: github.com/github/awesome-copilot/skills/excalidraw-diagram-generator
+  - name: gh-cli
+    source: github.com/github/awesome-copilot/skills/gh-cli
+  - name: git-commit
+    source: github.com/github/awesome-copilot/skills/git-commit
+  - name: github-issues
+    source: github.com/github/awesome-copilot/skills/github-issues
+  - name: penpot-uiux-design
+    source: github.com/github/awesome-copilot/skills/penpot-uiux-design
+  - name: prd
+    source: github.com/github/awesome-copilot/skills/prd
+  - name: refactor
+    source: github.com/github/awesome-copilot/skills/refactor
+  - name: sponsor-finder
+    source: github.com/github/awesome-copilot/plugins/ospo-sponsorship/skills/sponsor-finder
+  - name: vscode-ext-commands
+    source: github.com/github/awesome-copilot/skills/vscode-ext-commands
+  - name: vscode-ext-localization
+    source: github.com/github/awesome-copilot/skills/vscode-ext-localization
+  - name: web-design-reviewer
+    source: github.com/github/awesome-copilot/skills/web-design-reviewer
+  - name: agent-md-refactor
+    source: github.com/softaworks/agent-toolkit/dist/plugins/agent-md-refactor/skills/agent-md-refactor
+  - name: backend-to-frontend-handoff-docs
+    source: github.com/softaworks/agent-toolkit/dist/plugins/backend-to-frontend-handoff-docs/skills/backend-to-frontend-handoff-docs
+  - name: c4-architecture
+    source: github.com/softaworks/agent-toolkit/dist/plugins/c4-architecture/skills/c4-architecture
+  - name: codex
+    source: github.com/softaworks/agent-toolkit/dist/plugins/codex/skills/codex
+  - name: commit-work
+    source: github.com/softaworks/agent-toolkit/dist/plugins/commit-work/skills/commit-work
+  - name: crafting-effective-readmes
+    source: github.com/softaworks/agent-toolkit/dist/plugins/crafting-effective-readmes/skills/crafting-effective-readmes
+  - name: dependency-updater
+    source: github.com/softaworks/agent-toolkit/dist/plugins/dependency-updater/skills/dependency-updater
+  - name: design-system-starter
+    source: github.com/softaworks/agent-toolkit/dist/plugins/design-system-starter/skills/design-system-starter
+  - name: difficult-workplace-conversations
+    source: github.com/softaworks/agent-toolkit/dist/plugins/difficult-workplace-conversations/skills/difficult-workplace-conversations
+  - name: domain-name-brainstormer
+    source: github.com/softaworks/agent-toolkit/dist/plugins/domain-name-brainstormer/skills/domain-name-brainstormer
+  - name: draw-io
+    source: github.com/softaworks/agent-toolkit/dist/plugins/draw-io/skills/draw-io
+  - name: excalidraw
+    source: github.com/softaworks/agent-toolkit/dist/plugins/excalidraw/skills/excalidraw
+  - name: feedback-mastery
+    source: github.com/softaworks/agent-toolkit/dist/plugins/feedback-mastery/skills/feedback-mastery
+  - name: frontend-to-backend-requirements
+    source: github.com/softaworks/agent-toolkit/dist/plugins/frontend-to-backend-requirements/skills/frontend-to-backend-requirements
+  - name: game-changing-features
+    source: github.com/softaworks/agent-toolkit/dist/plugins/game-changing-features/skills/game-changing-features
+  - name: humanizer
+    source: github.com/softaworks/agent-toolkit/dist/plugins/humanizer/skills/humanizer
+  - name: lesson-learned
+    source: github.com/softaworks/agent-toolkit/dist/plugins/lesson-learned/skills/lesson-learned
+  - name: mermaid-diagrams
+    source: github.com/softaworks/agent-toolkit/dist/plugins/mermaid-diagrams/skills/mermaid-diagrams
+  - name: naming-analyzer
+    source: github.com/softaworks/agent-toolkit/dist/plugins/naming-analyzer/skills/naming-analyzer
+  - name: openapi-to-typescript
+    source: github.com/softaworks/agent-toolkit/dist/plugins/openapi-to-typescript/skills/openapi-to-typescript
+  - name: professional-communication
+    source: github.com/softaworks/agent-toolkit/dist/plugins/professional-communication/skills/professional-communication
+  - name: react-dev
+    source: github.com/softaworks/agent-toolkit/dist/plugins/react-dev/skills/react-dev
+  - name: react-useeffect
+    source: github.com/softaworks/agent-toolkit/dist/plugins/react-useeffect/skills/react-useeffect
+  - name: reducing-entropy
+    source: github.com/softaworks/agent-toolkit/dist/plugins/reducing-entropy/skills/reducing-entropy
+  - name: requirements-clarity
+    source: github.com/softaworks/agent-toolkit/dist/plugins/requirements-clarity/skills/requirements-clarity
+  - name: session-handoff
+    source: github.com/softaworks/agent-toolkit/dist/plugins/session-handoff/skills/session-handoff
+  - name: ship-learn-next
+    source: github.com/softaworks/agent-toolkit/dist/plugins/ship-learn-next/skills/ship-learn-next
+  - name: skill-judge
+    source: github.com/softaworks/agent-toolkit/dist/plugins/skill-judge/skills/skill-judge
+  - name: web-to-markdown
+    source: github.com/softaworks/agent-toolkit/dist/plugins/web-to-markdown/skills/web-to-markdown
+  - name: writing-clearly-and-concisely
+    source: github.com/softaworks/agent-toolkit/dist/plugins/writing-clearly-and-concisely/skills/writing-clearly-and-concisely
+  - name: quasi-coder
+    source: github.com/github/awesome-copilot/skills/quasi-coder
+audit:
+  block_threshold: CRITICAL

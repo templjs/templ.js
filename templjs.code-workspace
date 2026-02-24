@@ -2,6 +2,12 @@
   "folders": [
     {
       "path": "."
+    },
+    {
+      "path": "../temple"
+    },
+    {
+      "path": "../pax"
     }
   ],
   "settings": {
@@ -35,9 +41,6 @@
   },
   "extensions": {
     "recommendations": [
-      "ms-python.python",
-      "ms-python.vscode-pylance",
-      "charliermarsh.ruff",
       "bierner.github-markdown-preview",
       "timonwong.shellcheck",
     ],
