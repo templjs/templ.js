@@ -4,19 +4,25 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '9: Write Lexer Tests (200+ tests)'
-status: in-progress
+status: closed
+status_reason: completed
 priority: critical
 estimated: 8
 assignee: ''
 test_results:
-  - timestamp: 2026-02-19T08:14:01.080Z
-    note: 'Lexer tests: 107 passing (local vitest run)'
-actual: 0
+  - timestamp: 2026-02-24T14:30:00.000Z
+    note: 'Lexer tests: 207 passing (Phase 2 complete)'
+actual: 8
+completed_date: 2026-02-24
 commits:
   a0ee8e4: 'test(core): enhance and fix lexer tests to 200+ tests (all passing)'
 links:
   depends_on:
     - '[[005_chevrotain_lexer]]'
+  commits:
+    - 'https://github.com/templjs/templ.js/commit/a0ee8e4'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/2'
 ---
 
 ## Goal

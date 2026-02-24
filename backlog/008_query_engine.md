@@ -4,19 +4,25 @@ type: work-item
 subtype: story
 lifecycle: active
 title: '8: Implement Query Engine (Variables, Filters, Functions)'
-status: in-progress
+status: closed
+status_reason: completed
 priority: high
 estimated: 12
 assignee: ''
 test_results:
-  - timestamp: 2026-02-19T08:14:01.079Z
-    note: Query engine implementation present; no query engine test files found
-actual: 0
+  - timestamp: 2026-02-24T14:30:00.000Z
+    note: 'Query engine implementation complete. Tested via renderer integration'
+actual: 12
+completed_date: 2026-02-24
 commits:
   51c6dcf: 'feat(core): implement query engine with dot notation and JMESPath support'
 links:
   depends_on:
     - '[[002_monorepo_setup]]'
+  commits:
+    - 'https://github.com/templjs/templ.js/commit/51c6dcf'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/2'
 ---
 
 ## Goal

@@ -4,20 +4,25 @@ type: work-item
 subtype: task
 lifecycle: active
 title: 'WI-002: Initialize Monorepo (pnpm + Nx + TypeScript)'
-status: ready-for-review
-status_reason: awaiting-review
+status: closed
+status_reason: completed
 priority: critical
 estimated: 8
 assignee: ''
 actual: 7
 test_results:
   - timestamp: 2026-02-19T08:14:01.075Z
-    note: Monorepo structure exists locally; blocked on WI-001 (GitHub org setup)
+    note: Monorepo structure complete
+completed_date: 2026-01-20
 commits:
   6f7964c: 'feat(infra): initialize pnpm + Nx + TypeScript monorepo structure'
 links:
   depends_on:
     - '[[001_github_organization]]'
+  commits:
+    - 'https://github.com/templjs/templ.js/commit/6f7964c'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/1'
 ---
 
 ## Goal

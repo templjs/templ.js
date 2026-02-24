@@ -4,19 +4,25 @@ type: work-item
 subtype: story
 lifecycle: active
 title: '5: Implement Chevrotain Lexer with Configurable Delimiters'
-status: in-progress
+status: closed
+status_reason: completed
 priority: critical
 estimated: 12
 assignee: ''
 test_results:
-  - timestamp: 2026-02-19T08:14:01.077Z
-    note: Lexer implemented; 107 tests passing (local vitest run)
-actual: 0
+  - timestamp: 2026-02-24T14:30:00.000Z
+    note: 'Lexer implementation complete. Lexer tests: 207 passing (Phase 2)'
+actual: 12
+completed_date: 2026-02-24
 commits:
   24232eb: 'feat(core): implement Chevrotain lexer with tests'
 links:
   depends_on:
     - '[[002_monorepo_setup]]'
+  commits:
+    - 'https://github.com/templjs/templ.js/commit/24232eb'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/2'
 ---
 
 ## Goal

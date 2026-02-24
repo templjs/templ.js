@@ -4,19 +4,25 @@ type: work-item
 subtype: story
 lifecycle: active
 title: '6: Implement Chevrotain Parser (AST Generation)'
-status: in-progress
+status: closed
+status_reason: completed
 priority: critical
 estimated: 16
 assignee: ''
 test_results:
-  - timestamp: 2026-02-19T08:14:01.078Z
-    note: Parser implemented; 113 tests passing (local vitest run)
-actual: 0
+  - timestamp: 2026-02-24T14:30:00.000Z
+    note: 'Parser implementation complete. Parser tests: 302 passing (Phase 2)'
+actual: 16
+completed_date: 2026-02-24
 commits:
   3107bc5: 'feat(core): implement Chevrotain parser with recursive descent'
 links:
   depends_on:
     - '[[005_chevrotain_lexer]]'
+  commits:
+    - 'https://github.com/templjs/templ.js/commit/3107bc5'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/2'
 ---
 
 ## Goal

@@ -4,19 +4,25 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '10: Write Parser Tests (300+ tests)'
-status: in-progress
+status: closed
+status_reason: completed
 priority: critical
 estimated: 12
 assignee: ''
 test_results:
-  - timestamp: 2026-02-19T08:14:01.081Z
-    note: 'Parser tests: 113 passing (local vitest run)'
-actual: 0
+  - timestamp: 2026-02-24T14:30:00.000Z
+    note: 'Parser tests: 302 passing (Phase 2 complete)'
+actual: 10
+completed_date: 2026-02-24
 commits:
   244dd50: 'test(core): enhance parser tests to 300+ tests (all passing)'
 links:
   depends_on:
     - '[[006_chevrotain_parser]]'
+  commits:
+    - 'https://github.com/templjs/templ.js/commit/244dd50'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/2'
 ---
 
 ## Goal
