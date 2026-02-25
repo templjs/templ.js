@@ -2,9 +2,9 @@
 id: wi-015
 type: work-item
 subtype: story
-lifecycle: draft
 title: '15: Implement IntelliSense (Completion, Hover, Go-to-Definition)'
-status: proposed
+lifecycle: active
+status: ready
 priority: critical
 estimated: 12
 assignee: ''

@@ -2,9 +2,9 @@
 id: wi-014
 type: work-item
 subtype: story
-lifecycle: draft
 title: '14: Implement Diagnostics (Linting)'
-status: proposed
+lifecycle: active
+status: ready
 priority: critical
 estimated: 10
 assignee: ''

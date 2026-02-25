@@ -2,9 +2,9 @@
 id: wi-016
 type: work-item
 subtype: task
-lifecycle: draft
 title: '16: Write VS Code Extension Tests (50+ tests)'
-status: proposed
+lifecycle: active
+status: ready
 priority: critical
 estimated: 8
 assignee: ''

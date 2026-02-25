@@ -2,9 +2,9 @@
 id: wi-027
 type: work-item
 subtype: task
-lifecycle: draft
 title: '027: Implement Virtual Code Mapping and Position Tracking'
-status: proposed
+lifecycle: active
+status: ready
 priority: critical
 estimated: 10
 assignee: ''
