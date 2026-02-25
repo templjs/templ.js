@@ -242,4 +242,4 @@ export default {
   createTempljsLanguagePlugin,
 };
 
-export * from './diagnostic-provider';
+export * from './intellisense-provider';

@@ -4,7 +4,7 @@ type: work-item
 subtype: story
 title: '14: Implement Diagnostics (Linting)'
 lifecycle: active
-status: ready-for-review
+status: ready
 priority: critical
 estimated: 10
 assignee: ''
@@ -30,15 +30,15 @@ Diagnostics cover:
 
 ## Tasks
 
-- [x] Implement diagnostic provider in Volar plugin
-- [x] Detect unclosed template tags
-- [x] Detect undefined variables (from schema)
-- [x] Detect invalid filter usage
-- [x] Collect base format errors from delegated services
-- [x] Map errors back to original positions
-- [x] Generate actionable error messages
-- [x] Test error recovery (continue reporting all errors)
-- [x] Write 30+ tests for diagnostics
+- [ ] Implement diagnostic provider in Volar plugin
+- [ ] Detect unclosed template tags
+- [ ] Detect undefined variables (from schema)
+- [ ] Detect invalid filter usage
+- [ ] Collect base format errors from delegated services
+- [ ] Map errors back to original positions
+- [ ] Generate actionable error messages
+- [ ] Test error recovery (continue reporting all errors)
+- [ ] Write 30+ tests for diagnostics
 
 ## Deliverables
 
@@ -50,13 +50,13 @@ Diagnostics cover:
 
 ## Acceptance Criteria
 
-- [x] Syntax errors reported immediately
-- [x] Semantic validation (undefined variables)
-- [x] Base format errors appearing in Problems panel
-- [x] Error positions accurate to source
-- [x] Error messages include fixes/suggestions
-- [x] 30+ tests passing
-- [x] <200ms diagnostic latency
+- [ ] Syntax errors reported immediately
+- [ ] Semantic validation (undefined variables)
+- [ ] Base format errors appearing in Problems panel
+- [ ] Error positions accurate to source
+- [ ] Error messages include fixes/suggestions
+- [ ] 30+ tests passing
+- [ ] <200ms diagnostic latency
 
 ## Error Types
 

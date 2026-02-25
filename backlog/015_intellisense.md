@@ -4,7 +4,7 @@ type: work-item
 subtype: story
 title: '15: Implement IntelliSense (Completion, Hover, Go-to-Definition)'
 lifecycle: active
-status: ready
+status: in-progress
 priority: critical
 estimated: 12
 assignee: ''
