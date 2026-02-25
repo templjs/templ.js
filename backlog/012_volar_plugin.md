@@ -4,10 +4,12 @@ type: work-item
 subtype: story
 lifecycle: active
 title: '12: Build Volar Language Server Plugin'
-status: in-progress
+status: ready-for-review
+status_reason: success
 priority: critical
 estimated: 14
 assignee: ''
+completed_date: 2026-02-25
 links:
   depends_on:
     - '[[005_chevrotain_lexer]]'
@@ -53,11 +55,11 @@ Volar provides language server plugin architecture for embedded languages. Handl
 
 ## Acceptance Criteria
 
-- [ ] Extension activates on `.tmpl` files
-- [ ] Virtual code mapping works correctly
-- [ ] Base format servers receive delegated documents
-- [ ] Extension shows no errors on startup
-- [ ] Basic template file opens without errors
+- [x] Extension activates on `.tmpl` files
+- [x] Virtual code mapping works correctly
+- [x] Base format servers receive delegated documents
+- [x] Extension shows no errors on startup
+- [x] Basic template file opens without errors
 - [x] 30+ tests passing
 
 ## Virtual Code Example
