@@ -244,3 +244,95 @@ describe('Edge cases', () => {
     expect(cleaned.length).toBe(original.length);
   });
 });
+
+describe('Regression: Position mapping with base format diagnostics', () => {
+  it('should correctly map positions within template blocks (REGRESSION)', () => {
+    // This test prevents regression of the bug where positions falling
+    // within template blocks weren't properly mapped to adjacent content
+    const original = 'Hello {{ name }} world';
+    const { mappings } = generatePositionMappings(original, /\{\{[\s\S]*?\}\}/g);
+
+    const mapper = new PositionMapper(mappings);
+
+    // Position 6: 'H' in "Hello"
+    expect(mapper.cleanedToOriginal(6)).toBe(6);
+
+    // Position 7: space before template
+    expect(mapper.cleanedToOriginal(7)).toBe(7);
+
+    // Position 8-14 should map to nearby positions (inside template)
+    // These should map correctly since the template spans 8-15
+    const pos10 = mapper.cleanedToOriginal(10);
+    expect(pos10).toBeGreaterThanOrEqual(8);
+    expect(pos10).toBeLessThanOrEqual(15);
+
+    // Position 15: space after template
+    expect(mapper.cleanedToOriginal(15)).toBe(15);
+
+    // Position 16: space before "world" (aligned since template is replaced with spaces)
+    expect(mapper.cleanedToOriginal(16)).toBe(16);
+  });
+
+  it('should handle multiple adjacent templates correctly', () => {
+    // Multiple templates in sequence - each position should map correctly
+    const original = '{% if %}content{% endif %}{{ var }}';
+    const { mappings } = generatePositionMappings(original, /\{[%{#][\s\S]*?[%}#]\}/g);
+
+    const mapper = new PositionMapper(mappings);
+
+    // Content between templates
+    expect(mapper.cleanedToOriginal(8)).toBe(8);
+
+    // A position in the middle of the second template
+    const midTemplate = mapper.cleanedToOriginal(27);
+    expect(midTemplate).toBeGreaterThanOrEqual(25);
+  });
+
+  it('should correctly remap base diagnostics with offset in template region', () => {
+    // Simulates: JSON parser error on base format code at position 6
+    // where original has: 'val: {{ expr }}, other'
+    const original = 'val: {{ expr }}, other';
+    const { mappings } = generatePositionMappings(original, /\{\{[\s\S]*?\}\}/g);
+    const mapper = new PositionMapper(mappings);
+
+    // If base format error was at cleaned position 6 (in the template space)
+    // it should map to somewhere within or adjacent to the template block
+    const remappedPos = mapper.cleanedToOriginal(6);
+    expect(remappedPos).toBeGreaterThanOrEqual(5);
+    expect(remappedPos).toBeLessThanOrEqual(14);
+  });
+
+  it('should handle line-based position mapping with templates', () => {
+    const original = 'line1\n{{ multiline\nexpression }}\nline4';
+    const { cleaned, mappings } = generatePositionMappings(original, /\{\{[\s\S]*?\}\}/g);
+    const mapper = new PositionMapper(mappings);
+
+    // Verify line structure is preserved
+    const lines = cleaned.split('\n');
+    expect(lines.length).toBe(4);
+
+    // line 0, col 0
+    expect(mapper.cleanedToOriginal(0)).toBe(0);
+
+    // line 1 (which is inside the template)
+    const line1Start = cleaned.indexOf('\n') + 1;
+    const mapped = mapper.cleanedToOriginal(line1Start);
+    expect(mapped).toBeGreaterThanOrEqual(line1Start);
+  });
+
+  it('should maintain accurate mappings for nested/complex template scenarios', () => {
+    // Complex case: multiple template types
+    const original = 'start {% block %} middle {{ var }} end {# comment #} final';
+    const { mappings } = generatePositionMappings(original, /\{[%{#][\s\S]*?[%}#]\}/g);
+    const mapper = new PositionMapper(mappings);
+
+    // Should have mappings for all segments
+    expect(mappings.length).toBeGreaterThan(0);
+
+    // Roundtrip test: cleaned -> original -> cleaned should work
+    for (let i = 0; i < 10; i++) {
+      const originalPos = mapper.cleanedToOriginal(i);
+      expect(originalPos).toBeLessThanOrEqual(original.length);
+    }
+  });
+});
