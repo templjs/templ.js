@@ -45,7 +45,7 @@
     "build:affected:local": "nx affected -t build --base=main --parallel=3",
     "build:affected:ci": "nx affected -t build --base=origin/main --parallel=3 --outputStyle=static",
     "hooks:commit-msg": "commitlint --edit",
-    "hooks:pre-commit": "pnpm run lint:staged && (pnpm run test:affected:local || echo \"⚠️  Some tests failed but commit allowed. Run 'pnpm test' for full results.\")",
+    "hooks:pre-commit": "pnpm run lint:staged && (pnpm run test:affected:ci || echo \"⚠️  Some tests failed but commit allowed. Run 'pnpm test' for full results.\")",
     "hooks:pre-push": "pnpm run lint:frontmatter && pnpm run test:affected:pre-push",
     "ci:lint": "pnpm run lint:ci",
     "ci:type-check": "pnpm run type-check",
