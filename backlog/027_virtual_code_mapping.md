@@ -4,7 +4,7 @@ type: work-item
 subtype: task
 title: '027: Implement Virtual Code Mapping and Position Tracking'
 lifecycle: active
-status: ready
+status: in-progress
 priority: critical
 estimated: 10
 assignee: ''
