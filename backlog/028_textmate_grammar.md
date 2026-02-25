@@ -2,9 +2,9 @@
 id: wi-028
 type: work-item
 subtype: task
-lifecycle: draft
 title: '028: Implement TextMate Grammar with Embedded Language Support'
-status: proposed
+lifecycle: active
+status: ready
 priority: critical
 estimated: 8
 assignee: ''

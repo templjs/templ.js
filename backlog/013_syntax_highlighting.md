@@ -2,9 +2,9 @@
 id: wi-013
 type: work-item
 subtype: story
-lifecycle: draft
 title: '13: Implement Syntax Highlighting and Semantic Tokens'
-status: proposed
+lifecycle: active
+status: ready
 priority: critical
 estimated: 8
 assignee: ''
