@@ -2,9 +2,9 @@
 id: wi-012
 type: work-item
 subtype: story
-lifecycle: draft
+lifecycle: active
 title: '12: Build Volar Language Server Plugin'
-status: proposed
+status: in-progress
 priority: critical
 estimated: 14
 assignee: ''
@@ -31,17 +31,17 @@ Volar provides language server plugin architecture for embedded languages. Handl
 
 ## Tasks
 
-- [ ] Fix `packages/volar/src/index.ts`: Remove eslint-disable directive and properly type parameters (remove `/* eslint-disable ... */` comment and fix Volar API type mismatches with proper parameter typing)
-- [ ] Create `packages/volar/src/` directory structure
-- [ ] Implement Volar language service plugin in TypeScript
-- [ ] Setup virtual code provider for base format delegation
-- [ ] Implement code mapping (template → virtual documents)
-- [ ] Add language service initialization
-- [ ] Create `extensions/vscode/src/extension.ts` main entry
-- [ ] Configure VS Code extension manifest (`package.json`)
-- [ ] Setup language configuration (`language-configuration.json`)
-- [ ] Write integration tests (30+ tests)
-- [ ] Test with sample templates
+- [x] Fix `packages/volar/src/index.ts`: Remove eslint-disable directive and properly type parameters (remove `/* eslint-disable ... */` comment and fix Volar API type mismatches with proper parameter typing)
+- [x] Create `packages/volar/src/` directory structure
+- [x] Implement Volar language service plugin in TypeScript
+- [x] Setup virtual code provider for base format delegation
+- [x] Implement code mapping (template → virtual documents)
+- [x] Add language service initialization
+- [x] Create `extensions/vscode/src/extension.ts` main entry
+- [x] Configure VS Code extension manifest (`package.json`)
+- [x] Setup language configuration (`language-configuration.json`)
+- [x] Write integration tests (30+ tests)
+- [x] Test with sample templates
 
 ## Deliverables
 
@@ -58,7 +58,7 @@ Volar provides language server plugin architecture for embedded languages. Handl
 - [ ] Base format servers receive delegated documents
 - [ ] Extension shows no errors on startup
 - [ ] Basic template file opens without errors
-- [ ] 30+ tests passing
+- [x] 30+ tests passing
 
 ## Virtual Code Example
 

@@ -1,0 +1,15 @@
+{
+  "name": "{{ app.name }}",
+  "version": "{{ app.version }}",
+  "description": "{{ app.description }}",
+  "settings": {
+    {% for setting in app.settings %}
+    "{{ setting.key }}": {{ setting.value }}{{ if not loop.last }},{{ endif }}
+    {% endfor %}
+  },
+  "features": [
+    {% for feature in app.features %}
+    "{{ feature }}"{{ if not loop.last }},{{ endif }}
+    {% endfor %}
+  ]
+}
