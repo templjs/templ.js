@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Deployment
+metadata:
+  name: {{ app.name }}-{{ environment }}
+spec:
+  replicas: {{ environment == 'prod' ? 3 : 1 }}
+  template:
+    spec:
+      containers:
+      - name: {{ app.name }}
+        image: {{ registry }}/{{ app.name }}:{{ version }}
+        ports:
+        {% for port in app.ports %}
+        - containerPort: {{ port }}
+        {% endfor %}
+        env:
+        {% for key, value in environment_vars %}
+        - name: {{ key }}
+          value: {{ value }}
+        {% endfor %}

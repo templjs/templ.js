@@ -18,6 +18,12 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "templjs.test",
+        "title": "Templjs: Test Extension"
+      }
+    ],
     "languages": [
       {
         "id": "templjs-yaml",
