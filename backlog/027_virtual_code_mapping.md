@@ -4,7 +4,8 @@ type: work-item
 subtype: task
 title: '027: Implement Virtual Code Mapping and Position Tracking'
 lifecycle: active
-status: in-progress
+status: ready-for-review
+status_reason: tests-passing
 priority: critical
 estimated: 10
 assignee: ''
@@ -29,28 +30,28 @@ Volar's virtual code system requires:
 
 ## Tasks
 
-- [ ] Create `TemplJsVirtualCode` class:
+- [x] Create `TemplJsVirtualCode` class:
   - `original`: Full template with syntax
   - `cleaned`: Base format without template directives
   - `map`: Line/column position mappings
-- [ ] Implement template stripping algorithm:
+- [x] Implement template stripping algorithm:
   - Replace `{% %}` blocks with whitespace
   - Replace `{{ }}` expressions with placeholder vars
   - Replace `{# #}` comments with whitespace
   - Preserve line counts (newlines important)
-- [ ] Implement position mapping infrastructure:
+- [x] Implement position mapping infrastructure:
   - Track offset mappings (byte positions)
   - Convert between (line, col) coordinate systems
   - Reverse mappings for diagnostic position conversion
-- [ ] Handle multi-line edge cases:
+- [x] Handle multi-line edge cases:
   - Directives spanning multiple lines
   - Mixed indentation preservation
   - Windows CRLF vs Unix LF
-- [ ] Add source map generation:
+- [x] Add source map generation:
   - VLQ encoding for efficient transport
   - Position range tracking for full directives
-- [ ] Implement caching for unchanged sections
-- [ ] Write 40+ tests for virtual code
+- [x] Implement caching for unchanged sections
+- [x] Write 40+ tests for virtual code
 
 ## Deliverables
 
@@ -61,14 +62,14 @@ Volar's virtual code system requires:
 
 ## Acceptance Criteria
 
-- [ ] Virtual code preserves line count
-- [ ] Single-line positions map correctly
-- [ ] Multi-line positions map correctly
-- [ ] Original → cleaned → original roundtrip accurate
-- [ ] Handles CRLF correctly
-- [ ] Caching improves performance
-- [ ] Diagnostic positions within 1 character accuracy
-- [ ] 40+ tests passing
+- [x] Virtual code preserves line count
+- [x] Single-line positions map correctly
+- [x] Multi-line positions map correctly
+- [x] Original → cleaned → original roundtrip accurate
+- [x] Handles CRLF correctly
+- [x] Caching improves performance
+- [x] Diagnostic positions within 1 character accuracy
+- [x] 40+ tests passing
 
 ## Example Mapping
 
