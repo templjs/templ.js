@@ -4,7 +4,7 @@ type: work-item
 subtype: story
 title: '13: Implement Syntax Highlighting and Semantic Tokens'
 lifecycle: active
-status: ready
+status: in-progress
 priority: critical
 estimated: 8
 assignee: ''
