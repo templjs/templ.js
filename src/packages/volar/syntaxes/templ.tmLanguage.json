@@ -1,0 +1,111 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Templjs",
+  "scopeName": "text.html.templjs",
+  "comment": "TextMate grammar for Templjs syntax highlighting",
+  "patterns": [
+    {
+      "comment": "Template comments {# ... #}",
+      "name": "comment.line.templjs",
+      "match": "{#[\\s\\S]*?#}",
+      "captures": {
+        "0": {
+          "name": "comment.line.templjs"
+        }
+      }
+    },
+    {
+      "comment": "Template statements {% ... %}",
+      "begin": "{%",
+      "end": "%}",
+      "name": "meta.template.statement",
+      "beginCaptures": {
+        "0": {
+          "name": "keyword.control.templjs"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "keyword.control.templjs"
+        }
+      },
+      "patterns": [
+        {
+          "comment": "Keywords in statements",
+          "match": "\\b(if|elif|else|endif|for|endfor|foreach|endforeach|while|endwhile|block|endblock|extends|include|import|from|as|set|in|is|not|and|or|true|false|none|null)\\b",
+          "captures": {
+            "1": {
+              "name": "keyword.control.templjs"
+            }
+          }
+        },
+        {
+          "comment": "Variables in statements",
+          "match": "[a-zA-Z_][a-zA-Z0-9_]*(?:\\.[a-zA-Z_][a-zA-Z0-9_]*)*",
+          "name": "variable.other.templjs"
+        }
+      ]
+    },
+    {
+      "comment": "Template expressions {{ ... }}",
+      "begin": "{{",
+      "end": "}}",
+      "name": "meta.template.expression",
+      "beginCaptures": {
+        "0": {
+          "name": "variable.other.templjs"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "variable.other.templjs"
+        }
+      },
+      "patterns": [
+        {
+          "comment": "Filter functions after pipe",
+          "match": "\\|\\s*(upper|lower|capitalize|title|trim|length|slice|first|last|reverse|sort|default|escape|safe|json|join|split|replace|round|abs|int|float)\\b",
+          "captures": {
+            "1": {
+              "name": "entity.name.function.templjs"
+            }
+          }
+        },
+        {
+          "comment": "Variables with property access",
+          "match": "[a-zA-Z_][a-zA-Z0-9_]*(?:\\.[a-zA-Z_][a-zA-Z0-9_]*)*(?:\\[[^\\]]*\\])?",
+          "name": "variable.other.templjs"
+        },
+        {
+          "comment": "String literals",
+          "begin": "\"",
+          "end": "\"",
+          "name": "string.quoted.double.templjs",
+          "patterns": [
+            {
+              "match": "\\\\.",
+              "name": "constant.character.escape.templjs"
+            }
+          ]
+        },
+        {
+          "comment": "String literals with single quotes",
+          "begin": "'",
+          "end": "'",
+          "name": "string.quoted.single.templjs",
+          "patterns": [
+            {
+              "match": "\\\\.",
+              "name": "constant.character.escape.templjs"
+            }
+          ]
+        },
+        {
+          "comment": "Numbers",
+          "match": "\\b\\d+(\\.\\d+)?\\b",
+          "name": "constant.numeric.templjs"
+        }
+      ]
+    }
+  ]
+}

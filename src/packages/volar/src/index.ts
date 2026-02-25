@@ -11,6 +11,17 @@
 import type { CodeInformation, LanguagePlugin, VirtualCode } from '@volar/language-core';
 import type * as ts from 'typescript';
 
+// Export semantic token provider
+export {
+  extractSemanticTokens,
+  SEMANTIC_TOKEN_LEGEND,
+  SemanticTokenModifiers,
+  SemanticTokenTypes,
+  DEFAULT_DELIMITERS,
+  type TokenInfo,
+  type DelimiterConfig,
+} from './semantic-token-provider';
+
 /**
  * Base format types that templates can embed
  */
