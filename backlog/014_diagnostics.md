@@ -4,7 +4,7 @@ type: work-item
 subtype: story
 title: '14: Implement Diagnostics (Linting)'
 lifecycle: active
-status: ready
+status: in-progress
 priority: critical
 estimated: 10
 assignee: ''
