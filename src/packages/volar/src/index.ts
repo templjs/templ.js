@@ -241,3 +241,5 @@ export default {
   version,
   createTempljsLanguagePlugin,
 };
+
+export * from './diagnostic-provider';
