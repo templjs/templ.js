@@ -4,7 +4,7 @@ type: work-item
 subtype: story
 lifecycle: active
 title: '12: Build Volar Language Server Plugin'
-status: ready
+status: in-progress
 priority: critical
 estimated: 14
 assignee: ''
