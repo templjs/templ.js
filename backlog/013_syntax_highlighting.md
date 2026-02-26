@@ -4,15 +4,26 @@ type: work-item
 subtype: story
 title: '13: Implement Syntax Highlighting and Semantic Tokens'
 lifecycle: active
-status: ready-for-review
-status_reason: tests-passing
+status: closed
+status_reason: completed
 priority: critical
 estimated: 8
 assignee: ''
+actual: 8
+completed_date: 2026-02-26
+test_results:
+  - timestamp: 2026-02-26T09:02:26Z
+    note: 'Merged PR #8; semantic token and Volar test suites passed in CI.'
+commits:
+  ed60918: 'Merge pull request #8 from templjs/feature/wi-013-syntax-highlighting'
 links:
   depends_on:
     - '[[012_volar_plugin]]'
     - '[[027_virtual_code_mapping]]'
+  commits:
+    - 'https://github.com/templjs/templ.js/commit/ed6091858ee97b7d903ccc99e6596f9f6bc64eb3'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/8'
 ---
 
 ## Goal

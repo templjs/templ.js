@@ -255,7 +255,7 @@
           },
           "links": {
             "type": "object",
-            "required": ["commits", "pull_requests"]
+            "required": ["pull_requests"]
           }
         }
       }

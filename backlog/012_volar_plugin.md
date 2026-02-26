@@ -4,17 +4,27 @@ type: work-item
 subtype: story
 lifecycle: active
 title: '12: Build Volar Language Server Plugin'
-status: ready-for-review
-status_reason: success
+status: closed
+status_reason: completed
 priority: critical
 estimated: 14
 assignee: ''
+actual: 14
 completed_date: 2026-02-25
+test_results:
+  - timestamp: 2026-02-25T09:51:20Z
+    note: 'Merged PR #3 and verified Volar plugin build/tests for extension integration.'
+commits:
+  85c734b: 'Merge pull request #3 from templjs/feature/wi-012-volar-plugin'
 links:
   depends_on:
     - '[[005_chevrotain_lexer]]'
     - '[[006_chevrotain_parser]]'
     - '[[007_ast_renderer]]'
+  commits:
+    - 'https://github.com/templjs/templ.js/commit/85c734bf089b15a05420736aa48f5c4380f8504d'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/3'
 ---
 
 ## Goal

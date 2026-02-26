@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "TemplJS HTML",
+  "scopeName": "text.templjs.html",
+  "patterns": [
+    {
+      "include": "text.html.basic"
+    },
+    {
+      "include": "source.templjs"
+    }
+  ]
+}

@@ -4,14 +4,26 @@ type: work-item
 subtype: story
 title: '15: Implement IntelliSense (Completion, Hover, Go-to-Definition)'
 lifecycle: active
-status: ready-for-review
+status: closed
+status_reason: completed
 priority: critical
 estimated: 12
 assignee: ''
+actual: 12
+completed_date: 2026-02-25
+test_results:
+  - timestamp: 2026-02-25T17:42:22Z
+    note: 'Merged PR #6 with completion/hover/definition providers and passing tests.'
+commits:
+  fb2ef49: 'Merge pull request #6 from templjs/feature/wi-015-intellisense'
 links:
   depends_on:
     - '[[012_volar_plugin]]'
     - '[[027_virtual_code_mapping]]'
+  commits:
+    - 'https://github.com/templjs/templ.js/commit/fb2ef490c41681f2a3fce5cbf542d0fdfdd8834d'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/6'
 ---
 
 ## Goal
