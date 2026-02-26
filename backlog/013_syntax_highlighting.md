@@ -4,7 +4,8 @@ type: work-item
 subtype: story
 title: '13: Implement Syntax Highlighting and Semantic Tokens'
 lifecycle: active
-status: ready
+status: ready-for-review
+status_reason: tests-passing
 priority: critical
 estimated: 8
 assignee: ''
@@ -31,14 +32,14 @@ Syntax highlighting differentiates template syntax from base format:
 
 ## Tasks
 
-- [ ] Create TextMate grammar for template syntax
-- [ ] Define token scopes for VS Code themes
-- [ ] Implement semantic token provider
-- [ ] Color statements, expressions, comments differently
-- [ ] Map tokens to VS Code token types
-- [ ] Test with light and dark themes
-- [ ] Support custom delimiter themes
-- [ ] Write 20+ tests for highlighting
+- [x] Create TextMate grammar for template syntax
+- [x] Define token scopes for VS Code themes
+- [x] Implement semantic token provider
+- [x] Color statements, expressions, comments differently
+- [x] Map tokens to VS Code token types
+- [x] Test with light and dark themes
+- [x] Support custom delimiter themes
+- [x] Write 20+ tests for highlighting
 
 ## Deliverables
 
@@ -49,12 +50,12 @@ Syntax highlighting differentiates template syntax from base format:
 
 ## Acceptance Criteria
 
-- [ ] Statements highlighted correctly
-- [ ] Expressions highlighted correctly
-- [ ] Comments highlighted correctly
-- [ ] Theme-aware colors applied
-- [ ] Works with dark and light themes
-- [ ] Custom delimiters respected
+- [x] Statements highlighted correctly
+- [x] Expressions highlighted correctly
+- [x] Comments highlighted correctly
+- [x] Theme-aware colors applied
+- [x] Works with dark and light themes
+- [x] Custom delimiters respected
 
 ## Token Types
 
@@ -63,6 +64,11 @@ Syntax highlighting differentiates template syntax from base format:
 - **Filters**: upper, lower, escape, default
 - **Strings**: Content inside delimiters
 - **Comments**: Ignored sections
+
+## Validation Evidence
+
+- `pnpm --filter @templjs/volar test` (102 passing tests)
+- `pnpm --filter @templjs/volar build`
 
 ## Configuration
 
