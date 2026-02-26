@@ -1,2 +1,2 @@
 #!/bin/bash
-# pnpm run hooks:pre-push
+pnpm run hooks:pre-push

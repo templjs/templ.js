@@ -27,10 +27,10 @@ export interface IntellisenseOptions {
   schemaUri?: string;
   customFilters?: FilterSignature[];
   customKeywords?: string[];
-  delimiters?: Partial<TemplateDelimiters>;
+  delimiters?: Partial<IntellisenseDelimiters>;
 }
 
-export interface TemplateDelimiters {
+export interface IntellisenseDelimiters {
   statementStart: string;
   statementEnd: string;
   expressionStart: string;
@@ -46,7 +46,7 @@ export interface FilterSignature {
   parameters: Array<{ name: string; type: string; description?: string }>;
 }
 
-const DEFAULT_DELIMITERS: TemplateDelimiters = {
+const DEFAULT_DELIMITERS: IntellisenseDelimiters = {
   statementStart: '{%',
   statementEnd: '%}',
   expressionStart: '{{',
@@ -99,7 +99,7 @@ const DEFAULT_FILTERS: FilterSignature[] = [
   },
 ];
 
-function getDelimiters(options?: IntellisenseOptions): TemplateDelimiters {
+function getDelimiters(options?: IntellisenseOptions): IntellisenseDelimiters {
   return { ...DEFAULT_DELIMITERS, ...(options?.delimiters ?? {}) };
 }
 
@@ -172,7 +172,7 @@ function resolveVariableMetadata(metadata: SchemaMetadata, path: string): string
   return `${path}: ${entry.type}`;
 }
 
-function normalizeExpression(text: string, delimiters: TemplateDelimiters): string {
+function normalizeExpression(text: string, delimiters: IntellisenseDelimiters): string {
   const trimmed = text.trim();
   if (
     trimmed.startsWith(delimiters.expressionStart) &&

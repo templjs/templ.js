@@ -221,9 +221,15 @@ export function generatePositionMappings(
     }
     cleaned += preMatch;
 
-    // Replace template directive with whitespace (preserves newlines)
+    // Add mapping for the template block itself
+    // This ensures positions within template spaces map back to the template start
     const directive = execResult[0];
     const whitespace = directive.replace(/[^\n]/g, ' ');
+    mappings.push({
+      originalOffset: matchStart,
+      cleanedOffset: cleaned.length,
+      length: whitespace.length,
+    });
     cleaned += whitespace;
     lastIndex = execResult.index + directive.length;
   }
