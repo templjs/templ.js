@@ -1,4 +1,5 @@
 import { SchemaValidator, type JSONSchema } from '@templjs/core';
+import type { IntellisenseDelimiters } from './intellisense-provider';
 import { LineColumnMapper, RangeMapper, generatePositionMappings } from './position-mapping';
 
 export enum DiagnosticSeverity {
@@ -26,14 +27,7 @@ export interface DiagnosticItem {
   suggestion?: string;
 }
 
-export interface TemplateDelimiters {
-  statementStart: string;
-  statementEnd: string;
-  expressionStart: string;
-  expressionEnd: string;
-  commentStart: string;
-  commentEnd: string;
-}
+export type TemplateDelimiters = IntellisenseDelimiters;
 
 export interface DiagnosticOptions {
   schema?: JSONSchema;
