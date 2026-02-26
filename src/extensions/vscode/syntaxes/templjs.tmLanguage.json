@@ -1,0 +1,97 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "TemplJS",
+  "scopeName": "source.templjs",
+  "patterns": [
+    {
+      "include": "#comment"
+    },
+    {
+      "include": "#statement"
+    },
+    {
+      "include": "#expression"
+    }
+  ],
+  "repository": {
+    "comment": {
+      "begin": "\\{#",
+      "end": "#\\}",
+      "name": "comment.block.template",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.template"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.template"
+        }
+      }
+    },
+    "statement": {
+      "begin": "\\{%",
+      "end": "%\\}",
+      "name": "meta.block.template",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.template"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.template"
+        }
+      },
+      "patterns": [
+        {
+          "match": "\\b(if|elif|else|endif|for|endfor|block|endblock|include|set|in)\\b",
+          "name": "keyword.control.template"
+        },
+        {
+          "match": "[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*",
+          "name": "variable.other.template"
+        }
+      ]
+    },
+    "expression": {
+      "begin": "\\{\\{",
+      "end": "\\}\\}",
+      "name": "meta.expression.template",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.template"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.template"
+        }
+      },
+      "patterns": [
+        {
+          "match": "\\|\\s*([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "support.function.template"
+            }
+          }
+        },
+        {
+          "match": "[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*",
+          "name": "variable.other.template"
+        },
+        {
+          "begin": "\"",
+          "end": "\"",
+          "name": "string.quoted.double.template"
+        },
+        {
+          "begin": "'",
+          "end": "'",
+          "name": "string.quoted.single.template"
+        }
+      ]
+    }
+  }
+}

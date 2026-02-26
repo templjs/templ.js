@@ -71,6 +71,44 @@
         "configuration": "./language-configuration.json"
       }
     ],
+    "grammars": [
+      {
+        "scopeName": "source.templjs",
+        "path": "./syntaxes/templjs.tmLanguage.json"
+      },
+      {
+        "language": "templjs-markdown",
+        "scopeName": "text.templjs.markdown",
+        "path": "./syntaxes/injection-markdown.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.markdown": "markdown"
+        }
+      },
+      {
+        "language": "templjs-html",
+        "scopeName": "text.templjs.html",
+        "path": "./syntaxes/injection-html.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.html": "html"
+        }
+      },
+      {
+        "language": "templjs-json",
+        "scopeName": "text.templjs.json",
+        "path": "./syntaxes/injection-json.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.json": "json"
+        }
+      },
+      {
+        "language": "templjs-yaml",
+        "scopeName": "text.templjs.yaml",
+        "path": "./syntaxes/injection-yaml.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.yaml": "yaml"
+        }
+      }
+    ],
     "configuration": {
       "type": "object",
       "title": "Templjs",
