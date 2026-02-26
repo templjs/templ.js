@@ -12,6 +12,8 @@ assignee: ''
 links:
   depends_on:
     - '[[012_volar_plugin]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/4'
 ---
 
 ## Goal

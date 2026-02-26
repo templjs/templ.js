@@ -13,6 +13,8 @@ links:
   depends_on:
     - '[[012_volar_plugin]]'
     - '[[027_virtual_code_mapping]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/8'
 ---
 
 ## Goal

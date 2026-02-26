@@ -5,6 +5,7 @@ subtype: story
 title: '15: Implement IntelliSense (Completion, Hover, Go-to-Definition)'
 lifecycle: active
 status: ready-for-review
+status_reason: tests-passing
 priority: critical
 estimated: 12
 assignee: ''
@@ -12,6 +13,8 @@ links:
   depends_on:
     - '[[012_volar_plugin]]'
     - '[[027_virtual_code_mapping]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/6'
 ---
 
 ## Goal
