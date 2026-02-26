@@ -13,6 +13,8 @@ actual: 8
 links:
   depends_on:
     - '[[005_chevrotain_lexer]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/10'
 ---
 
 ## Goal
