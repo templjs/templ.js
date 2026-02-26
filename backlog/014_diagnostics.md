@@ -4,14 +4,26 @@ type: work-item
 subtype: story
 title: '14: Implement Diagnostics (Linting)'
 lifecycle: active
-status: ready
+status: closed
+status_reason: completed
 priority: critical
 estimated: 10
 assignee: ''
+actual: 10
+completed_date: 2026-02-26
+test_results:
+  - timestamp: 2026-02-26T09:21:39Z
+    note: 'Merged PR #5 and follow-up PR #7; diagnostics provider regression tests passed.'
+commits:
+  254277e: 'Merge pull request #5 from templjs/feature/wi-014-diagnostics'
+  b68b993: 'Merge pull request #7 from templjs/fix/restore-diagnostic-provider'
 links:
   depends_on:
     - '[[012_volar_plugin]]'
     - '[[027_virtual_code_mapping]]'
+  commits:
+    - 'https://github.com/templjs/templ.js/commit/254277ec9fd36b0ee5d4d7c4af43b7ed405624c9'
+    - 'https://github.com/templjs/templ.js/commit/b68b993525ef1a7b97ecb1698bde9720fced92bb'
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/5'
     - 'https://github.com/templjs/templ.js/pull/7'
@@ -33,15 +45,15 @@ Diagnostics cover:
 
 ## Tasks
 
-- [ ] Implement diagnostic provider in Volar plugin
-- [ ] Detect unclosed template tags
-- [ ] Detect undefined variables (from schema)
-- [ ] Detect invalid filter usage
-- [ ] Collect base format errors from delegated services
-- [ ] Map errors back to original positions
-- [ ] Generate actionable error messages
-- [ ] Test error recovery (continue reporting all errors)
-- [ ] Write 30+ tests for diagnostics
+- [x] Implement diagnostic provider in Volar plugin
+- [x] Detect unclosed template tags
+- [x] Detect undefined variables (from schema)
+- [x] Detect invalid filter usage
+- [x] Collect base format errors from delegated services
+- [x] Map errors back to original positions
+- [x] Generate actionable error messages
+- [x] Test error recovery (continue reporting all errors)
+- [x] Write 30+ tests for diagnostics
 
 ## Deliverables
 
@@ -53,13 +65,13 @@ Diagnostics cover:
 
 ## Acceptance Criteria
 
-- [ ] Syntax errors reported immediately
-- [ ] Semantic validation (undefined variables)
-- [ ] Base format errors appearing in Problems panel
-- [ ] Error positions accurate to source
-- [ ] Error messages include fixes/suggestions
-- [ ] 30+ tests passing
-- [ ] <200ms diagnostic latency
+- [x] Syntax errors reported immediately
+- [x] Semantic validation (undefined variables)
+- [x] Base format errors appearing in Problems panel
+- [x] Error positions accurate to source
+- [x] Error messages include fixes/suggestions
+- [x] 30+ tests passing
+- [x] <200ms diagnostic latency
 
 ## Error Types
 

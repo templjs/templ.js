@@ -4,14 +4,23 @@ type: work-item
 subtype: task
 title: '027: Implement Virtual Code Mapping and Position Tracking'
 lifecycle: active
-status: ready-for-review
-status_reason: tests-passing
+status: closed
+status_reason: completed
 priority: critical
 estimated: 10
 assignee: ''
+actual: 10
+completed_date: 2026-02-25
+test_results:
+  - timestamp: 2026-02-25T10:10:48Z
+    note: 'Merged PR #4; position mapping and virtual code tests passed in CI.'
+commits:
+  d798344: 'Merge pull request #4 from templjs/feature/wi-027-virtual-code-mapping'
 links:
   depends_on:
     - '[[012_volar_plugin]]'
+  commits:
+    - 'https://github.com/templjs/templ.js/commit/d798344346bd3977779840335f4ffae189e1d3b8'
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/4'
 ---
