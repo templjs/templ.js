@@ -21,6 +21,8 @@ commits:
 links:
   depends_on:
     - '[[002_monorepo_setup]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/12'
 ---
 
 ## Goal
