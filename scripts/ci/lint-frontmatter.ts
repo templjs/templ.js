@@ -60,6 +60,26 @@ function collectSchemaFiles(dirPath: string): string[] {
   return files;
 }
 
+function collectBacklogMarkdownFiles(dirPath: string, relativePrefix = ''): string[] {
+  const files: string[] = [];
+
+  for (const entry of readdirSync(dirPath, { withFileTypes: true })) {
+    const fullPath = join(dirPath, entry.name);
+    const relativePath = relativePrefix ? `${relativePrefix}/${entry.name}` : entry.name;
+
+    if (entry.isDirectory()) {
+      files.push(...collectBacklogMarkdownFiles(fullPath, relativePath));
+      continue;
+    }
+
+    if (entry.isFile() && entry.name.endsWith('.md')) {
+      files.push(toPosixPath(relativePath));
+    }
+  }
+
+  return files.sort();
+}
+
 /**
  * Load and compile JSON schemas with Ajv
  */
@@ -226,7 +246,7 @@ function resolveFilesToValidate(allBacklogFiles: string[], cliArgs: string[]): s
  */
 function validateFrontmatter(): boolean {
   const { validators, statusTransitions, supportedTypes } = loadSchemas();
-  const allBacklogFiles = readdirSync(BACKLOG_DIR).filter((f) => f.endsWith('.md'));
+  const allBacklogFiles = collectBacklogMarkdownFiles(BACKLOG_DIR);
   const files = resolveFilesToValidate(allBacklogFiles, process.argv.slice(2));
   let hasViolations = false;
 
@@ -248,11 +268,13 @@ function validateFrontmatter(): boolean {
       }
 
       const fileBasename = file.replace(/\.md$/, '');
+      const fileLeafBasename = fileBasename.split('/').pop() || fileBasename;
       const id = typeof frontmatter.id === 'string' ? frontmatter.id : fileBasename;
       const status = typeof frontmatter.status === 'string' ? frontmatter.status : '';
       const title = typeof frontmatter.title === 'string' ? frontmatter.title : file;
 
       workItemsMap.set(fileBasename, { status, file, id, title });
+      workItemsMap.set(fileLeafBasename, { status, file, id, title });
       if (typeof frontmatter.id === 'string') {
         workItemsMap.set(id, { status, file, id, title });
       }
