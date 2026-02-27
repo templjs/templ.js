@@ -79,7 +79,6 @@
     "tsx": "^4.21.0",
     "typescript": "latest",
     "typescript-eslint": "latest",
-    "vitest": "^4.0.18",
     "yaml": "latest"
   },
   "lint-staged": {
