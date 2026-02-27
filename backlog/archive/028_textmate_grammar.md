@@ -4,12 +4,16 @@ type: work-item
 subtype: task
 title: '028: Implement TextMate Grammar with Embedded Language Support'
 lifecycle: active
-status: ready-for-review
-status_reason: awaiting-review
+status: closed
+status_reason: completed
 priority: critical
 estimated: 8
 assignee: ''
 actual: 8
+completed_date: 2026-02-26
+test_results:
+  - timestamp: 2026-02-26T17:56:09Z
+    note: 'Merged PR #10; TextMate grammar tests and extension/volar builds passed in CI.'
 links:
   depends_on:
     - '[[005_chevrotain_lexer]]'

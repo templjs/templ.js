@@ -11,8 +11,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    passWithNoTests: true,
     include: ['src/**/*.test.ts'],
     coverage: {
+      reportsDirectory: './coverage',
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*.ts'],
