@@ -1,5 +1,5 @@
 # templjs: Meta-Templating System
-
+[![codecov](https://codecov.io/github/templjs/templ.js/graph/badge.svg?token=LQF2NinbxD)](https://codecov.io/github/templjs/templ.js)
 `templjs` is a declarative, schema-aware meta-templating system for transforming structured data into structured and unstructured text outputs.
 
 Think of it as **XSLT-style transformation power** with **Jinja2/Handlebars authoring ergonomics**, plus **base-language tooling support** and **extensible, validated input/output pipelines**.
