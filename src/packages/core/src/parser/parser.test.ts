@@ -1345,6 +1345,35 @@ describe('Parser - Error Recovery and Edge Cases', () => {
     const result = parse(tokens);
     expect(result.ast?.children.length).toBeGreaterThan(0);
   });
+  describe('Parser - Recovery Suggestions', () => {
+    it('should include a recovery suggestion in error for unclosed if', () => {
+      const tokens = tokenize('{% if user %}no closing');
+      const result = parse(tokens);
+      const errorWithSuggestion = result.errors.find(
+        (e) => e.suggestion && /endif/.test(e.suggestion)
+      );
+      expect(errorWithSuggestion).toBeDefined();
+      expect(errorWithSuggestion?.suggestion).toMatch(/endif/);
+    });
+    it('should include a recovery suggestion in error for unclosed for', () => {
+      const tokens = tokenize('{% for item in items %}no closing');
+      const result = parse(tokens);
+      const errorWithSuggestion = result.errors.find(
+        (e) => e.suggestion && /endfor/.test(e.suggestion)
+      );
+      expect(errorWithSuggestion).toBeDefined();
+      expect(errorWithSuggestion?.suggestion).toMatch(/endfor/);
+    });
+    it('should include a recovery suggestion in error for unclosed block', () => {
+      const tokens = tokenize('{% block foo %}no closing');
+      const result = parse(tokens);
+      const errorWithSuggestion = result.errors.find(
+        (e) => e.suggestion && /endblock/.test(e.suggestion)
+      );
+      expect(errorWithSuggestion).toBeDefined();
+      expect(errorWithSuggestion?.suggestion).toMatch(/endblock/);
+    });
+  });
 });
 
 describe('Parser - Advanced Expression Handling', () => {
