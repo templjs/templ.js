@@ -78,10 +78,8 @@ export type BuiltinFunction = (context: RenderContext, ...args: AnyValue[]) => A
 export interface RenderOptions {
   /** Whether to throw errors or collect them */
   throwOnError?: boolean;
-  /** Whether to include undefined variables in output */
-  includeUndefinedVars?: boolean;
-  /** Default value for undefined variables */
-  undefinedValue?: string;
+  /** Optional string used when a top-level expression result is undefined */
+  undefinedValue?: string | undefined;
   /** Maximum nesting depth for scopes */
   maxDepth?: number;
   /** Enable debug output */

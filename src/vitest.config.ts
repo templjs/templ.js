@@ -1,3 +1,4 @@
+import path from 'path';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
@@ -5,6 +6,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     coverage: {
+      reportsDirectory: path.resolve(__dirname, 'coverage'),
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*.ts'],

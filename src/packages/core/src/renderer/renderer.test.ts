@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { render } from './renderer';
-import { parse } from '../parser';
+import { render, Renderer } from './renderer';
+import { ASTNode, parse } from '../parser';
 import { tokenize } from '../lexer';
+import { RenderError, RenderResult } from './types';
 
 describe('Renderer', () => {
   describe('variable resolution', () => {
@@ -762,6 +763,7 @@ describe('Renderer', () => {
       const parseResult = parse(tokens);
       if (!parseResult.ast) throw new Error('Parse failed');
       const result = render(parseResult.ast, { items: [1, 2, 3, 4, 5] });
+      expect(result.errors.length).toBe(0);
       expect(result.output).toBe('5');
     });
 
@@ -1465,6 +1467,250 @@ describe('Renderer', () => {
       });
       expect(result.output).toContain('Widget: 5 units');
       expect(result.output).not.toContain('Gadget');
+    });
+  });
+  describe('Renderer internals and options', () => {
+    it('should apply custom undefinedValue for direct expression output', () => {
+      const tokens = tokenize('{{ missing }}');
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, {}, { undefinedValue: 'N/A' });
+      expect(result.output).toBe('N/A');
+    });
+
+    it('should keep undefined semantics in filters before output formatting', () => {
+      const tokens = tokenize('{{ missing | default("fallback") }}');
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, {}, { undefinedValue: 'N/A' });
+      expect(result.output).toBe('fallback');
+    });
+
+    it('should keep undefined semantics in conditionals', () => {
+      const tokens = tokenize('{% if missing %}yes{% else %}no{% endif %}');
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, {}, { undefinedValue: 'N/A' });
+      expect(result.output).toBe('no');
+    });
+
+    it('should not throw for undefined variable even if throwOnError is true', () => {
+      const tokens = tokenize('{{ missing }}');
+      const parseResult = parse(tokens);
+      let renderResult: RenderResult;
+      expect(() => {
+        renderResult = render(parseResult.ast!, {}, { throwOnError: true });
+        expect(renderResult.errors.map((e: RenderError) => e.type)).toContain('undefined_variable');
+      }).not.toThrow();
+    });
+
+    it('should throw on runtime error (maxDepth exceeded) if throwOnError is true', () => {
+      let template = '{% for i in arr %}';
+      for (let i = 0; i < 101; i++) template += '{% for j in arr %}';
+      template += '{{ i }}';
+      for (let i = 0; i < 101; i++) template += '{% endfor %}';
+      template += '{% endfor %}';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      expect(() =>
+        render(parseResult.ast!, { arr: [1] }, { maxDepth: 100, throwOnError: true })
+      ).toThrow();
+    });
+
+    it('should report undefined_variable error but success=true if throwOnError is false', () => {
+      const tokens = tokenize('{{ missing }}');
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, {}, { throwOnError: false });
+      expect(result.success).toBe(true);
+      expect(result.errors.some((e: RenderError) => e.type === 'undefined_variable')).toBe(true);
+    });
+
+    it('should enforce maxDepth in nested loops', () => {
+      // Create a template with nested loops exceeding maxDepth
+      let template = '{% for i in arr %}';
+      for (let i = 0; i < 101; i++) template += '{% for j in arr %}';
+      template += '{{ i }}';
+      for (let i = 0; i < 101; i++) template += '{% endfor %}';
+      template += '{% endfor %}';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { arr: [1] }, { maxDepth: 100 });
+      expect(result.success).toBe(false);
+      expect(
+        result.errors.some((e: RenderError) => e.message.includes('Maximum nesting depth'))
+      ).toBe(true);
+    });
+
+    it('should handle unknown node types gracefully', () => {
+      const ast = { type: 'unknown_type', value: 42, start: 0, end: 0 } as unknown as ASTNode;
+      const result = render(ast, {});
+      expect(result.success).toBe(false);
+      expect(result.errors.some((e: RenderError) => e.message.includes('Unknown node type'))).toBe(
+        true
+      );
+    });
+
+    it('should handle invalid AST node', () => {
+      const result = render(null as unknown as ASTNode, {});
+      expect(result.success).toBe(false);
+      expect(
+        result.errors.some((e: RenderError) => e.message.includes('Unknown or invalid AST node'))
+      ).toBe(true);
+    });
+  });
+
+  describe('Renderer binary and unary operations', () => {
+    it('should resolve array length property', () => {
+      const tokens = tokenize('{{ arr.length }}');
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { arr: [1, 2, 3, 4, 5] });
+      expect(result.output).toBe('5');
+    });
+    const binaryCases = [
+      { expr: '{{ 2 + 2 }}', expected: '4' },
+      { expr: '{{ 2 - 1 }}', expected: '1' },
+      { expr: '{{ 2 * 3 }}', expected: '6' },
+      { expr: '{{ 6 / 2 }}', expected: '3' },
+      { expr: '{{ 5 % 2 }}', expected: '1' },
+      { expr: '{{ "a" + "b" }}', expected: 'ab' },
+      { expr: '{{ 2 < 3 }}', expected: 'true' },
+      { expr: '{{ 2 > 3 }}', expected: 'false' },
+      { expr: '{{ 2 == 2 }}', expected: 'true' },
+      { expr: '{{ 2 != 3 }}', expected: 'true' },
+      { expr: '{{ 2 === 2 }}', expected: 'true' },
+      { expr: '{{ 2 !== 3 }}', expected: 'true' },
+      { expr: '{{ 2 && 1 }}', expected: 'true' },
+      { expr: '{{ 0 || 1 }}', expected: 'true' },
+      { expr: '{{ arr[1] }}', data: { arr: [10, 20] }, expected: '20' },
+      { expr: '{{ 1 / 0 }}', expected: '0' },
+      { expr: '{{ arr.length }}', data: { arr: [1, 2, 3, 4, 5] }, expected: '5' },
+    ];
+    binaryCases.forEach(({ expr, data, expected }) => {
+      it(`should evaluate binary operation: ${expr}`, () => {
+        const tokens = tokenize(expr);
+        const parseResult = parse(tokens);
+        if (!parseResult.ast) throw new Error('Parse failed');
+        const result = render(parseResult.ast, data || {});
+        expect(result.output).toBe(expected);
+      });
+    });
+
+    const unaryCases = [
+      { expr: '{{ !true }}', expected: 'false' },
+      { expr: '{{ -5 }}', expected: '-5' },
+      { expr: '{{ +5 }}', expected: '5' },
+    ];
+    unaryCases.forEach(({ expr, expected }) => {
+      it(`should evaluate unary operation: ${expr}`, () => {
+        const tokens = tokenize(expr);
+        const parseResult = parse(tokens);
+        const result = render(parseResult.ast!, {});
+        expect(result.errors.length).toBe(0);
+        expect(result.output).toBe(expected);
+      });
+    });
+  });
+
+  describe('Renderer custom filter registration', () => {
+    it('should report error for filter with missing argument', () => {
+      const tokens = tokenize('{{ val | replace }}');
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { val: 'abc' });
+      expect(result.output).toBe('abc'); // No replacement
+    });
+
+    it('should report error for filter with invalid type', () => {
+      const tokens = tokenize('{{ val | upper }}');
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { val: 123 });
+      expect(result.output).toBe('123'); // No change
+    });
+    it('should register and use a custom filter', () => {
+      const renderer = new Renderer();
+      renderer.registerFilter('double', (v: number) => v * 2);
+      const tokens = tokenize('{{ num | double }}');
+      const parseResult = parse(tokens);
+      const result = renderer.render(parseResult.ast!, { num: 7 });
+      expect(result.output).toBe('14');
+    });
+
+    it('should report error for unknown filter', () => {
+      const tokens = tokenize('{{ val | notafilter }}');
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { val: 'x' });
+      expect(result.errors.some((e) => e.type === 'filter_error')).toBe(true);
+    });
+  });
+
+  describe('Renderer error handling and edge cases', () => {
+    it('should handle property access on non-object', () => {
+      const template = '{{ num.value }}';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { num: 42 });
+      expect(result.output).toBe('');
+    });
+
+    it('should handle index access on non-array', () => {
+      const template = '{{ obj[0] }}';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { obj: { a: 1 } });
+      expect(result.output).toBe('');
+    });
+
+    it('should report error for invalid expression type', () => {
+      const ast = {
+        type: 'invalid_expr',
+        value: 'x',
+        start: { line: 1, column: 0 },
+        end: { line: 1, column: 1 },
+      } as unknown as ASTNode;
+      const result = render(ast, {});
+      expect(result.errors.map((e) => e.type)).toContain('runtime_error');
+    });
+
+    it('should include debug output if debug option is true', () => {
+      const template = '{{ name }}';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { name: 'debug' }, { debug: true });
+      expect(result.output).toBe('debug');
+    });
+    it('should report error for unknown node type', () => {
+      const ast = {
+        type: 'unknown_type',
+        value: 'x',
+        start: { line: 1, column: 0 },
+        end: { line: 1, column: 1 },
+      } as unknown as ASTNode;
+      const result = render(ast, {});
+      expect(result.errors.some((e) => e.type === 'runtime_error')).toBe(true);
+    });
+
+    it('should handle deeply nested scopes up to maxDepth', () => {
+      const depth = 99;
+      let template = '{% for i in arr %}';
+      for (let i = 0; i < depth; i++) template += '{% for j in arr %}';
+      template += '{{ i }}';
+      for (let i = 0; i < depth; i++) template += '{% endfor %}';
+      template += '{% endfor %}';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { arr: [1] }, { maxDepth: 100 });
+      expect(result.errors).toEqual([]);
+      expect(result.success).toBe(true);
+    });
+
+    it('should report error for exceeding maxDepth', () => {
+      const depth = 100;
+      let template = '{% for i in arr %}';
+      for (let i = 0; i < depth; i++) template += '{% for j in arr %}';
+      template += '{{ i }}';
+      for (let i = 0; i < depth; i++) template += '{% endfor %}';
+      template += '{% endfor %}';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { arr: [1] }, { maxDepth: 100 });
+      expect(result.success).toBe(false);
+      expect(result.errors.some((e) => e.message.includes('Maximum nesting depth'))).toBe(true);
     });
   });
 });

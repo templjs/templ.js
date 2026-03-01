@@ -657,6 +657,13 @@ describe('Parser - Complex Expressions', () => {
       const stmt = result.ast?.children[0] as ExpressionStatementNode;
       expect(stmt.value.type).toBe('unary_op');
     });
+
+    it('should parse positive', () => {
+      const tokens = tokenize('{{ +value }}');
+      const result = parse(tokens);
+      const stmt = result.ast?.children[0] as ExpressionStatementNode;
+      expect(stmt.value.type).toBe('unary_op');
+    });
   });
 
   describe('Ternary Operator', () => {

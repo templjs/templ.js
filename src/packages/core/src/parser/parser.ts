@@ -383,22 +383,13 @@ export class TemplateParser {
       };
     }
 
+    const unaryMatch = expr.match(/^(!|-|\+)(.+)$/);
     // Handle unary operators
-    if (expr.startsWith('!')) {
+    if (unaryMatch) {
       return {
         type: 'unary_op',
-        operator: '!',
-        operand: this.parseExpression(expr.substring(1).trim()),
-        start: { line: 1, column: 0 },
-        end: { line: 1, column: expr.length },
-      };
-    }
-
-    if (expr.startsWith('-')) {
-      return {
-        type: 'unary_op',
-        operator: '-',
-        operand: this.parseExpression(expr.substring(1).trim()),
+        operator: unaryMatch[1],
+        operand: this.parseExpression(unaryMatch[2].trim()),
         start: { line: 1, column: 0 },
         end: { line: 1, column: expr.length },
       };
