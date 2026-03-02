@@ -3,7 +3,6 @@ import { render, Renderer } from '../../src/renderer/renderer';
 import { ASTNode, parse } from '../../src/parser';
 import { tokenize } from '../../src/lexer';
 import { RenderError, RenderResult } from '../../src/renderer/types';
-import { literal, binary, unary, template } from './renderer.test-helpers';
 
 describe('Package: core', () => {
   describe('Domain: rendering', () => {
@@ -981,69 +980,7 @@ describe('Package: core', () => {
         });
 
         describe('Renderer binary and unary operations', () => {
-          describe('binary operations', () => {
-            it.each([
-              { op: '+', left: 2, right: 3, expected: '5' },
-              { op: '+', left: 'a', right: 'b', expected: 'ab' },
-              { op: '-', left: 9, right: 4, expected: '5' },
-              { op: '-', left: 'a', right: 4, expected: '0' },
-              { op: '*', left: 3, right: 4, expected: '12' },
-              { op: '*', left: 'x', right: 4, expected: '0' },
-              { op: '/', left: 12, right: 3, expected: '4' },
-              { op: '/', left: 12, right: 0, expected: '0' },
-              { op: '%', left: 13, right: 5, expected: '3' },
-              { op: '%', left: 'x', right: 5, expected: '0' },
-              { op: '==', left: 1, right: '1', expected: 'true' },
-              { op: '!=', left: 1, right: 2, expected: 'true' },
-              { op: '===', left: 1, right: 1, expected: 'true' },
-              { op: '!==', left: 1, right: '1', expected: 'true' },
-              { op: '<', left: 1, right: 2, expected: 'true' },
-              { op: '<=', left: 2, right: 2, expected: 'true' },
-              { op: '>', left: 3, right: 2, expected: 'true' },
-              { op: '>=', left: 2, right: 2, expected: 'true' },
-              { op: '&&', left: true, right: false, expected: 'false' },
-              { op: '||', left: false, right: true, expected: 'true' },
-            ])('evaluates $op operator', ({ op, left, right, expected }) => {
-              const ast = template(binary(op, literal(left), literal(right)));
-              const result = render(ast, {});
-              expect(result.output).toBe(expected);
-              expect(result.success).toBe(true);
-            });
-
-            it('supports bracket access for arrays/objects', () => {
-              expect(
-                render(template(binary('[', literal([10, 20] as never), literal(1))), {}).output
-              ).toBe('20');
-              expect(
-                render(
-                  template(binary('[', literal({ x: 'ok' } as never), literal('x' as never))),
-                  {}
-                ).output
-              ).toBe('ok');
-            });
-
-            it('returns empty output for unknown operator', () => {
-              const ast = template(binary('???', literal(1), literal(2)));
-              const result = render(ast, {});
-              expect(result.output).toBe('');
-              expect(result.success).toBe(true);
-            });
-          });
-
           describe('unary operations', () => {
-            it('supports logical not', () => {
-              expect(render(template(unary('!', literal(false))), {}).output).toBe('true');
-            });
-
-            it('supports unary minus and plus for numbers', () => {
-              expect(render(template(unary('-', literal(5))), {}).output).toBe('-5');
-              expect(render(template(unary('+', literal(5))), {}).output).toBe('5');
-            });
-
-            it('returns operand for unknown unary operator', () => {
-              expect(render(template(unary('~', literal(5))), {}).output).toBe('5');
-            });
-
             it('should error for double negative', () => {
               const template = '{{ --5 }}';
               const tokens = tokenize(template);

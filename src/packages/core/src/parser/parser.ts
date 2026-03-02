@@ -22,6 +22,7 @@ import type {
   ParseResult,
   ParseError,
 } from './types';
+import { parseExpressionWithPriorityList } from './parsers';
 
 /**
  * Parser for converting token stream into AST
@@ -357,110 +358,16 @@ export class TemplateParser {
       return this.createErrorExpression('Empty expression');
     }
 
-    // Handle ternary operator (lowest precedence)
-    const ternaryMatch = expr.match(/^(.+?)\s*\?\s*(.+?)\s*:\s*(.+?)$/);
-    if (ternaryMatch) {
-      return {
-        type: 'ternary',
-        condition: this.parseExpression(ternaryMatch[1]),
-        trueValue: this.parseExpression(ternaryMatch[2]),
-        falseValue: this.parseExpression(ternaryMatch[3]),
-        start: { line: 1, column: 0 },
-        end: { line: 1, column: expr.length },
-      };
-    }
-
-    // Handle unary operators BEFORE binary (higher precedence)
-    // For !, allow consecutive (like !!)
-    // For - and +: allow with space, OR without space if next char is NOT the same operator
-    const unaryMatch =
-      expr.match(/^(!)\s*(.+)$/) ||
-      expr.match(/^([-+])\s+(.+)$/) ||
-      expr.match(/^(-)([^-].*)$/) ||
-      expr.match(/^(\+)([^+].*)$/);
-    if (unaryMatch) {
-      const operator = unaryMatch[1];
-      const operand = (unaryMatch[2] ?? unaryMatch[3] ?? '').trim();
-      if (!operand) {
-        // No operand after operator
-        return this.createErrorExpression('Invalid or missing expression type');
-      }
-      return {
-        type: 'unary_op',
-        operator: operator,
-        operand: this.parseExpression(operand),
-        start: { line: 1, column: 0 },
-        end: { line: 1, column: expr.length },
-      };
-    }
-
-    // Handle binary operators
-    const binaryMatch = this.matchBinaryOp(expr);
-    if (binaryMatch) {
-      return {
-        type: 'binary_op',
-        operator: binaryMatch.operator,
-        left: this.parseExpression(binaryMatch.left),
-        right: this.parseExpression(binaryMatch.right),
-        start: { line: 1, column: 0 },
-        end: { line: 1, column: expr.length },
-      };
-    }
-
-    // Handle parenthesized expressions
-    if (expr.startsWith('(') && expr.endsWith(')')) {
-      const inner = expr.substring(1, expr.length - 1);
-      return {
-        type: 'paren',
-        value: this.parseExpression(inner),
-        start: { line: 1, column: 0 },
-        end: { line: 1, column: expr.length },
-      };
-    }
-
-    // Handle array literals
-    if (expr.startsWith('[') && expr.endsWith(']')) {
-      const inner = expr.substring(1, expr.length - 1);
-      const elements =
-        inner.length === 0
-          ? []
-          : this.splitTopLevel(inner, ',').map((e) => this.parseExpression(e));
-      return {
-        type: 'array',
-        elements,
-        start: { line: 1, column: 0 },
-        end: { line: 1, column: expr.length },
-      };
-    }
-
-    // Handle object literals
-    if (expr.startsWith('{') && expr.endsWith('}')) {
-      const inner = expr.substring(1, expr.length - 1);
-      const properties = this.parseObjectProperties(inner);
-      return {
-        type: 'object',
-        properties,
-        start: { line: 1, column: 0 },
-        end: { line: 1, column: expr.length },
-      };
-    }
-
-    // Handle literals
-    const literal = this.parseLiteral(expr);
-    if (literal) return literal;
-
-    // Handle variables with filters
-    if (expr.includes('|')) {
-      return this.parseFilterExpression(expr);
-    }
-
-    // Handle variable references
-    if (this.isVariableStart(expr.charAt(0))) {
-      return this.parseVariable(expr);
-    }
-
-    // Default: invalid expression (e.g., starts with operator like --)
-    return this.createErrorExpression('Invalid or missing expression type');
+    return parseExpressionWithPriorityList(expr, {
+      parseExpression: (value) => this.parseExpression(value),
+      parseLiteral: (value) => this.parseLiteral(value),
+      parseFilterExpression: (value) => this.parseFilterExpression(value),
+      parseVariable: (value) => this.parseVariable(value),
+      parseObjectProperties: (inner) => this.parseObjectProperties(inner),
+      splitTopLevel: (value, delimiter) => this.splitTopLevel(value, delimiter),
+      isVariableStart: (char) => this.isVariableStart(char),
+      createErrorExpression: (message) => this.createErrorExpression(message),
+    });
   }
 
   /**
@@ -704,129 +611,6 @@ export class TemplateParser {
     }
 
     return properties;
-  }
-
-  /**
-   * Match and extract binary operator with correct JavaScript precedence
-   *
-   * Precedence levels (high to low):
-   * - 15: Logical OR (||) - right-associative
-   * - 14: Logical AND (&&) - right-associative
-   * - 9:  Equality (==, !=, ===, !==) - left-associative
-   * - 10: Relational (<, >, <=, >=) - left-associative
-   * - 12: Additive (+, -) - left-associative
-   * - 13: Multiplicative (*, /, %) - left-associative
-   */
-  private matchBinaryOp(expr: string): { operator: string; left: string; right: string } | null {
-    // Define operators by precedence level (lowest precedence = checked first)
-    // Lower precedence binds weaker, so we parse those operators first
-    const precedenceLevels = [
-      {
-        precedence: 15,
-        operators: ['||'],
-        rightAssoc: true,
-      },
-      {
-        precedence: 14,
-        operators: ['&&'],
-        rightAssoc: true,
-      },
-      {
-        precedence: 9,
-        operators: ['===', '!==', '==', '!='],
-        rightAssoc: false,
-      },
-      {
-        precedence: 10,
-        operators: ['<=', '>=', '<', '>'],
-        rightAssoc: false,
-      },
-      {
-        precedence: 12,
-        operators: ['+', '-'],
-        rightAssoc: false,
-      },
-      {
-        precedence: 13,
-        operators: ['*', '/', '%'],
-        rightAssoc: false,
-      },
-    ];
-
-    // Check precedence levels in order (lowest to highest)
-    for (const level of precedenceLevels) {
-      for (const op of level.operators) {
-        const parts = level.rightAssoc
-          ? this.splitByOperatorFromRight(expr, op)
-          : this.splitByOperatorFromLeft(expr, op);
-
-        if (parts && parts.left.trim() && parts.right.trim()) {
-          const left = parts.left.trim();
-          // Don't treat it as binary if left is just a single operator char (unary case)
-          if (['+', '-', '!'].includes(left)) {
-            continue;
-          }
-          return { operator: op, left: parts.left, right: parts.right };
-        }
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Find operator scanning left-to-right (for left-associative operators)
-   * Returns the leftmost match at depth 0
-   */
-  private splitByOperatorFromLeft(
-    expr: string,
-    op: string
-  ): { left: string; right: string } | null {
-    let depth = 0;
-
-    for (let i = 0; i < expr.length; i++) {
-      if (expr[i] === '(' || expr[i] === '[' || expr[i] === '{') depth++;
-      if (expr[i] === ')' || expr[i] === ']' || expr[i] === '}') depth--;
-
-      if (depth === 0 && expr.substring(i, i + op.length) === op) {
-        return {
-          left: expr.substring(0, i),
-          right: expr.substring(i + op.length),
-        };
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Find operator scanning right-to-left (for right-associative operators)
-   * Returns the rightmost match at depth 0
-   */
-  private splitByOperatorFromRight(
-    expr: string,
-    op: string
-  ): { left: string; right: string } | null {
-    let depth = 0;
-    let i = expr.length - 1;
-
-    while (i >= 0) {
-      if (expr[i] === ')') depth++;
-      if (expr[i] === '(') depth--;
-      if (expr[i] === ']') depth++;
-      if (expr[i] === '[') depth--;
-
-      if (depth === 0 && expr.substring(i - op.length + 1, i + 1) === op) {
-        return {
-          left: expr.substring(0, i - op.length + 1),
-          right: expr.substring(i + 1),
-        };
-      }
-
-      i--;
-    }
-
-    return null;
   }
 
   /**
