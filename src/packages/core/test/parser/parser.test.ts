@@ -2419,4 +2419,59 @@ describe('Parser - Whitespace and Text Preservation', () => {
     const result = parse(tokens);
     expect(result.ast?.children.length).toBeGreaterThan(0);
   });
+
+  describe('Edge cases and error conditions', () => {
+    it('handles expressions with leading operators', () => {
+      const tokens = tokenize('{{ +x }}');
+      const result = parse(tokens);
+      expect(result.ast).toBeDefined();
+      const expr = result.ast?.children[0] as ExpressionStatementNode;
+      expect(expr).toBeDefined();
+    });
+
+    it('handles unary operators with empty operands', () => {
+      const tokens = tokenize('{{ - }}');
+      const result = parse(tokens);
+      expect(result.ast).toBeDefined();
+      // Should handle gracefully, likely as error expression
+    });
+
+    it('handles malformed set statements', () => {
+      const tokens = tokenize('{% set %}');
+      const result = parse(tokens);
+      expect(result.ast).toBeDefined();
+      expect(result.errors.length).toBeGreaterThan(0);
+    });
+
+    it('handles set statements with invalid assignments', () => {
+      const tokens = tokenize('{% set x %}');
+      const result = parse(tokens);
+      expect(result.ast).toBeDefined();
+    });
+
+    it('handles block statements with no name', () => {
+      const tokens = tokenize('{% block %}content{% endblock %}');
+      const result = parse(tokens);
+      expect(result.ast).toBeDefined();
+    });
+
+    it('handles completely empty expressions', () => {
+      const tokens = tokenize('{{  }}');
+      const result = parse(tokens);
+      expect(result.ast).toBeDefined();
+      // Empty expression should be handled as error
+    });
+
+    it('handles binary operators with incomplete operands', () => {
+      const tokens = tokenize('{{ x + }}');
+      const result = parse(tokens);
+      expect(result.ast).toBeDefined();
+    });
+
+    it('handles multiple levels of invalid nesting', () => {
+      const tokens = tokenize('{% if %}{% if %}content{% endif %}{% endif %}');
+      const result = parse(tokens);
+      expect(result.ast).toBeDefined();
+    });
+  });
 });
