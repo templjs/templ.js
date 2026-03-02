@@ -10,22 +10,23 @@ import type {
   ExpressionNode,
   IfNode,
   ForNode,
-  VariableNode,
-  BinaryOpNode,
-  FilterNode,
   TextNode,
   ExpressionStatementNode,
 } from '../parser/types';
 import type { RenderContext, RenderResult, RenderOptions, RenderError } from './types';
 import { VariableResolver } from './variable-resolver';
-import { FilterEngine, filterRegistry } from './filter-engine';
+import { filterRegistry } from './filter-engine';
+import { evaluateExpression as evaluateStandaloneExpression } from './evaluators';
 
 type AnyValue = any;
+type NormalizedRenderOptions = Omit<Required<RenderOptions>, 'undefinedValue'> & {
+  undefinedValue: string | undefined;
+};
 
 /**
  * Default render options
  */
-const DEFAULT_OPTIONS: Required<RenderOptions> = {
+const DEFAULT_OPTIONS: NormalizedRenderOptions = {
   throwOnError: false,
   undefinedValue: undefined,
   maxDepth: 100,
@@ -39,7 +40,7 @@ const DEFAULT_OPTIONS: Required<RenderOptions> = {
  * filter application, and scope management.
  */
 export class Renderer {
-  private options: Required<RenderOptions>;
+  private options: NormalizedRenderOptions;
 
   /**
    * Create a new renderer instance
@@ -100,229 +101,20 @@ export class Renderer {
 }
 
 abstract class BaseNodeRenderer<TNode extends ASTNode> {
-  /**
-   * Evaluate a filter chain expression
-   */
-  protected evaluateFilterChain(expr: FilterNode, context: RenderContext): AnyValue {
-    let value = this.evaluateExpression(expr.source, context);
-    for (const filter of expr.filters) {
-      const fn = filterRegistry.get(filter.name);
-      if (typeof fn === 'function') {
-        const args = filter.args?.map((arg) => this.evaluateExpression(arg, context)) ?? [];
-        value = fn(value, ...args);
-      } else {
-        const error: RenderError = {
-          type: 'filter_error',
-          path: `filter.${filter.name}`,
-          message: `Filter not found: ${filter.name}`,
-        };
-        context.errors.push(error);
-        if (context.options.throwOnError) {
-          throw new Error(error.message);
-        }
-      }
-    }
-    return value;
-  }
+  private static readonly sharedVariableResolver = new VariableResolver();
 
   protected variableResolver: VariableResolver;
-  protected filterEngine: FilterEngine;
   public abstract get type(): string;
   public abstract render(node: TNode, context: RenderContext): string;
 
   constructor() {
-    this.variableResolver = new VariableResolver();
-    this.filterEngine = new FilterEngine();
+    this.variableResolver = BaseNodeRenderer.sharedVariableResolver;
   }
   /**
    * Evaluate an expression to a value
    */
   protected evaluateExpression(expr: ExpressionNode, context: RenderContext): AnyValue {
-    const type = expr?.type;
-    if (typeof type !== 'string') {
-      context.errors.push({
-        message: 'Invalid or missing expression type',
-        path: '',
-        type: 'runtime_error',
-      });
-      return undefined;
-    }
-
-    // Variable reference
-    if (expr.type === 'variable') {
-      return this.resolveVariable(expr, context);
-    }
-
-    // Literal value
-    if (expr.type === 'literal') {
-      const lit = expr;
-      return lit.value;
-    }
-
-    // Filter chain
-    if (expr.type === 'filter') {
-      return this.evaluateFilterChain(expr, context);
-    }
-
-    // Binary operations
-    if (expr.type === 'binary_op') {
-      return this.evaluateBinaryOp(expr, context);
-    }
-
-    // Unary operations
-    if (expr.type === 'unary_op') {
-      const unary = expr as any;
-      const operand = this.evaluateExpression(unary.operand, context);
-
-      switch (unary.operator) {
-        case '!':
-          return !this.variableResolver.toBoolean(operand);
-        case '-':
-          return typeof operand === 'number' ? -operand : operand;
-        case '+':
-          return typeof operand === 'number' ? operand : operand;
-        default:
-          return operand;
-      }
-    }
-
-    return undefined;
-  }
-
-  /**
-   * Resolve a variable reference
-   */
-  protected resolveVariable(node: VariableNode, context: RenderContext): AnyValue {
-    const variableName = node.name;
-
-    // Check scopes from innermost to outermost
-    for (let i = context.scopes.length - 1; i >= 0; i--) {
-      const scope = context.scopes[i];
-      if (variableName in scope) {
-        let value = scope[variableName];
-        // Apply path segments
-        for (const segment of node.path) {
-          if (value === null || value === undefined) {
-            return undefined;
-          }
-          if (segment.type === 'property') {
-            if (Array.isArray(value) && segment.value === 'length') {
-              value = value.length;
-            } else {
-              value = value[segment.value as string];
-            }
-          } else if (segment.type === 'index') {
-            if (typeof segment.value === 'string') {
-              const index = parseInt(segment.value, 10);
-              value = value[index];
-            } else {
-              const indexValue = this.evaluateExpression(segment.value, context);
-              value = value[indexValue];
-            }
-          }
-        }
-        return value;
-      }
-    }
-
-    // Check root data
-    if (context.data && variableName in context.data) {
-      let value = context.data[variableName];
-      for (const segment of node.path) {
-        if (value === null || value === undefined) {
-          return undefined;
-        }
-        if (segment.type === 'property') {
-          if (Array.isArray(value) && segment.value === 'length') {
-            value = value.length;
-          } else {
-            value = value[segment.value as string];
-          }
-        } else if (segment.type === 'index') {
-          if (typeof segment.value === 'string') {
-            const index = parseInt(segment.value, 10);
-            value = value[index];
-          } else {
-            const indexValue = this.evaluateExpression(segment.value, context);
-            value = value[indexValue];
-          }
-        }
-      }
-      return value;
-    }
-
-    // Variable not found
-    const error: RenderError = {
-      type: 'undefined_variable',
-      message: `Undefined variable: ${variableName}`,
-      path: variableName,
-      location: { start: node.start, end: node.end },
-    };
-    context.errors.push(error);
-    return undefined;
-  }
-
-  /**
-   * Evaluate a binary operation
-   */
-  private evaluateBinaryOp(node: BinaryOpNode, context: RenderContext): AnyValue {
-    const left = this.evaluateExpression(node.left, context);
-    const right = this.evaluateExpression(node.right, context);
-
-    switch (node.operator) {
-      // Arithmetic
-      case '+':
-        if (typeof left === 'number' && typeof right === 'number') {
-          return left + right;
-        }
-        // String concatenation
-        return this.variableResolver.toString(left) + this.variableResolver.toString(right);
-      case '-':
-        return typeof left === 'number' && typeof right === 'number' ? left - right : 0;
-      case '*':
-        return typeof left === 'number' && typeof right === 'number' ? left * right : 0;
-      case '/':
-        if (typeof left === 'number' && typeof right === 'number' && right !== 0) {
-          return left / right;
-        }
-        return 0;
-      case '%':
-        if (typeof left === 'number' && typeof right === 'number') {
-          return left % right;
-        }
-        return 0;
-
-      // Comparison
-      case '==':
-        return left == right;
-      case '!=':
-        return left != right;
-      case '===':
-        return left === right;
-      case '!==':
-        return left !== right;
-      case '<':
-        return (left as number) < (right as number);
-      case '<=':
-        return (left as number) <= (right as number);
-      case '>':
-        return (left as number) > (right as number);
-      case '>=':
-        return (left as number) >= (right as number);
-
-      // Logical
-      case '&&':
-        return this.variableResolver.toBoolean(left) && this.variableResolver.toBoolean(right);
-      case '||':
-        return this.variableResolver.toBoolean(left) || this.variableResolver.toBoolean(right);
-
-      // Array/object access
-      case '[':
-        return left[right];
-
-      default:
-        return undefined;
-    }
+    return evaluateStandaloneExpression(expr, context);
   }
 }
 
@@ -367,12 +159,11 @@ class ExpressionStatementNodeRenderer extends BaseNodeRenderer<ExpressionStateme
   }
 }
 
-class TemplateNodeRenderer extends BaseNodeRenderer<ASTNode> {
+class TemplateNodeRenderer extends BaseNodeRenderer<TemplateNode> {
   public get type(): 'template' {
     return 'template';
   }
-  render(node: ASTNode, context: RenderContext): string {
-    // @ts-expect-error: TemplateNode type
+  render(node: TemplateNode, context: RenderContext): string {
     return node.children.map((child: ASTNode) => renderNode(child, context)).join('');
   }
 }

@@ -1043,6 +1043,18 @@ describe('Package: core', () => {
             it('returns operand for unknown unary operator', () => {
               expect(render(template(unary('~', literal(5))), {}).output).toBe('5');
             });
+
+            it('should error for double negative', () => {
+              const template = '{{ --5 }}';
+              const tokens = tokenize(template);
+              const parseResult = parse(tokens);
+              const result = render(parseResult.ast!, {});
+              expect(result.success).toBe(false);
+              expect(result.errors.length).toBe(1);
+              expect(result.errors.map((e) => e.message)[0]).toBe(
+                'Invalid or missing expression type'
+              );
+            });
           });
           it('should resolve array length property', () => {
             const tokens = tokenize('{{ arr.length }}');
@@ -1080,15 +1092,19 @@ describe('Package: core', () => {
 
           const unaryCases = [
             { expr: '{{ !true }}', expected: 'false' },
+            { expr: '{{ !!true }}', expected: 'true' },
             { expr: '{{ -5 }}', expected: '-5' },
             { expr: '{{ +5 }}', expected: '5' },
+            { expr: '{{ -+-true }}', expected: '1' },
+            { expr: '{{ -+5 }}', expected: '-5' },
+            { expr: '{{ - -5 }}', expected: '5' },
           ];
           unaryCases.forEach(({ expr, expected }) => {
             it(`should evaluate unary operation: ${expr}`, () => {
               const tokens = tokenize(expr);
               const parseResult = parse(tokens);
               const result = render(parseResult.ast!, {});
-              expect(result.errors.length).toBe(0);
+              expect(result.errors.map((e) => e.message).join('\n')).toBe('');
               expect(result.output).toBe(expected);
             });
           });

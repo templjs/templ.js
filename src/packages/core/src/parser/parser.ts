@@ -370,6 +370,30 @@ export class TemplateParser {
       };
     }
 
+    // Handle unary operators BEFORE binary (higher precedence)
+    // For !, allow consecutive (like !!)
+    // For - and +: allow with space, OR without space if next char is NOT the same operator
+    const unaryMatch =
+      expr.match(/^(!)\s*(.+)$/) ||
+      expr.match(/^([-+])\s+(.+)$/) ||
+      expr.match(/^(-)([^-].*)$/) ||
+      expr.match(/^(\+)([^+].*)$/);
+    if (unaryMatch) {
+      const operator = unaryMatch[1];
+      const operand = (unaryMatch[2] ?? unaryMatch[3] ?? '').trim();
+      if (!operand) {
+        // No operand after operator
+        return this.createErrorExpression('Invalid or missing expression type');
+      }
+      return {
+        type: 'unary_op',
+        operator: operator,
+        operand: this.parseExpression(operand),
+        start: { line: 1, column: 0 },
+        end: { line: 1, column: expr.length },
+      };
+    }
+
     // Handle binary operators
     const binaryMatch = this.matchBinaryOp(expr);
     if (binaryMatch) {
@@ -378,18 +402,6 @@ export class TemplateParser {
         operator: binaryMatch.operator,
         left: this.parseExpression(binaryMatch.left),
         right: this.parseExpression(binaryMatch.right),
-        start: { line: 1, column: 0 },
-        end: { line: 1, column: expr.length },
-      };
-    }
-
-    const unaryMatch = expr.match(/^(!|-|\+)(.+)$/);
-    // Handle unary operators
-    if (unaryMatch) {
-      return {
-        type: 'unary_op',
-        operator: unaryMatch[1],
-        operand: this.parseExpression(unaryMatch[2].trim()),
         start: { line: 1, column: 0 },
         end: { line: 1, column: expr.length },
       };
@@ -447,8 +459,8 @@ export class TemplateParser {
       return this.parseVariable(expr);
     }
 
-    // Default: treat as variable
-    return this.parseVariable(expr);
+    // Default: invalid expression (e.g., starts with operator like --)
+    return this.createErrorExpression('Invalid or missing expression type');
   }
 
   /**
@@ -695,31 +707,67 @@ export class TemplateParser {
   }
 
   /**
-   * Match and extract binary operator
+   * Match and extract binary operator with correct JavaScript precedence
+   *
+   * Precedence levels (high to low):
+   * - 15: Logical OR (||) - right-associative
+   * - 14: Logical AND (&&) - right-associative
+   * - 9:  Equality (==, !=, ===, !==) - left-associative
+   * - 10: Relational (<, >, <=, >=) - left-associative
+   * - 12: Additive (+, -) - left-associative
+   * - 13: Multiplicative (*, /, %) - left-associative
    */
   private matchBinaryOp(expr: string): { operator: string; left: string; right: string } | null {
-    const operators = [
-      '===',
-      '!==',
-      '==',
-      '!=',
-      '<=',
-      '>=',
-      '<',
-      '>',
-      '&&',
-      '||',
-      '+',
-      '-',
-      '*',
-      '/',
-      '%',
+    // Define operators by precedence level (lowest precedence = checked first)
+    // Lower precedence binds weaker, so we parse those operators first
+    const precedenceLevels = [
+      {
+        precedence: 15,
+        operators: ['||'],
+        rightAssoc: true,
+      },
+      {
+        precedence: 14,
+        operators: ['&&'],
+        rightAssoc: true,
+      },
+      {
+        precedence: 9,
+        operators: ['===', '!==', '==', '!='],
+        rightAssoc: false,
+      },
+      {
+        precedence: 10,
+        operators: ['<=', '>=', '<', '>'],
+        rightAssoc: false,
+      },
+      {
+        precedence: 12,
+        operators: ['+', '-'],
+        rightAssoc: false,
+      },
+      {
+        precedence: 13,
+        operators: ['*', '/', '%'],
+        rightAssoc: false,
+      },
     ];
 
-    for (const op of operators) {
-      const parts = this.splitByOperator(expr, op);
-      if (parts && parts.left.trim() && parts.right.trim()) {
-        return { operator: op, left: parts.left, right: parts.right };
+    // Check precedence levels in order (lowest to highest)
+    for (const level of precedenceLevels) {
+      for (const op of level.operators) {
+        const parts = level.rightAssoc
+          ? this.splitByOperatorFromRight(expr, op)
+          : this.splitByOperatorFromLeft(expr, op);
+
+        if (parts && parts.left.trim() && parts.right.trim()) {
+          const left = parts.left.trim();
+          // Don't treat it as binary if left is just a single operator char (unary case)
+          if (['+', '-', '!'].includes(left)) {
+            continue;
+          }
+          return { operator: op, left: parts.left, right: parts.right };
+        }
       }
     }
 
@@ -727,9 +775,38 @@ export class TemplateParser {
   }
 
   /**
-   * Split expression by operator (respecting nesting)
+   * Find operator scanning left-to-right (for left-associative operators)
+   * Returns the leftmost match at depth 0
    */
-  private splitByOperator(expr: string, op: string): { left: string; right: string } | null {
+  private splitByOperatorFromLeft(
+    expr: string,
+    op: string
+  ): { left: string; right: string } | null {
+    let depth = 0;
+
+    for (let i = 0; i < expr.length; i++) {
+      if (expr[i] === '(' || expr[i] === '[' || expr[i] === '{') depth++;
+      if (expr[i] === ')' || expr[i] === ']' || expr[i] === '}') depth--;
+
+      if (depth === 0 && expr.substring(i, i + op.length) === op) {
+        return {
+          left: expr.substring(0, i),
+          right: expr.substring(i + op.length),
+        };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Find operator scanning right-to-left (for right-associative operators)
+   * Returns the rightmost match at depth 0
+   */
+  private splitByOperatorFromRight(
+    expr: string,
+    op: string
+  ): { left: string; right: string } | null {
     let depth = 0;
     let i = expr.length - 1;
 

@@ -79,7 +79,7 @@ export interface RenderOptions {
   /** Whether to throw errors or collect them */
   throwOnError?: boolean;
   /** Optional string used when a top-level expression result is undefined */
-  undefinedValue?: string | undefined;
+  undefinedValue?: string;
   /** Maximum nesting depth for scopes */
   maxDepth?: number;
   /** Enable debug output */
