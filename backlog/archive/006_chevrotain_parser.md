@@ -19,6 +19,8 @@ completed_date: 2026-02-24
 commits:
   3107bc5: 'feat(core): implement Chevrotain parser with recursive descent'
   56e66f8: 'feat(parser): enhance error handling with recovery suggestions for unclosed statements'
+  913ee9b: 'test(core): add 8 edge case tests to improve parser coverage'
+  a9aeb34: 'docs: add comprehensive JSDoc to expression parser module'
 links:
   depends_on:
     - '[[005_chevrotain_lexer]]'
