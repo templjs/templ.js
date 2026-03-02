@@ -30,36 +30,32 @@ vi.mock('@templjs/volar', () => ({
   createTempljsLanguagePlugin,
 }));
 
-describe('Package: vscode-extension', () => {
-  describe('Domain: parsing', () => {
-    describe('Class: language-server-bootstrap', () => {
-      it('wires connection lifecycle handlers and starts listening', async () => {
-        await import('./server');
+describe('language-server-bootstrap', () => {
+  it('wires connection lifecycle handlers and starts listening', async () => {
+    await import('./server');
 
-        expect(onInitialize).toHaveBeenCalledWith(expect.any(Function));
-        expect(onInitialized).toHaveBeenCalledWith(initialized);
-        expect(onShutdown).toHaveBeenCalledWith(shutdown);
-        expect(listen).toHaveBeenCalled();
-      });
+    expect(onInitialize).toHaveBeenCalledWith(expect.any(Function));
+    expect(onInitialized).toHaveBeenCalledWith(initialized);
+    expect(onShutdown).toHaveBeenCalledWith(shutdown);
+    expect(listen).toHaveBeenCalled();
+  });
 
-      it('registers templjs language plugin provider', async () => {
-        await import('./server');
-        const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => unknown;
-        initializeHandler({});
+  it('registers templjs language plugin provider', async () => {
+    await import('./server');
+    const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => unknown;
+    initializeHandler({});
 
-        const initializeCalls = initialize.mock.calls as unknown as Array<
-          [
-            unknown,
-            unknown,
-            { getServicePlugins: () => unknown[]; getLanguagePlugins: () => unknown[] },
-          ]
-        >;
-        const serverOptions = initializeCalls[0][2];
+    const initializeCalls = initialize.mock.calls as unknown as Array<
+      [
+        unknown,
+        unknown,
+        { getServicePlugins: () => unknown[]; getLanguagePlugins: () => unknown[] },
+      ]
+    >;
+    const serverOptions = initializeCalls[0][2];
 
-        expect(serverOptions.getServicePlugins()).toEqual([]);
-        serverOptions.getLanguagePlugins();
-        expect(createTempljsLanguagePlugin).toHaveBeenCalled();
-      });
-    });
+    expect(serverOptions.getServicePlugins()).toEqual([]);
+    serverOptions.getLanguagePlugins();
+    expect(createTempljsLanguagePlugin).toHaveBeenCalled();
   });
 });

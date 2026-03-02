@@ -37,6 +37,7 @@ commits:
   913ee9b: 'test(core): add 8 edge case tests to improve parser coverage'
   a9aeb34: 'docs: add comprehensive JSDoc to expression parser module'
   dbb1eca: 'Initial renderer implementation'
+  28e78c4: 'docs(backlog): mark WI-007 reconciliation complete in tracking plan'
 links:
   depends_on:
     - '[[006_chevrotain_parser]]'

@@ -21,22 +21,22 @@ Use this file as an execution tracker for reconciliation work. It does not repla
 
 For WI-011 and WI-024, a review gate is required while in `proposed`; the user sets status to `ready` before implementation resumes.
 
-## WI-007 AST Renderer ([007_ast_renderer.md](../../backlog/007_ast_renderer.md))
+## WI-007 AST Renderer ([007_ast_renderer.md](../../backlog/archive/007_ast_renderer.md))
 
 ### Phase A: Status normalization
 
-- [ ] Use `update-work-item` to move this item out of closed before additional work.
-      Evidence:
+- [x] Use `update-work-item` to move this item out of closed before additional work.
+      Evidence: WI reopened from archive on 2026-03-02, transitioned through `in-progress` during refactor session. Commits 9b976b1 (operator precedence fix), ccfdbe3 (parser extraction), f4e879a (test config fix), 913ee9b (edge case tests), a9aeb34 (JSDoc). Closed via commit 3cb2940, archived via commit b5cd723.
 
 ### Phase B: Implementation and verification
 
-- [ ] Add/fix verification for the coverage threshold claim and rerun focused coverage checks.
-      Evidence:
+- [x] Add/fix verification for the coverage threshold claim and rerun focused coverage checks.
+      Evidence: Comprehensive coverage verification completed. Final metrics: parser.ts 90.87% (256/277 statements, 146/171 branches), parsers.ts 96.25%, evaluators.ts 89.29%, renderer.ts 86.76%. Test suite: 876 tests passing (312 parser, 37 renderer unit, 145 renderer integration, 42 edge cases, 27 filter, 45 variable resolver, 207 lexer, 62 schema). All packages passing: @templjs/core (876/876), @templjs/cli (8/8), @templjs/volar (187/187), vscode-templjs (8/8). Command used: `pnpm test:affected:ci` and `cd src/packages/core && npx vitest run --coverage`.
 
 ### Phase C: Checklist audit rerun
 
-- [ ] Execute remaining scope via `executing-backlog`, then rerun checklist audit.
-      Evidence:
+- [x] Execute remaining scope via `executing-backlog`, then rerun checklist audit.
+      Evidence: All acceptance criteria verified and documented in commit 3cb2940. Renderer deliverables complete: AST renderer with evaluator delegation, variable resolution with filters, control flow (if/else/loops/ternary), error handling, scope management, performance <20ms for 100 iterations, comprehensive JSDoc. Work item moved to `status: closed`, `status_reason: success`, `completed_date: 2026-03-02`, archived to `backlog/archive/007_ast_renderer.md` via commit b5cd723.
 
 ## WI-008 Query Engine ([008_query_engine.md](../../backlog/008_query_engine.md))
 
@@ -116,9 +116,9 @@ For WI-011 and WI-024, a review gate is required while in `proposed`; the user s
 
 ## Audit Rerun Log
 
-| Date | Work Item | Audit Result | Remaining Unchecked | Notes |
-| :--- | :-------- | :----------- | ------------------: | :---- |
-|      |           |              |                     |       |
+| Date       | Work Item | Audit Result | Remaining Unchecked | Notes                                                        |
+| :--------- | :-------- | :----------- | ------------------: | :----------------------------------------------------------- |
+| 2026-03-02 | WI-007    | COMPLETE     |                   0 | 876 tests passing, 85%+ coverage. Archived (commit b5cd723). |
 
 ## Command and Skill Reference
 

@@ -17,10 +17,10 @@ export default defineConfig({
       reporter: ['text', 'json', 'html', 'lcov'],
       exclude: [...configDefaults.exclude, '**/.worktrees/**'],
       thresholds: {
-        lines: 90,
-        functions: 90,
+        lines: 90.69,
+        functions: 91.11,
         branches: 90,
-        statements: 90,
+        statements: 90.9,
         autoUpdate: true,
         perFile: true,
       },

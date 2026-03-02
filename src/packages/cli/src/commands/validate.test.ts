@@ -7,26 +7,22 @@ vi.mock('@templjs/core', () => ({
 import { validateTemplate as coreValidateTemplate } from '@templjs/core';
 import { validateCommand } from './validate';
 
-describe('Package: cli', () => {
-  describe('Domain: validation', () => {
-    describe('Class: validateCommand', () => {
-      it.each([
-        { valid: true, expected: true },
-        { valid: false, expected: false },
-      ])('returns $expected when core validation is $valid', async ({ valid, expected }) => {
-        vi.mocked(coreValidateTemplate).mockReturnValue({ valid, errors: valid ? [] : ['bad'] });
-        await expect(validateCommand('template.templ')).resolves.toBe(expected);
-      });
+describe('validateCommand', () => {
+  it.each([
+    { valid: true, expected: true },
+    { valid: false, expected: false },
+  ])('returns $expected when core validation is $valid', async ({ valid, expected }) => {
+    vi.mocked(coreValidateTemplate).mockReturnValue({ valid, errors: valid ? [] : ['bad'] });
+    await expect(validateCommand('template.templ')).resolves.toBe(expected);
+  });
 
-      it('wraps thrown errors with validation context', async () => {
-        vi.mocked(coreValidateTemplate).mockImplementation(() => {
-          throw new Error('validation crashed');
-        });
-
-        await expect(validateCommand('template.templ')).rejects.toThrow(
-          'Validation failed: validation crashed'
-        );
-      });
+  it('wraps thrown errors with validation context', async () => {
+    vi.mocked(coreValidateTemplate).mockImplementation(() => {
+      throw new Error('validation crashed');
     });
+
+    await expect(validateCommand('template.templ')).rejects.toThrow(
+      'Validation failed: validation crashed'
+    );
   });
 });

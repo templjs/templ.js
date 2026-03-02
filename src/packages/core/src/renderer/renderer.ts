@@ -104,7 +104,6 @@ abstract class BaseNodeRenderer<TNode extends ASTNode> {
   private static readonly sharedVariableResolver = new VariableResolver();
 
   protected variableResolver: VariableResolver;
-  public abstract get type(): string;
   public abstract render(node: TNode, context: RenderContext): string;
 
   constructor() {
@@ -119,10 +118,6 @@ abstract class BaseNodeRenderer<TNode extends ASTNode> {
 }
 
 class UnknownNodeRenderer extends BaseNodeRenderer<ASTNode> {
-  public get type(): 'unknown' {
-    return 'unknown';
-  }
-
   render(node: ASTNode, context: RenderContext): string {
     context.errors.push({
       message: `Unknown node type: ${node?.type}`,
@@ -134,9 +129,6 @@ class UnknownNodeRenderer extends BaseNodeRenderer<ASTNode> {
 }
 
 class ExpressionStatementNodeRenderer extends BaseNodeRenderer<ExpressionStatementNode> {
-  public get type(): 'expression_statement' {
-    return 'expression_statement';
-  }
   /**
    * Render an expression to a string
    */
@@ -160,27 +152,18 @@ class ExpressionStatementNodeRenderer extends BaseNodeRenderer<ExpressionStateme
 }
 
 class TemplateNodeRenderer extends BaseNodeRenderer<TemplateNode> {
-  public get type(): 'template' {
-    return 'template';
-  }
   render(node: TemplateNode, context: RenderContext): string {
     return node.children.map((child: ASTNode) => renderNode(child, context)).join('');
   }
 }
 
 class TextNodeRenderer extends BaseNodeRenderer<TextNode> {
-  public get type(): 'text' {
-    return 'text';
-  }
   render(node: TextNode, _context: RenderContext): string {
     return node.value;
   }
 }
 
 class IfNodeRenderer extends BaseNodeRenderer<IfNode> {
-  public get type(): 'if' {
-    return 'if';
-  }
   render(node: IfNode, context: RenderContext): string {
     const condition = this.evaluateExpression(node.condition, context);
     const isTruthy = this.variableResolver.toBoolean(condition);
@@ -195,9 +178,6 @@ class IfNodeRenderer extends BaseNodeRenderer<IfNode> {
   }
 }
 class ForNodeRenderer extends BaseNodeRenderer<ForNode> {
-  public get type(): 'for' {
-    return 'for';
-  }
   render(node: ForNode, context: RenderContext): string {
     const iterable = this.evaluateExpression(node.iterable, context);
 
