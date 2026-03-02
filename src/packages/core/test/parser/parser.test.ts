@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { tokenize } from '../lexer';
-import { parse } from './parser';
+import { tokenize } from '../../src/lexer';
+import { parse } from '../../src/parser/parser';
 import type {
   ExpressionStatementNode,
   IfNode,
@@ -9,7 +9,7 @@ import type {
   BlockNode,
   VariableNode,
   LiteralNode,
-} from './types';
+} from '../../src/parser/types';
 
 describe('Package: core', () => {
   describe('Domain: parsing', () => {

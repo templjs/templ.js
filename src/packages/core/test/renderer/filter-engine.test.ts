@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FilterEngine } from './filter-engine';
+import { FilterEngine } from '../../src/renderer/filter-engine';
 
 describe('Package: core', () => {
   describe('Domain: rendering', () => {

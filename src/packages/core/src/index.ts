@@ -9,7 +9,7 @@
 export const version = '0.1.0';
 
 // Export types
-export * from './types';
+export * from './lexer/types';
 
 // Export lexer
 export * from './lexer';

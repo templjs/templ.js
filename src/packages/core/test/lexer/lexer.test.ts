@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { tokenize } from './lexer';
-import { TokenType } from './types';
+import { tokenize } from '../../src/lexer';
+import { TokenType } from '../../src/lexer/types';
 
 describe('Package: core', () => {
   describe('Domain: lexing', () => {

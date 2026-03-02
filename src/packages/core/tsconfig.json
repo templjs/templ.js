@@ -5,6 +5,11 @@
     "rootDir": "./src",
     "composite": true
   },
-  "include": ["src/**/*"],
+  "include": [
+    "src/**/*",
+    "test/parser/parser.test.ts",
+    "test/schema/SchemaValidator.test.ts",
+    "test/lexer/lexer.test.ts"
+  ],
   "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { VariableResolver } from './variable-resolver';
+import { VariableResolver } from '../../src/renderer/variable-resolver';
 
 describe('Package: core', () => {
   describe('Domain: rendering', () => {

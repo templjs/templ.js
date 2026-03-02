@@ -2,8 +2,8 @@
  * Chevrotain-based parser that converts tokens into an Abstract Syntax Tree
  */
 
-import type { Token } from '../types';
-import { TokenType } from '../types';
+import type { Token } from '../lexer/types';
+import { TokenType } from '../lexer/types';
 import type {
   ASTNode,
   TemplateNode,
