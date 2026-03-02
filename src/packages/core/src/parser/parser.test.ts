@@ -11,130 +11,136 @@ import type {
   LiteralNode,
 } from './types';
 
-describe('Parser - Basic Functionality', () => {
-  describe('Text Nodes', () => {
-    it('should parse plain text', () => {
-      const tokens = tokenize('Hello World');
-      const result = parse(tokens);
-      expect(result.ast).toBeDefined();
-      expect(result.ast?.children).toHaveLength(1);
-      expect(result.ast?.children[0].type).toBe('text');
-    });
+describe('Package: core', () => {
+  describe('Domain: parsing', () => {
+    describe('Class: parse', () => {
+      describe('Parser - Basic Functionality', () => {
+        describe('Text Nodes', () => {
+          it('should parse plain text', () => {
+            const tokens = tokenize('Hello World');
+            const result = parse(tokens);
+            expect(result.ast).toBeDefined();
+            expect(result.ast?.children).toHaveLength(1);
+            expect(result.ast?.children[0].type).toBe('text');
+          });
 
-    it('should parse empty template', () => {
-      const tokens = tokenize('');
-      const result = parse(tokens);
-      expect(result.ast?.children).toHaveLength(0);
-    });
+          it('should parse empty template', () => {
+            const tokens = tokenize('');
+            const result = parse(tokens);
+            expect(result.ast?.children).toHaveLength(0);
+          });
 
-    it('should parse multiple text nodes', () => {
-      const tokens = tokenize('Hello {{ name }} World');
-      const result = parse(tokens);
-      expect(result.ast?.children.length).toBeGreaterThan(1);
-    });
+          it('should parse multiple text nodes', () => {
+            const tokens = tokenize('Hello {{ name }} World');
+            const result = parse(tokens);
+            expect(result.ast?.children.length).toBeGreaterThan(1);
+          });
 
-    it('should preserve text content exactly', () => {
-      const text = 'Some text with special chars: !@#$%';
-      const tokens = tokenize(text);
-      const result = parse(tokens);
-      const textNode = result.ast?.children[0];
-      expect(textNode?.type).toBe('text');
-      if (textNode?.type === 'text') {
-        expect(textNode.value).toBe(text);
-      }
-    });
+          it('should preserve text content exactly', () => {
+            const text = 'Some text with special chars: !@#$%';
+            const tokens = tokenize(text);
+            const result = parse(tokens);
+            const textNode = result.ast?.children[0];
+            expect(textNode?.type).toBe('text');
+            if (textNode?.type === 'text') {
+              expect(textNode.value).toBe(text);
+            }
+          });
 
-    it('should handle text with line breaks', () => {
-      const text = 'Line 1\nLine 2\nLine 3';
-      const tokens = tokenize(text);
-      const result = parse(tokens);
-      expect(result.ast?.children[0].type).toBe('text');
-    });
+          it('should handle text with line breaks', () => {
+            const text = 'Line 1\nLine 2\nLine 3';
+            const tokens = tokenize(text);
+            const result = parse(tokens);
+            expect(result.ast?.children[0].type).toBe('text');
+          });
 
-    it('should handle whitespace-only text', () => {
-      const tokens = tokenize('   \n  \t  ');
-      const result = parse(tokens);
-      expect(result.ast?.children.length).toBeGreaterThan(0);
-    });
-  });
+          it('should handle whitespace-only text', () => {
+            const tokens = tokenize('   \n  \t  ');
+            const result = parse(tokens);
+            expect(result.ast?.children.length).toBeGreaterThan(0);
+          });
+        });
 
-  describe('Expression Statements', () => {
-    it('should parse simple expression', () => {
-      const tokens = tokenize('{{ name }}');
-      const result = parse(tokens);
-      const stmt = result.ast?.children[0] as ExpressionStatementNode;
-      expect(stmt.type).toBe('expression_statement');
-    });
+        describe('Expression Statements', () => {
+          it('should parse simple expression', () => {
+            const tokens = tokenize('{{ name }}');
+            const result = parse(tokens);
+            const stmt = result.ast?.children[0] as ExpressionStatementNode;
+            expect(stmt.type).toBe('expression_statement');
+          });
 
-    it('should parse expression with spaces', () => {
-      const tokens = tokenize('{{  name  }}');
-      const result = parse(tokens);
-      const stmt = result.ast?.children[0] as ExpressionStatementNode;
-      expect(stmt.type).toBe('expression_statement');
-    });
+          it('should parse expression with spaces', () => {
+            const tokens = tokenize('{{  name  }}');
+            const result = parse(tokens);
+            const stmt = result.ast?.children[0] as ExpressionStatementNode;
+            expect(stmt.type).toBe('expression_statement');
+          });
 
-    it('should parse variable in expression', () => {
-      const tokens = tokenize('{{ user }}');
-      const result = parse(tokens);
-      const stmt = result.ast?.children[0] as ExpressionStatementNode;
-      expect(stmt.value.type).toBe('variable');
-      expect((stmt.value as VariableNode).name).toBe('user');
-    });
+          it('should parse variable in expression', () => {
+            const tokens = tokenize('{{ user }}');
+            const result = parse(tokens);
+            const stmt = result.ast?.children[0] as ExpressionStatementNode;
+            expect(stmt.value.type).toBe('variable');
+            expect((stmt.value as VariableNode).name).toBe('user');
+          });
 
-    it('should parse string literal in expression', () => {
-      const tokens = tokenize('{{ "hello" }}');
-      const result = parse(tokens);
-      const stmt = result.ast?.children[0] as ExpressionStatementNode;
-      expect(stmt.value.type).toBe('literal');
-      expect((stmt.value as LiteralNode).value).toBe('hello');
-    });
+          it('should parse string literal in expression', () => {
+            const tokens = tokenize('{{ "hello" }}');
+            const result = parse(tokens);
+            const stmt = result.ast?.children[0] as ExpressionStatementNode;
+            expect(stmt.value.type).toBe('literal');
+            expect((stmt.value as LiteralNode).value).toBe('hello');
+          });
 
-    it('should parse number literal', () => {
-      const tokens = tokenize('{{ 42 }}');
-      const result = parse(tokens);
-      const stmt = result.ast?.children[0] as ExpressionStatementNode;
-      expect(stmt.value.type).toBe('literal');
-      expect((stmt.value as LiteralNode).value).toBe(42);
-    });
+          it('should parse number literal', () => {
+            const tokens = tokenize('{{ 42 }}');
+            const result = parse(tokens);
+            const stmt = result.ast?.children[0] as ExpressionStatementNode;
+            expect(stmt.value.type).toBe('literal');
+            expect((stmt.value as LiteralNode).value).toBe(42);
+          });
 
-    it('should parse boolean literals', () => {
-      let tokens = tokenize('{{ true }}');
-      let result = parse(tokens);
-      let stmt = result.ast?.children[0] as ExpressionStatementNode;
-      expect((stmt.value as LiteralNode).value).toBe(true);
+          it('should parse boolean literals', () => {
+            let tokens = tokenize('{{ true }}');
+            let result = parse(tokens);
+            let stmt = result.ast?.children[0] as ExpressionStatementNode;
+            expect((stmt.value as LiteralNode).value).toBe(true);
 
-      tokens = tokenize('{{ false }}');
-      result = parse(tokens);
-      stmt = result.ast?.children[0] as ExpressionStatementNode;
-      expect((stmt.value as LiteralNode).value).toBe(false);
-    });
+            tokens = tokenize('{{ false }}');
+            result = parse(tokens);
+            stmt = result.ast?.children[0] as ExpressionStatementNode;
+            expect((stmt.value as LiteralNode).value).toBe(false);
+          });
 
-    it('should parse null literal', () => {
-      const tokens = tokenize('{{ null }}');
-      const result = parse(tokens);
-      const stmt = result.ast?.children[0] as ExpressionStatementNode;
-      expect((stmt.value as LiteralNode).value).toBeNull();
-    });
-  });
+          it('should parse null literal', () => {
+            const tokens = tokenize('{{ null }}');
+            const result = parse(tokens);
+            const stmt = result.ast?.children[0] as ExpressionStatementNode;
+            expect((stmt.value as LiteralNode).value).toBeNull();
+          });
+        });
 
-  describe('Comments', () => {
-    it('should skip comments in output', () => {
-      const tokens = tokenize('{# This is a comment #}');
-      const result = parse(tokens);
-      expect(result.ast?.children).toHaveLength(0);
-    });
+        describe('Comments', () => {
+          it('should skip comments in output', () => {
+            const tokens = tokenize('{# This is a comment #}');
+            const result = parse(tokens);
+            expect(result.ast?.children).toHaveLength(0);
+          });
 
-    it('should skip comments between text', () => {
-      const tokens = tokenize('Hello {# comment #} World');
-      const result = parse(tokens);
-      expect(result.ast?.children.length).toBe(2);
-    });
+          it('should skip comments between text', () => {
+            const tokens = tokenize('Hello {# comment #} World');
+            const result = parse(tokens);
+            expect(result.ast?.children.length).toBe(2);
+          });
 
-    it('should skip multiple comments', () => {
-      const tokens = tokenize('{# first #} text {# second #}');
-      const result = parse(tokens);
-      const textNode = result.ast?.children.find((n) => n.type === 'text');
-      expect(textNode).toBeDefined();
+          it('should skip multiple comments', () => {
+            const tokens = tokenize('{# first #} text {# second #}');
+            const result = parse(tokens);
+            const textNode = result.ast?.children.find((n) => n.type === 'text');
+            expect(textNode).toBeDefined();
+          });
+        });
+      });
     });
   });
 });

@@ -14,459 +14,465 @@ import {
 } from './queryPathValidator';
 import { inferType, inferObjectSchema, inferArraySchema, mergeSchemas } from './schemaInference';
 
-describe('SchemaValidator', () => {
-  describe('Schema Loading and Compilation', () => {
-    it('should create validator without schema', () => {
-      const validator = new SchemaValidator();
-      expect(validator).toBeDefined();
-    });
+describe('Package: core', () => {
+  describe('Domain: validation', () => {
+    describe('Class: SchemaValidator', () => {
+      describe('SchemaValidator', () => {
+        describe('Schema Loading and Compilation', () => {
+          it('should create validator without schema', () => {
+            const validator = new SchemaValidator();
+            expect(validator).toBeDefined();
+          });
 
-    it('should create validator with schema', () => {
-      const schema: JSONSchema = {
-        type: 'object',
-        properties: {
-          name: { type: 'string' },
-        },
-      };
-      const validator = new SchemaValidator(schema);
-      expect(validator).toBeDefined();
-    });
+          it('should create validator with schema', () => {
+            const schema: JSONSchema = {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+              },
+            };
+            const validator = new SchemaValidator(schema);
+            expect(validator).toBeDefined();
+          });
 
-    it('should load schema after construction', () => {
-      const validator = new SchemaValidator();
-      const schema: JSONSchema = {
-        type: 'object',
-        properties: {
-          age: { type: 'integer' },
-        },
-      };
-      validator.loadSchema(schema);
+          it('should load schema after construction', () => {
+            const validator = new SchemaValidator();
+            const schema: JSONSchema = {
+              type: 'object',
+              properties: {
+                age: { type: 'integer' },
+              },
+            };
+            validator.loadSchema(schema);
 
-      const result = validator.validate({ age: 30 });
-      expect(result.valid).toBe(true);
-    });
+            const result = validator.validate({ age: 30 });
+            expect(result.valid).toBe(true);
+          });
 
-    it('should throw error for invalid schema', () => {
-      const validator = new SchemaValidator();
-      const invalidSchema = {
-        type: 'invalid-type',
-      } as unknown as JSONSchema;
+          it('should throw error for invalid schema', () => {
+            const validator = new SchemaValidator();
+            const invalidSchema = {
+              type: 'invalid-type',
+            } as unknown as JSONSchema;
 
-      expect(() => validator.loadSchema(invalidSchema)).toThrow();
-    });
-  });
+            expect(() => validator.loadSchema(invalidSchema)).toThrow();
+          });
+        });
 
-  describe('Data Validation', () => {
-    it('should validate valid data', () => {
-      const schema: JSONSchema = {
-        type: 'object',
-        properties: {
-          name: { type: 'string' },
-          age: { type: 'integer' },
-        },
-        required: ['name'],
-      };
-
-      const validator = new SchemaValidator(schema);
-      const result = validator.validate({ name: 'John', age: 30 });
-
-      expect(result.valid).toBe(true);
-      expect(result.errors).toHaveLength(0);
-    });
-
-    it('should detect missing required fields', () => {
-      const schema: JSONSchema = {
-        type: 'object',
-        properties: {
-          name: { type: 'string' },
-          email: { type: 'string' },
-        },
-        required: ['name', 'email'],
-      };
-
-      const validator = new SchemaValidator(schema);
-      const result = validator.validate({ name: 'John' });
-
-      expect(result.valid).toBe(false);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].message).toContain("must have required property 'email'");
-    });
-
-    it('should detect type errors', () => {
-      const schema: JSONSchema = {
-        type: 'object',
-        properties: {
-          age: { type: 'integer' },
-        },
-      };
-
-      const validator = new SchemaValidator(schema);
-      const result = validator.validate({ age: 'not a number' });
-
-      expect(result.valid).toBe(false);
-      expect(result.errors.length).toBeGreaterThan(0);
-    });
-
-    it('should validate email format', () => {
-      const schema: JSONSchema = {
-        type: 'object',
-        properties: {
-          email: { type: 'string', format: 'email' },
-        },
-      };
-
-      const validator = new SchemaValidator(schema);
-
-      const validResult = validator.validate({ email: 'test@example.com' });
-      expect(validResult.valid).toBe(true);
-
-      const invalidResult = validator.validate({ email: 'not-an-email' });
-      expect(invalidResult.valid).toBe(false);
-    });
-
-    it('should validate nested objects', () => {
-      const schema: JSONSchema = {
-        type: 'object',
-        properties: {
-          user: {
-            type: 'object',
-            properties: {
-              firstName: { type: 'string' },
-              lastName: { type: 'string' },
-            },
-            required: ['firstName'],
-          },
-        },
-      };
-
-      const validator = new SchemaValidator(schema);
-
-      const validResult = validator.validate({
-        user: { firstName: 'John', lastName: 'Doe' },
-      });
-      expect(validResult.valid).toBe(true);
-
-      const invalidResult = validator.validate({ user: {} });
-      expect(invalidResult.valid).toBe(false);
-    });
-
-    it('should validate arrays', () => {
-      const schema: JSONSchema = {
-        type: 'object',
-        properties: {
-          tags: {
-            type: 'array',
-            items: { type: 'string' },
-          },
-        },
-      };
-
-      const validator = new SchemaValidator(schema);
-
-      const validResult = validator.validate({ tags: ['a', 'b', 'c'] });
-      expect(validResult.valid).toBe(true);
-
-      const invalidResult = validator.validate({ tags: [1, 2, 3] });
-      expect(invalidResult.valid).toBe(false);
-    });
-
-    it('should throw error when validating without schema', () => {
-      const validator = new SchemaValidator();
-      expect(() => validator.validate({})).toThrow('No schema loaded');
-    });
-  });
-
-  describe('Query Path Validation', () => {
-    let validator: SchemaValidator;
-
-    beforeEach(() => {
-      const schema: JSONSchema = {
-        type: 'object',
-        properties: {
-          user: {
-            type: 'object',
-            properties: {
-              firstName: { type: 'string' },
-              lastName: { type: 'string' },
-              email: { type: 'string' },
-            },
-          },
-          users: {
-            type: 'array',
-            items: {
+        describe('Data Validation', () => {
+          it('should validate valid data', () => {
+            const schema: JSONSchema = {
               type: 'object',
               properties: {
                 name: { type: 'string' },
                 age: { type: 'integer' },
               },
-            },
-          },
-        },
-      };
-      validator = new SchemaValidator(schema);
-    });
+              required: ['name'],
+            };
 
-    it('should validate existing property paths', () => {
-      const result = validator.validateQueryPath('user.firstName');
-      expect(result.valid).toBe(true);
-      expect(result.errors).toHaveLength(0);
-    });
+            const validator = new SchemaValidator(schema);
+            const result = validator.validate({ name: 'John', age: 30 });
 
-    it('should validate array paths', () => {
-      const result = validator.validateQueryPath('users[0].name');
-      expect(result.valid).toBe(true);
-    });
+            expect(result.valid).toBe(true);
+            expect(result.errors).toHaveLength(0);
+          });
 
-    it('should detect invalid paths', () => {
-      const result = validator.validateQueryPath('user.missingField');
-      expect(result.valid).toBe(false);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].message).toContain('Property not found');
-    });
+          it('should detect missing required fields', () => {
+            const schema: JSONSchema = {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                email: { type: 'string' },
+              },
+              required: ['name', 'email'],
+            };
 
-    it('should provide fuzzy match suggestions', () => {
-      const result = validator.validateQueryPath('user.firstNam');
-      expect(result.valid).toBe(false);
-      expect(result.errors[0].suggestion).toBeDefined();
-      expect(result.errors[0].suggestion).toContain('Did you mean');
-    });
+            const validator = new SchemaValidator(schema);
+            const result = validator.validate({ name: 'John' });
 
-    it('should suggest multiple alternatives', () => {
-      const result = validator.validateQueryPath('user.name');
-      expect(result.valid).toBe(false);
-      if (result.errors[0].suggestion) {
-        // Should suggest firstName or lastName
-        expect(result.errors[0].suggestion).toMatch(/firstName|lastName/);
-      }
-    });
+            expect(result.valid).toBe(false);
+            expect(result.errors).toHaveLength(1);
+            expect(result.errors[0].message).toContain("must have required property 'email'");
+          });
 
-    it('should throw error when validating path without schema', () => {
-      const emptyValidator = new SchemaValidator();
-      expect(() => emptyValidator.validateQueryPath('user.name')).toThrow();
-    });
-  });
+          it('should detect type errors', () => {
+            const schema: JSONSchema = {
+              type: 'object',
+              properties: {
+                age: { type: 'integer' },
+              },
+            };
 
-  describe('Schema Inference', () => {
-    it('should infer schema from simple object', () => {
-      const validator = new SchemaValidator();
-      const data = {
-        name: 'John',
-        age: 30,
-        active: true,
-      };
+            const validator = new SchemaValidator(schema);
+            const result = validator.validate({ age: 'not a number' });
 
-      const schema = validator.inferSchema(data);
+            expect(result.valid).toBe(false);
+            expect(result.errors.length).toBeGreaterThan(0);
+          });
 
-      expect(schema.type).toBe('object');
-      expect(schema.properties).toBeDefined();
-      expect(schema.properties?.name.type).toBe('string');
-      expect(schema.properties?.age.type).toBe('integer');
-      expect(schema.properties?.active.type).toBe('boolean');
-    });
+          it('should validate email format', () => {
+            const schema: JSONSchema = {
+              type: 'object',
+              properties: {
+                email: { type: 'string', format: 'email' },
+              },
+            };
 
-    it('should infer schema from nested object', () => {
-      const validator = new SchemaValidator();
-      const data = {
-        user: {
-          name: 'John',
-          contact: {
-            email: 'john@example.com',
-          },
-        },
-      };
+            const validator = new SchemaValidator(schema);
 
-      const schema = validator.inferSchema(data);
+            const validResult = validator.validate({ email: 'test@example.com' });
+            expect(validResult.valid).toBe(true);
 
-      expect(schema.type).toBe('object');
-      expect(schema.properties?.user.type).toBe('object');
-    });
+            const invalidResult = validator.validate({ email: 'not-an-email' });
+            expect(invalidResult.valid).toBe(false);
+          });
 
-    it('should infer schema from array', () => {
-      const validator = new SchemaValidator();
-      const data = {
-        items: ['a', 'b', 'c'],
-      };
+          it('should validate nested objects', () => {
+            const schema: JSONSchema = {
+              type: 'object',
+              properties: {
+                user: {
+                  type: 'object',
+                  properties: {
+                    firstName: { type: 'string' },
+                    lastName: { type: 'string' },
+                  },
+                  required: ['firstName'],
+                },
+              },
+            };
 
-      const schema = validator.inferSchema(data);
+            const validator = new SchemaValidator(schema);
 
-      expect(schema.properties?.items.type).toBe('array');
-      expect(schema.properties?.items.items?.type).toBe('string');
-    });
+            const validResult = validator.validate({
+              user: { firstName: 'John', lastName: 'Doe' },
+            });
+            expect(validResult.valid).toBe(true);
 
-    it('should infer schema from array of objects', () => {
-      const validator = new SchemaValidator();
-      const data = {
-        users: [
-          { name: 'John', age: 30 },
-          { name: 'Jane', age: 25 },
-        ],
-      };
+            const invalidResult = validator.validate({ user: {} });
+            expect(invalidResult.valid).toBe(false);
+          });
 
-      const schema = validator.inferSchema(data);
+          it('should validate arrays', () => {
+            const schema: JSONSchema = {
+              type: 'object',
+              properties: {
+                tags: {
+                  type: 'array',
+                  items: { type: 'string' },
+                },
+              },
+            };
 
-      expect(schema.properties?.users.type).toBe('array');
-      expect(schema.properties?.users.items?.type).toBe('object');
-    });
+            const validator = new SchemaValidator(schema);
 
-    it('should handle empty arrays', () => {
-      const validator = new SchemaValidator();
-      const data = { items: [] };
+            const validResult = validator.validate({ tags: ['a', 'b', 'c'] });
+            expect(validResult.valid).toBe(true);
 
-      const schema = validator.inferSchema(data);
+            const invalidResult = validator.validate({ tags: [1, 2, 3] });
+            expect(invalidResult.valid).toBe(false);
+          });
 
-      expect(schema.properties?.items.type).toBe('array');
-    });
+          it('should throw error when validating without schema', () => {
+            const validator = new SchemaValidator();
+            expect(() => validator.validate({})).toThrow('No schema loaded');
+          });
+        });
 
-    it('should handle null values', () => {
-      const validator = new SchemaValidator();
-      const data = { value: null };
+        describe('Query Path Validation', () => {
+          let validator: SchemaValidator;
 
-      const schema = validator.inferSchema(data);
+          beforeEach(() => {
+            const schema: JSONSchema = {
+              type: 'object',
+              properties: {
+                user: {
+                  type: 'object',
+                  properties: {
+                    firstName: { type: 'string' },
+                    lastName: { type: 'string' },
+                    email: { type: 'string' },
+                  },
+                },
+                users: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string' },
+                      age: { type: 'integer' },
+                    },
+                  },
+                },
+              },
+            };
+            validator = new SchemaValidator(schema);
+          });
 
-      expect(schema.properties?.value.type).toBeDefined();
-    });
+          it('should validate existing property paths', () => {
+            const result = validator.validateQueryPath('user.firstName');
+            expect(result.valid).toBe(true);
+            expect(result.errors).toHaveLength(0);
+          });
 
-    it('should detect required fields', () => {
-      const validator = new SchemaValidator();
-      const data = {
-        required1: 'value',
-        required2: 42,
-      };
+          it('should validate array paths', () => {
+            const result = validator.validateQueryPath('users[0].name');
+            expect(result.valid).toBe(true);
+          });
 
-      const schema = validator.inferSchema(data);
+          it('should detect invalid paths', () => {
+            const result = validator.validateQueryPath('user.missingField');
+            expect(result.valid).toBe(false);
+            expect(result.errors).toHaveLength(1);
+            expect(result.errors[0].message).toContain('Property not found');
+          });
 
-      expect(schema.required).toBeDefined();
-      expect(schema.required).toContain('required1');
-      expect(schema.required).toContain('required2');
-    });
-  });
+          it('should provide fuzzy match suggestions', () => {
+            const result = validator.validateQueryPath('user.firstNam');
+            expect(result.valid).toBe(false);
+            expect(result.errors[0].suggestion).toBeDefined();
+            expect(result.errors[0].suggestion).toContain('Did you mean');
+          });
 
-  describe('Schema Metadata', () => {
-    it('should extract metadata from schema', () => {
-      const schema: JSONSchema = {
-        type: 'object',
-        properties: {
-          name: { type: 'string', description: 'User name' },
-          age: { type: 'integer' },
-        },
-      };
+          it('should suggest multiple alternatives', () => {
+            const result = validator.validateQueryPath('user.name');
+            expect(result.valid).toBe(false);
+            if (result.errors[0].suggestion) {
+              // Should suggest firstName or lastName
+              expect(result.errors[0].suggestion).toMatch(/firstName|lastName/);
+            }
+          });
 
-      const validator = new SchemaValidator(schema);
-      const metadata = validator.getMetadata();
+          it('should throw error when validating path without schema', () => {
+            const emptyValidator = new SchemaValidator();
+            expect(() => emptyValidator.validateQueryPath('user.name')).toThrow();
+          });
+        });
 
-      expect(metadata.name).toBeDefined();
-      expect(metadata.name.type).toBe('string');
-      expect(metadata.name.description).toBe('User name');
-    });
+        describe('Schema Inference', () => {
+          it('should infer schema from simple object', () => {
+            const validator = new SchemaValidator();
+            const data = {
+              name: 'John',
+              age: 30,
+              active: true,
+            };
 
-    it('should list object properties', () => {
-      const schema: JSONSchema = {
-        type: 'object',
-        properties: {
-          user: {
-            type: 'object',
-            properties: {
-              firstName: { type: 'string' },
-              lastName: { type: 'string' },
-            },
-          },
-        },
-      };
+            const schema = validator.inferSchema(data);
 
-      const validator = new SchemaValidator(schema);
-      const metadata = validator.getMetadata();
+            expect(schema.type).toBe('object');
+            expect(schema.properties).toBeDefined();
+            expect(schema.properties?.name.type).toBe('string');
+            expect(schema.properties?.age.type).toBe('integer');
+            expect(schema.properties?.active.type).toBe('boolean');
+          });
 
-      expect(metadata.user.properties).toContain('firstName');
-      expect(metadata.user.properties).toContain('lastName');
-    });
+          it('should infer schema from nested object', () => {
+            const validator = new SchemaValidator();
+            const data = {
+              user: {
+                name: 'John',
+                contact: {
+                  email: 'john@example.com',
+                },
+              },
+            };
 
-    it('should include array item types', () => {
-      const schema: JSONSchema = {
-        type: 'object',
-        properties: {
-          tags: {
-            type: 'array',
-            items: { type: 'string' },
-          },
-        },
-      };
+            const schema = validator.inferSchema(data);
 
-      const validator = new SchemaValidator(schema);
-      const metadata = validator.getMetadata();
+            expect(schema.type).toBe('object');
+            expect(schema.properties?.user.type).toBe('object');
+          });
 
-      expect(metadata.tags.itemType).toBe('string');
-    });
-  });
+          it('should infer schema from array', () => {
+            const validator = new SchemaValidator();
+            const data = {
+              items: ['a', 'b', 'c'],
+            };
 
-  describe('Caching', () => {
-    it('should cache compiled schemas', () => {
-      const schema: JSONSchema = {
-        $id: 'test-schema',
-        type: 'object',
-        properties: {
-          name: { type: 'string' },
-        },
-      };
+            const schema = validator.inferSchema(data);
 
-      const validator = new SchemaValidator(schema);
-      const stats1 = validator.getCacheStats();
+            expect(schema.properties?.items.type).toBe('array');
+            expect(schema.properties?.items.items?.type).toBe('string');
+          });
 
-      expect(stats1.size).toBeGreaterThan(0);
-    });
+          it('should infer schema from array of objects', () => {
+            const validator = new SchemaValidator();
+            const data = {
+              users: [
+                { name: 'John', age: 30 },
+                { name: 'Jane', age: 25 },
+              ],
+            };
 
-    it('should clear cache', () => {
-      const schema: JSONSchema = {
-        type: 'object',
-        properties: {
-          name: { type: 'string' },
-        },
-      };
+            const schema = validator.inferSchema(data);
 
-      const validator = new SchemaValidator(schema);
-      validator.clearCache();
+            expect(schema.properties?.users.type).toBe('array');
+            expect(schema.properties?.users.items?.type).toBe('object');
+          });
 
-      const stats = validator.getCacheStats();
-      expect(stats.size).toBe(0);
-    });
+          it('should handle empty arrays', () => {
+            const validator = new SchemaValidator();
+            const data = { items: [] };
 
-    it('should reuse cached schemas', () => {
-      const schema: JSONSchema = {
-        $id: 'reusable-schema',
-        type: 'object',
-        properties: {
-          value: { type: 'string' },
-        },
-      };
+            const schema = validator.inferSchema(data);
 
-      const validator1 = new SchemaValidator(schema);
-      const validator2 = new SchemaValidator();
-      validator2.loadSchema(schema);
+            expect(schema.properties?.items.type).toBe('array');
+          });
 
-      // Both should work correctly
-      expect(validator1.validate({ value: 'test' }).valid).toBe(true);
-      expect(validator2.validate({ value: 'test' }).valid).toBe(true);
-    });
-  });
+          it('should handle null values', () => {
+            const validator = new SchemaValidator();
+            const data = { value: null };
 
-  describe('Valid Paths', () => {
-    it('should return all valid paths', () => {
-      const schema: JSONSchema = {
-        type: 'object',
-        properties: {
-          user: {
-            type: 'object',
-            properties: {
-              name: { type: 'string' },
-            },
-          },
-        },
-      };
+            const schema = validator.inferSchema(data);
 
-      const validator = new SchemaValidator(schema);
-      const paths = validator.getValidPaths();
+            expect(schema.properties?.value.type).toBeDefined();
+          });
 
-      expect(paths.has('user')).toBe(true);
-      expect(paths.has('user.name')).toBe(true);
+          it('should detect required fields', () => {
+            const validator = new SchemaValidator();
+            const data = {
+              required1: 'value',
+              required2: 42,
+            };
+
+            const schema = validator.inferSchema(data);
+
+            expect(schema.required).toBeDefined();
+            expect(schema.required).toContain('required1');
+            expect(schema.required).toContain('required2');
+          });
+        });
+
+        describe('Schema Metadata', () => {
+          it('should extract metadata from schema', () => {
+            const schema: JSONSchema = {
+              type: 'object',
+              properties: {
+                name: { type: 'string', description: 'User name' },
+                age: { type: 'integer' },
+              },
+            };
+
+            const validator = new SchemaValidator(schema);
+            const metadata = validator.getMetadata();
+
+            expect(metadata.name).toBeDefined();
+            expect(metadata.name.type).toBe('string');
+            expect(metadata.name.description).toBe('User name');
+          });
+
+          it('should list object properties', () => {
+            const schema: JSONSchema = {
+              type: 'object',
+              properties: {
+                user: {
+                  type: 'object',
+                  properties: {
+                    firstName: { type: 'string' },
+                    lastName: { type: 'string' },
+                  },
+                },
+              },
+            };
+
+            const validator = new SchemaValidator(schema);
+            const metadata = validator.getMetadata();
+
+            expect(metadata.user.properties).toContain('firstName');
+            expect(metadata.user.properties).toContain('lastName');
+          });
+
+          it('should include array item types', () => {
+            const schema: JSONSchema = {
+              type: 'object',
+              properties: {
+                tags: {
+                  type: 'array',
+                  items: { type: 'string' },
+                },
+              },
+            };
+
+            const validator = new SchemaValidator(schema);
+            const metadata = validator.getMetadata();
+
+            expect(metadata.tags.itemType).toBe('string');
+          });
+        });
+
+        describe('Caching', () => {
+          it('should cache compiled schemas', () => {
+            const schema: JSONSchema = {
+              $id: 'test-schema',
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+              },
+            };
+
+            const validator = new SchemaValidator(schema);
+            const stats1 = validator.getCacheStats();
+
+            expect(stats1.size).toBeGreaterThan(0);
+          });
+
+          it('should clear cache', () => {
+            const schema: JSONSchema = {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+              },
+            };
+
+            const validator = new SchemaValidator(schema);
+            validator.clearCache();
+
+            const stats = validator.getCacheStats();
+            expect(stats.size).toBe(0);
+          });
+
+          it('should reuse cached schemas', () => {
+            const schema: JSONSchema = {
+              $id: 'reusable-schema',
+              type: 'object',
+              properties: {
+                value: { type: 'string' },
+              },
+            };
+
+            const validator1 = new SchemaValidator(schema);
+            const validator2 = new SchemaValidator();
+            validator2.loadSchema(schema);
+
+            // Both should work correctly
+            expect(validator1.validate({ value: 'test' }).valid).toBe(true);
+            expect(validator2.validate({ value: 'test' }).valid).toBe(true);
+          });
+        });
+
+        describe('Valid Paths', () => {
+          it('should return all valid paths', () => {
+            const schema: JSONSchema = {
+              type: 'object',
+              properties: {
+                user: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                  },
+                },
+              },
+            };
+
+            const validator = new SchemaValidator(schema);
+            const paths = validator.getValidPaths();
+
+            expect(paths.has('user')).toBe(true);
+            expect(paths.has('user.name')).toBe(true);
+          });
+        });
+      });
     });
   });
 });

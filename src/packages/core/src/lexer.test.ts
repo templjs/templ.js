@@ -2,350 +2,356 @@ import { describe, it, expect } from 'vitest';
 import { tokenize } from './lexer';
 import { TokenType } from './types';
 
-describe('Lexer - Default Delimiters', () => {
-  describe('Basic Tokenization', () => {
-    it('should tokenize plain text', () => {
-      const tokens = tokenize('Hello World');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].type).toBe(TokenType.TEXT);
-      expect(tokens[0].content).toBe('Hello World');
-    });
+describe('Package: core', () => {
+  describe('Domain: lexing', () => {
+    describe('Class: tokenize', () => {
+      describe('Lexer - Default Delimiters', () => {
+        describe('Basic Tokenization', () => {
+          it('should tokenize plain text', () => {
+            const tokens = tokenize('Hello World');
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].type).toBe(TokenType.TEXT);
+            expect(tokens[0].content).toBe('Hello World');
+          });
 
-    it('should tokenize empty string', () => {
-      const tokens = tokenize('');
-      expect(tokens).toHaveLength(0);
-    });
+          it('should tokenize empty string', () => {
+            const tokens = tokenize('');
+            expect(tokens).toHaveLength(0);
+          });
 
-    it('should tokenize single expression', () => {
-      const tokens = tokenize('{{ name }}');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].type).toBe(TokenType.EXPRESSION);
-      expect(tokens[0].content).toBe('{{ name }}');
-    });
+          it('should tokenize single expression', () => {
+            const tokens = tokenize('{{ name }}');
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+            expect(tokens[0].content).toBe('{{ name }}');
+          });
 
-    it('should tokenize single statement', () => {
-      const tokens = tokenize('{% if true %}');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].type).toBe(TokenType.STATEMENT);
-      expect(tokens[0].content).toBe('{% if true %}');
-    });
+          it('should tokenize single statement', () => {
+            const tokens = tokenize('{% if true %}');
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].type).toBe(TokenType.STATEMENT);
+            expect(tokens[0].content).toBe('{% if true %}');
+          });
 
-    it('should tokenize single comment', () => {
-      const tokens = tokenize('{# comment #}');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].type).toBe(TokenType.COMMENT);
-      expect(tokens[0].content).toBe('{# comment #}');
-    });
+          it('should tokenize single comment', () => {
+            const tokens = tokenize('{# comment #}');
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].type).toBe(TokenType.COMMENT);
+            expect(tokens[0].content).toBe('{# comment #}');
+          });
 
-    it('should tokenize text with expression', () => {
-      const tokens = tokenize('Hello {{ name }}!');
-      expect(tokens).toHaveLength(3);
-      expect(tokens[0].type).toBe(TokenType.TEXT);
-      expect(tokens[0].content).toBe('Hello ');
-      expect(tokens[1].type).toBe(TokenType.EXPRESSION);
-      expect(tokens[1].content).toBe('{{ name }}');
-      expect(tokens[2].type).toBe(TokenType.TEXT);
-      expect(tokens[2].content).toBe('!');
-    });
+          it('should tokenize text with expression', () => {
+            const tokens = tokenize('Hello {{ name }}!');
+            expect(tokens).toHaveLength(3);
+            expect(tokens[0].type).toBe(TokenType.TEXT);
+            expect(tokens[0].content).toBe('Hello ');
+            expect(tokens[1].type).toBe(TokenType.EXPRESSION);
+            expect(tokens[1].content).toBe('{{ name }}');
+            expect(tokens[2].type).toBe(TokenType.TEXT);
+            expect(tokens[2].content).toBe('!');
+          });
 
-    it('should tokenize text with statement', () => {
-      const tokens = tokenize('Start {% if x %} End');
-      expect(tokens).toHaveLength(3);
-      expect(tokens[0].content).toBe('Start ');
-      expect(tokens[1].content).toBe('{% if x %}');
-      expect(tokens[2].content).toBe(' End');
-    });
+          it('should tokenize text with statement', () => {
+            const tokens = tokenize('Start {% if x %} End');
+            expect(tokens).toHaveLength(3);
+            expect(tokens[0].content).toBe('Start ');
+            expect(tokens[1].content).toBe('{% if x %}');
+            expect(tokens[2].content).toBe(' End');
+          });
 
-    it('should tokenize text with comment', () => {
-      const tokens = tokenize('Before {# note #} After');
-      expect(tokens).toHaveLength(3);
-      expect(tokens[0].content).toBe('Before ');
-      expect(tokens[1].content).toBe('{# note #}');
-      expect(tokens[2].content).toBe(' After');
-    });
-  });
+          it('should tokenize text with comment', () => {
+            const tokens = tokenize('Before {# note #} After');
+            expect(tokens).toHaveLength(3);
+            expect(tokens[0].content).toBe('Before ');
+            expect(tokens[1].content).toBe('{# note #}');
+            expect(tokens[2].content).toBe(' After');
+          });
+        });
 
-  describe('Mixed Token Types', () => {
-    it('should tokenize expression and statement', () => {
-      const tokens = tokenize('{{ x }}{% if y %}');
-      expect(tokens).toHaveLength(2);
-      expect(tokens[0].type).toBe(TokenType.EXPRESSION);
-      expect(tokens[1].type).toBe(TokenType.STATEMENT);
-    });
+        describe('Mixed Token Types', () => {
+          it('should tokenize expression and statement', () => {
+            const tokens = tokenize('{{ x }}{% if y %}');
+            expect(tokens).toHaveLength(2);
+            expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+            expect(tokens[1].type).toBe(TokenType.STATEMENT);
+          });
 
-    it('should tokenize statement and expression', () => {
-      const tokens = tokenize('{% for i %}{{ i }}');
-      expect(tokens).toHaveLength(2);
-      expect(tokens[0].type).toBe(TokenType.STATEMENT);
-      expect(tokens[1].type).toBe(TokenType.EXPRESSION);
-    });
+          it('should tokenize statement and expression', () => {
+            const tokens = tokenize('{% for i %}{{ i }}');
+            expect(tokens).toHaveLength(2);
+            expect(tokens[0].type).toBe(TokenType.STATEMENT);
+            expect(tokens[1].type).toBe(TokenType.EXPRESSION);
+          });
 
-    it('should tokenize all token types', () => {
-      const tokens = tokenize('Text {{ expr }} {% stmt %} {# comment #}');
-      expect(tokens).toHaveLength(6);
-      expect(tokens[0].type).toBe(TokenType.TEXT);
-      expect(tokens[1].type).toBe(TokenType.EXPRESSION);
-      expect(tokens[2].type).toBe(TokenType.TEXT);
-      expect(tokens[3].type).toBe(TokenType.STATEMENT);
-      expect(tokens[4].type).toBe(TokenType.TEXT);
-      expect(tokens[5].type).toBe(TokenType.COMMENT);
-    });
+          it('should tokenize all token types', () => {
+            const tokens = tokenize('Text {{ expr }} {% stmt %} {# comment #}');
+            expect(tokens).toHaveLength(6);
+            expect(tokens[0].type).toBe(TokenType.TEXT);
+            expect(tokens[1].type).toBe(TokenType.EXPRESSION);
+            expect(tokens[2].type).toBe(TokenType.TEXT);
+            expect(tokens[3].type).toBe(TokenType.STATEMENT);
+            expect(tokens[4].type).toBe(TokenType.TEXT);
+            expect(tokens[5].type).toBe(TokenType.COMMENT);
+          });
 
-    it('should handle adjacent expressions', () => {
-      const tokens = tokenize('{{ a }}{{ b }}{{ c }}');
-      expect(tokens).toHaveLength(3);
-      expect(tokens[0].content).toBe('{{ a }}');
-      expect(tokens[1].content).toBe('{{ b }}');
-      expect(tokens[2].content).toBe('{{ c }}');
-    });
+          it('should handle adjacent expressions', () => {
+            const tokens = tokenize('{{ a }}{{ b }}{{ c }}');
+            expect(tokens).toHaveLength(3);
+            expect(tokens[0].content).toBe('{{ a }}');
+            expect(tokens[1].content).toBe('{{ b }}');
+            expect(tokens[2].content).toBe('{{ c }}');
+          });
 
-    it('should handle adjacent statements', () => {
-      const tokens = tokenize('{% if a %}{% endif %}{% for x %}');
-      expect(tokens).toHaveLength(3);
-      expect(tokens[0].content).toBe('{% if a %}');
-      expect(tokens[1].content).toBe('{% endif %}');
-      expect(tokens[2].content).toBe('{% for x %}');
-    });
+          it('should handle adjacent statements', () => {
+            const tokens = tokenize('{% if a %}{% endif %}{% for x %}');
+            expect(tokens).toHaveLength(3);
+            expect(tokens[0].content).toBe('{% if a %}');
+            expect(tokens[1].content).toBe('{% endif %}');
+            expect(tokens[2].content).toBe('{% for x %}');
+          });
 
-    it('should handle adjacent comments', () => {
-      const tokens = tokenize('{# one #}{# two #}{# three #}');
-      expect(tokens).toHaveLength(3);
-      expect(tokens[0].content).toBe('{# one #}');
-      expect(tokens[1].content).toBe('{# two #}');
-      expect(tokens[2].content).toBe('{# three #}');
-    });
-  });
+          it('should handle adjacent comments', () => {
+            const tokens = tokenize('{# one #}{# two #}{# three #}');
+            expect(tokens).toHaveLength(3);
+            expect(tokens[0].content).toBe('{# one #}');
+            expect(tokens[1].content).toBe('{# two #}');
+            expect(tokens[2].content).toBe('{# three #}');
+          });
+        });
 
-  describe('Complex Templates', () => {
-    it('should tokenize if-else block', () => {
-      const template = '{% if user %}Hello {{ user.name }}{% else %}Guest{% endif %}';
-      const tokens = tokenize(template);
-      expect(tokens).toHaveLength(6);
-      expect(tokens[0].type).toBe(TokenType.STATEMENT);
-      expect(tokens[1].type).toBe(TokenType.TEXT);
-      expect(tokens[2].type).toBe(TokenType.EXPRESSION);
-      expect(tokens[3].type).toBe(TokenType.STATEMENT);
-      expect(tokens[4].type).toBe(TokenType.TEXT);
-      expect(tokens[5].type).toBe(TokenType.STATEMENT);
-    });
+        describe('Complex Templates', () => {
+          it('should tokenize if-else block', () => {
+            const template = '{% if user %}Hello {{ user.name }}{% else %}Guest{% endif %}';
+            const tokens = tokenize(template);
+            expect(tokens).toHaveLength(6);
+            expect(tokens[0].type).toBe(TokenType.STATEMENT);
+            expect(tokens[1].type).toBe(TokenType.TEXT);
+            expect(tokens[2].type).toBe(TokenType.EXPRESSION);
+            expect(tokens[3].type).toBe(TokenType.STATEMENT);
+            expect(tokens[4].type).toBe(TokenType.TEXT);
+            expect(tokens[5].type).toBe(TokenType.STATEMENT);
+          });
 
-    it('should tokenize for loop', () => {
-      const template = '{% for item in items %}{{ item }}{% endfor %}';
-      const tokens = tokenize(template);
-      expect(tokens).toHaveLength(3);
-      expect(tokens[0].content).toBe('{% for item in items %}');
-      expect(tokens[1].content).toBe('{{ item }}');
-      expect(tokens[2].content).toBe('{% endfor %}');
-    });
+          it('should tokenize for loop', () => {
+            const template = '{% for item in items %}{{ item }}{% endfor %}';
+            const tokens = tokenize(template);
+            expect(tokens).toHaveLength(3);
+            expect(tokens[0].content).toBe('{% for item in items %}');
+            expect(tokens[1].content).toBe('{{ item }}');
+            expect(tokens[2].content).toBe('{% endfor %}');
+          });
 
-    it('should tokenize nested structures', () => {
-      const template = '{% if x %}{% for y %}{{ y }}{% endfor %}{% endif %}';
-      const tokens = tokenize(template);
-      expect(tokens).toHaveLength(5);
-    });
-  });
+          it('should tokenize nested structures', () => {
+            const template = '{% if x %}{% for y %}{{ y }}{% endfor %}{% endif %}';
+            const tokens = tokenize(template);
+            expect(tokens).toHaveLength(5);
+          });
+        });
 
-  describe('Whitespace Handling', () => {
-    it('should preserve whitespace in text', () => {
-      const tokens = tokenize('  Hello  World  ');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].content).toBe('  Hello  World  ');
-    });
+        describe('Whitespace Handling', () => {
+          it('should preserve whitespace in text', () => {
+            const tokens = tokenize('  Hello  World  ');
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].content).toBe('  Hello  World  ');
+          });
 
-    it('should preserve whitespace around expressions', () => {
-      const tokens = tokenize('  {{ x }}  ');
-      expect(tokens).toHaveLength(3);
-      expect(tokens[0].content).toBe('  ');
-      expect(tokens[2].content).toBe('  ');
-    });
+          it('should preserve whitespace around expressions', () => {
+            const tokens = tokenize('  {{ x }}  ');
+            expect(tokens).toHaveLength(3);
+            expect(tokens[0].content).toBe('  ');
+            expect(tokens[2].content).toBe('  ');
+          });
 
-    it('should handle tabs', () => {
-      const tokens = tokenize('\t{{ x }}\t');
-      expect(tokens).toHaveLength(3);
-      expect(tokens[0].content).toBe('\t');
-      expect(tokens[2].content).toBe('\t');
-    });
+          it('should handle tabs', () => {
+            const tokens = tokenize('\t{{ x }}\t');
+            expect(tokens).toHaveLength(3);
+            expect(tokens[0].content).toBe('\t');
+            expect(tokens[2].content).toBe('\t');
+          });
 
-    it('should handle newlines in text', () => {
-      const tokens = tokenize('Line 1\nLine 2\nLine 3');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].content).toBe('Line 1\nLine 2\nLine 3');
-    });
+          it('should handle newlines in text', () => {
+            const tokens = tokenize('Line 1\nLine 2\nLine 3');
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].content).toBe('Line 1\nLine 2\nLine 3');
+          });
 
-    it('should handle windows newlines', () => {
-      const tokens = tokenize('Line 1\r\nLine 2');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].content).toBe('Line 1\r\nLine 2');
-    });
+          it('should handle windows newlines', () => {
+            const tokens = tokenize('Line 1\r\nLine 2');
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].content).toBe('Line 1\r\nLine 2');
+          });
 
-    it('should handle mixed newlines', () => {
-      const tokens = tokenize('Unix\nWindows\r\nMac\r');
-      expect(tokens).toHaveLength(1);
-    });
-  });
+          it('should handle mixed newlines', () => {
+            const tokens = tokenize('Unix\nWindows\r\nMac\r');
+            expect(tokens).toHaveLength(1);
+          });
+        });
 
-  describe('Special Characters', () => {
-    it('should handle single braces in text', () => {
-      const tokens = tokenize('{ hello }');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].content).toBe('{ hello }');
-    });
+        describe('Special Characters', () => {
+          it('should handle single braces in text', () => {
+            const tokens = tokenize('{ hello }');
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].content).toBe('{ hello }');
+          });
 
-    it('should handle partial delimiters in text', () => {
-      const tokens = tokenize('{ % } { { } }');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].content).toBe('{ % } { { } }');
-    });
+          it('should handle partial delimiters in text', () => {
+            const tokens = tokenize('{ % } { { } }');
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].content).toBe('{ % } { { } }');
+          });
 
-    it('should handle special regex characters', () => {
-      const tokens = tokenize('$^*+?.()|[]{}\\');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].content).toBe('$^*+?.()|[]{}\\');
-    });
+          it('should handle special regex characters', () => {
+            const tokens = tokenize('$^*+?.()|[]{}\\');
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].content).toBe('$^*+?.()|[]{}\\');
+          });
 
-    it('should handle unicode characters', () => {
-      const tokens = tokenize('Hello 世界 🌍');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].content).toBe('Hello 世界 🌍');
-    });
+          it('should handle unicode characters', () => {
+            const tokens = tokenize('Hello 世界 🌍');
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].content).toBe('Hello 世界 🌍');
+          });
 
-    it('should handle unicode in expressions', () => {
-      const tokens = tokenize('{{ 世界 }}');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].content).toBe('{{ 世界 }}');
-    });
-  });
+          it('should handle unicode in expressions', () => {
+            const tokens = tokenize('{{ 世界 }}');
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].content).toBe('{{ 世界 }}');
+          });
+        });
 
-  describe('Expression Content', () => {
-    it('should tokenize simple variable', () => {
-      const tokens = tokenize('{{ x }}');
-      expect(tokens[0].content).toBe('{{ x }}');
-    });
+        describe('Expression Content', () => {
+          it('should tokenize simple variable', () => {
+            const tokens = tokenize('{{ x }}');
+            expect(tokens[0].content).toBe('{{ x }}');
+          });
 
-    it('should tokenize dot notation', () => {
-      const tokens = tokenize('{{ user.name.first }}');
-      expect(tokens[0].content).toBe('{{ user.name.first }}');
-    });
+          it('should tokenize dot notation', () => {
+            const tokens = tokenize('{{ user.name.first }}');
+            expect(tokens[0].content).toBe('{{ user.name.first }}');
+          });
 
-    it('should tokenize array access', () => {
-      const tokens = tokenize('{{ items[0] }}');
-      expect(tokens[0].content).toBe('{{ items[0] }}');
-    });
+          it('should tokenize array access', () => {
+            const tokens = tokenize('{{ items[0] }}');
+            expect(tokens[0].content).toBe('{{ items[0] }}');
+          });
 
-    it('should tokenize function calls', () => {
-      const tokens = tokenize('{{ format(date) }}');
-      expect(tokens[0].content).toBe('{{ format(date) }}');
-    });
+          it('should tokenize function calls', () => {
+            const tokens = tokenize('{{ format(date) }}');
+            expect(tokens[0].content).toBe('{{ format(date) }}');
+          });
 
-    it('should tokenize operators', () => {
-      const tokens = tokenize('{{ a + b * c }}');
-      expect(tokens[0].content).toBe('{{ a + b * c }}');
-    });
+          it('should tokenize operators', () => {
+            const tokens = tokenize('{{ a + b * c }}');
+            expect(tokens[0].content).toBe('{{ a + b * c }}');
+          });
 
-    it('should tokenize string literals', () => {
-      const tokens = tokenize('{{ "hello world" }}');
-      expect(tokens[0].content).toBe('{{ "hello world" }}');
-    });
+          it('should tokenize string literals', () => {
+            const tokens = tokenize('{{ "hello world" }}');
+            expect(tokens[0].content).toBe('{{ "hello world" }}');
+          });
 
-    it('should tokenize number literals', () => {
-      const tokens = tokenize('{{ 42 }}');
-      expect(tokens[0].content).toBe('{{ 42 }}');
-    });
+          it('should tokenize number literals', () => {
+            const tokens = tokenize('{{ 42 }}');
+            expect(tokens[0].content).toBe('{{ 42 }}');
+          });
 
-    it('should tokenize boolean literals', () => {
-      const tokens = tokenize('{{ true }}');
-      expect(tokens[0].content).toBe('{{ true }}');
-    });
+          it('should tokenize boolean literals', () => {
+            const tokens = tokenize('{{ true }}');
+            expect(tokens[0].content).toBe('{{ true }}');
+          });
 
-    it('should tokenize null', () => {
-      const tokens = tokenize('{{ null }}');
-      expect(tokens[0].content).toBe('{{ null }}');
-    });
+          it('should tokenize null', () => {
+            const tokens = tokenize('{{ null }}');
+            expect(tokens[0].content).toBe('{{ null }}');
+          });
 
-    it('should handle complex expressions', () => {
-      const tokens = tokenize('{{ user.items[idx].name || "default" }}');
-      expect(tokens[0].content).toBe('{{ user.items[idx].name || "default" }}');
-    });
-  });
+          it('should handle complex expressions', () => {
+            const tokens = tokenize('{{ user.items[idx].name || "default" }}');
+            expect(tokens[0].content).toBe('{{ user.items[idx].name || "default" }}');
+          });
+        });
 
-  describe('Statement Content', () => {
-    it('should tokenize if statement', () => {
-      const tokens = tokenize('{% if condition %}');
-      expect(tokens[0].content).toBe('{% if condition %}');
-    });
+        describe('Statement Content', () => {
+          it('should tokenize if statement', () => {
+            const tokens = tokenize('{% if condition %}');
+            expect(tokens[0].content).toBe('{% if condition %}');
+          });
 
-    it('should tokenize else statement', () => {
-      const tokens = tokenize('{% else %}');
-      expect(tokens[0].content).toBe('{% else %}');
-    });
+          it('should tokenize else statement', () => {
+            const tokens = tokenize('{% else %}');
+            expect(tokens[0].content).toBe('{% else %}');
+          });
 
-    it('should tokenize elif statement', () => {
-      const tokens = tokenize('{% elif other %}');
-      expect(tokens[0].content).toBe('{% elif other %}');
-    });
+          it('should tokenize elif statement', () => {
+            const tokens = tokenize('{% elif other %}');
+            expect(tokens[0].content).toBe('{% elif other %}');
+          });
 
-    it('should tokenize endif statement', () => {
-      const tokens = tokenize('{% endif %}');
-      expect(tokens[0].content).toBe('{% endif %}');
-    });
+          it('should tokenize endif statement', () => {
+            const tokens = tokenize('{% endif %}');
+            expect(tokens[0].content).toBe('{% endif %}');
+          });
 
-    it('should tokenize for statement', () => {
-      const tokens = tokenize('{% for item in items %}');
-      expect(tokens[0].content).toBe('{% for item in items %}');
-    });
+          it('should tokenize for statement', () => {
+            const tokens = tokenize('{% for item in items %}');
+            expect(tokens[0].content).toBe('{% for item in items %}');
+          });
 
-    it('should tokenize endfor statement', () => {
-      const tokens = tokenize('{% endfor %}');
-      expect(tokens[0].content).toBe('{% endfor %}');
-    });
+          it('should tokenize endfor statement', () => {
+            const tokens = tokenize('{% endfor %}');
+            expect(tokens[0].content).toBe('{% endfor %}');
+          });
 
-    it('should tokenize while statement', () => {
-      const tokens = tokenize('{% while condition %}');
-      expect(tokens[0].content).toBe('{% while condition %}');
-    });
+          it('should tokenize while statement', () => {
+            const tokens = tokenize('{% while condition %}');
+            expect(tokens[0].content).toBe('{% while condition %}');
+          });
 
-    it('should tokenize set statement', () => {
-      const tokens = tokenize('{% set x = 10 %}');
-      expect(tokens[0].content).toBe('{% set x = 10 %}');
-    });
+          it('should tokenize set statement', () => {
+            const tokens = tokenize('{% set x = 10 %}');
+            expect(tokens[0].content).toBe('{% set x = 10 %}');
+          });
 
-    it('should tokenize import statement', () => {
-      const tokens = tokenize('{% import "module" %}');
-      expect(tokens[0].content).toBe('{% import "module" %}');
-    });
+          it('should tokenize import statement', () => {
+            const tokens = tokenize('{% import "module" %}');
+            expect(tokens[0].content).toBe('{% import "module" %}');
+          });
 
-    it('should handle complex conditions', () => {
-      const tokens = tokenize('{% if a > 5 and b < 10 or c == null %}');
-      expect(tokens[0].content).toBe('{% if a > 5 and b < 10 or c == null %}');
-    });
-  });
+          it('should handle complex conditions', () => {
+            const tokens = tokenize('{% if a > 5 and b < 10 or c == null %}');
+            expect(tokens[0].content).toBe('{% if a > 5 and b < 10 or c == null %}');
+          });
+        });
 
-  describe('Comment Content', () => {
-    it('should tokenize simple comment', () => {
-      const tokens = tokenize('{# note #}');
-      expect(tokens[0].content).toBe('{# note #}');
-    });
+        describe('Comment Content', () => {
+          it('should tokenize simple comment', () => {
+            const tokens = tokenize('{# note #}');
+            expect(tokens[0].content).toBe('{# note #}');
+          });
 
-    it('should handle comments with text', () => {
-      const tokens = tokenize('{# This is a comment #}');
-      expect(tokens[0].content).toBe('{# This is a comment #}');
-    });
+          it('should handle comments with text', () => {
+            const tokens = tokenize('{# This is a comment #}');
+            expect(tokens[0].content).toBe('{# This is a comment #}');
+          });
 
-    it('should handle comments with special chars', () => {
-      const tokens = tokenize('{# TODO: fix @#$%^&* #}');
-      expect(tokens[0].content).toBe('{# TODO: fix @#$%^&* #}');
-    });
+          it('should handle comments with special chars', () => {
+            const tokens = tokenize('{# TODO: fix @#$%^&* #}');
+            expect(tokens[0].content).toBe('{# TODO: fix @#$%^&* #}');
+          });
 
-    it('should handle multi-line comments', () => {
-      const tokens = tokenize('{# line 1\nline 2\nline 3 #}');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].type).toBe(TokenType.COMMENT);
-    });
+          it('should handle multi-line comments', () => {
+            const tokens = tokenize('{# line 1\nline 2\nline 3 #}');
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].type).toBe(TokenType.COMMENT);
+          });
 
-    it('should handle empty comments', () => {
-      const tokens = tokenize('{##}');
-      expect(tokens).toHaveLength(1);
-      expect(tokens[0].content).toBe('{##}');
+          it('should handle empty comments', () => {
+            const tokens = tokenize('{##}');
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].content).toBe('{##}');
+          });
+        });
+      });
     });
   });
 });

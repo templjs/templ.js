@@ -50,7 +50,7 @@
     "ci:lint": "pnpm run lint:ci",
     "ci:type-check": "pnpm run type-check",
     "ci:frontmatter": "pnpm run lint:frontmatter",
-    "ci:test": "pnpm run test:affected:ci",
+    "ci:test": "nx affected -t test --base=origin/main --parallel=3 --outputStyle=static --coverage",
     "ci:build": "pnpm run build:affected:ci",
     "clean": "nx reset && rm -rf node_modules packages/*/node_modules extensions/*/node_modules packages/*/dist extensions/*/dist",
     "graph": "nx graph",

@@ -17,9 +17,9 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
+    "test": "vitest run --config vitest.config.ts",
+    "test:watch": "vitest --config vitest.config.ts",
+    "test:coverage": "vitest run --config vitest.config.ts --coverage",
     "lint": "echo 'No linting configured yet'",
     "clean": "rm -rf dist"
   },
@@ -43,8 +43,8 @@
     "chevrotain": "^11.0.3"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^1.1.0",
+    "@vitest/coverage-v8": "^4.0.2",
     "typescript": "^5.3.0",
-    "vitest": "^1.1.0"
+    "vitest": "^4.0.18"
   }
 }

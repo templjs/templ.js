@@ -7,46 +7,52 @@ import {
   type PositionMapping,
 } from './position-mapping';
 
-describe('PositionMapper', () => {
-  it('should map single position from original to cleaned', () => {
-    const mappings: PositionMapping[] = [
-      { originalOffset: 0, cleanedOffset: 0, length: 5 },
-      { originalOffset: 10, cleanedOffset: 5, length: 5 },
-    ];
-    const mapper = new PositionMapper(mappings);
-    expect(mapper.originalToCleaned(2)).toBe(2);
-    expect(mapper.originalToCleaned(12)).toBe(7);
-  });
+describe('Package: volar', () => {
+  describe('Domain: parsing', () => {
+    describe('Class: PositionMapper', () => {
+      describe('PositionMapper', () => {
+        it('should map single position from original to cleaned', () => {
+          const mappings: PositionMapping[] = [
+            { originalOffset: 0, cleanedOffset: 0, length: 5 },
+            { originalOffset: 10, cleanedOffset: 5, length: 5 },
+          ];
+          const mapper = new PositionMapper(mappings);
+          expect(mapper.originalToCleaned(2)).toBe(2);
+          expect(mapper.originalToCleaned(12)).toBe(7);
+        });
 
-  it('should map position from cleaned to original', () => {
-    const mappings: PositionMapping[] = [
-      { originalOffset: 0, cleanedOffset: 0, length: 5 },
-      { originalOffset: 10, cleanedOffset: 5, length: 5 },
-    ];
-    const mapper = new PositionMapper(mappings);
-    expect(mapper.cleanedToOriginal(2)).toBe(2);
-    expect(mapper.cleanedToOriginal(7)).toBe(12);
-  });
+        it('should map position from cleaned to original', () => {
+          const mappings: PositionMapping[] = [
+            { originalOffset: 0, cleanedOffset: 0, length: 5 },
+            { originalOffset: 10, cleanedOffset: 5, length: 5 },
+          ];
+          const mapper = new PositionMapper(mappings);
+          expect(mapper.cleanedToOriginal(2)).toBe(2);
+          expect(mapper.cleanedToOriginal(7)).toBe(12);
+        });
 
-  it('should handle roundtrip conversion', () => {
-    const mappings: PositionMapping[] = [
-      { originalOffset: 0, cleanedOffset: 0, length: 10 },
-      { originalOffset: 20, cleanedOffset: 10, length: 10 },
-    ];
-    const mapper = new PositionMapper(mappings);
-    for (let i = 0; i < 20; i++) {
-      if (i < 10 || i >= 20) {
-        const cleaned = mapper.originalToCleaned(i);
-        const original = mapper.cleanedToOriginal(cleaned);
-        expect(original).toBe(i);
-      }
-    }
-  });
+        it('should handle roundtrip conversion', () => {
+          const mappings: PositionMapping[] = [
+            { originalOffset: 0, cleanedOffset: 0, length: 10 },
+            { originalOffset: 20, cleanedOffset: 10, length: 10 },
+          ];
+          const mapper = new PositionMapper(mappings);
+          for (let i = 0; i < 20; i++) {
+            if (i < 10 || i >= 20) {
+              const cleaned = mapper.originalToCleaned(i);
+              const original = mapper.cleanedToOriginal(cleaned);
+              expect(original).toBe(i);
+            }
+          }
+        });
 
-  it('should handle empty mappings', () => {
-    const mapper = new PositionMapper([]);
-    expect(mapper.originalToCleaned(0)).toBe(0);
-    expect(mapper.cleanedToOriginal(0)).toBe(0);
+        it('should handle empty mappings', () => {
+          const mapper = new PositionMapper([]);
+          expect(mapper.originalToCleaned(0)).toBe(0);
+          expect(mapper.cleanedToOriginal(0)).toBe(0);
+        });
+      });
+    });
   });
 });
 
