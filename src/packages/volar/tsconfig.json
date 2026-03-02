@@ -5,7 +5,15 @@
     "rootDir": "./src",
     "composite": true
   },
-  "include": ["src/**/*"],
+  "include": [
+    "src/**/*",
+    "test/diagnostic-provider.test.ts",
+    "test/index.test.ts",
+    "test/intellisense-provider.test.ts",
+    "test/position-mapping.test.ts",
+    "test/semantic-token-provider.test.ts",
+    "test/textmate-grammar.test.ts"
+  ],
   "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"],
   "references": [
     {

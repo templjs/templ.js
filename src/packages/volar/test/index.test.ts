@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createTempljsLanguagePlugin } from './index';
+import { createTempljsLanguagePlugin } from '../src/index';
 
 describe('Package: volar', () => {
   describe('Domain: validation', () => {

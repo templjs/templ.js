@@ -15,7 +15,6 @@ export default defineConfig({
       reportsDirectory: path.resolve(__dirname, 'coverage'),
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
-      include: [...configDefaults.include],
       exclude: [...configDefaults.exclude, '**/.worktrees/**'],
       thresholds: {
         lines: 90,

@@ -9,7 +9,7 @@ import {
   SemanticTokenModifiers,
   SemanticTokenTypes,
   DEFAULT_DELIMITERS,
-} from './semantic-token-provider';
+} from '../src/semantic-token-provider';
 
 describe('Package: volar', () => {
   describe('Domain: lexing', () => {

@@ -5,7 +5,7 @@ import {
   RangeMapper,
   generatePositionMappings,
   type PositionMapping,
-} from './position-mapping';
+} from '../src/position-mapping';
 
 describe('Package: volar', () => {
   describe('Domain: parsing', () => {
