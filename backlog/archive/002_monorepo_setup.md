@@ -56,11 +56,11 @@ Project consists of 4 interdependent packages: `@templjs/core`, `@templjs/cli`, 
 
 ## Acceptance Criteria
 
-- [ ] `pnpm install` completes without errors
-- [ ] `pnpm nx graph` shows correct package structure
-- [ ] Path aliases resolve correctly in LSP
-- [ ] All packages can import from each other using workspace protocol
-- [ ] `pnpm build` runs successfully (even with empty source)
+- [x] `pnpm install` completes without errors
+- [x] `pnpm nx graph` shows correct package structure
+- [x] Path aliases resolve correctly in LSP
+- [x] All packages can import from each other using workspace protocol
+- [x] `pnpm build` runs successfully (even with empty source)
 
 ## References
 

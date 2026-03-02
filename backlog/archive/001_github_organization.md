@@ -48,11 +48,11 @@ Establish templjs organization for professional presentation and team collaborat
   - [x] Performance impact section
 - [x] Create automation script for branch protection (`.github/scripts/setup-branch-protection.sh`)
 - [x] Document manual setup steps (`.github/ORGANIZATION_SETUP.md`)
-- [ ] Setup GitHub Pages for documentation site (`docs/` folder)
-- [ ] Configure repository settings:
-  - [ ] Disable squash and rebase merges (require conventional commits)
-  - [ ] Auto-delete head branches
-  - [ ] Require conversation resolution before merge
+- [x] Setup GitHub Pages for documentation site (`docs/` folder)
+- [x] Configure repository settings:
+  - [x] Disable squash and rebase merges (require squash commits)
+  - [x] Auto-delete head branches
+  - [x] Require conversation resolution before merge
 
 ## Deliverables
 
@@ -62,10 +62,10 @@ Establish templjs organization for professional presentation and team collaborat
 
 ## Acceptance Criteria
 
-- [ ] Organization homepage displays at github.com/templjs
-- [ ] `templjs/templ.js` repository is empty and ready for scaffolding
-- [ ] Contributors can clone and push to repository
-- [ ] Organization pages and README configured
+- [x] Organization homepage displays at github.com/templjs
+- [x] `templjs/templ.js` repository is empty and ready for scaffolding
+- [x] Contributors can clone and push to repository
+- [x] Organization pages and README configured
 
 ## Notes
 
