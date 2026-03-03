@@ -99,6 +99,8 @@ const DEFAULT_FILTERS: FilterSignature[] = [
   },
 ];
 
+const VARIABLE_PATH_REGEX = /^[A-Za-z_][\w]*(?:\[[^\]]+\])?(?:\.[A-Za-z_][\w]*(?:\[[^\]]+\])?)*/;
+
 function getDelimiters(options?: IntellisenseOptions): IntellisenseDelimiters {
   return { ...DEFAULT_DELIMITERS, ...(options?.delimiters ?? {}) };
 }
@@ -138,7 +140,7 @@ function getPathCompletions(metadata: SchemaMetadata, pathPrefix: string): Compl
 
 function getTopLevelCompletions(metadata: SchemaMetadata): CompletionItem[] {
   return Object.keys(metadata)
-    .filter((key) => !key.includes('.'))
+    .filter((key) => !key.includes('.') && !key.includes('['))
     .map((key) => ({
       label: key,
       kind: 'variable',
@@ -160,6 +162,38 @@ function getKeywordCompletions(keywords: string[]): CompletionItem[] {
     label: keyword,
     kind: 'keyword',
   }));
+}
+
+function filterAndSortCompletions(items: CompletionItem[], rawPrefix: string): CompletionItem[] {
+  const prefix = rawPrefix.trim().toLowerCase();
+  if (!prefix) {
+    return items;
+  }
+
+  const withScore = items
+    .map((item) => {
+      const label = item.label.toLowerCase();
+      const startsWith = label.startsWith(prefix);
+      const includes = label.includes(prefix);
+
+      if (!startsWith && !includes) {
+        return null;
+      }
+
+      return {
+        item,
+        score: startsWith ? 0 : 1,
+      };
+    })
+    .filter((entry): entry is { item: CompletionItem; score: number } => entry !== null)
+    .sort((left, right) => {
+      if (left.score !== right.score) {
+        return left.score - right.score;
+      }
+      return left.item.label.localeCompare(right.item.label);
+    });
+
+  return withScore.map((entry) => entry.item);
 }
 
 function resolveFilterSignature(filters: FilterSignature[], name: string): FilterSignature | null {
@@ -185,6 +219,10 @@ function normalizeExpression(text: string, delimiters: IntellisenseDelimiters): 
   return trimmed;
 }
 
+function getCompletionPrefix(text: string): string {
+  return text.replace(/[}\])\s]+$/g, '').trim();
+}
+
 export class IntellisenseProvider {
   getCompletions(text: string, offset: number, options?: IntellisenseOptions): CompletionItem[] {
     const delimiters = getDelimiters(options);
@@ -208,24 +246,28 @@ export class IntellisenseProvider {
 
     if (expression) {
       const startOffset = expression.start + delimiters.expressionStart.length;
-      const prefix = text.slice(startOffset, offset).trim();
+      const prefix = getCompletionPrefix(text.slice(startOffset, offset));
       const lastPipe = prefix.lastIndexOf('|');
 
       if (lastPipe >= 0) {
-        return getFilterCompletions(filters);
+        const filterPrefix = prefix.slice(lastPipe + 1).replace(/[^A-Za-z_\d]+$/g, '');
+        return filterAndSortCompletions(getFilterCompletions(filters), filterPrefix);
       }
 
       const lastDot = prefix.lastIndexOf('.');
       if (lastDot >= 0) {
         const pathPrefix = prefix.slice(0, lastDot + 1);
-        return getPathCompletions(metadata, pathPrefix);
+        const propertyPrefix = prefix.slice(lastDot + 1);
+        return filterAndSortCompletions(getPathCompletions(metadata, pathPrefix), propertyPrefix);
       }
 
-      return getTopLevelCompletions(metadata);
+      return filterAndSortCompletions(getTopLevelCompletions(metadata), prefix);
     }
 
     if (statement) {
-      return getKeywordCompletions(keywords);
+      const startOffset = statement.start + delimiters.statementStart.length;
+      const statementPrefix = text.slice(startOffset, offset).trim();
+      return filterAndSortCompletions(getKeywordCompletions(keywords), statementPrefix);
     }
 
     return [];
@@ -253,7 +295,7 @@ export class IntellisenseProvider {
       return { contents: `${signature.name}: ${signature.description}` };
     }
 
-    const variableMatch = content.match(/^[\w.]+/);
+    const variableMatch = content.match(VARIABLE_PATH_REGEX);
     if (variableMatch) {
       const details = resolveVariableMetadata(metadata, variableMatch[0]);
       if (details) {
@@ -280,7 +322,7 @@ export class IntellisenseProvider {
     if (!expression || !options?.schemaUri) return null;
 
     const content = normalizeExpression(text.slice(expression.start, expression.end), delimiters);
-    const variableMatch = content.match(/^[\w.]+/);
+    const variableMatch = content.match(VARIABLE_PATH_REGEX);
     if (!variableMatch) return null;
 
     return {
