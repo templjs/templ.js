@@ -2,9 +2,9 @@
 id: wi-017
 type: work-item
 subtype: story
-lifecycle: draft
+lifecycle: active
 title: '17: Implement CLI Commands (render, validate, init)'
-status: proposed
+status: in-progress
 priority: critical
 estimated: 10
 assignee: ''
