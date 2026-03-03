@@ -118,11 +118,11 @@ All planning artifacts are committed and stable:
 | Phase                   | Effort   | Status                                        |
 | ----------------------- | -------- | --------------------------------------------- |
 | Infrastructure          | 23h      | ✅ Completed (13/13 tasks, all tests passing) |
-| Core Library            | 98h      | ✅ Completed (700+ tests, 100% passing)       |
+| Core Library            | 98h      | ✅ Completed (937 tests, 96%+ coverage)       |
 | VS Code Extension       | 58h      | Ready to start                                |
-| CLI Tool                | 26h      | Blocked by Phase 2                            |
-| Documentation & Release | 19h      | Blocked by Phases 2-4                         |
-| **TOTAL**               | **249h** | **Phases 1-2 complete: 18% done**             |
+| CLI Tool                | 26h      | Ready to start                                |
+| Documentation & Release | 19h      | Blocked by Phases 3-4                         |
+| **TOTAL**               | **249h** | **Phases 1-2 complete: 121h done (49%)**      |
 
 ---
 
