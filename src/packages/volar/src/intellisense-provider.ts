@@ -220,7 +220,21 @@ function normalizeExpression(text: string, delimiters: IntellisenseDelimiters): 
 }
 
 function getCompletionPrefix(text: string): string {
-  return text.replace(/[}\])\s]+$/g, '').trim();
+  const trimmed = text.replace(/[}\])\s]+$/g, '').trim();
+
+  // Normalize array index notation for top-level prefixes so that
+  // `users[` / `users[0` still match a completion label `users`.
+  const hasDot = trimmed.indexOf('.') >= 0;
+  const hasPipe = trimmed.indexOf('|') >= 0;
+
+  if (!hasDot && !hasPipe) {
+    const bracketIndex = trimmed.indexOf('[');
+    if (bracketIndex > 0) {
+      return trimmed.slice(0, bracketIndex);
+    }
+  }
+
+  return trimmed;
 }
 
 export class IntellisenseProvider {
