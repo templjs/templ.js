@@ -50,7 +50,8 @@
     "test:affected": "pnpm run test:affected:local",
     "test:affected:ci": "nx affected -t test --base=origin/main --parallel=3 --outputStyle=static",
     "test:affected:local": "nx affected -t test --base=main --parallel=3",
-    "test:affected:pre-push": "sh -c 'BASE_BRANCH=main; if git rev-parse --verify origin/main >/dev/null 2>&1; then BASE_BRANCH=origin/main; fi; pnpm exec nx affected -t test --base=\"$BASE_BRANCH\" --outputStyle=static'"
+    "test:affected:pre-push": "sh -c 'BASE_BRANCH=main; if git rev-parse --verify origin/main >/dev/null 2>&1; then BASE_BRANCH=origin/main; fi; pnpm exec nx affected -t test --base=\"$BASE_BRANCH\" --outputStyle=static'",
+    "type-check": "tsc --noEmit"
   },
   "devDependencies": {
     "@changesets/cli": "latest",
