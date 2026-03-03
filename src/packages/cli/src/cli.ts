@@ -10,71 +10,87 @@
  *   templjs --version                   - Show version
  */
 
+import { writeFileSync } from 'fs';
+import { Command } from 'commander';
+import { initCommand } from './commands/init.js';
 import { renderCommand } from './commands/render.js';
 import { validateCommand } from './commands/validate.js';
 import { version } from './index.js';
 
-const args = process.argv.slice(2);
+function createProgram(): Command {
+  const program = new Command();
 
-async function main() {
-  const command = args[0];
+  program
+    .name('templjs')
+    .description('CLI for rendering and validating templjs templates')
+    .version(version);
 
-  if (!command || command === '--help' || command === '-h') {
-    console.log(`templjs CLI v${version}`);
-    console.log('');
-    console.log('Usage: templjs [command] [options]');
-    console.log('');
-    console.log('Commands:');
-    console.log('  render <template> <data>  - Render template with JSON data');
-    console.log('  validate <template>       - Validate template syntax');
-    console.log('  --version                 - Show version');
-    console.log('  --help                    - Show this help message');
-    process.exit(0);
-  }
+  program
+    .command('render')
+    .description('Render template with JSON data')
+    .requiredOption('-t, --template <path>', 'Template file path')
+    .requiredOption('-i, --input <pathOrJson>', 'Input JSON file path or inline JSON payload')
+    .option('-o, --output <path>', 'Output file path (defaults to stdout)')
+    .option('--no-validate-input', 'Skip input validation when supported by core')
+    .option('--no-validate-output', 'Skip output validation when supported by core')
+    .action(
+      async (options: {
+        template: string;
+        input: string;
+        output?: string;
+        validateInput: boolean;
+        validateOutput: boolean;
+      }) => {
+        const rendered = await renderCommand(options.template, options.input);
+        if (options.output) {
+          writeFileSync(options.output, rendered, 'utf-8');
+          return;
+        }
+        process.stdout.write(`${rendered}\n`);
+      }
+    );
 
-  if (command === '--version') {
-    console.log(`templjs v${version}`);
-    process.exit(0);
-  }
+  program
+    .command('validate')
+    .description('Validate template syntax')
+    .requiredOption('-t, --template <path>', 'Template file path')
+    .option('-s, --schema <path>', 'Optional schema path (future core integration)')
+    .action(async (options: { template: string; schema?: string }) => {
+      const valid = await validateCommand(options.template, options.schema);
+      process.stdout.write(valid ? 'Template is valid\n' : 'Template has errors\n');
+      if (!valid) {
+        process.exitCode = 1;
+      }
+    });
+
+  program
+    .command('init')
+    .description('Generate a starter template')
+    .requiredOption('-f, --format <format>', 'Template format: markdown|html|json|yaml')
+    .option('-o, --output <path>', 'Write starter template to file')
+    .action(async (options: { format: string; output?: string }) => {
+      const starter = await initCommand({ format: options.format, output: options.output });
+      if (!options.output) {
+        process.stdout.write(starter);
+      }
+    });
+
+  return program;
+}
+
+export async function main(argv = process.argv): Promise<void> {
+  const program = createProgram();
 
   try {
-    let result: string;
-    let valid: boolean;
-
-    switch (command) {
-      case 'render':
-        if (args.length < 3) {
-          console.error('Error: render command requires <template> and <data> arguments');
-          process.exit(1);
-        }
-        result = await renderCommand(args[1], args[2]);
-        console.log(result);
-        break;
-
-      case 'validate':
-        if (args.length < 2) {
-          console.error('Error: validate command requires <template> argument');
-          process.exit(1);
-        }
-        valid = await validateCommand(args[1]);
-        console.log(valid ? 'Template is valid' : 'Template has errors');
-        process.exit(valid ? 0 : 1);
-        break;
-
-      default:
-        console.error(`Unknown command: ${command}`);
-        console.error('Run "templjs --help" for usage information');
-        process.exit(1);
-    }
+    await program.parseAsync(argv);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`Error: ${message}`);
-    process.exit(1);
+    process.stderr.write(`Error: ${message}\n`);
+    process.exitCode = 1;
   }
 }
 
-main().catch((error) => {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`Fatal error: ${message}`);
-  process.exit(1);
-});
+const isDirectExecution = process.argv[1]?.endsWith('cli.js') ?? false;
+if (isDirectExecution) {
+  void main();
+}

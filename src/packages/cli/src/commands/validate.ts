@@ -3,19 +3,26 @@
  * Validates a template and input data against schema
  */
 
+import { readFileSync } from 'fs';
 import { validateTemplate } from '@templjs/core';
 
-export async function validateCommand(template: string, _schema?: string): Promise<boolean> {
+export async function validateCommand(templatePath: string, schemaPath?: string): Promise<boolean> {
   try {
-    // Validate template structure
-    const result = validateTemplate(template);
+    const templateContent = readFileSync(templatePath, 'utf-8');
+    const result = validateTemplate(templateContent);
+
+    if (schemaPath) {
+      console.warn(
+        `Schema validation flag provided (${schemaPath}) but schema validation is not yet wired in @templjs/core`
+      );
+    }
+
     if (result.errors && result.errors.length > 0) {
       console.error('Validation errors:', result.errors);
     }
     return result.valid;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    // eslint-disable-next-line preserve-caught-error
-    throw new Error(`Validation failed: ${message}`);
+    throw new Error(`Validation failed: ${message}`, { cause: error });
   }
 }
