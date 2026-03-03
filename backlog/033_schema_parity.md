@@ -59,7 +59,7 @@ templjs render --input data.yml --template output.md.tmpl
 templjs render --input config.toml --template output.md.tmpl
 ```
 
-### XML (Optional)
+### XML (New)
 
 ```bash
 templjs render --input data.xml --template output.md.tmpl
@@ -69,7 +69,7 @@ templjs render --input data.xml --template output.md.tmpl
 
 - [ ] Add YAML parser (libyaml or similar)
 - [ ] Add TOML parser
-- [ ] Add XML parser (if needed)
+- [ ] Add XML parser
 - [ ] Format auto-detection by file extension
 - [ ] Format-specific error handling
 - [ ] Schema validation on parsed structures

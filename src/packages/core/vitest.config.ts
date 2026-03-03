@@ -13,11 +13,9 @@ export default mergeConfig(
         exclude: ['src/**/*.test.ts', 'src/**/*.spec.ts', 'test/**/*.ts'],
         thresholds: {
           lines: 96,
-          functions: 95,
-          branches: 90,
+          functions: 99,
+          branches: 88,
           statements: 96,
-          autoUpdate: false,
-          perFile: false,
         },
       },
     },

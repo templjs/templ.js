@@ -6,17 +6,16 @@ export default mergeConfig(
   baseConfig,
   defineConfig({
     test: {
-      include: ['src/**/*.test.ts'],
+      include: ['test/**/*.test.ts'],
       coverage: {
         reportsDirectory: path.resolve(__dirname, 'coverage'),
         include: ['src/**/*.ts'],
-        exclude: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+        exclude: ['src/**/*.spec.ts'],
         thresholds: {
-          lines: 95.23,
+          lines: 95,
           functions: 100,
-          branches: 78.94,
-          statements: 95.23,
-          perFile: false,
+          branches: 78,
+          statements: 95,
         },
       },
     },

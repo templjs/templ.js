@@ -1,26 +1,26 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('fs', () => ({
   writeFileSync: vi.fn(),
 }));
 
-vi.mock('./commands/init.js', () => ({
+vi.mock('../src/commands/init.js', () => ({
   initCommand: vi.fn(),
 }));
 
-vi.mock('./commands/render.js', () => ({
+vi.mock('../src/commands/render.js', () => ({
   renderCommand: vi.fn(),
 }));
 
-vi.mock('./commands/validate.js', () => ({
+vi.mock('../src/commands/validate.js', () => ({
   validateCommand: vi.fn(),
 }));
 
 import { writeFileSync } from 'fs';
-import { main } from './cli';
-import { initCommand } from './commands/init.js';
-import { renderCommand } from './commands/render.js';
-import { validateCommand } from './commands/validate.js';
+import { main } from '../src/cli';
+import { initCommand } from '../src/commands/init.js';
+import { renderCommand } from '../src/commands/render.js';
+import { validateCommand } from '../src/commands/validate.js';
 
 describe('cli-main', () => {
   const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
@@ -29,6 +29,11 @@ describe('cli-main', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.exitCode = undefined;
+  });
+
+  afterAll(() => {
+    stdoutSpy.mockRestore();
+    stderrSpy.mockRestore();
   });
 
   it('renders to stdout when no output path is provided', async () => {

@@ -1061,7 +1061,7 @@ describe('Integration Tests', () => {
       expect(clearedStats.size).toBe(0);
     });
 
-    it('should reuse cached compiled schemas', () => {
+    it('should keep cache size stable when reloading the same schema id', () => {
       const schema: JSONSchema = {
         $id: 'unique-schema-id',
         type: 'object',
@@ -1077,7 +1077,7 @@ describe('Integration Tests', () => {
       validator.loadSchema(schema);
       const stats2 = validator.getCacheStats();
 
-      // Cache size should remain the same (reused)
+      // Cache size remains stable after reloading the same schema id.
       expect(stats2.size).toBe(stats1.size);
     });
   });
@@ -1163,7 +1163,7 @@ describe('Integration Tests', () => {
   });
 
   describe('Metadata Extraction Edge Cases', () => {
-    it('should handle schema with null properties', () => {
+    it('should extract metadata from schema with object properties', () => {
       const schema: JSONSchema = {
         type: 'object',
         properties: {
@@ -1205,7 +1205,7 @@ describe('Integration Tests', () => {
       expect(metadata).toBeDefined();
     });
 
-    it('should handles mixed array items (tuple)', () => {
+    it('should handle mixed array items (tuple)', () => {
       const schema: JSONSchema = {
         type: 'object',
         properties: {
