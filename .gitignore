@@ -124,8 +124,8 @@ dist
 # monorepo tools
 .nx
 
-# pnpm store
-.pnpm-store/
+# pnpm stores
+.pnpm*/
 
 # -----------------------------------------------------------------------------
 # Python
