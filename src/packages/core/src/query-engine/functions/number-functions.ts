@@ -1,5 +1,5 @@
 /**
- * Number Functions (15 functions)
+ * Number Functions
  *
  * Functions for numeric manipulation including rounding, absolute value,
  * trigonometric functions, and other mathematical operations.
@@ -55,9 +55,7 @@ export const minSignature: FunctionSignature = {
   name: 'min',
   category: 'number',
   description: 'Find minimum value',
-  parameters: [
-    { name: 'numbers', type: 'array|number', required: true, description: 'Numbers to compare' },
-  ],
+  parameters: [{ name: 'other', type: 'number', required: false, description: 'Other numbers' }],
   returnType: 'number',
   examples: ['min(5, 2, 8) → 2', 'min([5, 2, 8]) → 2'],
 };
@@ -66,9 +64,7 @@ export const maxSignature: FunctionSignature = {
   name: 'max',
   category: 'number',
   description: 'Find maximum value',
-  parameters: [
-    { name: 'numbers', type: 'array|number', required: true, description: 'Numbers to compare' },
-  ],
+  parameters: [{ name: 'other', type: 'number', required: false, description: 'Other numbers' }],
   returnType: 'number',
   examples: ['max(5, 2, 8) → 8', 'max([5, 2, 8]) → 8'],
 };
@@ -101,6 +97,80 @@ export const powSignature: FunctionSignature = {
   parameters: [{ name: 'exponent', type: 'number', required: true, description: 'Exponent' }],
   returnType: 'number',
   examples: ['pow(2, 3) → 8', 'pow(5, 2) → 25'],
+};
+
+export const logSignature: FunctionSignature = {
+  name: 'log',
+  category: 'number',
+  description: 'Calculate logarithm of value in optional base',
+  parameters: [
+    { name: 'base', type: 'number', required: false, description: 'Logarithm base (default: e)' },
+  ],
+  returnType: 'number',
+  examples: ['log(8, 2) → 3', 'log(Math.E) → 1'],
+};
+
+export const expSignature: FunctionSignature = {
+  name: 'exp',
+  category: 'number',
+  description: 'Calculate e to the power of value',
+  parameters: [],
+  returnType: 'number',
+  examples: ['exp(1) → 2.718...', 'exp(0) → 1'],
+};
+
+export const sinSignature: FunctionSignature = {
+  name: 'sin',
+  category: 'number',
+  description: 'Calculate sine of value (radians)',
+  parameters: [],
+  returnType: 'number',
+  examples: ['sin(0) → 0'],
+};
+
+export const cosSignature: FunctionSignature = {
+  name: 'cos',
+  category: 'number',
+  description: 'Calculate cosine of value (radians)',
+  parameters: [],
+  returnType: 'number',
+  examples: ['cos(0) → 1'],
+};
+
+export const tanSignature: FunctionSignature = {
+  name: 'tan',
+  category: 'number',
+  description: 'Calculate tangent of value (radians)',
+  parameters: [],
+  returnType: 'number',
+  examples: ['tan(0) → 0'],
+};
+
+export const sumSignature: FunctionSignature = {
+  name: 'sum',
+  category: 'number',
+  description: 'Sum all numbers in an array',
+  parameters: [],
+  returnType: 'number',
+  examples: ['sum([1, 2, 3]) → 6'],
+};
+
+export const avgSignature: FunctionSignature = {
+  name: 'avg',
+  category: 'number',
+  description: 'Compute average of numbers in an array',
+  parameters: [],
+  returnType: 'number',
+  examples: ['avg([2, 4, 6]) → 4'],
+};
+
+export const productSignature: FunctionSignature = {
+  name: 'product',
+  category: 'number',
+  description: 'Multiply all numbers in an array',
+  parameters: [],
+  returnType: 'number',
+  examples: ['product([2, 3, 4]) → 24'],
 };
 
 export const signSignature: FunctionSignature = {
@@ -217,6 +287,68 @@ export const pow: FilterFunction = (value: unknown, exponent: unknown): number =
   return Math.pow(Number(value), Number(exponent));
 };
 
+export const log: FilterFunction = (value: unknown, base?: unknown): number => {
+  const num = Number(value);
+  if (base === undefined) {
+    return Math.log(num);
+  }
+
+  const baseNumber = Number(base);
+  if (baseNumber <= 0 || baseNumber === 1) {
+    throw new Error('log base must be greater than 0 and not equal to 1');
+  }
+
+  return Math.log(num) / Math.log(baseNumber);
+};
+
+export const exp: FilterFunction = (value: unknown): number => {
+  return Math.exp(Number(value));
+};
+
+export const sin: FilterFunction = (value: unknown): number => {
+  return Math.sin(Number(value));
+};
+
+export const cos: FilterFunction = (value: unknown): number => {
+  return Math.cos(Number(value));
+};
+
+export const tan: FilterFunction = (value: unknown): number => {
+  return Math.tan(Number(value));
+};
+
+export const sum: FilterFunction = (value: unknown): number => {
+  if (!Array.isArray(value)) {
+    throw new Error('sum expects an array');
+  }
+
+  return value.reduce((acc, item) => acc + Number(item), 0);
+};
+
+export const avg: FilterFunction = (value: unknown): number => {
+  if (!Array.isArray(value)) {
+    throw new Error('avg expects an array');
+  }
+
+  if (value.length === 0) {
+    return 0;
+  }
+
+  return value.reduce((acc, item) => acc + Number(item), 0) / value.length;
+};
+
+export const product: FilterFunction = (value: unknown): number => {
+  if (!Array.isArray(value)) {
+    throw new Error('product expects an array');
+  }
+
+  if (value.length === 0) {
+    return 0;
+  }
+
+  return value.reduce((acc, item) => acc * Number(item), 1);
+};
+
 export const sign: FilterFunction = (value: unknown): number => {
   return Math.sign(Number(value));
 };
@@ -257,6 +389,14 @@ export const numberFunctions = [
   { signature: clampSignature, handler: clamp },
   { signature: sqrtSignature, handler: sqrt },
   { signature: powSignature, handler: pow },
+  { signature: logSignature, handler: log },
+  { signature: expSignature, handler: exp },
+  { signature: sinSignature, handler: sin },
+  { signature: cosSignature, handler: cos },
+  { signature: tanSignature, handler: tan },
+  { signature: sumSignature, handler: sum },
+  { signature: avgSignature, handler: avg },
+  { signature: productSignature, handler: product },
   { signature: signSignature, handler: sign },
   { signature: toFixedSignature, handler: toFixed },
   { signature: parseIntSignature, handler: parseInt },

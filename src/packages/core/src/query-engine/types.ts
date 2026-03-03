@@ -20,7 +20,7 @@ export interface FunctionParameter {
  */
 export interface FunctionSignature {
   name: string;
-  category: 'string' | 'number' | 'datetime' | 'array' | 'object';
+  category: 'string' | 'number' | 'datetime' | 'array' | 'object' | 'utility';
   description: string;
   parameters: FunctionParameter[];
   returnType: string;
@@ -41,7 +41,7 @@ export interface TypeInfo {
  * Metadata about available queries, functions, and variables.
  */
 export interface QueryMetadata {
-  functions: Map<string, FunctionSignature>;
+  functions: Map<string, FunctionSignature[]>;
   variables: Map<string, TypeInfo>;
 }
 

@@ -19,6 +19,9 @@ export * from './parser';
 
 // Export schema validation
 export * from './schema';
+export * from './query-engine/query-engine';
+export type * from './query-engine/types';
+import { QueryEngine } from './query-engine/query-engine';
 
 /**
  * Placeholder lexer function - to be implemented
@@ -59,16 +62,10 @@ export function createRenderer() {
 }
 
 /**
- * Placeholder query engine function - to be implemented
+ * Create a fully configured query engine instance.
  */
 export function createQueryEngine() {
-  return {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    query: (_data: any, _path: string) => {
-      // TODO: Implement query engine
-      return null;
-    },
-  };
+  return new QueryEngine();
 }
 
 /**

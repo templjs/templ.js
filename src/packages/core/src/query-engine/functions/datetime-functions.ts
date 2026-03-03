@@ -1,5 +1,5 @@
 /**
- * DateTime Functions (12 functions)
+ * DateTime Functions
  *
  * Functions for date and time manipulation including formatting,
  * parsing, arithmetic, and timezone operations.
@@ -108,6 +108,44 @@ export const getMonthSignature: FunctionSignature = {
   parameters: [],
   returnType: 'number',
   examples: ['getMonth(1708300800000) → 1'],
+};
+
+export const getDaySignature: FunctionSignature = {
+  name: 'getDay',
+  category: 'datetime',
+  description: 'Get day of month from date',
+  parameters: [],
+  returnType: 'number',
+  examples: ['getDay(1708300800000) → 18'],
+};
+
+export const getHourSignature: FunctionSignature = {
+  name: 'getHour',
+  category: 'datetime',
+  description: 'Get hour (0-23) from date',
+  parameters: [],
+  returnType: 'number',
+  examples: ['getHour(1708300800000) → 12'],
+};
+
+export const timezoneSignature: FunctionSignature = {
+  name: 'timezone',
+  category: 'datetime',
+  description: 'Convert date to timezone-formatted string',
+  parameters: [
+    { name: 'tz', type: 'string', required: true, description: 'IANA timezone identifier' },
+  ],
+  returnType: 'string',
+  examples: ['timezone(1708300800000, "America/New_York") → "2024-02-18 07:00:00"'],
+};
+
+export const timestampSignature: FunctionSignature = {
+  name: 'timestamp',
+  category: 'datetime',
+  description: 'Get Unix timestamp in milliseconds',
+  parameters: [],
+  returnType: 'number',
+  examples: ['timestamp("2024-02-18T12:00:00Z") → 1708257600000'],
 };
 
 export const getDateSignature: FunctionSignature = {
@@ -226,6 +264,48 @@ export const getMonth: FilterFunction = (value: unknown): number => {
   return new Date(Math.round(Number(timestamp))).getMonth();
 };
 
+export const getDay: FilterFunction = (value: unknown): number => {
+  const timestamp = typeof value === 'number' ? value : ((value as any).getTime?.() ?? 0);
+  return new Date(Math.round(Number(timestamp))).getDate();
+};
+
+export const getHour: FilterFunction = (value: unknown): number => {
+  const timestamp = typeof value === 'number' ? value : ((value as any).getTime?.() ?? 0);
+  return new Date(Math.round(Number(timestamp))).getHours();
+};
+
+export const timezone: FilterFunction = (value: unknown, tz: unknown): string => {
+  const timestamp = typeof value === 'number' ? value : ((value as any).getTime?.() ?? 0);
+  const timeZone = String(tz);
+  const date = new Date(Math.round(Number(timestamp)));
+
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(date);
+  const lookup = new Map(parts.map((part) => [part.type, part.value]));
+
+  return `${lookup.get('year')}-${lookup.get('month')}-${lookup.get('day')} ${lookup.get('hour')}:${lookup.get('minute')}:${lookup.get('second')}`;
+};
+
+export const timestamp: FilterFunction = (value: unknown): number => {
+  if (typeof value === 'number') {
+    return value;
+  }
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+
+  return new Date(String(value)).getTime();
+};
+
 export const getDate: FilterFunction = (value: unknown): number => {
   const timestamp = typeof value === 'number' ? value : ((value as any).getTime?.() ?? 0);
   return new Date(Math.round(Number(timestamp))).getDate();
@@ -267,6 +347,10 @@ export const datetimeFunctions = [
   { signature: addMinutesSignature, handler: addMinutes },
   { signature: getYearSignature, handler: getYear },
   { signature: getMonthSignature, handler: getMonth },
+  { signature: getDaySignature, handler: getDay },
+  { signature: getHourSignature, handler: getHour },
+  { signature: timezoneSignature, handler: timezone },
+  { signature: timestampSignature, handler: timestamp },
   { signature: getDateSignature, handler: getDate },
   { signature: getDayOfWeekSignature, handler: getDayOfWeek },
   { signature: toISOSignature, handler: toISO },
