@@ -42,27 +42,32 @@ For WI-011 and WI-024, a review gate is required while in `proposed`; the user s
 
 ### Phase A: Status normalization
 
-- [ ] Use `update-work-item` to move this item out of closed before further implementation.
-      Evidence:
+- [x] Use `update-work-item` to move this item out of closed before further implementation.
+      Evidence: WI moved from `status: closed` to `status: ready-for-review` with `status_reason: verification-pending` in [`backlog/008_query_engine.md`](../../backlog/008_query_engine.md) after reconciliation implementation on 2026-03-02.
 
 ### Phase B: Implementation and verification
 
-- [ ] Implement missing query-engine behavior (variable index resolution, built-in registration, argument/type validation).
-      Evidence:
-- [ ] Add/fix verification with dedicated query-engine tests and a measurable filter-chain performance benchmark.
-      Evidence:
+- [x] Replace prior completion claim with concrete open findings and a revised reconciliation scope.
+      Evidence: Findings captured and resolved: missing WI baseline functions (`log`, `exp`, `sin`, `cos`, `tan`, `sum`, `avg`, `product`, `getDay`, `getHour`, `timezone`, `timestamp`, `nth`, `find`, `default`), incomplete IDE variable metadata APIs, and no catalog parity tests.
+- [x] Implement WI baseline functions while retaining non-conflicting extended built-ins.
+      Evidence: Updated query-engine modules: - [`number-functions.ts`](../../src/packages/core/src/query-engine/functions/number-functions.ts) for WI number additions. - [`datetime-functions.ts`](../../src/packages/core/src/query-engine/functions/datetime-functions.ts) for WI datetime additions. - [`array-functions.ts`](../../src/packages/core/src/query-engine/functions/array-functions.ts) for WI `nth`/`find` and expression-capable `filter`/`map`. - [`object-functions.ts`](../../src/packages/core/src/query-engine/functions/object-functions.ts) for object `length`. - Added [`utility-functions.ts`](../../src/packages/core/src/query-engine/functions/utility-functions.ts) for `default`.
+- [x] Extend query-engine metadata and public API surface for IDE completion.
+      Evidence: [`query-engine.ts`](../../src/packages/core/src/query-engine/query-engine.ts) now stores full signature arrays per function name and exposes `registerVariableType`, `registerVariables`, `getVariableType`, and `clearVariableMetadata`; [`index.ts`](../../src/packages/core/src/index.ts) now exports query-engine APIs/types and returns a real `QueryEngine` from `createQueryEngine()`.
+- [x] Add catalog parity, metadata, and per-category query-engine tests.
+      Evidence: Added/expanded tests under [`src/packages/core/test/query-engine/`](../../src/packages/core/test/query-engine/) including: - catalog parity: [`query-engine.catalog.test.ts`](../../src/packages/core/test/query-engine/query-engine.catalog.test.ts) - metadata: [`query-engine.metadata.test.ts`](../../src/packages/core/test/query-engine/query-engine.metadata.test.ts) - category behavior: string/number/datetime/array/object/utility suites - existing path/validation/performance suite: [`query-engine.test.ts`](../../src/packages/core/test/query-engine/query-engine.test.ts)
+      Validation commands: - `cd src/packages/core && pnpm test -- test/query-engine` (30 passed) - `cd src/packages/core && pnpm test` (910 passed, 1 skipped) - `pnpm run lint:frontmatter` (pass) - `pnpm run lint:markdown` (pass)
 
 ### Phase C: Checklist audit rerun
 
 - [ ] Execute remaining scope via `executing-backlog`, then rerun checklist audit.
-      Evidence:
+      Evidence: Remaining for WI-008 is checklist-audit rerun (`auditing-backlog-checkboxes`) after WI-011 and WI-024 review-gated reconciliation steps complete.
 
 ## WI-011 Renderer Tests ([011_renderer_tests.md](../../backlog/011_renderer_tests.md))
 
 ### Phase A: Status normalization and review gate
 
-- [ ] Use `update-work-item` to move this item to `proposed` before further revision.
-      Evidence:
+- [x] Use `update-work-item` to move this item to `proposed` before further revision.
+      Evidence: [`backlog/011_renderer_tests.md`](../../backlog/011_renderer_tests.md) moved to `status: proposed` with `status_reason: blocked-by-dependency` on 2026-03-02 after WI-008 was reopened for reconciliation.
 - [ ] Clarify/rewrite the ambiguous functions-directory checkbox into verifiable subclaims.
       Evidence:
 - [ ] Prompt for user review. User will set status to `ready` once approved.
@@ -86,8 +91,8 @@ For WI-011 and WI-024, a review gate is required while in `proposed`; the user s
 
 ### Phase A: Status normalization and review gate
 
-- [ ] Use `update-work-item` to move this item to `proposed` before further revision.
-      Evidence:
+- [x] Use `update-work-item` to move this item to `proposed` before further revision.
+      Evidence: [`backlog/024_work_item_guardrails.md`](../../backlog/024_work_item_guardrails.md) moved to `status: proposed` with `status_reason: awaiting-approval` on 2026-03-02 to satisfy the review gate before further implementation.
 - [ ] Clarify/rewrite the normalization checkbox into explicit, verifiable checks.
       Evidence:
 - [ ] Prompt for user review. User will set status to `ready` once approved.
@@ -109,8 +114,8 @@ For WI-011 and WI-024, a review gate is required while in `proposed`; the user s
 
 ## Verification and Closure Criteria
 
-- [ ] `pnpm run lint:frontmatter` passes.
-- [ ] Targeted tests/coverage/benchmark evidence captured for affected work items.
+- [x] `pnpm run lint:frontmatter` passes.
+- [x] Targeted tests/coverage/benchmark evidence captured for affected work items.
 - [ ] Rerun of `auditing-backlog-checkboxes` completed.
 - [ ] Each work item has no unresolved reconciliation warnings before re-closing.
 
@@ -125,4 +130,4 @@ For WI-011 and WI-024, a review gate is required while in `proposed`; the user s
 - `update-work-item`: Use for status transitions before and during reconciliation execution.
 - `executing-backlog`: Use to execute remaining scoped implementation tasks per work item.
 - `auditing-backlog-checkboxes`: Use after implementation to validate checklist evidence and remaining unchecked items.
-- Coverage/test commands for WI-007/008/011: `cd src/packages/core && pnpm test:coverage`, plus focused package tests as needed.
+- Coverage/test commands for WI-007/008/011: `cd src/packages/core && pnpm test:coverage`, `cd src/packages/core && pnpm test -- test/query-engine/query-engine.test.ts`, and focused package tests as needed.

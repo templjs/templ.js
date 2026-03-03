@@ -2,9 +2,10 @@
 id: wi-024
 type: work-item
 subtype: epic
-lifecycle: active
+lifecycle: draft
 title: '024: Implement Work Item Validation & Guardrails'
-status: ready-for-review
+status: proposed
+status_reason: awaiting-approval
 priority: critical
 estimated: 12
 assignee: ''
