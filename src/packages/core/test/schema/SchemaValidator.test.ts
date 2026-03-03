@@ -734,6 +734,170 @@ describe('Schema Inference', () => {
       const merged = mergeSchemas();
       expect(merged).toEqual({});
     });
+
+    it('should merge arrays with same element type', () => {
+      const schema1: JSONSchema = {
+        type: 'array',
+        items: { type: 'string' },
+      };
+
+      const schema2: JSONSchema = {
+        type: 'array',
+        items: { type: 'string' },
+      };
+
+      const merged = mergeSchemas(schema1, schema2);
+
+      expect(merged.type).toBe('array');
+      expect(merged.items?.type).toBe('string');
+    });
+
+    it('should merge arrays with different element types', () => {
+      const schema1: JSONSchema = {
+        type: 'array',
+        items: { type: 'string' },
+      };
+
+      const schema2: JSONSchema = {
+        type: 'array',
+        items: { type: 'integer' },
+      };
+
+      const merged = mergeSchemas(schema1, schema2);
+
+      expect(merged.type).toBe('array');
+    });
+
+    it('should merge object properties recursively', () => {
+      const schema1: JSONSchema = {
+        type: 'object',
+        properties: {
+          user: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+            },
+          },
+        },
+      };
+
+      const schema2: JSONSchema = {
+        type: 'object',
+        properties: {
+          user: {
+            type: 'object',
+            properties: {
+              age: { type: 'integer' },
+            },
+          },
+        },
+      };
+
+      const merged = mergeSchemas(schema1, schema2);
+
+      expect(merged.properties?.user.properties?.name).toBeDefined();
+      expect(merged.properties?.user.properties?.age).toBeDefined();
+    });
+
+    it('should find common required properties', () => {
+      const schema1: JSONSchema = {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          age: { type: 'integer' },
+        },
+        required: ['name', 'age'],
+      };
+
+      const schema2: JSONSchema = {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          email: { type: 'string' },
+        },
+        required: ['name', 'email'],
+      };
+
+      const merged = mergeSchemas(schema1, schema2);
+
+      expect(merged.required).toContain('name');
+      expect(merged.required?.length).toBe(1);
+    });
+
+    it('should handle object without required property', () => {
+      const schema1: JSONSchema = {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+        },
+      };
+
+      const schema2: JSONSchema = {
+        type: 'object',
+        properties: {
+          age: { type: 'integer' },
+        },
+      };
+
+      const merged = mergeSchemas(schema1, schema2);
+
+      expect(merged.required).toBeUndefined();
+    });
+
+    it('should merge arrays with tuple items', () => {
+      const schema1: JSONSchema = {
+        type: 'array',
+        items: [{ type: 'string' }, { type: 'integer' }],
+      };
+
+      const schema2: JSONSchema = {
+        type: 'array',
+        items: [{ type: 'string' }, { type: 'number' }],
+      };
+
+      const merged = mergeSchemas(schema1, schema2);
+
+      expect(merged.type).toBe('array');
+    });
+
+    it('should merge arrays with empty items', () => {
+      const schema1: JSONSchema = {
+        type: 'array',
+      };
+
+      const schema2: JSONSchema = {
+        type: 'array',
+      };
+
+      const merged = mergeSchemas(schema1, schema2);
+
+      expect(merged.type).toBe('array');
+    });
+
+    it('should handle mixed type arrays', () => {
+      const schema1: JSONSchema = {
+        type: 'array',
+        items: { type: 'string' },
+      };
+
+      const schema2: JSONSchema = {
+        type: 'array',
+        items: { type: ['string', 'integer'] },
+      };
+
+      const merged = mergeSchemas(schema1, schema2);
+
+      expect(merged.type).toBe('array');
+    });
+
+    it('should merge with non-array type property', () => {
+      const schema1: JSONSchema = { type: 'object' };
+      const schema2: JSONSchema = { type: 'object' };
+
+      const merged = mergeSchemas(schema1, schema2);
+
+      expect(merged.type).toBe('object');
+    });
   });
 });
 
@@ -862,5 +1026,250 @@ describe('Integration Tests', () => {
     expect(paths.has('company.departments[0].employees[0].firstName')).toBe(true);
 
     expect(validator.validateQueryPath('company.departments[0].name').valid).toBe(true);
+  });
+
+  describe('Cache Management', () => {
+    it('should track cache statistics', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+        },
+      };
+
+      const validator = new SchemaValidator(schema);
+      const stats = validator.getCacheStats();
+
+      expect(stats.size).toBeGreaterThan(0);
+      expect(stats.keys).toHaveLength(stats.size);
+    });
+
+    it('should clear compiled schema cache', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+        },
+      };
+
+      const validator = new SchemaValidator(schema);
+      const initialStats = validator.getCacheStats();
+      expect(initialStats.size).toBeGreaterThan(0);
+
+      validator.clearCache();
+      const clearedStats = validator.getCacheStats();
+      expect(clearedStats.size).toBe(0);
+    });
+
+    it('should reuse cached compiled schemas', () => {
+      const schema: JSONSchema = {
+        $id: 'unique-schema-id',
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+        },
+      };
+
+      const validator = new SchemaValidator(schema);
+      const stats1 = validator.getCacheStats();
+
+      // Load the same schema again
+      validator.loadSchema(schema);
+      const stats2 = validator.getCacheStats();
+
+      // Cache size should remain the same (reused)
+      expect(stats2.size).toBe(stats1.size);
+    });
+  });
+
+  describe('Error Message Formatting', () => {
+    it('should format enum validation errors', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          status: { enum: ['active', 'inactive', 'pending'] },
+        },
+      };
+
+      const validator = new SchemaValidator(schema);
+      const result = validator.validate({ status: 'invalid' });
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+    });
+
+    it('should format additionalProperties validation errors', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+        },
+        additionalProperties: false,
+      };
+
+      const validator = new SchemaValidator(schema);
+      const result = validator.validate({ name: 'John', extra: 'field' });
+
+      expect(result.valid).toBe(false);
+    });
+
+    it('should format oneOf validation errors', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          value: {
+            oneOf: [{ type: 'string' }, { type: 'number' }],
+          },
+        },
+      };
+
+      const validator = new SchemaValidator(schema);
+      const result = validator.validate({ value: [] });
+
+      expect(result.valid).toBe(false);
+    });
+
+    it('should format array minItems validation error', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          items: {
+            type: 'array',
+            minItems: 2,
+          },
+        },
+      };
+
+      const validator = new SchemaValidator(schema);
+      const result = validator.validate({ items: [1] });
+
+      expect(result.valid).toBe(false);
+    });
+
+    it('should improve format error messages', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          email: { type: 'string', format: 'email' },
+        },
+      };
+
+      const validator = new SchemaValidator(schema);
+      const result = validator.validate({ email: 'invalid-email' });
+
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].message).toMatch(/format|email/i);
+    });
+  });
+
+  describe('Metadata Extraction Edge Cases', () => {
+    it('should handle schema with null properties', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+        },
+      };
+
+      const validator = new SchemaValidator(schema);
+      const metadata = validator.getMetadata();
+
+      expect(metadata).toBeDefined();
+      expect(Object.keys(metadata).length).toBeGreaterThan(0);
+    });
+
+    it('should handle array with no items schema', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          items: {
+            type: 'array',
+          },
+        },
+      };
+
+      const validator = new SchemaValidator(schema);
+      const metadata = validator.getMetadata();
+
+      expect(metadata.items).toBeDefined();
+    });
+
+    it('should handle object with no properties', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+      };
+
+      const validator = new SchemaValidator(schema);
+      const metadata = validator.getMetadata();
+
+      expect(metadata).toBeDefined();
+    });
+
+    it('should handles mixed array items (tuple)', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          tuple: {
+            type: 'array',
+            items: [{ type: 'string' }, { type: 'number' }],
+          },
+        },
+      };
+
+      const validator = new SchemaValidator(schema);
+      const metadata = validator.getMetadata();
+
+      expect(metadata.tuple).toBeDefined();
+    });
+
+    it('should extract deeply nested properties', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          level1: {
+            type: 'object',
+            properties: {
+              level2: {
+                type: 'object',
+                properties: {
+                  level3: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      };
+
+      const validator = new SchemaValidator(schema);
+      const metadata = validator.getMetadata();
+
+      expect(metadata['level1.level2.level3']).toBeDefined();
+    });
+
+    it('should track property metadata at nested levels', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          user: {
+            type: 'object',
+            properties: {
+              profile: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                },
+                required: ['name'],
+              },
+            },
+          },
+        },
+      };
+
+      const validator = new SchemaValidator(schema);
+      const metadata = validator.getMetadata();
+
+      expect(metadata['user.profile']).toBeDefined();
+      expect(metadata['user.profile'].required).toBe(true);
+    });
   });
 });
