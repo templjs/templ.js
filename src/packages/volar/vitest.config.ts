@@ -12,10 +12,10 @@ export default mergeConfig(
         include: ['src/**/*.ts'],
         exclude: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
         thresholds: {
-          lines: 92,
-          functions: 92,
+          lines: 97.46,
+          functions: 96.42,
           branches: 92,
-          statements: 92,
+          statements: 94.18,
         },
       },
     },
