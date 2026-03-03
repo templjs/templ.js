@@ -4,7 +4,7 @@ type: work-item
 subtype: task
 title: '16: Write VS Code Extension Tests (50+ tests)'
 lifecycle: active
-status: ready
+status: in-progress
 priority: critical
 estimated: 8
 assignee: ''
