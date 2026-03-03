@@ -252,10 +252,12 @@ const BUILTIN_FILTERS: Record<string, FilterFunction> = {
  * Filter application engine
  */
 export class FilterEngine {
+  private filters = createBuiltinFilterMap();
+
   constructor(initialFilters?: Record<string, FilterFunction>) {
     if (initialFilters) {
       Object.entries(initialFilters).forEach(([name, fn]) => {
-        filterRegistry.register(name, fn);
+        this.filters.set(name, fn);
       });
     }
   }
@@ -264,14 +266,14 @@ export class FilterEngine {
    * Register a filter function
    */
   registerFilter(name: string, fn: FilterFunction): void {
-    filterRegistry.register(name, fn);
+    this.filters.set(name, fn);
   }
 
   /**
    * Apply a single filter to a value
    */
   applyFilter(name: string, value: AnyValue, args: AnyValue[] = []): AnyValue {
-    const filter = filterRegistry.get(name);
+    const filter = this.filters.get(name);
     if (!filter) {
       throw new Error(`Unknown filter: ${name}`);
     }
@@ -316,33 +318,10 @@ export class FilterEngine {
    * Get all registered filter names
    */
   getFilterNames(): string[] {
-    return Array.from(filterRegistry.keys());
+    return Array.from(this.filters.keys());
   }
 }
 
-interface FilterRegistry {
-  register(name: string, validator: FilterFunction): void;
-  get(name: string): FilterFunction | undefined;
-  has(name: string): boolean;
+export function createBuiltinFilterMap(): Map<string, FilterFunction> {
+  return new Map(Object.entries(BUILTIN_FILTERS));
 }
-
-class FilterRegistryImpl implements FilterRegistry {
-  keys(): Iterable<string> | ArrayLike<string> {
-    return this.filters.keys();
-  }
-  private filters = new Map(Object.entries(BUILTIN_FILTERS));
-
-  register(name: string, filter: FilterFunction) {
-    this.filters.set(name, filter);
-  }
-
-  get(name: string) {
-    return this.filters.get(name);
-  }
-
-  has(name: string) {
-    return this.filters.has(name);
-  }
-}
-
-export const filterRegistry = new FilterRegistryImpl();

@@ -11,11 +11,12 @@ import type {
 } from '../parser/types';
 import type { RenderContext, RenderError } from './types';
 import { VariableResolver } from './variable-resolver';
-import { filterRegistry } from './filter-engine';
+import { createBuiltinFilterMap } from './filter-engine';
 
 type AnyValue = any;
 
 const variableResolver = new VariableResolver();
+const builtinFilters = createBuiltinFilterMap();
 
 /**
  * Evaluate a literal expression
@@ -105,7 +106,7 @@ export function evaluateVariable(node: VariableNode, context: RenderContext): An
 export function evaluateFilter(expr: FilterNode, context: RenderContext): AnyValue {
   let value = evaluateExpression(expr.source, context);
   for (const filter of expr.filters) {
-    const fn = filterRegistry.get(filter.name);
+    const fn = context.filters.get(filter.name) ?? builtinFilters.get(filter.name);
     if (typeof fn === 'function') {
       const args =
         filter.args?.map((arg: ExpressionNode) => evaluateExpression(arg, context)) ?? [];

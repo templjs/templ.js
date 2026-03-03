@@ -263,13 +263,19 @@ export class QueryEngine {
   }
 
   private canAcceptArgs(signature: FunctionSignature, args: unknown[]): boolean {
+    const variadicParam = signature.parameters.at(-1);
+    const hasVariadic = Boolean(variadicParam?.variadic);
     const requiredCount = signature.parameters.filter((parameter) => parameter.required).length;
-    if (args.length < requiredCount || args.length > signature.parameters.length) {
+    if (args.length < requiredCount) {
+      return false;
+    }
+
+    if (!hasVariadic && args.length > signature.parameters.length) {
       return false;
     }
 
     for (let i = 0; i < args.length; i++) {
-      const parameter = signature.parameters[i];
+      const parameter = signature.parameters[i] ?? (hasVariadic ? variadicParam : undefined);
       if (parameter && !this.isTypeMatch(args[i], parameter.type)) {
         return false;
       }
@@ -279,6 +285,8 @@ export class QueryEngine {
   }
 
   private validateFilterArgs(signature: FunctionSignature, args: unknown[]): void {
+    const variadicParam = signature.parameters.at(-1);
+    const hasVariadic = Boolean(variadicParam?.variadic);
     const requiredCount = signature.parameters.filter((parameter) => parameter.required).length;
     if (args.length < requiredCount) {
       throw new Error(
@@ -286,14 +294,14 @@ export class QueryEngine {
       );
     }
 
-    if (args.length > signature.parameters.length) {
+    if (!hasVariadic && args.length > signature.parameters.length) {
       throw new Error(
         `Filter "${signature.name}" expects at most ${signature.parameters.length} argument(s), received ${args.length}`
       );
     }
 
     for (let i = 0; i < args.length; i++) {
-      const parameter = signature.parameters[i];
+      const parameter = signature.parameters[i] ?? (hasVariadic ? variadicParam : undefined);
       if (!parameter) {
         continue;
       }
