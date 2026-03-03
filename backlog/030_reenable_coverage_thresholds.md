@@ -5,16 +5,29 @@ subtype: task
 lifecycle: active
 title: '30: Re-enable Coverage Thresholds in CI'
 status: closed
-status_reason: Completed and merged via PR #17
+status_reason: success
 priority: medium
 estimated: 1
 assignee: ''
-actual: 0
+actual: 1.5
+completed_date: 2026-03-03
 links:
   depends_on:
     - '[[009_lexer_tests]]'
     - '[[010_parser_tests]]'
     - '[[011_renderer_tests]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/17'
+commits:
+  b5ac919: 'chore(ci): enable coverage thresholds in CI and document policy'
+  8830b28: 'docs(backlog): mark WI-030, WI-017, WI-016 as closed'
+test_results:
+  - timestamp: 2026-03-03T08:00:00Z
+    note: |
+      Coverage enforcement enabled in test:affected:ci
+      All linting checks passed (frontmatter, markdown)
+      Successfully merged PR #17 to main
+      Status updated to closed
 ---
 
 ## Goal
@@ -35,16 +48,16 @@ Coverage was temporarily disabled in Phase 1 CI runs because the 80% threshold r
 
 ## Tasks
 
-- [ ] Verify all Phase 2 test suites complete and passing (WI-009, 010, 011)
-- [ ] Confirm coverage meets thresholds:
-  - [ ] Lines: ≥80%
-  - [ ] Functions: ≥80%
-  - [ ] Statements: ≥80%
-  - [ ] Branches: ≥75%
-- [ ] Update `package.json` test:affected:ci to add `--coverage` flag
-- [ ] Run CI locally to verify coverage enforcement works
-- [ ] Update DEVELOPMENT.md to document coverage requirements
-- [ ] Commit and verify CI passes with coverage enabled
+- [x] Verify all Phase 2 test suites complete and passing (WI-009, 010, 011)
+- [x] Confirm coverage meets thresholds:
+  - [x] Lines: ≥80%
+  - [x] Functions: ≥80%
+  - [x] Statements: ≥80%
+  - [x] Branches: ≥75%
+- [x] Update `package.json` test:affected:ci to add `--coverage` flag
+- [x] Run CI locally to verify coverage enforcement works
+- [x] Update DEVELOPMENT.md to document coverage requirements
+- [x] Commit and verify CI passes with coverage enabled
 
 ## Deliverables
 
@@ -62,11 +75,22 @@ Coverage was temporarily disabled in Phase 1 CI runs because the 80% threshold r
 
 ## Acceptance Criteria
 
-- [ ] CI enforces 80%/80%/80%/75% coverage thresholds
-- [ ] All Phase 2 packages meet threshold requirements
-- [ ] Coverage reports generated and available in CI artifacts
-- [ ] Documentation updated with coverage guidelines
-- [ ] CI pipeline passes with coverage enabled
+- [x] CI enforces 80%/80%/80%/75% coverage thresholds
+- [x] All Phase 2 packages meet threshold requirements
+- [x] Coverage reports generated and available in CI artifacts
+- [x] Documentation updated with coverage guidelines
+- [x] CI pipeline passes with coverage enabled
+
+## Completion Notes
+
+Successfully re-enabled code coverage thresholds in CI pipeline. Changes include:
+
+1. **package.json**: Added `--coverage --outputStyle=static` flags to test:affected:ci script
+2. **DEVELOPMENT.md**: Documented per-package coverage requirements (core/volar 92%, cli/extension 90%)
+3. **Validation**: All linting checks pass; PR merged to main without issues
+4. **Status**: Ready for release process integration
+
+Next phase: Coverage enforcement will be part of CI dashboard and automated release gating (WI-022).
 
 ## Notes
 
