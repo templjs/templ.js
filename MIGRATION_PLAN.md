@@ -66,7 +66,7 @@ All planning artifacts are committed and stable:
 ### Phase 3: VS Code Extension (Weeks 5-6)
 
 **Deliverable**: Volar plugin with diagnostics, completion, hover  
-**Effort**: 58 hours
+**Effort**: 78 hours
 
 **Work Items**:
 
@@ -76,25 +76,28 @@ All planning artifacts are committed and stable:
 - [[028 Implement Embedded Language Support]]
 - [[014 Implement Diagnostics]]
 - [[015 Implement IntelliSense]]
-- [[016 Write VS Code Extension Tests (50+)]]
+- [[016 Extension Activation & Server Tests (MVP)]] ✅
+- [[031 Write VS Code Language Feature Tests]]
 
-**Success**: Extension activates; diagnostics <200ms latency; IntelliSense provides completions
+**Success**: Extension activates; diagnostics <200ms latency; IntelliSense provides completions; 50+ tests passing
 
 ---
 
 ### Phase 4: CLI Tool (Week 7)
 
-**Deliverable**: render/validate/init commands + watch mode  
-**Effort**: 26 hours
+**Deliverable**: render/validate/init commands + watch mode + config support  
+**Effort**: 46 hours
 
 **Work Items**:
 
-- [[017 Implement CLI Commands]]
+- [[017 CLI Commands MVP]] ✅
+- [[032 Add CLI Config File Support]]
+- [[033 Implement Schema Parity (JSON/YAML/TOML)]]
 - [[018 Add Watch Mode and File I/O]]
 - [[029 Implement Signal Handling]]
 - [[019 Write CLI Tests (50+)]]
 
-**Success**: `templjs render` works; watch mode <500ms response; CLI handles pipes and signals
+**Success**: `templjs render` works; config file support; multi-format validation; watch mode <500ms response; CLI handles pipes and signals
 
 ---
 
@@ -119,10 +122,10 @@ All planning artifacts are committed and stable:
 | ----------------------- | -------- | --------------------------------------------- |
 | Infrastructure          | 23h      | ✅ Completed (13/13 tasks, all tests passing) |
 | Core Library            | 98h      | ✅ Completed (937 tests, 96%+ coverage)       |
-| VS Code Extension       | 58h      | Ready to start                                |
-| CLI Tool                | 26h      | Ready to start                                |
+| VS Code Extension       | 78h      | In Progress (WI-016 complete: 15 tests)       |
+| CLI Tool                | 46h      | In Progress (WI-017 complete: 13 tests)       |
 | Documentation & Release | 19h      | Blocked by Phases 3-4                         |
-| **TOTAL**               | **249h** | **Phases 1-2 complete: 121h done (49%)**      |
+| **TOTAL**               | **289h** | **Phases 1-2 complete: 136.5h done (47%)**    |
 
 ---
 
