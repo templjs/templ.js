@@ -18,6 +18,10 @@ export default defineConfig({
       reporter: ['text', 'json', 'html', 'lcov'],
       exclude: [...configDefaults.exclude, '**/.worktrees/**'],
       thresholds: {
+        // Global thresholds are set to measured baselines to catch regressions
+        // while avoiding false failures due to noise in coverage measurements.
+        // Baselines determined from actual measured coverage across all packages (WI-031).
+        // perFile: false - allows some variation across files while catching overall regressions.
         lines: 95,
         functions: 99,
         branches: 75,
