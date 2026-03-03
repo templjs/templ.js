@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync } from 'fs';
 import { isAbsolute, join, normalize, relative, resolve } from 'path';
 import { spawnSync } from 'child_process';
 import * as yaml from 'yaml';
-import Ajv from 'ajv';
+import { Ajv, ValidateFunction } from 'ajv';
 import addFormats from 'ajv-formats';
 import { fileURLToPath } from 'url';
 
@@ -121,7 +121,7 @@ function loadSchemas() {
     { items: { enum: string[] } }
   >;
 
-  const validators = new Map<string, Ajv.ValidateFunction<Record<string, unknown>>>();
+  const validators = new Map<string, ValidateFunction<unknown>>();
   for (const type of supportedTypes) {
     const latestSchemaPath = join(SCHEMA_DIR, 'by-type', type, 'latest.json');
     if (!existsSync(latestSchemaPath)) {
@@ -274,7 +274,17 @@ function validateFrontmatter(): boolean {
       const title = typeof frontmatter.title === 'string' ? frontmatter.title : file;
 
       workItemsMap.set(fileBasename, { status, file, id, title });
-      workItemsMap.set(fileLeafBasename, { status, file, id, title });
+      const existingByLeaf = workItemsMap.get(fileLeafBasename);
+      if (existingByLeaf && existingByLeaf.file !== file) {
+        console.error(
+          `Backlog frontmatter error: multiple work items share the same leaf name "${fileLeafBasename}": ` +
+            `${existingByLeaf.file} and ${file}. ` +
+            'Use a unique file name or reference work items by full path or id.'
+        );
+        hasViolations = true;
+      } else if (!existingByLeaf) {
+        workItemsMap.set(fileLeafBasename, { status, file, id, title });
+      }
       if (typeof frontmatter.id === 'string') {
         workItemsMap.set(id, { status, file, id, title });
       }

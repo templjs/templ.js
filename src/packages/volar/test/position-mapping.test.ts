@@ -5,7 +5,7 @@ import {
   RangeMapper,
   generatePositionMappings,
   type PositionMapping,
-} from './position-mapping';
+} from '../src/position-mapping';
 
 describe('PositionMapper', () => {
   it('should map single position from original to cleaned', () => {
@@ -156,6 +156,54 @@ describe('generatePositionMappings', () => {
 
     expect(cleaned).toBe(original);
   });
+
+  describe('Edge cases', () => {
+    it('should handle consecutive templates', () => {
+      const original = '{{ a }}{{ b }}{{ c }}';
+      const { cleaned } = generatePositionMappings(original, /\{\{[\s\S]*?\}\}/g);
+
+      // All text is templates, so cleaned should be all spaces
+      expect(cleaned.length).toBe(original.length);
+      expect(cleaned.trim().length).toBe(0);
+    });
+
+    it('should handle templates at boundaries', () => {
+      const original = '{{ start }}middle{{ end }}';
+      const { cleaned } = generatePositionMappings(original, /\{\{[\s\S]*?\}\}/g);
+
+      expect(cleaned.length).toBe(original.length);
+      expect(cleaned).toContain('middle');
+    });
+
+    it('should handle Windows line endings (CRLF)', () => {
+      const original = 'line1\r\n{{ var }}\r\nline2';
+      const { cleaned } = generatePositionMappings(original, /\{\{[\s\S]*?\}\}/g);
+
+      const originalLines = original.split('\r\n').length;
+      const cleanedNewlines = (cleaned.match(/\r/g) || []).length;
+      expect(cleanedNewlines).toBe(originalLines - 1);
+    });
+
+    it('should handle mixed content', () => {
+      const original = 'Start\n{% if foo %}\nContent\n{% endif %}\n{{ bar }}\nEnd';
+      const { cleaned, mappings } = generatePositionMappings(original, /\{[%{#][\s\S]*?[%}#]\}/g);
+
+      expect(cleaned.split('\n').length).toBe(original.split('\n').length);
+      expect(mappings.length).toBeGreaterThan(0);
+    });
+
+    it('should maintain letter preservation', () => {
+      const original = 'a{{ x }}b{{ y }}c{{ z }}d';
+      const { cleaned } = generatePositionMappings(original, /\{\{[\s\S]*?\}\}/g);
+
+      // Check that non-template characters are preserved
+      expect(cleaned).toContain('a');
+      expect(cleaned).toContain('b');
+      expect(cleaned).toContain('c');
+      expect(cleaned).toContain('d');
+      expect(cleaned.length).toBe(original.length);
+    });
+  });
 });
 
 describe('RangeMapper', () => {
@@ -197,55 +245,7 @@ describe('RangeMapper', () => {
   });
 });
 
-describe('Edge cases', () => {
-  it('should handle consecutive templates', () => {
-    const original = '{{ a }}{{ b }}{{ c }}';
-    const { cleaned } = generatePositionMappings(original, /\{\{[\s\S]*?\}\}/g);
-
-    // All text is templates, so cleaned should be all spaces
-    expect(cleaned.length).toBe(original.length);
-    expect(cleaned.trim().length).toBe(0);
-  });
-
-  it('should handle templates at boundaries', () => {
-    const original = '{{ start }}middle{{ end }}';
-    const { cleaned } = generatePositionMappings(original, /\{\{[\s\S]*?\}\}/g);
-
-    expect(cleaned.length).toBe(original.length);
-    expect(cleaned).toContain('middle');
-  });
-
-  it('should handle Windows line endings (CRLF)', () => {
-    const original = 'line1\r\n{{ var }}\r\nline2';
-    const { cleaned } = generatePositionMappings(original, /\{\{[\s\S]*?\}\}/g);
-
-    const originalLines = original.split('\r\n').length;
-    const cleanedNewlines = (cleaned.match(/\r/g) || []).length;
-    expect(cleanedNewlines).toBe(originalLines - 1);
-  });
-
-  it('should handle mixed content', () => {
-    const original = 'Start\n{% if foo %}\nContent\n{% endif %}\n{{ bar }}\nEnd';
-    const { cleaned, mappings } = generatePositionMappings(original, /\{[%{#][\s\S]*?[%}#]\}/g);
-
-    expect(cleaned.split('\n').length).toBe(original.split('\n').length);
-    expect(mappings.length).toBeGreaterThan(0);
-  });
-
-  it('should maintain letter preservation', () => {
-    const original = 'a{{ x }}b{{ y }}c{{ z }}d';
-    const { cleaned } = generatePositionMappings(original, /\{\{[\s\S]*?\}\}/g);
-
-    // Check that non-template characters are preserved
-    expect(cleaned).toContain('a');
-    expect(cleaned).toContain('b');
-    expect(cleaned).toContain('c');
-    expect(cleaned).toContain('d');
-    expect(cleaned.length).toBe(original.length);
-  });
-});
-
-describe('Regression: Position mapping with base format diagnostics', () => {
+describe('Integration: Position mapping with base format diagnostics', () => {
   it('should correctly map positions within template blocks (REGRESSION)', () => {
     // This test prevents regression of the bug where positions falling
     // within template blocks weren't properly mapped to adjacent content

@@ -61,12 +61,12 @@ Tokenizer converts template strings into tokens with position metadata. Must sup
 
 ## Acceptance Criteria
 
-- [ ] Default delimiters work correctly
-- [ ] Custom delimiters work correctly
-- [ ] All character positions tracked accurately
-- [ ] 200+ tests passing with 95%+ coverage
-- [ ] Tokenization <1ms for 4KB template
-- [ ] Error messages reference exact positions
+- [x] Default delimiters work correctly
+- [x] Custom delimiters work correctly
+- [x] All character positions tracked accurately
+- [x] 200+ tests passing with 95%+ coverage
+- [x] Tokenization <1ms for 4KB template
+- [x] Error messages reference exact positions
 
 ## Example Test
 

@@ -143,7 +143,7 @@ describe('Diagnostics', () => {
 - **Overall**: 90%+ coverage
 - **Core Library**: 95%+ (parser, renderer, query engine)
 - **CLI**: 85%+ (command handlers, I/O)
-- **Volar Plugin**: 80%+ (language service)
+- **Volar Plugin**: 92%+ (language service)
 
 ### Coverage Configuration
 
@@ -158,7 +158,7 @@ export default defineConfig({
       thresholds: {
         lines: 90,
         functions: 90,
-        branches: 85,
+        branches: 90,
         statements: 90,
       },
     },
@@ -170,10 +170,10 @@ export default defineConfig({
 
 ### Porting Strategy
 
-1. **Tokenizer Tests** (200+ tests) → `packages/core/src/lexer.test.ts`
-2. **Parser Tests** (300+ tests) → `packages/core/src/parser.test.ts`
-3. **Renderer Tests** (200+ tests) → `packages/core/src/renderer.test.ts`
-4. **Linter Tests** (100+ tests) → `packages/volar/tests/diagnostics.test.ts`
+1. **Tokenizer Tests** (200+ tests) → `src/packages/core/test/lexer/lexer.test.ts`
+2. **Parser Tests** (300+ tests) → `src/packages/core/test/parser/parser.test.ts`
+3. **Renderer Tests** (200+ tests) → `src/packages/core/test/renderer/renderer.test.ts`
+4. **Linter Tests** (100+ tests) → `src/packages/volar/tests/diagnostics.test.ts`
 
 ### Example Port
 

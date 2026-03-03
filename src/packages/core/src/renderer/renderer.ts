@@ -10,23 +10,25 @@ import type {
   ExpressionNode,
   IfNode,
   ForNode,
-  VariableNode,
-  BinaryOpNode,
-  FilterNode,
+  TextNode,
+  ExpressionStatementNode,
 } from '../parser/types';
 import type { RenderContext, RenderResult, RenderOptions, RenderError } from './types';
 import { VariableResolver } from './variable-resolver';
-import { FilterEngine } from './filter-engine';
+import { createBuiltinFilterMap } from './filter-engine';
+import { evaluateExpression as evaluateStandaloneExpression } from './evaluators';
 
 type AnyValue = any;
+type NormalizedRenderOptions = Omit<Required<RenderOptions>, 'undefinedValue'> & {
+  undefinedValue: string | undefined;
+};
 
 /**
  * Default render options
  */
-const DEFAULT_OPTIONS: Required<RenderOptions> = {
+const DEFAULT_OPTIONS: NormalizedRenderOptions = {
   throwOnError: false,
-  includeUndefinedVars: false,
-  undefinedValue: '',
+  undefinedValue: undefined,
   maxDepth: 100,
   debug: false,
 };
@@ -38,24 +40,22 @@ const DEFAULT_OPTIONS: Required<RenderOptions> = {
  * filter application, and scope management.
  */
 export class Renderer {
-  private variableResolver: VariableResolver;
-  private filterEngine: FilterEngine;
-  private options: Required<RenderOptions>;
+  private options: NormalizedRenderOptions;
+  private filters: Map<string, (value: AnyValue, ...args: AnyValue[]) => AnyValue>;
 
   /**
    * Create a new renderer instance
    */
   constructor(options?: RenderOptions) {
-    this.variableResolver = new VariableResolver();
-    this.filterEngine = new FilterEngine();
     this.options = { ...DEFAULT_OPTIONS, ...options };
+    this.filters = createBuiltinFilterMap();
   }
 
   /**
    * Register a custom filter
    */
   registerFilter(name: string, fn: (value: AnyValue, ...args: AnyValue[]) => AnyValue): void {
-    this.filterEngine.registerFilter(name, fn);
+    this.filters.set(name, fn);
   }
 
   /**
@@ -69,18 +69,19 @@ export class Renderer {
     const context: RenderContext = {
       data: typeof data === 'object' && data !== null ? data : {},
       scopes: [],
-      filters: new Map(),
+      filters: new Map(this.filters),
       functions: new Map(),
       errors: [],
       options: this.options,
     };
 
     try {
-      const output = this.renderNode(ast, context);
+      const output = renderNode(ast, context);
+      const hasRuntimeError = context.errors.some((e) => e.type === 'runtime_error');
       return {
         output,
         errors: context.errors,
-        success: true,
+        success: !hasRuntimeError,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -99,57 +100,87 @@ export class Renderer {
       };
     }
   }
+}
 
+abstract class BaseNodeRenderer<TNode extends ASTNode> {
+  private static readonly sharedVariableResolver = new VariableResolver();
+
+  protected variableResolver: VariableResolver;
+  public abstract render(node: TNode, context: RenderContext): string;
+
+  constructor() {
+    this.variableResolver = BaseNodeRenderer.sharedVariableResolver;
+  }
   /**
-   * Render a single AST node
+   * Evaluate an expression to a value
    */
-  private renderNode(node: ASTNode, context: RenderContext): string {
-    if (node.type === 'template') {
-      const template = node;
-      return template.children.map((child) => this.renderNode(child, context)).join('');
-    }
+  protected evaluateExpression(expr: ExpressionNode, context: RenderContext): AnyValue {
+    return evaluateStandaloneExpression(expr, context);
+  }
+}
 
-    if (node.type === 'text') {
-      const text = node;
-      return text.value;
-    }
-
-    if (node.type === 'expression_statement') {
-      const expr = node;
-      return this.renderExpression(expr.value, context);
-    }
-
-    if (node.type === 'if') {
-      return this.renderIfStatement(node, context);
-    }
-
-    if (node.type === 'for') {
-      return this.renderForStatement(node, context);
-    }
-
+class UnknownNodeRenderer extends BaseNodeRenderer<ASTNode> {
+  render(node: ASTNode, context: RenderContext): string {
+    context.errors.push({
+      message: `Unknown node type: ${node?.type}`,
+      path: '',
+      type: 'runtime_error',
+    });
     return '';
   }
+}
 
+class ExpressionStatementNodeRenderer extends BaseNodeRenderer<ExpressionStatementNode> {
   /**
-   * Render an if/else statement
+   * Render an expression to a string
    */
-  private renderIfStatement(node: IfNode, context: RenderContext): string {
+  render(expr: ExpressionStatementNode, context: RenderContext): string {
+    if (!expr || typeof expr !== 'object' || typeof expr.type !== 'string') {
+      context.errors.push({
+        message: 'Invalid or missing expression node',
+        path: '',
+        type: 'runtime_error',
+      });
+      return '';
+    }
+    const value = this.evaluateExpression(expr.value, context);
+
+    if (value === undefined && context.options.undefinedValue !== undefined) {
+      return context.options.undefinedValue;
+    }
+
+    return this.variableResolver.toString(value);
+  }
+}
+
+class TemplateNodeRenderer extends BaseNodeRenderer<TemplateNode> {
+  render(node: TemplateNode, context: RenderContext): string {
+    return node.children.map((child: ASTNode) => renderNode(child, context)).join('');
+  }
+}
+
+class TextNodeRenderer extends BaseNodeRenderer<TextNode> {
+  render(node: TextNode, _context: RenderContext): string {
+    return node.value;
+  }
+}
+
+class IfNodeRenderer extends BaseNodeRenderer<IfNode> {
+  render(node: IfNode, context: RenderContext): string {
     const condition = this.evaluateExpression(node.condition, context);
     const isTruthy = this.variableResolver.toBoolean(condition);
 
     if (isTruthy) {
-      return node.body.map((child) => this.renderNode(child, context)).join('');
+      return node.body.map((child) => renderNode(child, context)).join('');
     } else if (node.elseBody) {
-      return node.elseBody.map((child) => this.renderNode(child, context)).join('');
+      return node.elseBody.map((child) => renderNode(child, context)).join('');
     }
 
     return '';
   }
-
-  /**
-   * Render a for loop statement
-   */
-  private renderForStatement(node: ForNode, context: RenderContext): string {
+}
+class ForNodeRenderer extends BaseNodeRenderer<ForNode> {
+  render(node: ForNode, context: RenderContext): string {
     const iterable = this.evaluateExpression(node.iterable, context);
 
     if (!Array.isArray(iterable)) {
@@ -160,7 +191,7 @@ export class Renderer {
         location: { start: node.start, end: node.end },
       };
       context.errors.push(error);
-      if (this.options.throwOnError) {
+      if (context.options.throwOnError) {
         throw new Error(error.message);
       }
       return '';
@@ -169,7 +200,7 @@ export class Renderer {
     const output: string[] = [];
 
     // Check max depth
-    if (context.scopes.length >= this.options.maxDepth) {
+    if (context.scopes.length >= (context.options.maxDepth ?? DEFAULT_OPTIONS.maxDepth)) {
       const error: RenderError = {
         message: 'Maximum nesting depth exceeded',
         path: 'for',
@@ -177,7 +208,7 @@ export class Renderer {
         location: { start: node.start, end: node.end },
       };
       context.errors.push(error);
-      if (this.options.throwOnError) {
+      if (context.options.throwOnError) {
         throw new Error(error.message);
       }
       return '';
@@ -196,7 +227,7 @@ export class Renderer {
       });
 
       // Render the loop body
-      output.push(node.body.map((child) => this.renderNode(child, context)).join(''));
+      output.push(node.body.map((child) => renderNode(child, context)).join(''));
 
       // Pop the scope
       context.scopes.pop();
@@ -204,230 +235,37 @@ export class Renderer {
 
     return output.join('');
   }
-
-  /**
-   * Render an expression to a string
-   */
-  private renderExpression(expr: ExpressionNode, context: RenderContext): string {
-    const value = this.evaluateExpression(expr, context);
-    return this.variableResolver.toString(value);
-  }
-
-  /**
-   * Evaluate an expression to a value
-   */
-  private evaluateExpression(expr: ExpressionNode, context: RenderContext): AnyValue {
-    // Variable reference
-    if (expr.type === 'variable') {
-      return this.resolveVariable(expr, context);
-    }
-
-    // Literal value
-    if (expr.type === 'literal') {
-      const lit = expr;
-      return lit.value;
-    }
-
-    // Filter chain
-    if (expr.type === 'filter') {
-      return this.evaluateFilterChain(expr, context);
-    }
-
-    // Binary operations
-    if (expr.type === 'binary_op') {
-      return this.evaluateBinaryOp(expr, context);
-    }
-
-    // Unary operations
-    if (expr.type === 'unary_op') {
-      const unary = expr as any;
-      const operand = this.evaluateExpression(unary.operand, context);
-
-      switch (unary.operator) {
-        case '!':
-          return !this.variableResolver.toBoolean(operand);
-        case '-':
-          return typeof operand === 'number' ? -operand : operand;
-        case '+':
-          return typeof operand === 'number' ? operand : operand;
-        default:
-          return operand;
-      }
-    }
-
-    return undefined;
-  }
-
-  /**
-   * Resolve a variable reference
-   */
-  private resolveVariable(node: VariableNode, context: RenderContext): AnyValue {
-    const variableName = node.name;
-
-    // Check scopes from innermost to outermost
-    for (let i = context.scopes.length - 1; i >= 0; i--) {
-      const scope = context.scopes[i];
-
-      if (variableName in scope) {
-        let value = scope[variableName];
-
-        // Apply path segments
-        for (const segment of node.path) {
-          if (value === null || value === undefined) {
-            return undefined;
-          }
-
-          if (segment.type === 'property') {
-            value = value[segment.value as string];
-          } else if (segment.type === 'index') {
-            if (typeof segment.value === 'string') {
-              const index = parseInt(segment.value, 10);
-
-              value = value[index];
-            } else {
-              const indexValue = this.evaluateExpression(segment.value, context);
-
-              value = value[indexValue];
-            }
-          }
-        }
-
-        return value;
-      }
-    }
-
-    // Check root data
-    let value: AnyValue = context.data;
-
-    if (!(variableName in value)) {
-      const error: RenderError = {
-        message: `Undefined variable: ${variableName}`,
-        path: variableName,
-        type: 'undefined_variable',
-        location: { start: node.start, end: node.end },
-      };
-      context.errors.push(error);
-      return undefined;
-    }
-
-    value = value[variableName];
-
-    // Apply path segments
-    for (const segment of node.path) {
-      if (value === null || value === undefined) {
-        return undefined;
-      }
-
-      if (segment.type === 'property') {
-        value = value[segment.value as string];
-      } else if (segment.type === 'index') {
-        if (typeof segment.value === 'string') {
-          const index = parseInt(segment.value, 10);
-
-          value = value[index];
-        } else {
-          const indexValue = this.evaluateExpression(segment.value, context);
-
-          value = value[indexValue];
-        }
-      }
-    }
-
-    return value;
-  }
-
-  /**
-   * Evaluate a filter chain expression
-   */
-  private evaluateFilterChain(node: FilterNode, context: RenderContext): AnyValue {
-    let value = this.evaluateExpression(node.source, context);
-
-    for (const filter of node.filters) {
-      try {
-        const args = filter.args.map((arg) => this.evaluateExpression(arg, context));
-        value = this.filterEngine.applyFilter(filter.name, value, args);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        const renderError: RenderError = {
-          message,
-          path: `filter.${filter.name}`,
-          type: 'filter_error',
-          location: { start: node.start, end: node.end },
-        };
-        context.errors.push(renderError);
-        if (this.options.throwOnError) {
-          throw error;
-        }
-      }
-    }
-
-    return value;
-  }
-
-  /**
-   * Evaluate a binary operation
-   */
-  private evaluateBinaryOp(node: BinaryOpNode, context: RenderContext): AnyValue {
-    const left = this.evaluateExpression(node.left, context);
-    const right = this.evaluateExpression(node.right, context);
-
-    switch (node.operator) {
-      // Arithmetic
-      case '+':
-        if (typeof left === 'number' && typeof right === 'number') {
-          return left + right;
-        }
-        // String concatenation
-        return this.variableResolver.toString(left) + this.variableResolver.toString(right);
-      case '-':
-        return typeof left === 'number' && typeof right === 'number' ? left - right : 0;
-      case '*':
-        return typeof left === 'number' && typeof right === 'number' ? left * right : 0;
-      case '/':
-        if (typeof left === 'number' && typeof right === 'number' && right !== 0) {
-          return left / right;
-        }
-        return 0;
-      case '%':
-        if (typeof left === 'number' && typeof right === 'number') {
-          return left % right;
-        }
-        return 0;
-
-      // Comparison
-      case '==':
-        return left == right;
-      case '!=':
-        return left != right;
-      case '===':
-        return left === right;
-      case '!==':
-        return left !== right;
-      case '<':
-        return (left as number) < (right as number);
-      case '<=':
-        return (left as number) <= (right as number);
-      case '>':
-        return (left as number) > (right as number);
-      case '>=':
-        return (left as number) >= (right as number);
-
-      // Logical
-      case '&&':
-        return this.variableResolver.toBoolean(left) && this.variableResolver.toBoolean(right);
-      case '||':
-        return this.variableResolver.toBoolean(left) || this.variableResolver.toBoolean(right);
-
-      // Array/object access
-      case '[':
-        return left[right];
-
-      default:
-        return undefined;
-    }
-  }
 }
 
+const nodeRendererRegistry = new Map<string, BaseNodeRenderer<ASTNode>>([
+  ['template', new TemplateNodeRenderer()],
+  ['text', new TextNodeRenderer()],
+  ['expression_statement', new ExpressionStatementNodeRenderer()],
+  ['if', new IfNodeRenderer()],
+  ['for', new ForNodeRenderer()],
+  ['unknown', new UnknownNodeRenderer()],
+  ['undefined', new UnknownNodeRenderer()],
+  ['null', new UnknownNodeRenderer()],
+]);
+
+/**
+ * Render a single AST node
+ */
+function renderNode(node: ASTNode, context: RenderContext): string {
+  if (!node || typeof node !== 'object' || typeof node.type !== 'string') {
+    context.errors.push({
+      message: 'Unknown or invalid AST node',
+      path: '',
+      type: 'runtime_error',
+    });
+    return '';
+  }
+  if (!nodeRendererRegistry.has(node.type)) {
+    return nodeRendererRegistry.get('unknown')!.render(node, context);
+  } else {
+    return nodeRendererRegistry.get(node.type)!.render(node, context);
+  }
+}
 /**
  * Convenience function to render a template
  */

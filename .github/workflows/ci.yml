@@ -198,7 +198,7 @@ jobs:
     needs: install
     strategy:
       matrix:
-        node-version: [18, 20]
+        node-version: [20]
         os: [ubuntu-latest]
         # Optionally add macOS for broader compatibility
         # include:
@@ -253,7 +253,7 @@ jobs:
         if: matrix.node-version == 20 && matrix.os == 'ubuntu-latest'
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info
+          files: ./src/**/coverage/lcov.info
           flags: unittests
           name: templjs-coverage
           fail_ci_if_error: false

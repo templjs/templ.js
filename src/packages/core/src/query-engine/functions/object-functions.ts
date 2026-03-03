@@ -94,6 +94,15 @@ export const omitSignature: FunctionSignature = {
   examples: ['omit({a: 1, b: 2, c: 3}, ["b"]) → {a: 1, c: 3}'],
 };
 
+export const objectLengthSignature: FunctionSignature = {
+  name: 'length',
+  category: 'object',
+  description: 'Get number of keys in object',
+  parameters: [],
+  returnType: 'number',
+  examples: ['length({a: 1, b: 2}) → 2', 'length({}) → 0'],
+};
+
 export const assignSignature: FunctionSignature = {
   name: 'assign',
   category: 'object',
@@ -229,6 +238,14 @@ export const omit: FilterFunction = (value: unknown, keys: unknown): Record<stri
   return result;
 };
 
+export const objectLength: FilterFunction = (value: unknown): number => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error('length expects an object');
+  }
+
+  return Object.keys(value).length;
+};
+
 export const assign: FilterFunction = (
   value: unknown,
   source: unknown
@@ -268,6 +285,7 @@ export const objectFunctions = [
   { signature: mergeSignature, handler: merge },
   { signature: pickSignature, handler: pick },
   { signature: omitSignature, handler: omit },
+  { signature: objectLengthSignature, handler: objectLength },
   { signature: assignSignature, handler: assign },
   { signature: isEmptySignature, handler: isEmpty },
 ];

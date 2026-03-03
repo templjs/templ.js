@@ -252,11 +252,9 @@ const BUILTIN_FILTERS: Record<string, FilterFunction> = {
  * Filter application engine
  */
 export class FilterEngine {
-  private filters: Map<string, FilterFunction>;
+  private filters = createBuiltinFilterMap();
 
   constructor(initialFilters?: Record<string, FilterFunction>) {
-    this.filters = new Map(Object.entries(BUILTIN_FILTERS));
-
     if (initialFilters) {
       Object.entries(initialFilters).forEach(([name, fn]) => {
         this.filters.set(name, fn);
@@ -322,4 +320,8 @@ export class FilterEngine {
   getFilterNames(): string[] {
     return Array.from(this.filters.keys());
   }
+}
+
+export function createBuiltinFilterMap(): Map<string, FilterFunction> {
+  return new Map(Object.entries(BUILTIN_FILTERS));
 }

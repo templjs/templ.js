@@ -2,7 +2,7 @@
  * Types for the template renderer
  */
 
-import type { Position } from '../types';
+import type { Position } from '../lexer/types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyValue = any;
@@ -78,9 +78,7 @@ export type BuiltinFunction = (context: RenderContext, ...args: AnyValue[]) => A
 export interface RenderOptions {
   /** Whether to throw errors or collect them */
   throwOnError?: boolean;
-  /** Whether to include undefined variables in output */
-  includeUndefinedVars?: boolean;
-  /** Default value for undefined variables */
+  /** Optional string used when a top-level expression result is undefined */
   undefinedValue?: string;
   /** Maximum nesting depth for scopes */
   maxDepth?: number;

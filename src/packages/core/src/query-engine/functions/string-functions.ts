@@ -330,7 +330,7 @@ export const escape: FilterFunction = (value: unknown): string => {
     '"': '&quot;',
     "'": '&#39;',
   };
-  return str.replace(/[&<>"']/g, (char) => escapeMap[char] ?? char);
+  return str.replace(/[&<>"']/g, (char) => escapeMap[char]);
 };
 
 /**

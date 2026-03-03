@@ -9,9 +9,9 @@ import {
   SemanticTokenModifiers,
   SemanticTokenTypes,
   DEFAULT_DELIMITERS,
-} from './semantic-token-provider';
+} from '../src/semantic-token-provider';
 
-describe('Semantic Token Provider', () => {
+describe('SemanticTokenProvider', () => {
   describe('Basic Token Types', () => {
     it('should export semantic token types', () => {
       expect(SemanticTokenTypes).toHaveProperty('Keyword');

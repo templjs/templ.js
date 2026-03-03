@@ -52,6 +52,6 @@ ignore:
 flags:
   unittests:
     paths:
-      - packages/
-      - extensions/
+      - src/packages/
+      - src/extensions/
     carryforward: true

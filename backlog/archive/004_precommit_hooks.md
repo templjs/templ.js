@@ -51,21 +51,16 @@ Prevents bad commits, inconsistent formatting, and non-conventional commit messa
 
 ## Acceptance Criteria
 
-- [ ] `pnpm install` runs husky setup
-- [ ] Bad TypeScript code fails `pnpm lint`
-- [ ] `pnpm format` fixes formatting automatically
-- [ ] Bad commit message rejected by commit-msg hook
-- [ ] Valid commit message accepted
-- [ ] Pre-commit hook fixes auto-fixable issues
+- [x] `pnpm install` runs husky setup
+- [x] Bad TypeScript code fails `pnpm lint`
+- [x] `pnpm format` fixes formatting automatically
+- [x] Bad commit message rejected by commit-msg hook
+- [x] Valid commit message accepted
+- [x] Pre-commit hook fixes auto-fixable issues
 
 ## References
 
-- REPO_SCAFFOLDING.md - Pre-Commit Hooks section
+- [DEVELOPMENT Commit Policies](/DEVELOPMENT.md#pre-commit-hooks)
 - [ESLint Configuration](https://eslint.org/docs/user-guide/configuring)
 - [Prettier Options](https://prettier.io/docs/en/options.html)
 - [Husky Documentation](https://typicode.github.io/husky/)
-
-## Dependencies
-
-- Requires: [[2 Initialize Monorepo]]
-- Unblocks: All development work

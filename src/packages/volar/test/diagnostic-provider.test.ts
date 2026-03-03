@@ -3,7 +3,7 @@ import {
   collectDiagnostics,
   DiagnosticSeverity,
   remapDiagnosticsToOriginal,
-} from './diagnostic-provider';
+} from '../src/diagnostic-provider';
 
 const sampleSchema = {
   type: 'object',

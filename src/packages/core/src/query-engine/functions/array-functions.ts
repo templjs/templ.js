@@ -46,6 +46,15 @@ export const lastSignature: FunctionSignature = {
   examples: ['last([1, 2, 3]) → 3', 'last([]) → undefined'],
 };
 
+export const nthSignature: FunctionSignature = {
+  name: 'nth',
+  category: 'array',
+  description: 'Get element at a specific index',
+  parameters: [{ name: 'index', type: 'number', required: true, description: 'Array index' }],
+  returnType: 'any',
+  examples: ['nth(["a", "b", "c"], 1) → "b"'],
+};
+
 export const reverseArraySignature: FunctionSignature = {
   name: 'reverse',
   category: 'array',
@@ -87,29 +96,29 @@ export const filterSignature: FunctionSignature = {
   parameters: [
     {
       name: 'predicate',
-      type: 'function',
+      type: 'function|string',
       required: true,
-      description: 'Function to test elements',
+      description: 'Predicate function or expression string',
     },
   ],
   returnType: 'array',
-  examples: ['filter([1, 2, 3, 4], x => x > 2) → [3, 4]'],
+  examples: ['filter([1, 2, 3, 4], x => x > 2) → [3, 4]', 'filter([1,2,3], "> 1") → [2,3]'],
 };
 
 export const mapSignature: FunctionSignature = {
   name: 'map',
   category: 'array',
-  description: 'Map array elements with transform function',
+  description: 'Map array elements with transform function or property name',
   parameters: [
     {
       name: 'fn',
-      type: 'function',
+      type: 'function|string',
       required: true,
-      description: 'Transform function',
+      description: 'Transform function or property name',
     },
   ],
   returnType: 'array',
-  examples: ['map([1, 2, 3], x => x * 2) → [2, 4, 6]'],
+  examples: ['map([1, 2, 3], x => x * 2) → [2, 4, 6]', 'map([{n:1}], "n") → [1]'],
 };
 
 export const reduceSignature: FunctionSignature = {
@@ -148,6 +157,22 @@ export const joinArraySignature: FunctionSignature = {
   ],
   returnType: 'string',
   examples: ['join([1, 2, 3], ",") → "1,2,3"'],
+};
+
+export const findSignature: FunctionSignature = {
+  name: 'find',
+  category: 'array',
+  description: 'Find first matching element',
+  parameters: [
+    {
+      name: 'condition',
+      type: 'function|string',
+      required: true,
+      description: 'Predicate function or expression',
+    },
+  ],
+  returnType: 'any',
+  examples: ['find([1, 2, 3], x => x > 1) → 2', 'find([{n:1}], "n == 1") → {n:1}'],
 };
 
 export const includesArraySignature: FunctionSignature = {
@@ -248,6 +273,15 @@ export const last: FilterFunction = (value: unknown): unknown => {
   return value[value.length - 1];
 };
 
+export const nth: FilterFunction = (value: unknown, index: unknown): unknown => {
+  if (!Array.isArray(value)) {
+    throw new Error('nth expects an array');
+  }
+
+  const idx = Number(index);
+  return value[idx];
+};
+
 export const reverseArray: FilterFunction = (value: unknown): unknown[] => {
   if (!Array.isArray(value)) {
     throw new Error('reverse expects an array');
@@ -290,21 +324,121 @@ export const unique: FilterFunction = (value: unknown): unknown[] => {
   return Array.from(new Set(value));
 };
 
-export const filter: FilterFunction = (value: unknown): unknown[] => {
+function toScalarValue(value: unknown): unknown {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
+
+  const numeric = Number(value);
+  if (!Number.isNaN(numeric) && String(value).trim() !== '') {
+    return numeric;
+  }
+
+  return String(value);
+}
+
+function evaluateExpressionCondition(item: unknown, condition: string): boolean {
+  const trimmed = condition.trim();
+  if (!trimmed) {
+    return true;
+  }
+
+  const scalarOps = trimmed.match(/^(>=|<=|==|!=|>|<)\s*(.+)$/);
+  if (scalarOps) {
+    const op = scalarOps[1];
+    const rhsRaw = scalarOps[2].trim().replace(/^['"]|['"]$/g, '');
+    const lhs = toScalarValue(item);
+    const rhs = toScalarValue(rhsRaw);
+
+    switch (op) {
+      case '>':
+        return Number(lhs) > Number(rhs);
+      case '>=':
+        return Number(lhs) >= Number(rhs);
+      case '<':
+        return Number(lhs) < Number(rhs);
+      case '<=':
+        return Number(lhs) <= Number(rhs);
+      case '==':
+        return lhs == rhs;
+      case '!=':
+        return lhs != rhs;
+      default:
+        return false;
+    }
+  }
+
+  const fieldOps = trimmed.match(/^([a-zA-Z_$][\w$]*)\s*(>=|<=|==|!=|>|<)\s*(.+)$/);
+  if (fieldOps) {
+    const field = fieldOps[1];
+    const op = fieldOps[2];
+    const rhsRaw = fieldOps[3].trim().replace(/^['"]|['"]$/g, '');
+    const itemValue =
+      item && typeof item === 'object' ? (item as Record<string, unknown>)[field] : undefined;
+    const lhs = toScalarValue(itemValue);
+    const rhs = toScalarValue(rhsRaw);
+
+    switch (op) {
+      case '>':
+        return Number(lhs) > Number(rhs);
+      case '>=':
+        return Number(lhs) >= Number(rhs);
+      case '<':
+        return Number(lhs) < Number(rhs);
+      case '<=':
+        return Number(lhs) <= Number(rhs);
+      case '==':
+        return lhs == rhs;
+      case '!=':
+        return lhs != rhs;
+      default:
+        return false;
+    }
+  }
+
+  if (item && typeof item === 'object') {
+    return Boolean((item as Record<string, unknown>)[trimmed]);
+  }
+
+  return String(item) === trimmed;
+}
+
+export const filter: FilterFunction = (value: unknown, predicate: unknown): unknown[] => {
   if (!Array.isArray(value)) {
     throw new Error('filter expects an array');
   }
-  // Note: predicate function would be passed through the query engine
-  // This is a simplified implementation
-  return value;
+
+  if (typeof predicate === 'function') {
+    return value.filter((item, index) => predicate(item, index));
+  }
+
+  if (typeof predicate === 'string') {
+    return value.filter((item) => evaluateExpressionCondition(item, predicate));
+  }
+
+  throw new Error('filter expects predicate to be a function or string');
 };
 
-export const map: FilterFunction = (value: unknown): unknown[] => {
+export const map: FilterFunction = (value: unknown, transform: unknown): unknown[] => {
   if (!Array.isArray(value)) {
     throw new Error('map expects an array');
   }
-  // Note: map function would be passed through the query engine
-  return value;
+
+  if (typeof transform === 'function') {
+    return value.map((item, index) => transform(item, index));
+  }
+
+  if (typeof transform === 'string') {
+    return value.map((item) =>
+      item && typeof item === 'object' ? (item as Record<string, unknown>)[transform] : undefined
+    );
+  }
+
+  throw new Error('map expects transform to be a function or string');
 };
 
 export const reduce: FilterFunction = (value: unknown): unknown => {
@@ -320,6 +454,22 @@ export const joinArray: FilterFunction = (value: unknown, separator: unknown): s
     throw new Error('join expects an array');
   }
   return value.join(String(separator));
+};
+
+export const find: FilterFunction = (value: unknown, condition: unknown): unknown => {
+  if (!Array.isArray(value)) {
+    throw new Error('find expects an array');
+  }
+
+  if (typeof condition === 'function') {
+    return value.find((item, index) => condition(item, index));
+  }
+
+  if (typeof condition === 'string') {
+    return value.find((item) => evaluateExpressionCondition(item, condition));
+  }
+
+  throw new Error('find expects condition to be a function or string');
 };
 
 export const includesArray: FilterFunction = (value: unknown, item: unknown): boolean => {
@@ -374,6 +524,7 @@ export const arrayFunctions = [
   { signature: sizeSignature, handler: size },
   { signature: firstSignature, handler: first },
   { signature: lastSignature, handler: last },
+  { signature: nthSignature, handler: nth },
   { signature: reverseArraySignature, handler: reverseArray },
   { signature: sortSignature, handler: sort },
   { signature: uniqueSignature, handler: unique },
@@ -381,6 +532,7 @@ export const arrayFunctions = [
   { signature: mapSignature, handler: map },
   { signature: reduceSignature, handler: reduce },
   { signature: joinArraySignature, handler: joinArray },
+  { signature: findSignature, handler: find },
   { signature: includesArraySignature, handler: includesArray },
   { signature: indexOfArraySignature, handler: indexOfArray },
   { signature: sliceArraySignature, handler: sliceArray },

@@ -51,10 +51,7 @@
     "test:affected:ci": "nx affected -t test --base=origin/main --parallel=3 --outputStyle=static",
     "test:affected:local": "nx affected -t test --base=main --parallel=3",
     "test:affected:pre-push": "sh -c 'BASE_BRANCH=main; if git rev-parse --verify origin/main >/dev/null 2>&1; then BASE_BRANCH=origin/main; fi; pnpm exec nx affected -t test --base=\"$BASE_BRANCH\" --outputStyle=static'",
-    "test:coverage": "nx run-many -t test --coverage",
-    "type-check": "tsc --noEmit",
-    "validate:hybrid-decision-analysis": "python3 skills/hybrid-decision-analysis/scripts/test_score_with_guardrails.py",
-    "validate:local": "pnpm run type-check && pnpm run lint:ci && pnpm run build:affected:local && pnpm run test:affected:local"
+    "type-check": "tsc --noEmit"
   },
   "devDependencies": {
     "@changesets/cli": "latest",
@@ -62,6 +59,7 @@
     "@commitlint/config-conventional": "latest",
     "@eslint/js": "latest",
     "@nx/js": "latest",
+    "@nx/vitest": "22.5.1",
     "@types/node": "latest",
     "@typescript-eslint/eslint-plugin": "latest",
     "@typescript-eslint/parser": "latest",
@@ -79,6 +77,8 @@
     "tsx": "^4.21.0",
     "typescript": "latest",
     "typescript-eslint": "latest",
+    "vite": "^7.0.0",
+    "vitest": "^4.0.18",
     "yaml": "latest"
   },
   "lint-staged": {

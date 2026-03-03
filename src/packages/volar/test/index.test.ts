@@ -3,80 +3,62 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createTempljsLanguagePlugin } from './index';
+import { createTempljsLanguagePlugin } from '../src/index';
 
-describe('TemplJS Volar Plugin', () => {
+describe('LanguagePlugin', () => {
   const plugin = createTempljsLanguagePlugin();
+  const languageCases = [
+    {
+      name: 'markdown',
+      uri: 'file:///example.md.tmpl',
+      languageId: 'templjs-markdown',
+      expectedLanguage: 'markdown',
+      content: '# Title\n\n{% if true %}\nContent\n{% endif %}',
+      length: 43,
+    },
+    {
+      name: 'json',
+      uri: 'file:///config.json.tmpl',
+      languageId: 'templjs-json',
+      expectedLanguage: 'json',
+      content: '{ "name": "{{ user.name }}" }',
+      length: 30,
+    },
+    {
+      name: 'yaml',
+      uri: 'file:///config.yaml.tmpl',
+      languageId: 'templjs-yaml',
+      expectedLanguage: 'yaml',
+      content: 'key: {{ value }}\nother: {{ other }}',
+      length: 36,
+    },
+    {
+      name: 'html',
+      uri: 'file:///page.html.tmpl',
+      languageId: 'templjs-html',
+      expectedLanguage: 'html',
+      content: '<h1>{{ title }}</h1>\n<p>{% if show %}{{ content }}{% endif %}</p>',
+      length: 65,
+    },
+  ] as const;
 
   describe('createVirtualCode', () => {
-    it('should create virtual code for markdown template', () => {
-      const mockSnapshot = {
-        getText: () => '# Title\n\n{% if true %}\nContent\n{% endif %}',
-        getLength: () => 43,
-        getChangeRange: () => undefined,
-      };
+    it.each(languageCases)(
+      'should create virtual code for $name template',
+      ({ uri, languageId, expectedLanguage, content, length }) => {
+        const mockSnapshot = {
+          getText: () => content,
+          getLength: () => length,
+          getChangeRange: () => undefined,
+        };
 
-      const virtualCode = plugin.createVirtualCode(
-        'file:///example.md.tmpl',
-        'templjs-markdown',
-        mockSnapshot
-      );
+        const virtualCode = plugin.createVirtualCode(uri, languageId, mockSnapshot);
 
-      expect(virtualCode).toBeDefined();
-      expect(virtualCode?.id).toBe('root');
-      expect(virtualCode?.languageId).toBe('markdown');
-    });
-
-    it('should create virtual code for json template', () => {
-      const mockSnapshot = {
-        getText: () => '{ "name": "{{ user.name }}" }',
-        getLength: () => 30,
-        getChangeRange: () => undefined,
-      };
-
-      const virtualCode = plugin.createVirtualCode(
-        'file:///config.json.tmpl',
-        'templjs-json',
-        mockSnapshot
-      );
-
-      expect(virtualCode).toBeDefined();
-      expect(virtualCode?.languageId).toBe('json');
-    });
-
-    it('should create virtual code for yaml template', () => {
-      const mockSnapshot = {
-        getText: () => 'key: {{ value }}\nother: {{ other }}',
-        getLength: () => 36,
-        getChangeRange: () => undefined,
-      };
-
-      const virtualCode = plugin.createVirtualCode(
-        'file:///config.yaml.tmpl',
-        'templjs-yaml',
-        mockSnapshot
-      );
-
-      expect(virtualCode).toBeDefined();
-      expect(virtualCode?.languageId).toBe('yaml');
-    });
-
-    it('should create virtual code for html template', () => {
-      const mockSnapshot = {
-        getText: () => '<h1>{{ title }}</h1>\n<p>{% if show %}{{ content }}{% endif %}</p>',
-        getLength: () => 65,
-        getChangeRange: () => undefined,
-      };
-
-      const virtualCode = plugin.createVirtualCode(
-        'file:///page.html.tmpl',
-        'templjs-html',
-        mockSnapshot
-      );
-
-      expect(virtualCode).toBeDefined();
-      expect(virtualCode?.languageId).toBe('html');
-    });
+        expect(virtualCode).toBeDefined();
+        expect(virtualCode?.id).toBe('root');
+        expect(virtualCode?.languageId).toBe(expectedLanguage);
+      }
+    );
 
     it('should strip template syntax from content', () => {
       const content = 'Hello {{ name }}, welcome!';
