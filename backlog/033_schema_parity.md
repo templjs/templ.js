@@ -31,7 +31,7 @@ WI-017 implemented basic CLI commands with JSON input. This work item extends va
 
 - [ ] YAML input parsing and validation working
 - [ ] TOML input parsing and validation working
-- [ ] XML input parsing and validation working (if needed)
+- [ ] XML input parsing and validation working
 - [ ] Schema validation works across all formats
 - [ ] Format errors have clear messages
 - [ ] Format auto-detection working

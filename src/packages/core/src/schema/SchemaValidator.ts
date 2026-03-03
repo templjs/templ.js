@@ -196,9 +196,14 @@ export class SchemaValidator {
    * Extract metadata from schema for IDE features
    * @param schema - JSON Schema
    * @param prefix - Current path prefix
+   * @param parentRequired - Parent required field names
    * @returns Schema metadata
    */
-  private extractMetadata(schema: JSONSchema, prefix = ''): SchemaMetadata {
+  private extractMetadata(
+    schema: JSONSchema,
+    prefix = '',
+    parentRequired?: string[]
+  ): SchemaMetadata {
     const metadata: SchemaMetadata = {};
 
     if (!schema || typeof schema !== 'object') {
@@ -207,10 +212,14 @@ export class SchemaValidator {
 
     // Add current level metadata
     if (prefix) {
+      const propertyName = prefix
+        .split('.')
+        .pop()
+        ?.replace(/\[0\]$/, '');
       metadata[prefix] = {
         type: Array.isArray(schema.type) ? schema.type.join('|') : schema.type || 'any',
         description: schema.description,
-        required: schema.required !== undefined,
+        required: propertyName ? (parentRequired?.includes(propertyName) ?? false) : false,
       };
     }
 
@@ -224,7 +233,11 @@ export class SchemaValidator {
 
       for (const [key, subSchema] of Object.entries(schema.properties)) {
         const newPrefix = prefix ? `${prefix}.${key}` : key;
-        const subMetadata = this.extractMetadata(subSchema, newPrefix);
+        const subMetadata = this.extractMetadata(
+          subSchema,
+          newPrefix,
+          Array.isArray(schema.required) ? schema.required : undefined
+        );
         Object.assign(metadata, subMetadata);
       }
     }
@@ -239,7 +252,8 @@ export class SchemaValidator {
         }
 
         const arrayPrefix = prefix ? `${prefix}[0]` : '[0]';
-        const subMetadata = this.extractMetadata(itemsSchema, arrayPrefix);
+        // Array items don't have parent required, use undefined
+        const subMetadata = this.extractMetadata(itemsSchema, arrayPrefix, undefined);
         Object.assign(metadata, subMetadata);
       }
     }

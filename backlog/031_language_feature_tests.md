@@ -4,13 +4,40 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '31: Write VS Code Language Feature Tests (completion, hover, diagnostics)'
-status: ready-for-review
+status: in-progress
+status_reason: not-fixed
 priority: critical
 estimated: 20
 assignee: ''
 links:
   depends_on:
     - '[[016_extension_tests]]'
+comments:
+  - timestamp: 2026-03-03T18:45:00.000Z
+    note: |
+      PR #20 submitted for review. Feedback uncovered critical production code bug in SchemaValidator.extractMetadata (required property detection), major test isolation issue in CLI tests (mock specifiers not matching actual imports), and moderate test logic issues (completion test offsets). Reverted WI-031 to `in_progress` to scope expanded fixes.
+
+      ### Issues Identified
+
+      **Critical (Production Code Bug)**:
+
+      - **SchemaValidator.extractMetadata**: Incorrectly determines `required` status by checking if a property's own schema has a `required` key, instead of checking if the property name appears in its parent's `required` array. Fixed by refactoring to pass parent's `required` array through recursive calls and checking membership correctly.
+
+      **Major (Test Isolation)**:
+
+      - **CLI test mocks**: Mock specifiers (`../src/commands/*.js`) don't match actual import paths (`./commands/*.js`), so mocks never intercept real function calls. Fixed by updating all three mock declarations to use correct relative paths.
+
+      **Moderate (Test Logic)**:
+
+      - **Volar test offset**: Verified test offset correctly exercises bracket-normalization logic in completion prefix handling.
+
+      ### Resolution Plan
+
+      1. ✅ Fixed SchemaValidator.extractMetadata semantic bug (correct required-property detection)
+      2. ✅ Fixed CLI test mock specifiers (ensure proper isolation)  
+      3. ✅ Updated test expectations to match corrected behavior
+      4. ⏳ Push fixes and re-request review
+      5. ⏳ Merge once all feedback addressed
 ---
 
 ## Goal
@@ -127,7 +154,7 @@ Implemented language-feature test expansion across Volar and VS Code extension s
 
 ### Validation Evidence
 
-- `runTests` (focused): intellisense + diagnostics suites → **68 passed, 0 failed**
-- `runTests` (broader Volar set) → **200 passed, 0 failed**
-- `runTests` (VS Code extension tests) → **15 passed, 0 failed**
+- `pnpm --dir src/packages/volar test -- test/intellisense-provider.test.ts test/diagnostic-provider.test.ts` → **68 passed, 0 failed**
+- `pnpm --dir src/packages/volar test` → **200 passed, 0 failed**
+- `pnpm --dir src/extensions/vscode test` → **15 passed, 0 failed**
 - `pnpm run lint:frontmatter` → all backlog frontmatter files passed schema validation

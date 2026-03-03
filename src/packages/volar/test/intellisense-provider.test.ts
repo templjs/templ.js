@@ -162,7 +162,7 @@ describe('IntellisenseProvider', () => {
   });
 
   it('normalizes array-index prefix to match top-level completions', () => {
-    const items = provider.getCompletions('{{ users[ }}', 8, { schema: sampleSchema });
+    const items = provider.getCompletions('{{ users[ }}', 9, { schema: sampleSchema });
     expect(items.map((item) => item.label)).toEqual(['users']);
   });
 

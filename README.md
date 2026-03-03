@@ -1,6 +1,7 @@
 # templjs: Meta-Templating System
 
 [![codecov](https://codecov.io/github/templjs/templ.js/graph/badge.svg?token=LQF2NinbxD)](https://codecov.io/github/templjs/templ.js)
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/templjs/templ.js?utm_source=oss&utm_medium=github&utm_campaign=templjs%2Ftempl.js&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
 `templjs` is a declarative, schema-aware meta-templating system for transforming structured data into structured and unstructured text outputs.
 

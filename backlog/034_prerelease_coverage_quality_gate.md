@@ -112,7 +112,7 @@ Reconcile all coverage thresholds in vitest configs to align with ADR-006 target
 
 - [ ] All vitest configs updated with ADR-006 aligned thresholds
 - [ ] `perFile: true` enabled across all packages
-- [ ] `pnpm run test:affected:ci` passes with 969+ tests and ≥90% coverage globally
+- [ ] `pnpm run test:affected:ci` passes and enforces ≥90% global coverage
 - [ ] Core package achieves ≥95% coverage on all metrics (lines, functions, branches, statements)
 - [ ] CLI package achieves ≥85% coverage on all metrics
 - [ ] Volar package achieves ≥92% coverage on all metrics

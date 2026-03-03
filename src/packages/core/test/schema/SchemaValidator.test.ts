@@ -766,6 +766,15 @@ describe('Schema Inference', () => {
       const merged = mergeSchemas(schema1, schema2);
 
       expect(merged.type).toBe('array');
+      expect(merged.items).toBeDefined();
+      expect(Array.isArray(merged.items)).toBe(false);
+
+      if (!Array.isArray(merged.items) && merged.items) {
+        const itemTypes = Array.isArray(merged.items.type)
+          ? merged.items.type
+          : [merged.items.type];
+        expect(itemTypes).toEqual(expect.arrayContaining(['string', 'integer']));
+      }
     });
 
     it('should merge object properties recursively', () => {
@@ -858,6 +867,15 @@ describe('Schema Inference', () => {
       const merged = mergeSchemas(schema1, schema2);
 
       expect(merged.type).toBe('array');
+      expect(merged.items).toBeDefined();
+      expect(Array.isArray(merged.items)).toBe(false);
+
+      if (!Array.isArray(merged.items) && merged.items) {
+        const itemTypes = Array.isArray(merged.items.type)
+          ? merged.items.type
+          : [merged.items.type];
+        expect(itemTypes).toEqual(expect.arrayContaining(['string', 'integer', 'number']));
+      }
     });
 
     it('should merge arrays with empty items', () => {
@@ -872,6 +890,7 @@ describe('Schema Inference', () => {
       const merged = mergeSchemas(schema1, schema2);
 
       expect(merged.type).toBe('array');
+      expect(merged.items).toEqual({});
     });
 
     it('should handle mixed type arrays', () => {
@@ -888,6 +907,15 @@ describe('Schema Inference', () => {
       const merged = mergeSchemas(schema1, schema2);
 
       expect(merged.type).toBe('array');
+      expect(merged.items).toBeDefined();
+      expect(Array.isArray(merged.items)).toBe(false);
+
+      if (!Array.isArray(merged.items) && merged.items) {
+        const itemTypes = Array.isArray(merged.items.type)
+          ? merged.items.type
+          : [merged.items.type];
+        expect(itemTypes).toEqual(expect.arrayContaining(['string', 'integer']));
+      }
     });
 
     it('should merge with non-array type property', () => {
@@ -1261,6 +1289,7 @@ describe('Integration Tests', () => {
                 required: ['name'],
               },
             },
+            required: ['profile'],
           },
         },
       };
