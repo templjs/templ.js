@@ -11,6 +11,7 @@ export interface FunctionParameter {
   name: string;
   type: string;
   required: boolean;
+  variadic?: boolean;
   description: string;
   examples?: string[];
 }

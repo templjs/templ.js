@@ -33,6 +33,8 @@ describe('QueryEngine number functions', () => {
     expect(engine.applyFilter([2, 3, 4], 'product', [])).toBe(24);
     expect(engine.applyFilter([5, 3, 9], 'min', [])).toBe(3);
     expect(engine.applyFilter([5, 3, 9], 'max', [])).toBe(9);
+    expect(engine.applyFilter(5, 'min', [2, 8])).toBe(2);
+    expect(engine.applyFilter(5, 'max', [2, 8])).toBe(8);
     expect(engine.applyFilter(200, 'clamp', [0, 100])).toBe(100);
     expect(engine.applyFilter(9, 'sqrt', [])).toBe(3);
   });

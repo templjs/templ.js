@@ -55,7 +55,15 @@ export const minSignature: FunctionSignature = {
   name: 'min',
   category: 'number',
   description: 'Find minimum value',
-  parameters: [{ name: 'other', type: 'number', required: false, description: 'Other numbers' }],
+  parameters: [
+    {
+      name: 'other',
+      type: 'number',
+      required: false,
+      variadic: true,
+      description: 'Additional numbers to compare',
+    },
+  ],
   returnType: 'number',
   examples: ['min(5, 2, 8) → 2', 'min([5, 2, 8]) → 2'],
 };
@@ -64,7 +72,15 @@ export const maxSignature: FunctionSignature = {
   name: 'max',
   category: 'number',
   description: 'Find maximum value',
-  parameters: [{ name: 'other', type: 'number', required: false, description: 'Other numbers' }],
+  parameters: [
+    {
+      name: 'other',
+      type: 'number',
+      required: false,
+      variadic: true,
+      description: 'Additional numbers to compare',
+    },
+  ],
   returnType: 'number',
   examples: ['max(5, 2, 8) → 8', 'max([5, 2, 8]) → 8'],
 };

@@ -15,7 +15,7 @@ import type {
 } from '../parser/types';
 import type { RenderContext, RenderResult, RenderOptions, RenderError } from './types';
 import { VariableResolver } from './variable-resolver';
-import { filterRegistry } from './filter-engine';
+import { createBuiltinFilterMap } from './filter-engine';
 import { evaluateExpression as evaluateStandaloneExpression } from './evaluators';
 
 type AnyValue = any;
@@ -41,19 +41,21 @@ const DEFAULT_OPTIONS: NormalizedRenderOptions = {
  */
 export class Renderer {
   private options: NormalizedRenderOptions;
+  private filters: Map<string, (value: AnyValue, ...args: AnyValue[]) => AnyValue>;
 
   /**
    * Create a new renderer instance
    */
   constructor(options?: RenderOptions) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
+    this.filters = createBuiltinFilterMap();
   }
 
   /**
    * Register a custom filter
    */
   registerFilter(name: string, fn: (value: AnyValue, ...args: AnyValue[]) => AnyValue): void {
-    filterRegistry.register(name, fn);
+    this.filters.set(name, fn);
   }
 
   /**
@@ -67,7 +69,7 @@ export class Renderer {
     const context: RenderContext = {
       data: typeof data === 'object' && data !== null ? data : {},
       scopes: [],
-      filters: new Map(),
+      filters: new Map(this.filters),
       functions: new Map(),
       errors: [],
       options: this.options,

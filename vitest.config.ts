@@ -11,6 +11,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    passWithNoTests: true,
     coverage: {
       reportsDirectory: path.resolve(__dirname, 'coverage'),
       provider: 'v8',
