@@ -198,7 +198,7 @@ jobs:
     needs: install
     strategy:
       matrix:
-        node-version: [18, 20]
+        node-version: [20]
         os: [ubuntu-latest]
         # Optionally add macOS for broader compatibility
         # include:
