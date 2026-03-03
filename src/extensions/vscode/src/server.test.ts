@@ -58,4 +58,34 @@ describe('language-server-bootstrap', () => {
     serverOptions.getLanguagePlugins();
     expect(createTempljsLanguagePlugin).toHaveBeenCalled();
   });
+
+  it('registers expected templated file extensions in server options', async () => {
+    await import('./server');
+    const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => unknown;
+    initializeHandler({});
+
+    const initializeCalls = initialize.mock.calls as unknown as Array<
+      [
+        unknown,
+        unknown,
+        {
+          watchFileExtensions: string[];
+          getServicePlugins: () => unknown[];
+          getLanguagePlugins: () => unknown[];
+        },
+      ]
+    >;
+    const serverOptions = initializeCalls[0][2];
+
+    expect(serverOptions.watchFileExtensions).toEqual(
+      expect.arrayContaining(['.templ.md', '.templ.json', '.templ.yaml', '.templ.html', '.tmpl.md'])
+    );
+  });
+
+  it('binds initialized and shutdown callbacks to server instance handlers', async () => {
+    await import('./server');
+
+    expect(onInitialized).toHaveBeenCalledWith(initialized);
+    expect(onShutdown).toHaveBeenCalledWith(shutdown);
+  });
 });
