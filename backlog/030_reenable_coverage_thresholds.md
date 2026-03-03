@@ -2,9 +2,9 @@
 id: wi-030
 type: work-item
 subtype: task
-lifecycle: draft
+lifecycle: active
 title: '30: Re-enable Coverage Thresholds in CI'
-status: proposed
+status: in-progress
 priority: medium
 estimated: 1
 assignee: ''

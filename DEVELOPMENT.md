@@ -89,16 +89,28 @@ This installs:
 # Run all tests
 pnpm test
 
-# Run tests with coverage
-pnpm test:coverage
+# Run coverage for affected projects (CI equivalent)
+pnpm run test:affected:ci
+
+# Run package-level coverage
+pnpm --filter @templjs/core test:coverage
+pnpm --filter @templjs/cli test:coverage
+pnpm --filter @templjs/volar test:coverage
 
 # Run tests in watch mode (in a package directory)
-cd packages/core
+cd src/packages/core
 pnpm test --watch
 
 # Run tests for affected packages only
-pnpm nx affected -t test
+pnpm nx affected -t test --base=main
 ```
+
+### Coverage Requirements
+
+- Coverage thresholds are enforced per package via each `vitest.config.ts`.
+- The CI path uses `pnpm run test:affected:ci`, which runs affected tests with `--coverage` enabled.
+- To inspect local reports, run a package `test:coverage` script and open the generated `coverage/` output for that package.
+- If a legitimate threshold adjustment is required, propose it in a work item and include justification + impacted package scope.
 
 ### Running Linters
 
