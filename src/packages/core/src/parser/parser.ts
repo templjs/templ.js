@@ -126,7 +126,12 @@ export class TemplateParser {
     const content = this.extractStatementContent(startToken.content);
     const conditionMatch = content.match(/^if\s+(.+?)$/is);
     if (!conditionMatch) {
-      this.addError('syntax', 'Invalid if statement', startToken.start);
+      this.addError(
+        'syntax',
+        'Invalid if statement',
+        startToken.start,
+        'Did you forget to close the {% if %} block with {% endif %}?'
+      );
       this.advance();
       return {
         type: 'if',
@@ -159,9 +164,17 @@ export class TemplateParser {
     if (
       endToken &&
       endToken.type === TokenType.STATEMENT &&
-      this.extractStatementContent(endToken.content).trim().startsWith('endif')
+      this.extractStatementContent(endToken.content).startsWith('endif')
     ) {
       this.advance();
+    } else {
+      // Missing endif: emit recovery error
+      this.addError(
+        'recovery',
+        'Unclosed if block: missing {% endif %}',
+        endToken?.start || (body.length > 0 ? body[body.length - 1].end : startToken.end),
+        'Did you forget to close the {% if %} block with {% endif %}?'
+      );
     }
 
     return {
@@ -186,7 +199,12 @@ export class TemplateParser {
     const match = content.match(/^for\s+(\w+)\s+in\s+(.+?)$/);
 
     if (!match) {
-      this.addError('syntax', 'Invalid for statement syntax', startToken.start);
+      this.addError(
+        'syntax',
+        'Invalid for statement syntax',
+        startToken.start,
+        'Did you forget to close the {% for %} block with {% endfor %}?'
+      );
       this.advance();
       return this.createErrorForNode(startToken);
     }
@@ -205,6 +223,14 @@ export class TemplateParser {
       this.extractStatementContent(endToken.content).startsWith('endfor')
     ) {
       this.advance();
+    } else {
+      // Missing endfor: emit recovery error
+      this.addError(
+        'recovery',
+        'Unclosed for block: missing {% endfor %}',
+        endToken?.start || (body.length > 0 ? body[body.length - 1].end : startToken.end),
+        'Did you forget to close the {% for %} block with {% endfor %}?'
+      );
     }
 
     return {
@@ -229,7 +255,12 @@ export class TemplateParser {
     const match = content.match(/^set\s+(\w+)\s*=\s*(.+?)$/);
 
     if (!match) {
-      this.addError('syntax', 'Invalid set statement syntax', startToken.start);
+      this.addError(
+        'syntax',
+        'Invalid set statement syntax',
+        startToken.start,
+        'Check your {% set %} statement syntax. Example: {% set x = value %}'
+      );
       this.advance();
       return this.createErrorSetNode(startToken);
     }
@@ -261,7 +292,12 @@ export class TemplateParser {
     const match = content.match(/^block\s+(\w+)$/);
 
     if (!match) {
-      this.addError('syntax', 'Invalid block statement syntax', startToken.start);
+      this.addError(
+        'syntax',
+        'Invalid block statement syntax',
+        startToken.start,
+        'Did you forget to close the {% block %} with {% endblock %}?'
+      );
       this.advance();
       return this.createErrorBlockNode(startToken);
     }
@@ -278,6 +314,14 @@ export class TemplateParser {
       this.extractStatementContent(endToken.content).startsWith('endblock')
     ) {
       this.advance();
+    } else {
+      // Missing endblock: emit recovery error
+      this.addError(
+        'recovery',
+        'Unclosed block: missing {% endblock %}',
+        endToken?.start || (body.length > 0 ? body[body.length - 1].end : startToken.end),
+        'Did you forget to close the {% block %} with {% endblock %}?'
+      );
     }
 
     return {
@@ -829,7 +873,7 @@ export class TemplateParser {
    */
   private parseErrorStatement(message: string): ErrorNode {
     const token = this.advance();
-    this.addError('syntax', message, token.start);
+    this.addError('syntax', message, token.start, 'Check the statement syntax or delimiters.');
     return {
       type: 'error',
       message,

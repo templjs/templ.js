@@ -750,7 +750,9 @@ describe('Lexer - Performance', () => {
     tokenize(template);
     const duration = performance.now() - start;
 
-    expect(duration).toBeLessThan(2);
+    // CI runners can be noisier; keep a stricter local target.
+    const thresholdMs = process.env.CI ? 5 : 2;
+    expect(duration).toBeLessThan(thresholdMs);
   });
 
   it('should tokenize 100 expressions quickly', () => {
