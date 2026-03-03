@@ -4,7 +4,8 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '30: Re-enable Coverage Thresholds in CI'
-status: in-progress
+status: closed
+status_reason: Completed and merged via PR #17
 priority: medium
 estimated: 1
 assignee: ''

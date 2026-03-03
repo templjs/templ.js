@@ -4,7 +4,8 @@ type: work-item
 subtype: task
 title: '16: Write VS Code Extension Tests (50+ tests)'
 lifecycle: active
-status: in-progress
+status: closed
+status_reason: Completed and merged via PR #19
 priority: critical
 estimated: 8
 assignee: ''

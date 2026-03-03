@@ -4,7 +4,8 @@ type: work-item
 subtype: story
 lifecycle: active
 title: '17: Implement CLI Commands (render, validate, init)'
-status: in-progress
+status: closed
+status_reason: Completed and merged via PR #18
 priority: critical
 estimated: 10
 assignee: ''
