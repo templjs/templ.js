@@ -253,5 +253,154 @@ describe('Evaluators', () => {
       expect(evaluateExpression({} as ExpressionNode, context)).toBeUndefined();
       expect(context.errors.map((e) => e.type)).toContain('runtime_error');
     });
+
+    it('handles variable with null prototype chain', () => {
+      const context = createContext({ obj: Object.create(null) });
+      const expr = variable('obj', [{ type: 'property', value: 'missing' }]);
+      const result = evaluateExpression(expr, context);
+      expect(result).toBeUndefined();
+    });
+
+    it('handles variable path with undefined intermediate value', () => {
+      const context = createContext({ a: { b: undefined } });
+      const expr = variable('a', [
+        { type: 'property', value: 'b' },
+        { type: 'property', value: 'c' },
+      ]);
+      const result = evaluateExpression(expr, context);
+      expect(result).toBeUndefined();
+    });
+
+    it('handles variable path with null intermediate value', () => {
+      const context = createContext({ a: { b: null } });
+      const expr = variable('a', [
+        { type: 'property', value: 'b' },
+        { type: 'property', value: 'c' },
+      ]);
+      const result = evaluateExpression(expr, context);
+      expect(result).toBeUndefined();
+    });
+
+    it('handles array length property access', () => {
+      const context = createContext({ arr: [1, 2, 3] });
+      const expr = variable('arr', [{ type: 'property', value: 'length' }]);
+      expect(evaluateExpression(expr, context)).toBe(3);
+    });
+
+    it('handles array index access by computed expression', () => {
+      const context = createContext({ arr: ['a', 'b', 'c'], idx: 1 });
+      const expr = variable('arr', [{ type: 'index', value: variable('idx') }]);
+      expect(evaluateExpression(expr, context)).toBe('b');
+    });
+
+    it('handles object bracket notation with string key', () => {
+      const context = createContext({ obj: { key: 'value' } });
+      const expr = variable('obj', [{ type: 'index', value: literal('key') }]);
+      expect(evaluateExpression(expr, context)).toBe('value');
+    });
+
+    it('handles undefined variable error recording', () => {
+      const context = createContext();
+      evaluateExpression(variable('undefined_var'), context);
+      expect(context.errors.length).toBeGreaterThan(0);
+      expect(context.errors[0].type).toBe('undefined_variable');
+    });
+
+    it('handles filter on undefined value', () => {
+      const context = createContext();
+      const expr = filterExpr(variable('missing'), 'upper');
+      evaluateExpression(expr, context);
+      expect(context.errors.length).toBeGreaterThan(0);
+    });
+
+    it('handles chain of filters', () => {
+      const context = createContext({ text: 'hello world' });
+      const expr: FilterNode = {
+        type: 'filter',
+        source: variable('text'),
+        filters: [
+          { name: 'upper', args: [] },
+          { name: 'replace', args: [literal(' '), literal('_')] },
+        ],
+        start: POS,
+        end: POS,
+      };
+      const result = evaluateExpression(expr, context);
+      expect(result).toBe('HELLO_WORLD');
+    });
+
+    it('handles error node with recovered flag true', () => {
+      const context = createContext();
+      const expr: ErrorNode = {
+        type: 'error',
+        message: 'Recovered error',
+        recovered: true,
+        start: POS,
+        end: POS,
+      };
+      evaluateError(expr, context);
+      expect(context.errors.length).toBeGreaterThan(0);
+    });
+
+    it('handles error node with recovered flag false', () => {
+      const context = createContext();
+      const expr: ErrorNode = {
+        type: 'error',
+        message: 'Unrecovered error',
+        recovered: false,
+        start: POS,
+        end: POS,
+      };
+      evaluateError(expr, context);
+      expect(context.errors.length).toBeGreaterThan(0);
+    });
+
+    it('handles complex nested variable paths', () => {
+      const context = createContext({
+        user: { profile: { address: { city: 'NYC' } } },
+      });
+      const expr = variable('user', [
+        { type: 'property', value: 'profile' },
+        { type: 'property', value: 'address' },
+        { type: 'property', value: 'city' },
+      ]);
+      expect(evaluateExpression(expr, context)).toBe('NYC');
+    });
+
+    it('handles scope variable resolution priority', () => {
+      const context = createContext({ x: 'global' });
+      context.scopes.push({ x: 'scoped' });
+      const expr = variable('x');
+      expect(evaluateExpression(expr, context)).toBe('scoped');
+    });
+
+    it('handles multiple scopes with inner scope priority', () => {
+      const context = createContext({ x: 'global' });
+      context.scopes.push({ x: 'outer' });
+      context.scopes.push({ x: 'inner' });
+      expect(evaluateExpression(variable('x'), context)).toBe('inner');
+    });
+
+    it('handles variable not in any scope or data', () => {
+      const context = createContext({ a: 1 });
+      evaluateExpression(variable('missing'), context);
+      expect(context.errors.length).toBeGreaterThan(0);
+    });
+
+    it('handles comparison operators', () => {
+      const context = createContext();
+      expect(evaluateExpression(binary('==', literal(1), literal(1)), context)).toBe(true);
+      expect(evaluateExpression(binary('!=', literal(1), literal(2)), context)).toBe(true);
+      expect(evaluateExpression(binary('<', literal(1), literal(2)), context)).toBe(true);
+      expect(evaluateExpression(binary('>', literal(2), literal(1)), context)).toBe(true);
+    });
+
+    it('handles logical operators short circuit evaluation', () => {
+      const context = createContext();
+      // && should short circuit on false
+      expect(evaluateExpression(binary('&&', literal(false), literal(true)), context)).toBe(false);
+      // || should short circuit on true
+      expect(evaluateExpression(binary('||', literal(true), literal(false)), context)).toBe(true);
+    });
   });
 });

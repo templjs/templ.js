@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { render, Renderer } from '../../src/renderer/renderer';
-import { ASTNode, parse } from '../../src/parser';
-import { tokenize } from '../../src/lexer';
+import { parse } from '../../src/parser/parser';
+import type { ASTNode } from '../../src/parser/types';
+import { tokenize } from '../../src/lexer/lexer';
 import { RenderError, RenderResult } from '../../src/renderer/types';
 
 describe('Renderer', () => {

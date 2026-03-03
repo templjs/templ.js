@@ -9,18 +9,29 @@
 export const version = '0.1.0';
 
 // Export types
-export * from './lexer/types';
+export type * from './lexer/types';
+export type * from './parser/types';
+export type * from './schema/types';
+export type * from './query-engine/types';
+export type * from './renderer/types';
 
-// Export lexer
-export * from './lexer';
+// Export lexer functions
+export { tokenize } from './lexer/lexer';
 
-// Export parser
-export * from './parser';
+// Export parser functions
+export { parse } from './parser/parser';
 
 // Export schema validation
-export * from './schema';
-export * from './query-engine/query-engine';
-export type * from './query-engine/types';
+export { SchemaValidator } from './schema/SchemaValidator';
+export { extractPaths, isValidPath } from './schema/queryPathValidator';
+export { inferSchemaFromValue, mergeSchemas } from './schema/schemaInference';
+export type { ValidationResult, ValidationError, SchemaMetadata, JSONSchema } from './schema/types';
+
+// Export query engine
+export { QueryEngine, filter, query } from './query-engine/query-engine';
+
+// Export renderer
+export { Renderer, render } from './renderer/renderer';
 import { QueryEngine } from './query-engine/query-engine';
 
 /**
