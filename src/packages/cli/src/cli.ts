@@ -16,6 +16,7 @@ import { initCommand } from './commands/init.js';
 import { renderCommand } from './commands/render.js';
 import { validateCommand } from './commands/validate.js';
 import { version } from './index.js';
+import { loadConfig, applyConfig } from './config/index.js';
 
 function createProgram(): Command {
   const program = new Command();
@@ -41,9 +42,11 @@ function createProgram(): Command {
         validateInput: boolean;
         validateOutput: boolean;
       }) => {
-        const rendered = await renderCommand(options.template, options.input);
-        if (options.output) {
-          writeFileSync(options.output, rendered, 'utf-8');
+        const config = loadConfig();
+        const finalOptions = applyConfig(options, config) as typeof options;
+        const rendered = await renderCommand(finalOptions.template, finalOptions.input);
+        if (finalOptions.output) {
+          writeFileSync(finalOptions.output, rendered, 'utf-8');
           return;
         }
         process.stdout.write(`${rendered}\n`);
@@ -56,7 +59,9 @@ function createProgram(): Command {
     .requiredOption('-t, --template <path>', 'Template file path')
     .option('-s, --schema <path>', 'Optional schema path (future core integration)')
     .action(async (options: { template: string; schema?: string }) => {
-      const valid = await validateCommand(options.template, options.schema);
+      const config = loadConfig();
+      const finalOptions = applyConfig(options, config) as typeof options;
+      const valid = await validateCommand(finalOptions.template, finalOptions.schema);
       process.stdout.write(valid ? 'Template is valid\n' : 'Template has errors\n');
       if (!valid) {
         process.exitCode = 1;
@@ -69,8 +74,13 @@ function createProgram(): Command {
     .requiredOption('-f, --format <format>', 'Template format: markdown|html|json|yaml')
     .option('-o, --output <path>', 'Write starter template to file')
     .action(async (options: { format: string; output?: string }) => {
-      const starter = await initCommand({ format: options.format, output: options.output });
-      if (!options.output) {
+      const config = loadConfig();
+      const finalOptions = applyConfig(options, config) as typeof options;
+      const starter = await initCommand({
+        format: finalOptions.format,
+        output: finalOptions.output,
+      });
+      if (!finalOptions.output) {
         process.stdout.write(starter);
       }
     });
