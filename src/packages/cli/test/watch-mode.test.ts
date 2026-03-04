@@ -2,8 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { startRenderWatchMode } from '../src/watch-mode.js';
-import { defaultWatchModeDependencies } from '../src/watch-mode.js';
+import { defaultWatchModeDependencies, startRenderWatchMode } from '../src/watch-mode.js';
 
 interface FakeWatcher {
   close: ReturnType<typeof vi.fn>;
@@ -135,8 +134,9 @@ describe('watch-mode', () => {
       deps
     );
 
-    await Promise.resolve();
-    await Promise.resolve();
+    await vi.waitFor(() => {
+      expect(deps.writeOutput).toHaveBeenCalledWith('result.txt', 'rendered-to-file', 'utf-8');
+    });
     expect(deps.writeOutput).toHaveBeenCalledWith('result.txt', 'rendered-to-file', 'utf-8');
     expect(deps.writeStdout).not.toHaveBeenCalledWith('rendered-to-file\n');
 

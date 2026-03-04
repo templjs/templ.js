@@ -23,7 +23,7 @@ const DEFAULT_DEBOUNCE_MS = 75;
 
 export const defaultWatchModeDependencies: WatchModeDependencies = {
   fileExists: existsSync,
-  render: async () => '',
+  render: async () => '', // Stub - must be overridden
   watchFile: (path, listener) => watch(path, listener),
   writeOutput: (path, data, encoding) => writeFileSync(path, data, encoding),
   writeStdout: (data) => process.stdout.write(data),
