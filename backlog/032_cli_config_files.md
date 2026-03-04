@@ -2,11 +2,12 @@
 id: wi-032
 type: work-item
 subtype: story
-lifecycle: draft
+lifecycle: active
 title: '32: Add CLI Config File Support (.templjs.json)'
-status: proposed
+status: in-progress
 priority: high
 estimated: 8
+actual: 0
 assignee: ''
 links:
   depends_on:
