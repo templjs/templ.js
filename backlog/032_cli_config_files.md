@@ -2,15 +2,32 @@
 id: wi-032
 type: work-item
 subtype: story
-lifecycle: draft
+lifecycle: active
 title: '32: Add CLI Config File Support (.templjs.json)'
-status: proposed
+status: ready-for-review
 priority: high
 estimated: 8
+actual: 4
 assignee: ''
 links:
   depends_on:
     - '[[017_cli_commands]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/21'
+commits:
+  c640eea: 'test(cli): cover template guard error paths'
+  abcbd98: 'ci: align codecov upload with centralized coverage output'
+  f56a08f: 'fix(cli): address PR #21 review feedback'
+  663a39a: 'fix(ci): set NX_PARALLEL=1 in pre-push hook to avoid coverage merge race'
+  54fd671: 'test(cli): exclude direct execution bootstrap from coverage'
+  6526369: 'docs(backlog): mark WI-032 ready-for-review with test evidence'
+test_results:
+  - timestamp: 2026-03-04T10:45:00.000Z
+    note: |
+      WI-032 local validation:
+      - runTests: src/packages/cli/test/config.test.ts -> 26 passed, 0 failed
+      - runTests: full CLI suite (cli/config/commands) -> 47 passed, 0 failed
+      - pre-commit hooks passed during commit
 ---
 
 ## Goal
@@ -28,15 +45,15 @@ WI-017 implemented core CLI commands with command-line flag options. This work i
 
 ## Acceptance Criteria
 
-- [ ] `.templjs.json` config file parsed correctly
-- [ ] Config file located (current dir, then parent dirs up to root)
-- [ ] CLI flags override config file settings
-- [ ] All core commands respect config (render, validate, init)
-- [ ] Config validation (JSON schema)
-- [ ] Error handling for invalid config
-- [ ] Clear error messages for missing config
-- [ ] Documentation on config file format
-- [ ] 8+ tests passing
+- [x] `.templjs.json` config file parsed correctly
+- [x] Config file located (current dir, then parent dirs up to root)
+- [x] CLI flags override config file settings
+- [x] All core commands respect config (render, validate, init)
+- [x] Config validation (JSON schema)
+- [x] Error handling for invalid config
+- [x] Clear error messages for missing config
+- [x] Documentation on config file format
+- [x] 8+ tests passing
 
 ## Config File Format
 
@@ -62,15 +79,15 @@ WI-017 implemented core CLI commands with command-line flag options. This work i
 
 ## Tasks
 
-- [ ] Design config file schema
-- [ ] Implement config file discovery (.templjs.json search)
-- [ ] Parse config file (JSON)
-- [ ] Merge config with CLI flags (flags take precedence)
-- [ ] Apply config to all commands
-- [ ] Validate config against schema
-- [ ] Error handling for missing/invalid config
-- [ ] Document config format
-- [ ] Write tests (8+ tests)
+- [x] Design config file schema
+- [x] Implement config file discovery (.templjs.json search)
+- [x] Parse config file (JSON)
+- [x] Merge config with CLI flags (flags take precedence)
+- [x] Apply config to all commands
+- [x] Validate config against schema
+- [x] Error handling for missing/invalid config
+- [x] Document config format
+- [x] Write tests (8+ tests)
 
 ## Related Items
 
@@ -83,3 +100,15 @@ WI-017 implemented core CLI commands with command-line flag options. This work i
 - Use same delimiter structure as @templjs/core for consistency
 - Support environment variable substitution in config? (TBD)
 - Consider cascade from project root to monorepo root (for Nx workspaces)
+
+## Implementation Progress (2026-03-04)
+
+Implemented `.templjs.json` configuration support for CLI commands with schema validation and parent-directory discovery.
+
+- Added config module in `src/packages/cli/src/config/`:
+  - `types.ts`: typed CLI config interfaces
+  - `schema.ts`: JSON schema for config validation
+  - `loader.ts`: discovery, parsing, validation, merge, and option-application helpers
+  - `index.ts`: module exports
+- Integrated config loading in `src/packages/cli/src/cli.ts` for `render`, `validate`, and `init` commands.
+- Added `src/packages/cli/test/config.test.ts` with 22 tests covering discovery, validation, overrides, and option application.

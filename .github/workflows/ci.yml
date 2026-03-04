@@ -247,6 +247,7 @@ jobs:
 
       - name: Run tests (affected)
         env:
+          NX_PARALLEL: 1
           TEST_WATCHDOG_TIMEOUT_MS: 1200000
           VITEST_REPORTERS: dot,hanging-process
           VITEST_TEST_TIMEOUT_MS: 15000
@@ -259,7 +260,7 @@ jobs:
         if: matrix.node-version == 20 && matrix.os == 'ubuntu-latest'
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./src/**/coverage/lcov.info
+          files: ./coverage/lcov.info
           flags: unittests
           name: templjs-coverage
           fail_ci_if_error: false
