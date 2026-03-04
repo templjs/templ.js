@@ -4,11 +4,12 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '3: Setup GitHub Actions CI/CD Pipeline'
-status: ready-for-review
-status_reason: awaiting-review
+status: closed
+status_reason: completed
 priority: critical
 estimated: 6
 assignee: ''
+completed_date: 2026-03-04
 actual: 5
 test_results:
   - timestamp: 2026-02-20T04:35:00.000Z
@@ -18,6 +19,8 @@ commits:
 links:
   depends_on:
     - '[[002_monorepo_setup]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/1'
 ---
 
 ## Goal

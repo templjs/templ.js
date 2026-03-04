@@ -7,8 +7,9 @@ title: '32: Add CLI Config File Support (.templjs.json)'
 status: ready-for-review
 priority: high
 estimated: 8
-actual: 4
 assignee: ''
+completed_date: 2026-03-04
+actual: 8
 links:
   depends_on:
     - '[[017_cli_commands]]'
@@ -21,6 +22,8 @@ commits:
   663a39a: 'fix(ci): set NX_PARALLEL=1 in pre-push hook to avoid coverage merge race'
   54fd671: 'test(cli): exclude direct execution bootstrap from coverage'
   6526369: 'docs(backlog): mark WI-032 ready-for-review with test evidence'
+  0e47673: 'fix(cli): resolve latest PR #21 review feedback'
+  ea4773e: 'ci: serialize nx affected tests in GitHub Actions'
 test_results:
   - timestamp: 2026-03-04T10:45:00.000Z
     note: |
@@ -28,6 +31,10 @@ test_results:
       - runTests: src/packages/cli/test/config.test.ts -> 26 passed, 0 failed
       - runTests: full CLI suite (cli/config/commands) -> 47 passed, 0 failed
       - pre-commit hooks passed during commit
+  - timestamp: 2026-03-04T18:45:00.000Z
+    note: 'Validation complete for WI-032. `pnpm nx test @templjs/cli --coverage` passed (54 tests, 95.56% statements/lines).'
+  - timestamp: 2026-03-04T18:51:23.000Z
+    note: 'PR #21 merged to main with all required checks passing (Analyze, Build, Install Dependencies, Lint, Lint Work Item Frontmatter, Test, Type Check).'
 ---
 
 ## Goal

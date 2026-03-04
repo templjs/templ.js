@@ -4,12 +4,11 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '11: Write Renderer and Query Engine Tests (200+ tests)'
-status: closed
-status_reason: completed
+status: in-progress
+status_reason: reopened_for_checklist_reconciliation
 priority: critical
 estimated: 14
 assignee: ''
-completed_date: 2026-03-03
 test_results:
   - timestamp: 2026-02-24T14:30:00.000Z
     note: 'Renderer tests: 132 passing. Phase 2 total: 703 tests (100.4% of target)'
@@ -31,6 +30,10 @@ links:
 ## Goal
 
 Comprehensive test coverage for renderer and query engine with 95%+ coverage.
+
+## Reopen Notes
+
+Reopened on 2026-03-04 during backlog audit to reconcile checklist wording and completion evidence against current repository test layout.
 
 ## Background
 

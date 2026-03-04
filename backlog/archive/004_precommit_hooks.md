@@ -4,10 +4,11 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '4: Configure Pre-Commit Hooks and Linting'
-status: ready-for-review
-status_reason: awaiting-review
+status: closed
+status_reason: completed
 priority: critical
 estimated: 4
+completed_date: 2026-03-04
 actual: 5
 assignee: ''
 test_results:
@@ -18,6 +19,8 @@ commits:
 links:
   depends_on:
     - '[[002_monorepo_setup]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/1'
 ---
 
 ## Goal

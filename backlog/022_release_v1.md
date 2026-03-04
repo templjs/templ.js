@@ -32,6 +32,9 @@ links:
     - '[[027_virtual_code_mapping]]'
     - '[[028_textmate_grammar]]'
     - '[[029_cli_signal_handling]]'
+    - '[[032_cli_config_files]]'
+    - '[[033_schema_parity]]'
+    - '[[034_prerelease_coverage_quality_gate]]'
 ---
 
 ## Goal

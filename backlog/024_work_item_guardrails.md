@@ -4,12 +4,11 @@ type: work-item
 subtype: epic
 lifecycle: active
 title: '024: Implement Work Item Validation & Guardrails'
-status: closed
-status_reason: completed
+status: in-progress
+status_reason: reopened_for_checklist_reconciliation
 priority: critical
 estimated: 12
 assignee: ''
-completed_date: 2026-03-03
 test_results:
   - timestamp: 2026-03-03T08:30:00.000Z
     note: 'Core validation infrastructure complete. Verification: `pnpm run lint:frontmatter` (31 files, 0 errors). Validation script `scripts/ci/lint-frontmatter.ts` enforces schema, dependencies, and status transitions. Pre-push hook integrated via `.husky/pre-push`. CI job `lint-work-item-frontmatter` in `.github/workflows/ci.yml`. Work item renaming complete (025/027/028 archived as completed, 026/029 active). Dependency validation working (closed items cannot depend on non-closed). Optional enhancements documented for future work: (1) agent skills integration, (2) GitHub API PR validation, (3) CI status validation, (4) status transition enforcement enablement. Core guardrails meet minimal viable requirements per WI-024 original goals.'
@@ -31,6 +30,10 @@ links:
 ## Goal
 
 Implement objective, machine-verifiable guardrails for work item status claims. Work items can only be marked `completed` if they have merged PRs with passing CI, recorded test results, and all tasks checked. Enforce this via validation script, Husky hooks, and GitHub Actions. Migrate to numeric-only work item IDs and add dependency tracking.
+
+## Reopen Notes
+
+Reopened on 2026-03-04 during backlog audit to reconcile unresolved checklist items that were explicitly tracked as future enhancements.
 
 ## Background
 
