@@ -1,8 +1,17 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('fs', () => ({
-  writeFileSync: vi.fn(),
-}));
+vi.mock('fs', async () => {
+  const actual = await vi.importActual<typeof import('fs')>('fs');
+  return {
+    ...actual,
+    accessSync: vi.fn(() => {
+      const error = new Error('not found') as NodeJS.ErrnoException;
+      error.code = 'ENOENT';
+      throw error;
+    }),
+    writeFileSync: vi.fn(),
+  };
+});
 
 vi.mock('../src/commands/init.js', () => ({
   initCommand: vi.fn(),

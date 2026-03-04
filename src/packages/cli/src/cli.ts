@@ -29,14 +29,14 @@ function createProgram(): Command {
   program
     .command('render')
     .description('Render template with JSON data')
-    .requiredOption('-t, --template <path>', 'Template file path')
+    .option('-t, --template <path>', 'Template file path')
     .requiredOption('-i, --input <pathOrJson>', 'Input JSON file path or inline JSON payload')
     .option('-o, --output <path>', 'Output file path (defaults to stdout)')
     .option('--no-validate-input', 'Skip input validation when supported by core')
     .option('--no-validate-output', 'Skip output validation when supported by core')
     .action(
       async (options: {
-        template: string;
+        template?: string;
         input: string;
         output?: string;
         validateInput: boolean;
@@ -44,6 +44,11 @@ function createProgram(): Command {
       }) => {
         const config = loadConfig();
         const finalOptions = applyConfig(options, config) as typeof options;
+        if (!finalOptions.template) {
+          throw new Error(
+            'Template file path is required (pass --template or set defaultTemplate in .templjs.json)'
+          );
+        }
         const rendered = await renderCommand(finalOptions.template, finalOptions.input);
         if (finalOptions.output) {
           writeFileSync(finalOptions.output, rendered, 'utf-8');
@@ -56,11 +61,16 @@ function createProgram(): Command {
   program
     .command('validate')
     .description('Validate template syntax')
-    .requiredOption('-t, --template <path>', 'Template file path')
+    .option('-t, --template <path>', 'Template file path')
     .option('-s, --schema <path>', 'Optional schema path (future core integration)')
-    .action(async (options: { template: string; schema?: string }) => {
+    .action(async (options: { template?: string; schema?: string }) => {
       const config = loadConfig();
       const finalOptions = applyConfig(options, config) as typeof options;
+      if (!finalOptions.template) {
+        throw new Error(
+          'Template file path is required (pass --template or set defaultTemplate in .templjs.json)'
+        );
+      }
       const valid = await validateCommand(finalOptions.template, finalOptions.schema);
       process.stdout.write(valid ? 'Template is valid\n' : 'Template has errors\n');
       if (!valid) {

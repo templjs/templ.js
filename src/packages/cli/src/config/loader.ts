@@ -2,22 +2,22 @@
  * Config file discovery, loading, validation, and merging
  */
 
-import { readFileSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { accessSync, constants, readFileSync } from 'fs';
+import { resolve, dirname, parse } from 'path';
 import { cwd } from 'process';
 import Ajv from 'ajv';
 import { CliConfig, ResolvedConfig } from './types.js';
 import { CLI_CONFIG_SCHEMA } from './schema.js';
 
 const CONFIG_FILENAME = '.templjs.json';
+const ajv = new Ajv({ allErrors: true });
+const validateCliConfig = ajv.compile<CliConfig>(CLI_CONFIG_SCHEMA);
 
 /**
  * Validates config object against schema
  */
 function validateConfig(config: unknown): config is CliConfig {
-  const ajv = new Ajv();
-  const validate = ajv.compile(CLI_CONFIG_SCHEMA);
-  return validate(config);
+  return validateCliConfig(config) as boolean;
 }
 
 /**
@@ -25,17 +25,20 @@ function validateConfig(config: unknown): config is CliConfig {
  */
 function findConfigFile(startDir: string = cwd()): string | null {
   let currentDir = resolve(startDir);
-  const root = resolve('/');
+  const root = parse(currentDir).root;
 
   while (true) {
     const configPath = resolve(currentDir, CONFIG_FILENAME);
 
     try {
-      // Check if file exists by attempting to read it
-      readFileSync(configPath, 'utf-8');
+      // Check if file exists and is readable without loading content yet
+      accessSync(configPath, constants.R_OK);
       return configPath;
-    } catch {
-      // File not found or unreadable, continue searching
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== 'ENOENT') {
+        throw error;
+      }
     }
 
     if (currentDir === root) {
@@ -92,11 +95,16 @@ function mergeConfigs(configFile: CliConfig, cliFlags: Record<string, unknown>):
   }
   if (
     cliFlags.templateDelimiters !== undefined &&
+    cliFlags.templateDelimiters !== null &&
     typeof cliFlags.templateDelimiters === 'object'
   ) {
     merged.templateDelimiters = cliFlags.templateDelimiters as Record<string, string>;
   }
-  if (cliFlags.validation !== undefined && typeof cliFlags.validation === 'object') {
+  if (
+    cliFlags.validation !== undefined &&
+    cliFlags.validation !== null &&
+    typeof cliFlags.validation === 'object'
+  ) {
     merged.validation = cliFlags.validation as Record<string, unknown>;
   }
 
@@ -111,7 +119,7 @@ export function loadConfig(cliFlags: Record<string, unknown> = {}): ResolvedConf
 
   if (!configPath) {
     // No config file found, return empty config with CLI flags only
-    return {};
+    return mergeConfigs({}, cliFlags);
   }
 
   try {
@@ -140,16 +148,16 @@ export function applyConfig(
   const result: any = { ...options };
 
   // Apply config defaults only if CLI option was not provided
-  if (config.defaultTemplate && !options.template) {
+  if (config.defaultTemplate !== undefined && options.template === undefined) {
     result.template = config.defaultTemplate;
   }
-  if (config.defaultOutput && !options.output) {
+  if (config.defaultOutput !== undefined && options.output === undefined) {
     result.output = config.defaultOutput;
   }
-  if (config.inputFormat && !options.inputFormat) {
+  if (config.inputFormat !== undefined && options.inputFormat === undefined) {
     result.inputFormat = config.inputFormat;
   }
-  if (config.outputFormat && !options.outputFormat) {
+  if (config.outputFormat !== undefined && options.outputFormat === undefined) {
     result.outputFormat = config.outputFormat;
   }
 
@@ -161,7 +169,7 @@ export function applyConfig(
     if (config.validation.validateOutput !== undefined && options.validateOutput === undefined) {
       result.validateOutput = config.validation.validateOutput;
     }
-    if (config.validation.schemaPath && !options.schema) {
+    if (config.validation.schemaPath !== undefined && options.schema === undefined) {
       result.schema = config.validation.schemaPath;
     }
   }

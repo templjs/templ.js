@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { writeFileSync, mkdirSync, rmSync } from 'fs';
-import { resolve } from 'path';
+import { writeFileSync, mkdirSync, rmSync, mkdtempSync } from 'fs';
+import { resolve, basename, join } from 'path';
+import { tmpdir } from 'os';
 import { cwd } from 'process';
 import { loadConfig, applyConfig } from '../src/config/index.js';
 import type { CliConfig, ResolvedConfig } from '../src/config/types.js';
@@ -10,8 +11,7 @@ describe('CLI Config File Support (WI-032)', () => {
   let originalCwd: string;
 
   beforeEach(() => {
-    tempDir = resolve('/tmp/templjs-config-test-' + Date.now());
-    mkdirSync(tempDir, { recursive: true });
+    tempDir = mkdtempSync(join(tmpdir(), 'templjs-config-test-'));
     originalCwd = cwd();
   });
 
@@ -36,7 +36,7 @@ describe('CLI Config File Support (WI-032)', () => {
       expect(loaded.inputFormat).toBe('json');
       expect(loaded.outputFormat).toBe('text');
       expect(loaded.defaultTemplate).toBe('template.tmpl');
-      expect(loaded.configPath?.endsWith('/.templjs.json')).toBe(true);
+      expect(loaded.configPath ? basename(loaded.configPath) : undefined).toBe('.templjs.json');
     });
 
     it('searches parent directories for .templjs.json', () => {
@@ -55,7 +55,7 @@ describe('CLI Config File Support (WI-032)', () => {
 
       expect(loaded.inputFormat).toBe('yaml');
       expect(loaded.defaultOutput).toBe('output.md');
-      expect(loaded.configPath?.endsWith('/.templjs.json')).toBe(true);
+      expect(loaded.configPath ? basename(loaded.configPath) : undefined).toBe('.templjs.json');
     });
 
     it('returns empty config when no .templjs.json found', () => {
@@ -63,6 +63,20 @@ describe('CLI Config File Support (WI-032)', () => {
       const loaded = loadConfig();
 
       expect(loaded).toEqual({});
+      expect(loaded.configPath).toBeUndefined();
+    });
+
+    it('applies supported CLI flags when no .templjs.json is found', () => {
+      process.chdir(tempDir);
+      const loaded = loadConfig({
+        inputFormat: 'yaml',
+        outputFormat: 'markdown',
+        defaultTemplate: 'base.tmpl',
+      });
+
+      expect(loaded.inputFormat).toBe('yaml');
+      expect(loaded.outputFormat).toBe('markdown');
+      expect(loaded.defaultTemplate).toBe('base.tmpl');
       expect(loaded.configPath).toBeUndefined();
     });
 
@@ -194,6 +208,17 @@ describe('CLI Config File Support (WI-032)', () => {
 
       expect(loaded.inputFormat).toBe('json');
     });
+
+    it('ignores null object-like CLI flags', () => {
+      const cliFlags = {
+        templateDelimiters: null,
+        validation: null,
+      } as Record<string, unknown>;
+      const loaded = loadConfig(cliFlags);
+
+      expect(loaded.templateDelimiters).toBeUndefined();
+      expect(loaded.validation).toBeUndefined();
+    });
   });
 
   describe('Config application to command options', () => {
@@ -216,6 +241,18 @@ describe('CLI Config File Support (WI-032)', () => {
       const applied = applyConfig(options, config);
 
       expect(applied.template).toBe('cli.tmpl');
+    });
+
+    it('does not override explicit falsy CLI option values', () => {
+      const config: ResolvedConfig = {
+        defaultTemplate: 'config.tmpl',
+        validation: { schemaPath: 'schema.json' },
+      };
+      const options = { template: '', schema: '' };
+      const applied = applyConfig(options, config);
+
+      expect(applied.template).toBe('');
+      expect(applied.schema).toBe('');
     });
 
     it('applies validation config defaults', () => {
@@ -330,7 +367,7 @@ describe('CLI Config File Support (WI-032)', () => {
       writeFileSync(resolve(tempDir, '.templjs.json'), JSON.stringify(config));
       const loaded = loadConfig();
 
-      expect(loaded.configPath?.endsWith('/.templjs.json')).toBe(true);
+      expect(loaded.configPath ? basename(loaded.configPath) : undefined).toBe('.templjs.json');
     });
 
     it('returns empty config with undefined configPath when not found', () => {

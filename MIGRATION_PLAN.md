@@ -4,6 +4,7 @@ type: document
 subtype: roadmap
 lifecycle: active
 status: ready
+status_comment: 'Phase 4 in progress. Phases 1-3 delivered; tracking WI-032/WI-033 to complete CLI scope. 🚀'
 title: 'templ.js v1.0 - Implementation Timeline'
 ---
 
@@ -72,6 +73,10 @@ All planning artifacts are committed and stable:
 
 **Work Items**:
 
+- ✅ [[012_volar_plugin]] - Volar integration and language server plumbing (implemented, PR #20 verification)
+- ✅ [[013_syntax_highlighting]] - Syntax/token support shipped and validated in extension suites
+- ✅ [[014_diagnostics]] - Diagnostics provider implementation shipped and validated (15 tests in WI-031, PR #20)
+- ✅ [[015_intellisense]] - Completion/hover/navigation implementation shipped and validated (WI-031, PR #20)
 - ✅ [[016_extension_tests]] - Extension activation & server lifecycle tests (6.5h/8h, PR #19)
 - ✅ [[031_language_feature_tests]] - Language feature tests (22h/20h, PR #20)
 
@@ -192,7 +197,3 @@ cd /Users/macos/dev/templjs
 2. **Individual work items are authoritative**: Update and commit work item files as you progress; they are the source of truth for status
 3. **Tests first**: Each phase includes test work items (200+, 300+, 350+) to ensure quality
 4. **One week per phase**: Stay on schedule; adjust scope if falling behind, don't slip timeline
-
----
-
-**Status**: Planning complete. Awaiting Phase 1 start signal. 🚀
