@@ -12,8 +12,15 @@ assignee: ''
 links:
   depends_on:
     - '[[017_cli_commands]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/21'
 commits:
-  76953eb: 'feat(cli): add config file discovery and application (.templjs.json)'
+  c640eea: 'test(cli): cover template guard error paths'
+  abcbd98: 'ci: align codecov upload with centralized coverage output'
+  f56a08f: 'fix(cli): address PR #21 review feedback'
+  663a39a: 'fix(ci): set NX_PARALLEL=1 in pre-push hook to avoid coverage merge race'
+  54fd671: 'test(cli): exclude direct execution bootstrap from coverage'
+  6526369: 'docs(backlog): mark WI-032 ready-for-review with test evidence'
 test_results:
   - timestamp: 2026-03-04T10:45:00.000Z
     note: |
