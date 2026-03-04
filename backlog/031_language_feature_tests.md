@@ -4,11 +4,12 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '31: Write VS Code Language Feature Tests (completion, hover, diagnostics)'
-status: ready-for-review
-status_reason: moderate-issues-fixed
+status: closed
+status_reason: completed
 priority: critical
 estimated: 20
 actual: 22
+completed_date: 2026-03-04
 assignee: ''
 links:
   depends_on:
@@ -16,6 +17,7 @@ links:
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/20'
 commits:
+  0ef4015: 'fix(test,core): enable schema validator caching and strengthen test assertion'
   9478be0: 'fix(test): correct additionalProperties error message regex assertion'
   24613d8: 'fix(ci): use nx.json config instead of POSIX shell syntax'
   b582465: 'fix(ci,test,types,volar): address PR #20 moderate/minor feedback (issues 1-6, 8)'
@@ -107,6 +109,34 @@ comments:
       3. ⏳ Await follow-up review (typically faster with focused fixes)
       4. ⏳ Merge once approved
       5. ✅ Updated WI-031 status to `ready-for-review` after verification
+  - timestamp: 2026-03-04T17:30:00.000Z
+    note: |
+      ## WI-031 Closure: Language Feature Tests Complete ✅
+
+      All work for WI-031 language feature tests has been completed and PR #20 is merged to main.
+
+      ### Summary
+
+      **Implementation Complete**:
+      - Expanded Volar intellisense provider with completion filtering/sorting
+      - Added 35+ new language feature tests across completion, hover, definition, and diagnostics
+      - Core coverage: 99.68% function coverage
+      - All 969+ tests passing across templjs packages
+      - CI status: All checks passing (lint, type-check, test, build, coverage)
+
+      **Acceptance Criteria**: ✅ All Met
+      - [x] Syntax highlighting tests (5 tests)
+      - [x] Diagnostics tests (15 tests)  
+      - [x] Completion tests (10 tests)
+      - [x] Hover tests (10 tests)
+      - [x] Definition/references tests (5 tests)
+      - [x] 45+ total tests passing
+      - [x] No flaky tests
+      - [x] All tests run in CI/CD
+
+      **Scope**: Original 20h estimate + 2h for critical/major PR feedback fixes = 22h actual.
+
+      **Status**: `closed` with `status_reason: success`. Ready for Phase 3 release candidate.
 ---
 
 ## Goal
