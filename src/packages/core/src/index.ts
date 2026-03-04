@@ -17,6 +17,9 @@ export type * from './query-engine/types';
 export type { FilterFunction } from './query-engine/types';
 export type * from './renderer/types';
 
+// Export runtime values from lexer/types
+export { TokenType, DEFAULT_DELIMITERS } from './lexer/types';
+
 // Export lexer functions
 export { tokenize } from './lexer/lexer';
 

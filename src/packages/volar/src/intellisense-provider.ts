@@ -99,7 +99,8 @@ const DEFAULT_FILTERS: FilterSignature[] = [
   },
 ];
 
-const VARIABLE_PATH_REGEX = /^[A-Za-z_][\w]*(?:\[[^\]]+\])?(?:\.[A-Za-z_][\w]*(?:\[[^\]]+\])?)*/;
+// Matches variable paths including chained bracket access (e.g., matrix[0][0], obj["a"]["b"])
+const VARIABLE_PATH_REGEX = /^[A-Za-z_][\w]*(?:\[[^\]]+\])*(?:\.[A-Za-z_][\w]*(?:\[[^\]]+\])*)*/;
 
 function getDelimiters(options?: IntellisenseOptions): IntellisenseDelimiters {
   return { ...DEFAULT_DELIMITERS, ...(options?.delimiters ?? {}) };
