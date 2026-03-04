@@ -120,4 +120,22 @@ describe('cli-main', () => {
     expect(stderrSpy).toHaveBeenCalledWith('Error: render exploded\n');
     expect(process.exitCode).toBe(1);
   });
+
+  it('errors when render template is missing and no config default is available', async () => {
+    await main(['node', 'cli.js', 'render', '-i', '{"name":"World"}']);
+
+    expect(stderrSpy).toHaveBeenCalledWith(
+      'Error: Template file path is required (pass --template or set defaultTemplate in .templjs.json)\n'
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('errors when validate template is missing and no config default is available', async () => {
+    await main(['node', 'cli.js', 'validate']);
+
+    expect(stderrSpy).toHaveBeenCalledWith(
+      'Error: Template file path is required (pass --template or set defaultTemplate in .templjs.json)\n'
+    );
+    expect(process.exitCode).toBe(1);
+  });
 });
