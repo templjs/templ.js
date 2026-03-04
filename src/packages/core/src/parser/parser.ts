@@ -559,6 +559,9 @@ export class TemplateParser {
           }
 
           i = endBracket + 1;
+        } else {
+          // Malformed index access (missing ']'): consume the token to avoid infinite loops.
+          i++;
         }
       } else {
         i++;

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { tokenize } from '../../src/lexer/lexer';
-import { parse } from '../../src/parser/parser';
+import { parse, TemplateParser } from '../../src/parser/parser';
 import type {
   ExpressionStatementNode,
   IfNode,
@@ -2634,6 +2634,56 @@ describe('parse', () => {
         const tokens = tokenize('{{ x not in y }}');
         const result = parse(tokens);
         expect(result.ast).toBeDefined();
+      });
+
+      it('parses function call arguments through split/map path', () => {
+        const tokens = tokenize('{{ sum(1, 2, 3) }}');
+        const result = parse(tokens);
+        const expr = result.ast?.children[0] as ExpressionStatementNode;
+        expect(expr.value.type).toBe('function_call');
+        if (expr.value.type === 'function_call') {
+          expect(expr.value.args).toHaveLength(3);
+        }
+      });
+
+      it('parses method call arguments through split/map path', () => {
+        const tokens = tokenize('{{ user.format("a", "b") }}');
+        const result = parse(tokens);
+        const expr = result.ast?.children[0] as ExpressionStatementNode;
+        expect(expr.value.type).toBe('function_call');
+        if (expr.value.type === 'function_call') {
+          expect(expr.value.args).toHaveLength(2);
+        }
+      });
+
+      it('parses filter arguments through split/map path', () => {
+        const tokens = tokenize('{{ text | replace("old", "new") }}');
+        const result = parse(tokens);
+        const expr = result.ast?.children[0] as ExpressionStatementNode;
+        expect(expr.value.type).toBe('filter');
+        if (expr.value.type === 'filter') {
+          expect(expr.value.filters[0]?.args.length).toBe(2);
+        }
+      });
+
+      it('recovers malformed block syntax with fallback node', () => {
+        const tokens = tokenize('{% block name extra %}content{% endblock %}');
+        const result = parse(tokens);
+        expect(
+          result.errors.some((error) => error.message.includes('Invalid block statement syntax'))
+        ).toBe(true);
+        const firstNode = result.ast?.children[0] as BlockNode;
+        expect(firstNode.type).toBe('block');
+        expect(firstNode.name).toBe('');
+      });
+
+      it('creates fallback variable node for invalid variable start', () => {
+        const parser = new TemplateParser([]);
+        const node = (
+          parser as unknown as { parseVariable: (expr: string) => VariableNode }
+        ).parseVariable('1abc');
+        expect(node.type).toBe('variable');
+        expect(node.name).toBe('1abc');
       });
     });
   });
