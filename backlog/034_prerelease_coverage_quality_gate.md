@@ -22,7 +22,7 @@ Reconcile all coverage thresholds in vitest configs to align with ADR-006 target
 
 **Current State** (WI-031 completion):
 
-- Global thresholds: lines 95%, functions 99%, branches 90%, statements 95%
+- Global thresholds: lines 95%, functions 99%, branches 75%, statements 95%
 - Package thresholds manually set above actual measured coverage
 - Coverage enforcement: `perFile: false` (global enforcement only)
 - ADR-006 baseline targets: Overall 90%+, Core 95%+, CLI 85%+, Volar 92%+

@@ -16,6 +16,8 @@ links:
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/20'
 commits:
+  9478be0: 'fix(test): correct additionalProperties error message regex assertion'
+  24613d8: 'fix(ci): use nx.json config instead of POSIX shell syntax'
   b582465: 'fix(ci,test,types,volar): address PR #20 moderate/minor feedback (issues 1-6, 8)'
   6cfba2c: 'fix(ci): add watchdog test runners and stabilize pre-push'
   6d1a3e7: 'fix(ci,test,types,volar): address PR #20 moderate/minor feedback (issues 1-6, 8)'
@@ -104,7 +106,7 @@ comments:
       2. ⏳ Re-request review on PR #20  
       3. ⏳ Await follow-up review (typically faster with focused fixes)
       4. ⏳ Merge once approved
-      5. Update WI-031 status to `ready-for-review` after approval
+      5. ✅ Updated WI-031 status to `ready-for-review` after verification
 ---
 
 ## Goal

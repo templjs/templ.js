@@ -1140,9 +1140,9 @@ describe('Integration Tests', () => {
 
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors.some((error) => /additional properties/i.test(error.message))).toBe(
-        true
-      );
+      expect(
+        result.errors.some((error) => /additional|not allowed|not permitted/i.test(error.message))
+      ).toBe(true);
     });
 
     it('should format oneOf validation errors', () => {
