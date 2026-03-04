@@ -1089,7 +1089,7 @@ describe('Integration Tests', () => {
       expect(clearedStats.size).toBe(0);
     });
 
-    it('should keep cache size stable when reloading the same schema id', () => {
+    it('should reuse compiled validator from cache for same schema', () => {
       const schema: JSONSchema = {
         $id: 'unique-schema-id',
         type: 'object',
@@ -1100,13 +1100,22 @@ describe('Integration Tests', () => {
 
       const validator = new SchemaValidator(schema);
       const stats1 = validator.getCacheStats();
+      const cachedKeys1 = [...stats1.keys];
 
-      // Load the same schema again
+      // Verify schema was cached after initial load
+      expect(stats1.size).toBeGreaterThan(0);
+
+      // Load the same schema again - should retrieve from cache
       validator.loadSchema(schema);
       const stats2 = validator.getCacheStats();
 
-      // Cache size remains stable after reloading the same schema id.
+      // Verify cache still contains the schema (not cleared and recompiled)
       expect(stats2.size).toBe(stats1.size);
+      expect(stats2.keys).toEqual(cachedKeys1);
+
+      // Verify validation still works (compiled validator is functional)
+      const result = validator.validate({ name: 'test' });
+      expect(result.valid).toBe(true);
     });
   });
 

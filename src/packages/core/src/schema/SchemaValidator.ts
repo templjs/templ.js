@@ -44,13 +44,10 @@ export class SchemaValidator {
     this.currentSchema = schema;
     this.validPaths = extractPaths(schema);
 
-    // Clear cache when loading new schema
-    this.compiledSchemas.clear();
-
     // Generate cache key
     const cacheKey = this.getCacheKey(schema);
 
-    // Check cache
+    // Check cache - reuse compiled validator if already compiled
     if (this.compiledSchemas.has(cacheKey)) {
       this.validateFunction = this.compiledSchemas.get(cacheKey)!;
       return;
