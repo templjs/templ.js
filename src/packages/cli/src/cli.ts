@@ -31,6 +31,8 @@ function createProgram(): Command {
     .description('Render template with JSON data')
     .option('-t, --template <path>', 'Template file path')
     .requiredOption('-i, --input <pathOrJson>', 'Input JSON file path or inline JSON payload')
+    .option('--input-format <format>', 'Input format override (json|yaml|toml|xml)')
+    .option('--output-format <format>', 'Output format override (text|json|html|markdown)')
     .option('-o, --output <path>', 'Output file path (defaults to stdout)')
     .option('--no-validate-input', 'Skip input validation when supported by core')
     .option('--no-validate-output', 'Skip output validation when supported by core')
@@ -39,14 +41,29 @@ function createProgram(): Command {
         template?: string;
         input: string;
         output?: string;
+        inputFormat?: string;
+        outputFormat?: string;
         validateInput: boolean;
         validateOutput: boolean;
       }) => {
         const config = loadConfig();
         const finalOptions = applyConfig(options, config) as typeof options;
-        if (!finalOptions.template) {
+        if (finalOptions.template === undefined) {
           throw new Error(
             'Template file path is required (pass --template or set defaultTemplate in .templjs.json)'
+          );
+        }
+        if (finalOptions.template.trim().length === 0) {
+          throw new Error('Template file path must not be empty');
+        }
+        if (finalOptions.inputFormat !== undefined && finalOptions.inputFormat !== 'json') {
+          throw new Error(
+            `Unsupported input format "${finalOptions.inputFormat}". Only "json" is currently supported in render`
+          );
+        }
+        if (finalOptions.outputFormat !== undefined && finalOptions.outputFormat !== 'text') {
+          throw new Error(
+            `Unsupported output format "${finalOptions.outputFormat}". Only "text" is currently supported in render`
           );
         }
         const rendered = await renderCommand(finalOptions.template, finalOptions.input);
@@ -66,10 +83,13 @@ function createProgram(): Command {
     .action(async (options: { template?: string; schema?: string }) => {
       const config = loadConfig();
       const finalOptions = applyConfig(options, config) as typeof options;
-      if (!finalOptions.template) {
+      if (finalOptions.template === undefined) {
         throw new Error(
           'Template file path is required (pass --template or set defaultTemplate in .templjs.json)'
         );
+      }
+      if (finalOptions.template.trim().length === 0) {
+        throw new Error('Template file path must not be empty');
       }
       const valid = await validateCommand(finalOptions.template, finalOptions.schema);
       process.stdout.write(valid ? 'Template is valid\n' : 'Template has errors\n');
@@ -81,13 +101,25 @@ function createProgram(): Command {
   program
     .command('init')
     .description('Generate a starter template')
-    .requiredOption('-f, --format <format>', 'Template format: markdown|html|json|yaml')
+    .option('-f, --format <format>', 'Template format: markdown|html|json|yaml')
+    .option('--output-format <format>', 'Format fallback from config/flags')
     .option('-o, --output <path>', 'Write starter template to file')
-    .action(async (options: { format: string; output?: string }) => {
+    .action(async (options: { format?: string; output?: string; outputFormat?: string }) => {
       const config = loadConfig();
       const finalOptions = applyConfig(options, config) as typeof options;
+      const resolvedFormat = finalOptions.format ?? finalOptions.outputFormat;
+      if (resolvedFormat === undefined) {
+        throw new Error(
+          'Template format is required (pass --format or set outputFormat in .templjs.json)'
+        );
+      }
+      if (!['markdown', 'html', 'json', 'yaml'].includes(resolvedFormat)) {
+        throw new Error(
+          `Unsupported init format "${resolvedFormat}". Use one of: markdown, html, json, yaml`
+        );
+      }
       const starter = await initCommand({
-        format: finalOptions.format,
+        format: resolvedFormat,
         output: finalOptions.output,
       });
       if (!finalOptions.output) {

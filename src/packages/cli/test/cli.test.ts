@@ -138,4 +138,75 @@ describe('cli-main', () => {
     );
     expect(process.exitCode).toBe(1);
   });
+
+  it('errors when template path is explicitly empty', async () => {
+    await main(['node', 'cli.js', 'render', '-t', '', '-i', '{"name":"World"}']);
+
+    expect(stderrSpy).toHaveBeenCalledWith('Error: Template file path must not be empty\n');
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('errors on unsupported render input format', async () => {
+    await main([
+      'node',
+      'cli.js',
+      'render',
+      '-t',
+      'template.templ',
+      '-i',
+      '{"name":"World"}',
+      '--input-format',
+      'yaml',
+    ]);
+
+    expect(stderrSpy).toHaveBeenCalledWith(
+      'Error: Unsupported input format "yaml". Only "json" is currently supported in render\n'
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('errors on unsupported render output format', async () => {
+    await main([
+      'node',
+      'cli.js',
+      'render',
+      '-t',
+      'template.templ',
+      '-i',
+      '{"name":"World"}',
+      '--output-format',
+      'html',
+    ]);
+
+    expect(stderrSpy).toHaveBeenCalledWith(
+      'Error: Unsupported output format "html". Only "text" is currently supported in render\n'
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('uses output-format as init format fallback when format is omitted', async () => {
+    vi.mocked(initCommand).mockResolvedValue('starter-template');
+
+    await main(['node', 'cli.js', 'init', '--output-format', 'json']);
+
+    expect(initCommand).toHaveBeenCalledWith({ format: 'json', output: undefined });
+  });
+
+  it('errors when init format is missing and no fallback is provided', async () => {
+    await main(['node', 'cli.js', 'init']);
+
+    expect(stderrSpy).toHaveBeenCalledWith(
+      'Error: Template format is required (pass --format or set outputFormat in .templjs.json)\n'
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('errors when init fallback format is unsupported', async () => {
+    await main(['node', 'cli.js', 'init', '--output-format', 'text']);
+
+    expect(stderrSpy).toHaveBeenCalledWith(
+      'Error: Unsupported init format "text". Use one of: markdown, html, json, yaml\n'
+    );
+    expect(process.exitCode).toBe(1);
+  });
 });

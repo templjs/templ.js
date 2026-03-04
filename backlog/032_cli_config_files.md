@@ -25,8 +25,8 @@ test_results:
   - timestamp: 2026-03-04T10:45:00.000Z
     note: |
       WI-032 local validation:
-      - runTests: src/packages/cli/test/config.test.ts -> 22 passed, 0 failed
-      - runTests: full CLI suite (cli/config/commands) -> 39 passed, 0 failed
+      - runTests: src/packages/cli/test/config.test.ts -> 26 passed, 0 failed
+      - runTests: full CLI suite (cli/config/commands) -> 47 passed, 0 failed
       - pre-commit hooks passed during commit
 ---
 

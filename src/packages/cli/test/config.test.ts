@@ -209,6 +209,12 @@ describe('CLI Config File Support (WI-032)', () => {
       expect(loaded.inputFormat).toBe('json');
     });
 
+    it('throws when CLI flags include invalid enum values', () => {
+      expect(() => loadConfig({ inputFormat: 'csv' })).toThrow(
+        /Invalid \.templjs\.json \(merged config is invalid\)/
+      );
+    });
+
     it('ignores null object-like CLI flags', () => {
       const cliFlags = {
         templateDelimiters: null,

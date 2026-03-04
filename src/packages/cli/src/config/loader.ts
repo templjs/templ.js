@@ -20,6 +20,19 @@ function validateConfig(config: unknown): config is CliConfig {
   return validateCliConfig(config) as boolean;
 }
 
+function getValidationErrorDetails(): string {
+  const details = validateCliConfig.errors
+    ?.map((error) => `${error.instancePath || '/'}: ${error.message || 'invalid value'}`)
+    .join('; ');
+  return details || 'config does not match schema';
+}
+
+function assertValidConfig(config: unknown, context: string): asserts config is CliConfig {
+  if (!validateConfig(config)) {
+    throw new Error(`Invalid .templjs.json (${context}): ${getValidationErrorDetails()}`);
+  }
+}
+
 /**
  * Recursively searches for .templjs.json from current directory up to root
  */
@@ -59,11 +72,7 @@ function loadConfigFile(configPath: string): CliConfig {
     const content = readFileSync(configPath, 'utf-8');
     const config = JSON.parse(content);
 
-    if (!validateConfig(config)) {
-      throw new Error(
-        `Invalid .templjs.json: config does not match schema. Check types: inputFormat, outputFormat, templateDelimiters, validation`
-      );
-    }
+    assertValidConfig(config, 'file validation failed');
 
     return config;
   } catch (error) {
@@ -119,12 +128,15 @@ export function loadConfig(cliFlags: Record<string, unknown> = {}): ResolvedConf
 
   if (!configPath) {
     // No config file found, return empty config with CLI flags only
-    return mergeConfigs({}, cliFlags);
+    const merged = mergeConfigs({}, cliFlags);
+    assertValidConfig(merged, 'CLI flag overrides are invalid');
+    return merged;
   }
 
   try {
     const configFile = loadConfigFile(configPath);
     const merged = mergeConfigs(configFile, cliFlags);
+    assertValidConfig(merged, 'merged config is invalid');
 
     return {
       ...merged,
