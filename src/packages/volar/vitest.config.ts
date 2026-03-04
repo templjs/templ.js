@@ -1,4 +1,3 @@
-import path from 'path';
 import { defineConfig, mergeConfig } from 'vitest/config';
 import baseConfig from '../../../vitest.config.ts';
 
@@ -6,11 +5,7 @@ export default mergeConfig(
   baseConfig,
   defineConfig({
     test: {
-      include: ['src/**/*.test.ts', 'test/**/*.test.ts'],
       coverage: {
-        reportsDirectory: path.resolve(__dirname, 'coverage'),
-        include: ['src/**/*.ts'],
-        exclude: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
         thresholds: {
           // Volar package thresholds baselined to measured coverage during WI-031.
           // Lines: 97% (measured 97% - very tight alignment with actual coverage)

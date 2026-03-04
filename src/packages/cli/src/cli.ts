@@ -100,7 +100,9 @@ export async function main(argv = process.argv): Promise<void> {
   }
 }
 
+/* v8 ignore start */
 const isDirectExecution = process.argv[1]?.endsWith('cli.js') ?? false;
 if (isDirectExecution) {
   void main();
 }
+/* v8 ignore stop */
