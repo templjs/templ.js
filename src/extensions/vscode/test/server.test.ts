@@ -32,7 +32,7 @@ vi.mock('@templjs/volar', () => ({
 
 describe('language-server-bootstrap', () => {
   it('wires connection lifecycle handlers and starts listening', async () => {
-    await import('./server');
+    await import('../src/server');
 
     expect(onInitialize).toHaveBeenCalledWith(expect.any(Function));
     expect(onInitialized).toHaveBeenCalledWith(initialized);
@@ -41,7 +41,7 @@ describe('language-server-bootstrap', () => {
   });
 
   it('registers templjs language plugin provider', async () => {
-    await import('./server');
+    await import('../src/server');
     const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => unknown;
     initializeHandler({});
 
@@ -60,7 +60,7 @@ describe('language-server-bootstrap', () => {
   });
 
   it('registers expected templated file extensions in server options', async () => {
-    await import('./server');
+    await import('../src/server');
     const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => unknown;
     initializeHandler({});
 
@@ -83,7 +83,7 @@ describe('language-server-bootstrap', () => {
   });
 
   it('binds initialized and shutdown callbacks to server instance handlers', async () => {
-    await import('./server');
+    await import('../src/server');
 
     expect(onInitialized).toHaveBeenCalledWith(initialized);
     expect(onShutdown).toHaveBeenCalledWith(shutdown);

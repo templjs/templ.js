@@ -31,7 +31,7 @@ WI-017 implemented basic CLI commands with JSON input. This work item extends va
 
 - [ ] YAML input parsing and validation working
 - [ ] TOML input parsing and validation working
-- [ ] XML input parsing and validation working (if needed)
+- [ ] XML input parsing and validation working
 - [ ] Schema validation works across all formats
 - [ ] Format errors have clear messages
 - [ ] Format auto-detection working
@@ -59,7 +59,7 @@ templjs render --input data.yml --template output.md.tmpl
 templjs render --input config.toml --template output.md.tmpl
 ```
 
-### XML (Optional)
+### XML (New)
 
 ```bash
 templjs render --input data.xml --template output.md.tmpl
@@ -69,7 +69,7 @@ templjs render --input data.xml --template output.md.tmpl
 
 - [ ] Add YAML parser (libyaml or similar)
 - [ ] Add TOML parser
-- [ ] Add XML parser (if needed)
+- [ ] Add XML parser
 - [ ] Format auto-detection by file extension
 - [ ] Format-specific error handling
 - [ ] Schema validation on parsed structures

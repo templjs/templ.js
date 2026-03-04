@@ -270,4 +270,28 @@ describe('DiagnosticProvider', () => {
     });
     expect(diagnostics.length).toBe(0);
   });
+
+  it('accepts custom filters in diagnostics options', () => {
+    const diagnostics = collectDiagnostics('{{ user.name | slugify }}', {
+      customFilters: ['slugify'],
+    });
+    expect(diagnostics.length).toBe(0);
+  });
+
+  it('includes remapped base diagnostics when provided', () => {
+    const diagnostics = collectDiagnostics('Hello {{ user.name }}', {
+      baseDiagnostics: [
+        {
+          message: 'Base markdown error',
+          range: {
+            start: { line: 0, character: 0 },
+            end: { line: 0, character: 5 },
+          },
+          severity: DiagnosticSeverity.Warning,
+        },
+      ],
+    });
+
+    expect(diagnostics.some((diag) => diag.message === 'Base markdown error')).toBe(true);
+  });
 });

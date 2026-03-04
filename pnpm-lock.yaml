@@ -35,6 +35,9 @@ importers:
       '@typescript-eslint/parser':
         specifier: latest
         version: 8.56.0(eslint@10.0.0)(typescript@5.9.3)
+      '@vitest/coverage-v8':
+        specifier: ^4.0.18
+        version: 4.0.18(vitest@4.0.18)
       ajv:
         specifier: latest
         version: 8.18.0
@@ -2831,7 +2834,7 @@ packages:
       obug: 2.1.1
       std-env: 3.10.0
       tinyrainbow: 3.0.3
-      vitest: 4.0.18(@types/node@20.19.33)(tsx@4.21.0)(yaml@2.8.2)
+      vitest: 4.0.18(@types/node@25.3.0)(tsx@4.21.0)(yaml@2.8.2)
     dev: true
 
   /@vitest/expect@4.0.18:

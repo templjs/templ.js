@@ -156,6 +156,33 @@ describe('IntellisenseProvider', () => {
     expect(items.some((item) => item.label === 'upper')).toBe(true);
   });
 
+  it('filters top-level variable completions by prefix', () => {
+    const items = provider.getCompletions('{{ us }}', 5, { schema: sampleSchema });
+    expect(items.map((item) => item.label)).toEqual(['user', 'users']);
+  });
+
+  it('normalizes array-index prefix to match top-level completions', () => {
+    const items = provider.getCompletions('{{ users[ }}', 9, { schema: sampleSchema });
+    expect(items.map((item) => item.label)).toEqual(['users']);
+  });
+
+  it('filters property completions by prefix after dot', () => {
+    const items = provider.getCompletions('{{ user.n }}', 10, { schema: sampleSchema });
+    expect(items.map((item) => item.label)).toEqual(['name']);
+  });
+
+  it('filters filter completions by typed prefix', () => {
+    const items = provider.getCompletions('{{ user.name | lo }}', 19, {
+      schema: sampleSchema,
+    });
+    expect(items.map((item) => item.label)).toEqual(['lower']);
+  });
+
+  it('sorts keyword completions by relevance and label', () => {
+    const items = provider.getCompletions('{% e %}', 5, {});
+    expect(items.slice(0, 3).map((item) => item.label)).toEqual(['elif', 'else', 'endblock']);
+  });
+
   it('returns hover info for nested variable path', () => {
     const hover = provider.getHover('{{ user.email }}', 5, { schema: sampleSchema });
     expect(hover?.contents).toContain('user.email');
@@ -164,6 +191,43 @@ describe('IntellisenseProvider', () => {
   it('returns null hover when variable not in schema', () => {
     const hover = provider.getHover('{{ unknown }}', 5, { schema: sampleSchema });
     expect(hover).toBeNull();
+  });
+
+  it('returns hover info for top-level variable', () => {
+    const hover = provider.getHover('{{ user }}', 5, { schema: sampleSchema });
+    expect(hover?.contents).toContain('user');
+  });
+
+  it('returns hover info for custom filter', () => {
+    const hover = provider.getHover('{{ user.name | custom }}', 22, {
+      customFilters: [
+        {
+          name: 'custom',
+          description: 'Custom hover docs',
+          returnType: 'string',
+          parameters: [],
+        },
+      ],
+    });
+    expect(hover?.contents).toContain('Custom hover docs');
+  });
+
+  it('returns null hover for unknown filter name', () => {
+    const hover = provider.getHover('{{ user.name | unknownfilter }}', 27, {
+      schema: sampleSchema,
+    });
+    expect(hover).toBeNull();
+  });
+
+  it('supports hover with custom expression delimiters', () => {
+    const hover = provider.getHover('<: user.name :>', 5, {
+      schema: sampleSchema,
+      delimiters: {
+        expressionStart: '<:',
+        expressionEnd: ':>',
+      },
+    });
+    expect(hover?.contents).toContain('user.name');
   });
 
   it('returns signature help for custom filters', () => {
@@ -178,5 +242,33 @@ describe('IntellisenseProvider', () => {
       ],
     });
     expect(help?.name).toBe('custom');
+  });
+
+  it('returns definition path for array-style variable expression', () => {
+    const def = provider.getDefinition('{{ users[0].id }}', 5, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+    });
+    expect(def?.path).toBe('users[0].id');
+  });
+
+  it('supports definition with custom expression delimiters', () => {
+    const def = provider.getDefinition('<: user.email :>', 5, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+      delimiters: {
+        expressionStart: '<:',
+        expressionEnd: ':>',
+      },
+    });
+    expect(def?.path).toBe('user.email');
+  });
+
+  it('returns null definition when expression does not start with a variable', () => {
+    const def = provider.getDefinition('{{ | upper }}', 5, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+    });
+    expect(def).toBeNull();
   });
 });

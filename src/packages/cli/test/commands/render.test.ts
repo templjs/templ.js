@@ -11,7 +11,7 @@ vi.mock('@templjs/core', () => ({
 
 import { readFileSync } from 'fs';
 import { renderTemplate } from '@templjs/core';
-import { renderCommand } from './render';
+import { renderCommand } from '../../src/commands/render';
 
 describe('renderCommand', () => {
   it('renders template output from file and JSON payload', async () => {

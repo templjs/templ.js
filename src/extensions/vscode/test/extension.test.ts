@@ -57,7 +57,7 @@ describe('extension-activation', () => {
       asAbsolutePath: (value: string) => `/tmp/${value}`,
     };
 
-    const module = await import('./extension');
+    const module = await import('../src/extension');
     module.activate(context as never);
 
     expect(registerCommand).toHaveBeenCalledWith('templjs.test', expect.any(Function));
@@ -73,7 +73,7 @@ describe('extension-activation', () => {
       asAbsolutePath: (value: string) => `/tmp/${value}`,
     };
 
-    const module = await import('./extension');
+    const module = await import('../src/extension');
     module.activate(context as never);
 
     const commandHandler = registerCommand.mock.calls[0][1] as () => void;
@@ -88,7 +88,7 @@ describe('extension-activation', () => {
       asAbsolutePath: (value: string) => `/tmp/${value}`,
     };
 
-    const module = await import('./extension');
+    const module = await import('../src/extension');
     module.activate(context as never);
 
     expect(languageClientConstructor).toHaveBeenCalledWith(
@@ -105,7 +105,7 @@ describe('extension-activation', () => {
       asAbsolutePath: (value: string) => `/tmp/${value}`,
     };
 
-    const module = await import('./extension');
+    const module = await import('../src/extension');
     module.activate(context as never);
 
     const clientOptions = languageClientConstructor.mock.calls[0][3] as {
@@ -127,7 +127,7 @@ describe('extension-activation', () => {
       asAbsolutePath: (value: string) => `/tmp/${value}`,
     };
 
-    const module = await import('./extension');
+    const module = await import('../src/extension');
     module.activate(context as never);
 
     expect(createFileSystemWatcher).toHaveBeenCalledWith(
@@ -141,7 +141,7 @@ describe('extension-activation', () => {
       asAbsolutePath: (value: string) => `/tmp/${value}`,
     };
 
-    const module = await import('./extension');
+    const module = await import('../src/extension');
     module.activate(context as never);
 
     const clientOptions = languageClientConstructor.mock.calls[0][3] as {
@@ -158,7 +158,7 @@ describe('extension-activation', () => {
       },
     };
 
-    const module = await import('./extension');
+    const module = await import('../src/extension');
     module.activate(context as never);
 
     expect(showErrorMessage).toHaveBeenCalledWith(
@@ -176,7 +176,7 @@ describe('extension-activation', () => {
       asAbsolutePath: (value: string) => `/tmp/${value}`,
     };
 
-    const module = await import('./extension');
+    const module = await import('../src/extension');
     module.activate(context as never);
 
     expect(createFileSystemWatcher).toHaveBeenCalled();
@@ -195,7 +195,7 @@ describe('extension-activation', () => {
       asAbsolutePath: (value: string) => `/tmp/${value}`,
     };
 
-    const module = await import('./extension');
+    const module = await import('../src/extension');
     module.activate(context as never);
 
     expect(context.subscriptions.length).toBeGreaterThanOrEqual(2);
@@ -207,7 +207,7 @@ describe('extension-activation', () => {
       asAbsolutePath: (value: string) => `/tmp/${value}`,
     };
 
-    const module = await import('./extension');
+    const module = await import('../src/extension');
     module.activate(context as never);
     const deactivation = module.deactivate();
     if (deactivation) {
@@ -217,7 +217,7 @@ describe('extension-activation', () => {
   });
 
   it('returns undefined when deactivating without active client', async () => {
-    const module = await import('./extension');
+    const module = await import('../src/extension');
     expect(module.deactivate()).toBeUndefined();
   });
 });

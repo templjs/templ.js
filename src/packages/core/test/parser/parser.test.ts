@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tokenize } from '../../src/lexer';
+import { tokenize } from '../../src/lexer/lexer';
 import { parse } from '../../src/parser/parser';
 import type {
   ExpressionStatementNode,
@@ -2473,6 +2473,218 @@ describe('parse', () => {
         const tokens = tokenize('{% if %}{% if %}content{% endif %}{% endif %}');
         const result = parse(tokens);
         expect(result.ast).toBeDefined();
+      });
+
+      it('handles filter with invalid syntax', () => {
+        const tokens = tokenize('{{ name | bad-filter }}');
+        const result = parse(tokens);
+        expect(result.ast).toBeDefined();
+      });
+
+      it('handles filter expression without pipe', () => {
+        const tokens = tokenize('{{ item | }}');
+        const result = parse(tokens);
+        expect(result.ast).toBeDefined();
+      });
+
+      it('handles object literal with malformed properties', () => {
+        const tokens = tokenize('{{ {x:} }}');
+        const result = parse(tokens);
+        expect(result.ast).toBeDefined();
+      });
+
+      it('handles array literal with trailing comma', () => {
+        const tokens = tokenize('{{ [1, 2,] }}');
+        const result = parse(tokens);
+        expect(result.ast).toBeDefined();
+      });
+
+      it('handles nested parentheses in expressions', () => {
+        const tokens = tokenize('{{ ((x + y) * (z - 1)) }}');
+        const result = parse(tokens);
+        expect(result.ast).toBeDefined();
+        const expr = result.ast?.children[0] as ExpressionStatementNode;
+        expect(expr.value.type).toBeDefined();
+      });
+
+      it('handles variable with unclosed index', () => {
+        const tokens = tokenize('{{ arr[ }}');
+        const result = parse(tokens);
+        expect(result.ast).toBeDefined();
+      });
+
+      it('handles method call with invalid args', () => {
+        const tokens = tokenize('{{ obj.method(x } }}');
+        const result = parse(tokens);
+        expect(result.ast).toBeDefined();
+      });
+
+      it('handles ternary with missing parts', () => {
+        const tokens = tokenize('{{ x ? : }}');
+        const result = parse(tokens);
+        expect(result.ast).toBeDefined();
+      });
+
+      it('handles comparison operators in expressions', () => {
+        const tokens = tokenize('{{ x == y }}');
+        const result = parse(tokens);
+        const expr = result.ast?.children[0] as ExpressionStatementNode;
+        expect(expr.value.type).toBe('binary_op');
+      });
+
+      it('handles logical and operators', () => {
+        const tokens = tokenize('{{ x && y }}');
+        const result = parse(tokens);
+        const expr = result.ast?.children[0] as ExpressionStatementNode;
+        expect(expr.value.type).toBe('binary_op');
+      });
+
+      it('handles logical or operators', () => {
+        const tokens = tokenize('{{ x || y }}');
+        const result = parse(tokens);
+        const expr = result.ast?.children[0] as ExpressionStatementNode;
+        expect(expr.value.type).toBe('binary_op');
+      });
+
+      it('handles for loop with destructuring attempt', () => {
+        const tokens = tokenize('{% for [a, b] in items %}{{ a }}{% endfor %}');
+        const result = parse(tokens);
+        expect(result.ast).toBeDefined();
+      });
+
+      it('handles for loop with filter', () => {
+        const tokens = tokenize('{% for x in items | filter %}{{ x }}{% endfor %}');
+        const result = parse(tokens);
+        expect(result.ast).toBeDefined();
+      });
+
+      it('handles nested if statements', () => {
+        const tokens = tokenize('{% if a %}{% if b %}nested{% endif %}{% endif %}');
+        const result = parse(tokens);
+        expect(result.ast).toBeDefined();
+        expect(result.ast?.children.some((n) => n.type === 'if')).toBe(true);
+      });
+
+      it('handles elif chains', () => {
+        const tokens = tokenize('{% if a %}1{% elif b %}2{% elif c %}3{% else %}4{% endif %}');
+        const result = parse(tokens);
+        expect(result.ast?.children.length).toBeGreaterThan(0);
+      });
+
+      it('handles unless statement', () => {
+        const tokens = tokenize('{% unless x %}content{% endunless %}');
+        const result = parse(tokens);
+        expect(result.ast).toBeDefined();
+      });
+
+      it('handles variable with deep path access', () => {
+        const tokens = tokenize('{{ a.b.c.d.e }}');
+        const result = parse(tokens);
+        const expr = result.ast?.children[0] as ExpressionStatementNode;
+        const varNode = expr.value as VariableNode;
+        expect(varNode.type).toBe('variable');
+        expect(varNode.path.length).toBeGreaterThan(0);
+      });
+
+      it('handles variable with index access', () => {
+        const tokens = tokenize('{{ arr[0] }}');
+        const result = parse(tokens);
+        const expr = result.ast?.children[0] as ExpressionStatementNode;
+        const varNode = expr.value as VariableNode;
+        expect(varNode.path.length).toBeGreaterThan(0);
+      });
+
+      it('handles variable with string index', () => {
+        const tokens = tokenize('{{ obj["key"] }}');
+        const result = parse(tokens);
+        const expr = result.ast?.children[0] as ExpressionStatementNode;
+        const varNode = expr.value as VariableNode;
+        expect(varNode.path.length).toBeGreaterThan(0);
+      });
+
+      it('handles negative number literals', () => {
+        const tokens = tokenize('{{ -42 }}');
+        const result = parse(tokens);
+        const expr = result.ast?.children[0] as ExpressionStatementNode;
+        expect(expr.value.type).toBeDefined();
+      });
+
+      it('handles float number literals', () => {
+        const tokens = tokenize('{{ 3.14159 }}');
+        const result = parse(tokens);
+        const expr = result.ast?.children[0] as ExpressionStatementNode;
+        const lit = expr.value as LiteralNode;
+        expect(lit.valueType).toBe('number');
+        expect(lit.value).toBe(3.14159);
+      });
+
+      it('handles assignment operators', () => {
+        const tokens = tokenize('{{ x += 5 }}');
+        const result = parse(tokens);
+        expect(result.ast).toBeDefined();
+      });
+
+      it('handles in operator', () => {
+        const tokens = tokenize('{{ x in y }}');
+        const result = parse(tokens);
+        expect(result.ast).toBeDefined();
+      });
+
+      it('handles not in operator', () => {
+        const tokens = tokenize('{{ x not in y }}');
+        const result = parse(tokens);
+        expect(result.ast).toBeDefined();
+      });
+
+      it('parses function call arguments through split/map path', () => {
+        const tokens = tokenize('{{ sum(1, 2, 3) }}');
+        const result = parse(tokens);
+        const expr = result.ast?.children[0] as ExpressionStatementNode;
+        expect(expr.value.type).toBe('function_call');
+        if (expr.value.type === 'function_call') {
+          expect(expr.value.args).toHaveLength(3);
+        }
+      });
+
+      it('parses method call arguments through split/map path', () => {
+        const tokens = tokenize('{{ user.format("a", "b") }}');
+        const result = parse(tokens);
+        const expr = result.ast?.children[0] as ExpressionStatementNode;
+        expect(expr.value.type).toBe('function_call');
+        if (expr.value.type === 'function_call') {
+          expect(expr.value.args).toHaveLength(2);
+        }
+      });
+
+      it('parses filter arguments through split/map path', () => {
+        const tokens = tokenize('{{ text | replace("old", "new") }}');
+        const result = parse(tokens);
+        const expr = result.ast?.children[0] as ExpressionStatementNode;
+        expect(expr.value.type).toBe('filter');
+        if (expr.value.type === 'filter') {
+          expect(expr.value.filters[0]?.args.length).toBe(2);
+        }
+      });
+
+      it('recovers malformed block syntax with fallback node', () => {
+        const tokens = tokenize('{% block name extra %}content{% endblock %}');
+        const result = parse(tokens);
+        expect(
+          result.errors.some((error) => error.message.includes('Invalid block statement syntax'))
+        ).toBe(true);
+        const firstNode = result.ast?.children[0] as BlockNode;
+        expect(firstNode.type).toBe('block');
+        expect(firstNode.name).toBe('');
+      });
+
+      it('produces error for invalid variable start', () => {
+        // Test that invalid variable names produce error nodes through public API
+        const tokens = tokenize('{{ 1abc }}');
+        const result = parse(tokens);
+        expect(result.ast).toBeDefined();
+        // Parser produces an error node for invalid syntax
+        const expr = result.ast?.children[0] as ExpressionStatementNode;
+        expect(expr?.value.type).toBe('error');
       });
     });
   });

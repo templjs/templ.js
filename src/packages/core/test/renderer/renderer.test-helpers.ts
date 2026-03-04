@@ -1,4 +1,4 @@
-import { ExpressionNode, TemplateNode } from '../../src/parser';
+import type { ExpressionNode, TemplateNode } from '../../src/parser/types';
 
 const POS = { line: 1, column: 0 };
 

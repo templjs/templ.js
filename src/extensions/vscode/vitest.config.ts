@@ -6,16 +6,21 @@ export default mergeConfig(
   baseConfig,
   defineConfig({
     test: {
-      include: ['src/**/*.test.ts'],
+      include: ['test/**/*.test.ts'],
       coverage: {
         reportsDirectory: path.resolve(__dirname, 'coverage'),
         include: ['src/**/*.ts'],
-        exclude: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+        exclude: ['src/**/*.spec.ts'],
         thresholds: {
-          lines: 90,
-          functions: 90,
-          branches: 50,
-          statements: 90,
+          // VS Code extension thresholds baselined to measured coverage during WI-031.
+          // Functions: 99% (measured exactly 100% - using 99% to allow for variation)
+          // Branches: 75% (measured 75% - exact match)
+          // Lines/Statements: 96% (measured 97.14% - 1% margin)
+          // Extension tests consolidated in test/ directory (not published in npm).
+          lines: 96,
+          functions: 99,
+          branches: 75,
+          statements: 96,
         },
       },
     },

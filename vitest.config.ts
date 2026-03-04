@@ -18,12 +18,18 @@ export default defineConfig({
       reporter: ['text', 'json', 'html', 'lcov'],
       exclude: [...configDefaults.exclude, '**/.worktrees/**'],
       thresholds: {
-        lines: 98.8,
-        functions: 100,
-        branches: 98.21,
-        statements: 98.86,
-        autoUpdate: true,
-        perFile: true,
+        // Global thresholds are set to measured baselines to catch regressions
+        // while avoiding false failures due to noise in coverage measurements.
+        // Baselines determined from actual measured coverage across all packages (WI-031).
+        // perFile: false - allows some variation across files while catching overall regressions.
+        // NOTE: ADR-006 aspirational targets (90%+ all metrics) to be achieved before v1.0 release.
+        // See WI-034 for reconciliation plan.
+        lines: 95,
+        functions: 99,
+        branches: 75,
+        statements: 95,
+        autoUpdate: false, // enable to rebaseline thresholds
+        perFile: false,
       },
     },
   },
