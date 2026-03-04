@@ -122,7 +122,7 @@ Reconcile all coverage thresholds in vitest configs to align with ADR-006 target
 - [ ] Coverage audit report completed and committed
 - [ ] All status checks pass (lint, type-check, build, test, coverage)
 - [ ] PR reviewed and merged to main before v1.0 release
-- [ ] Work item marked completed with `state_reason: success`
+- [ ] Work item marked closed with `status_reason: completed`
 
 ## Notes
 

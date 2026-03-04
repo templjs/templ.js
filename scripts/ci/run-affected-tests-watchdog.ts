@@ -1,5 +1,5 @@
 #!/usr/bin/env tsx
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn, spawnSync, execSync } from 'node:child_process';
 
 type Mode = 'ci' | 'pre-push' | 'local';
 
@@ -87,10 +87,16 @@ function buildArgs(mode: Mode): string[] {
 
 function terminateProcessTree(pid: number, signal: NodeJS.Signals): void {
   if (process.platform === 'win32') {
+    // Use taskkill to terminate the entire process tree on Windows
     try {
-      process.kill(pid, signal);
+      execSync(`taskkill /PID ${pid} /T /F`, { stdio: 'ignore' });
     } catch {
-      // Ignore kill errors; process may already have exited.
+      // Fallback to process.kill if taskkill fails
+      try {
+        process.kill(pid, signal);
+      } catch {
+        // Ignore kill errors; process may already have exited.
+      }
     }
     return;
   }

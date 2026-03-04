@@ -22,6 +22,8 @@ export default defineConfig({
         // while avoiding false failures due to noise in coverage measurements.
         // Baselines determined from actual measured coverage across all packages (WI-031).
         // perFile: false - allows some variation across files while catching overall regressions.
+        // NOTE: ADR-006 aspirational targets (90%+ all metrics) to be achieved before v1.0 release.
+        // See WI-034 for reconciliation plan.
         lines: 95,
         functions: 99,
         branches: 75,

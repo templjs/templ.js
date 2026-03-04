@@ -5,7 +5,7 @@ subtype: task
 lifecycle: active
 title: '31: Write VS Code Language Feature Tests (completion, hover, diagnostics)'
 status: ready-for-review
-status_reason: critical-issues-fixed
+status_reason: moderate-issues-fixed
 priority: critical
 estimated: 20
 actual: 22
@@ -16,7 +16,9 @@ links:
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/20'
 commits:
+  b582465: 'fix(ci,test,types,volar): address PR #20 moderate/minor feedback (issues 1-6, 8)'
   6cfba2c: 'fix(ci): add watchdog test runners and stabilize pre-push'
+  6d1a3e7: 'fix(ci,test,types,volar): address PR #20 moderate/minor feedback (issues 1-6, 8)'
   ddd37de: 'refactor: eliminate barrel files and enhance test coverage'
   9eaec87: 'fix(core,cli,test): address PR #20 critical feedback and expand WI-031 scope'
   6f2a5fb: 'feat(test): add WI-034 pre-release coverage quality gate work item'

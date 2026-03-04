@@ -1139,6 +1139,10 @@ describe('Integration Tests', () => {
       const result = validator.validate({ name: 'John', extra: 'field' });
 
       expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors.some((error) => /additional properties/i.test(error.message))).toBe(
+        true
+      );
     });
 
     it('should format oneOf validation errors', () => {
@@ -1155,6 +1159,8 @@ describe('Integration Tests', () => {
       const result = validator.validate({ value: [] });
 
       expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors.some((error) => /oneOf/i.test(error.message))).toBe(true);
     });
 
     it('should format array minItems validation error', () => {
@@ -1172,6 +1178,8 @@ describe('Integration Tests', () => {
       const result = validator.validate({ items: [1] });
 
       expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors.some((error) => /fewer than|minItems/i.test(error.message))).toBe(true);
     });
 
     it('should improve format error messages', () => {

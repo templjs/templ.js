@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { tokenize } from '../../src/lexer/lexer';
-import { parse, TemplateParser } from '../../src/parser/parser';
+import { parse } from '../../src/parser/parser';
 import type {
   ExpressionStatementNode,
   IfNode,
@@ -2677,13 +2677,14 @@ describe('parse', () => {
         expect(firstNode.name).toBe('');
       });
 
-      it('creates fallback variable node for invalid variable start', () => {
-        const parser = new TemplateParser([]);
-        const node = (
-          parser as unknown as { parseVariable: (expr: string) => VariableNode }
-        ).parseVariable('1abc');
-        expect(node.type).toBe('variable');
-        expect(node.name).toBe('1abc');
+      it('produces error for invalid variable start', () => {
+        // Test that invalid variable names produce error nodes through public API
+        const tokens = tokenize('{{ 1abc }}');
+        const result = parse(tokens);
+        expect(result.ast).toBeDefined();
+        // Parser produces an error node for invalid syntax
+        const expr = result.ast?.children[0] as ExpressionStatementNode;
+        expect(expr?.value.type).toBe('error');
       });
     });
   });
