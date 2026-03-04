@@ -13,6 +13,8 @@ export type * from './lexer/types';
 export type * from './parser/types';
 export type * from './schema/types';
 export type * from './query-engine/types';
+// Explicitly re-export FilterFunction to resolve ambiguity
+export type { FilterFunction } from './query-engine/types';
 export type * from './renderer/types';
 
 // Export lexer functions
