@@ -4,7 +4,8 @@ type: work-item
 subtype: story
 lifecycle: active
 title: '32: Add CLI Config File Support (.templjs.json)'
-status: ready-for-review
+status: closed
+status_reason: success
 priority: high
 estimated: 8
 assignee: ''
