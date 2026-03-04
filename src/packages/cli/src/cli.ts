@@ -17,6 +17,7 @@ import { renderCommand } from './commands/render.js';
 import { validateCommand } from './commands/validate.js';
 import { version } from './index.js';
 import { loadConfig, applyConfig } from './config/index.js';
+import { defaultWatchModeDependencies, startRenderWatchMode } from './watch-mode.js';
 
 function createProgram(): Command {
   const program = new Command();
@@ -34,6 +35,7 @@ function createProgram(): Command {
     .option('--input-format <format>', 'Input format override (json|yaml|toml|xml)')
     .option('--output-format <format>', 'Output format override (text|json|html|markdown)')
     .option('-o, --output <path>', 'Output file path (defaults to stdout)')
+    .option('-w, --watch', 'Watch template/input files and re-render on changes')
     .option('--no-validate-input', 'Skip input validation when supported by core')
     .option('--no-validate-output', 'Skip output validation when supported by core')
     .action(
@@ -41,6 +43,7 @@ function createProgram(): Command {
         template?: string;
         input: string;
         output?: string;
+        watch: boolean;
         inputFormat?: string;
         outputFormat?: string;
         validateInput: boolean;
@@ -65,6 +68,20 @@ function createProgram(): Command {
           throw new Error(
             `Unsupported output format "${finalOptions.outputFormat}". Only "text" is currently supported in render`
           );
+        }
+        if (finalOptions.watch) {
+          await startRenderWatchMode(
+            {
+              template: finalOptions.template,
+              input: finalOptions.input,
+              output: finalOptions.output,
+            },
+            {
+              ...defaultWatchModeDependencies,
+              render: renderCommand,
+            }
+          );
+          return;
         }
         const rendered = await renderCommand(finalOptions.template, finalOptions.input);
         if (finalOptions.output) {
