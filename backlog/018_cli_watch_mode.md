@@ -18,6 +18,8 @@ commits:
   bfbed6b: 'feat(cli): implement WI-018 watch mode and file I/O'
   3a7f12f: 'fix(cli): update render stub comment and improve test assertions for watch mode'
   90abcbd: 'docs(backlog): link WI-018 to PR #22'
+  a9bc36b: 'docs(backlog): record WI-018 commit history'
+  2a79904: 'fix(cli): address PR #22 review feedback'
 test_results:
   - timestamp: 2026-03-04T14:38:00.000Z
     note: |
