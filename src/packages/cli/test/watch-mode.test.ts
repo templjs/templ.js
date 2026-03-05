@@ -216,6 +216,9 @@ describe('watch-mode', () => {
     expect(deps.render).toHaveBeenCalledTimes(2);
     resolveRender?.();
     await Promise.resolve();
+    await vi.waitFor(() => {
+      expect(signalHandlers.SIGINT).toBeTypeOf('function');
+    });
 
     signalHandlers.SIGINT?.();
     signalHandlers.SIGINT?.();
