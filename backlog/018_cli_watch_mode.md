@@ -46,7 +46,7 @@ Watch mode enables:
 ## Tasks
 
 - [x] Implement `--watch` flag for CLI commands
-- [x] Add file watcher using `chokidar` or chore Nodejs `fs.watch`
+- [x] Add file watcher using `chokidar` or core Node.js `fs.watch`
 - [x] Implement file streaming for large inputs
 - [x] Add configuration file loading (`.templjs.json`)
 - [x] Support environment variables in config
@@ -91,7 +91,13 @@ templjs render --watch --input data.json --template output.md.tmpl
 
 ## Dependencies
 
-- Requires: [[17 Implement CLI Commands]]
+- Requires: [[017_cli_commands]]
+
+## Status History
+
+- 2026-03-04T10:20:00.000Z: `proposed` -> `ready`
+- 2026-03-04T10:25:00.000Z: `ready` -> `in-progress`
+- 2026-03-04T14:38:00.000Z: `in-progress` -> `ready-for-review`
 
 ## Implementation Notes (2026-03-04)
 
