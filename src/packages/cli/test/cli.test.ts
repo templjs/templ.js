@@ -182,6 +182,13 @@ describe('cli-main', () => {
     expect(process.exitCode).toBe(1);
   });
 
+  it('errors when validate template path is explicitly empty', async () => {
+    await main(['node', 'cli.js', 'validate', '-t', '']);
+
+    expect(stderrSpy).toHaveBeenCalledWith('Error: Template file path must not be empty\n');
+    expect(process.exitCode).toBe(1);
+  });
+
   it('errors when template path is explicitly empty', async () => {
     await main(['node', 'cli.js', 'render', '-t', '', '-i', 'data.json']);
 

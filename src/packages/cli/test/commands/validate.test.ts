@@ -35,4 +35,19 @@ describe('validateCommand', () => {
       'Validation failed: validation crashed'
     );
   });
+
+  it('warns when schema path is provided before core wiring', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
+      vi.mocked(coreValidateTemplate).mockReturnValue({ valid: true, errors: [] });
+
+      await expect(validateCommand('template.templ', 'schema.json')).resolves.toBe(true);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Schema validation flag provided (schema.json) but schema validation is not yet wired in @templjs/core'
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
 });

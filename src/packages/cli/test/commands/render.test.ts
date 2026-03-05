@@ -135,6 +135,19 @@ describe('renderCommand', () => {
     );
   });
 
+  it('rethrows unexpected file errors while reading input payload', async () => {
+    vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
+    vi.mocked(statSync).mockImplementation(() => {
+      const error: NodeJS.ErrnoException = new Error('EBUSY: resource busy');
+      error.code = 'EBUSY';
+      throw error;
+    });
+
+    await expect(renderCommand('template.templ', 'busy.json')).rejects.toThrow(
+      'Render failed: EBUSY: resource busy'
+    );
+  });
+
   it('reads JSON input from stdin when input is "-"', async () => {
     vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
     vi.mocked(renderTemplate).mockReturnValue('Hello Pipe');

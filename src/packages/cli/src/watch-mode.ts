@@ -94,14 +94,18 @@ export async function startRenderWatchMode(
   }
 
   function triggerRender(): void {
-    void executeRender().catch((error: unknown) => {
-      const message = error instanceof Error ? error.message : String(error);
+    void (async () => {
       try {
-        deps.writeStderr(`Unexpected watch render loop error: ${message}\n`);
-      } catch {
-        // Best effort only; avoid surfacing unhandled rejection from logging.
+        await executeRender();
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        try {
+          deps.writeStderr(`Unexpected watch render loop error: ${message}\n`);
+        } catch {
+          // Best effort only; avoid surfacing unhandled rejection from logging.
+        }
       }
-    });
+    })();
   }
 
   const scheduleRender = (): void => {
@@ -165,22 +169,24 @@ export async function startRenderWatchMode(
     deps.addSignalListener('SIGTERM', onSigTerm);
 
     const startWatching = async (): Promise<void> => {
-      await executeRender();
-      if (!closed) {
-        deps.writeStderr(
-          `Watching ${options.template} and ${options.input}. Press Ctrl+C to stop.\n`
-        );
+      try {
+        await executeRender();
+        if (!closed) {
+          deps.writeStderr(
+            `Watching ${options.template} and ${options.input}. Press Ctrl+C to stop.\n`
+          );
+        }
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        try {
+          deps.writeStderr(`Unexpected watch mode startup error: ${message}\n`);
+        } catch {
+          // Best effort only; avoid surfacing unhandled rejection from logging.
+        }
+        cleanup(1);
       }
     };
 
-    void startWatching().catch((error: unknown) => {
-      const message = error instanceof Error ? error.message : String(error);
-      try {
-        deps.writeStderr(`Unexpected watch mode startup error: ${message}\n`);
-      } catch {
-        // Best effort only; avoid surfacing unhandled rejection from logging.
-      }
-      cleanup(1);
-    });
+    void startWatching();
   });
 }
