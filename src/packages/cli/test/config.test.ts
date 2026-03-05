@@ -186,7 +186,7 @@ describe('CLI Config File Support (WI-032)', () => {
       }
     });
 
-    it('resolves placeholders inside arrays before schema validation', () => {
+    it('preserves arrays during placeholder resolution before schema validation', () => {
       const previousListEnv = process.env.TEMPLJS_LIST_VALUE;
       process.env.TEMPLJS_LIST_VALUE = 'item-from-env';
 
@@ -195,11 +195,11 @@ describe('CLI Config File Support (WI-032)', () => {
         writeFileSync(
           resolve(tempDir, '.templjs.json'),
           JSON.stringify({
-            unsupportedArray: ['${TEMPLJS_LIST_VALUE}'],
+            templateDelimiters: ['${TEMPLJS_LIST_VALUE}'],
           })
         );
 
-        expect(() => loadConfig()).toThrow(/Invalid \.templjs\.json/);
+        expect(() => loadConfig()).toThrow(/\/templateDelimiters: must be object/);
       } finally {
         if (previousListEnv === undefined) {
           delete process.env.TEMPLJS_LIST_VALUE;

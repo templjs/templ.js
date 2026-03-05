@@ -49,7 +49,7 @@ export async function startRenderWatchMode(
 
   if (!deps.fileExists(options.input)) {
     throw new Error(
-      `Watch mode requires an existing input file path. Received "${options.input}". Stdin (-) is not supported in --watch mode`
+      `Watch mode requires an existing input file path. Received "${options.input}". Stdin (-) is not supported in --watch mode.`
     );
   }
 
