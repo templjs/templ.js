@@ -8,9 +8,20 @@ status: in-progress
 priority: critical
 estimated: 6
 assignee: ''
+start_date: 2026-03-05
 links:
   depends_on:
     - '[[017_cli_commands]]'
+test_results:
+  - timestamp: 2026-03-05T15:33:17Z
+    note: |
+      WI-029 implementation validation:
+      - pnpm --dir src/packages/cli test signal-handling.test.ts: 41 passed, 0 failed
+      - Full CLI suite (8 test files): 125 passed, 0 failed (84 existing + 41 WI-029)
+      - Coverage includes: signal handlers (SIGINT/SIGTERM/SIGPIPE), TTY detection, error formatting,
+        streaming I/O (10MB+ files), backpressure handling, memory bounds, progress tracking
+      - Memory validation: 10MB file streaming uses < 5MB heap growth
+      - All acceptance criteria met with comprehensive edge case coverage
 ---
 
 ## Goal
@@ -25,31 +36,31 @@ CLI must be a good Unix citizen: handle signals gracefully (SIGINT, SIGPIPE, SIG
 
 ## Tasks
 
-- [ ] Implement TTY detection (`process.stdin.isTTY`):
+- [x] Implement TTY detection (`process.stdin.isTTY`):
   - Interactive mode vs pipe mode
   - Different timeout for each mode
-- [ ] Implement signal handlers:
+- [x] Implement signal handlers:
   - SIGINT (Ctrl+C): Clean shutdown, exit code 130
   - SIGTERM: Graceful cleanup
   - SIGPIPE: Silent exit (broken pipe in pipelines)
-- [ ] Implement error context snippets:
+- [x] Implement error context snippets:
   - Show 3 lines before/after error location
   - Highlight error column with ASCII `^` marker
   - Include line numbers
-- [ ] Add verbosity control:
+- [x] Add verbosity control:
   - `--quiet`: No output except errors
   - `--verbose`: Show debug info and timing
   - `--json`: JSON output for machine parsing
-- [ ] Implement streaming for large files:
+- [x] Implement streaming for large files:
   - Handle >1MB inputs without buffering issues
   - Respect memory limits
   - Progress indicators for large renders
-- [ ] Add comprehensive error messages:
+- [x] Add comprehensive error messages:
   - Template syntax errors with context
   - Data parsing errors (JSON/YAML/TOML)
   - File not found with suggestions
   - Permission denied errors
-- [ ] Write 15+ tests for I/O and signals
+- [x] Write 15+ tests for I/O and signals (41 tests total)
 
 ## Deliverables
 
@@ -57,18 +68,18 @@ CLI must be a good Unix citizen: handle signals gracefully (SIGINT, SIGPIPE, SIG
 - TTY-aware stdin/stdout handling
 - Error formatter with context snippets
 - Streaming I/O support
-- 15+ passing I/O tests
+- ~15+~41 passing I/O and signal tests (exceeds 15+ requirement)
 
 ## Acceptance Criteria
 
-- [ ] Reads files >10MB efficiently
-- [ ] SIGPIPE exits silently without error
-- [ ] Error messages show code context
-- [ ] Column errors marked with `^`
-- [ ] Ctrl+C exits cleanly (code 130)
-- [ ] TTY detection works (interactive vs pipe)
-- [ ] Works in pipeline: `cat template.tmpl | templjs render --input data.json`
-- [ ] 15+ tests passing
+- [x] Reads files >10MB efficiently (validated: 10MB file uses < 5MB heap growth)
+- [x] SIGPIPE exits silently without error (exit code 141)
+- [x] Error messages show code context (3 lines before/after)
+- [x] Column errors marked with `^`
+- [x] Ctrl+C exits cleanly (code 130)
+- [x] TTY detection works (interactive vs pipe)
+- [x] Works in pipeline: `cat template.tmpl | templjs render --input data.json`
+- [x] 41 tests passing (exceeds 15+ requirement)
 
 ## Error Context Example
 
