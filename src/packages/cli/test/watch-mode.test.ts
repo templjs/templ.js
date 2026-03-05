@@ -137,7 +137,6 @@ describe('watch-mode', () => {
     await vi.waitFor(() => {
       expect(deps.writeOutput).toHaveBeenCalledWith('result.txt', 'rendered-to-file', 'utf-8');
     });
-    expect(deps.writeOutput).toHaveBeenCalledWith('result.txt', 'rendered-to-file', 'utf-8');
     expect(deps.writeStdout).not.toHaveBeenCalledWith('rendered-to-file\n');
 
     expect(signalHandlers.SIGTERM).toBeTypeOf('function');
@@ -263,12 +262,13 @@ describe('watch-mode', () => {
     const offSpy = vi.spyOn(process, 'off');
     const stdoutSpy = vi.spyOn(process.stdout, 'write').mockReturnValue(true);
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+    const previousExitCode = process.exitCode;
 
     try {
       expect(defaultWatchModeDependencies.fileExists(watchedPath)).toBe(true);
       await expect(
         defaultWatchModeDependencies.render('template.templ', watchedPath)
-      ).resolves.toBe('');
+      ).rejects.toThrow('Watch mode dependency "render" must be overridden');
 
       const watcher = defaultWatchModeDependencies.watchFile(watchedPath, () => {});
       watcher.close();
@@ -287,11 +287,10 @@ describe('watch-mode', () => {
       expect(onSpy).toHaveBeenCalledWith('SIGINT', handler);
       expect(offSpy).toHaveBeenCalledWith('SIGINT', handler);
 
-      const previousExitCode = process.exitCode;
       defaultWatchModeDependencies.setProcessExitCode(9);
       expect(process.exitCode).toBe(9);
-      process.exitCode = previousExitCode;
     } finally {
+      process.exitCode = previousExitCode;
       onSpy.mockRestore();
       offSpy.mockRestore();
       stdoutSpy.mockRestore();

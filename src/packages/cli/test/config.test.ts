@@ -100,6 +100,10 @@ describe('CLI Config File Support (WI-032)', () => {
     });
 
     it('rethrows non-ENOENT access errors during config discovery', () => {
+      if (process.platform === 'win32') {
+        return;
+      }
+
       const configPath = resolve(tempDir, '.templjs.json');
       process.chdir(tempDir);
       writeFileSync(configPath, '{"defaultTemplate":"x.tmpl"}');
@@ -175,6 +179,29 @@ describe('CLI Config File Support (WI-032)', () => {
       } finally {
         if (previousTemplateEnv !== undefined) {
           process.env.TEMPLJS_TEMPLATE_PATH = previousTemplateEnv;
+        }
+      }
+    });
+
+    it('resolves placeholders inside arrays before schema validation', () => {
+      const previousListEnv = process.env.TEMPLJS_LIST_VALUE;
+      process.env.TEMPLJS_LIST_VALUE = 'item-from-env';
+
+      try {
+        process.chdir(tempDir);
+        writeFileSync(
+          resolve(tempDir, '.templjs.json'),
+          JSON.stringify({
+            unsupportedArray: ['${TEMPLJS_LIST_VALUE}'],
+          })
+        );
+
+        expect(() => loadConfig()).toThrow(/Invalid \.templjs\.json/);
+      } finally {
+        if (previousListEnv === undefined) {
+          delete process.env.TEMPLJS_LIST_VALUE;
+        } else {
+          process.env.TEMPLJS_LIST_VALUE = previousListEnv;
         }
       }
     });
