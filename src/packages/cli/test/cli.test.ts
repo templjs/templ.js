@@ -25,11 +25,27 @@ vi.mock('../src/commands/validate.js', () => ({
   validateCommand: vi.fn(),
 }));
 
+vi.mock('../src/watch-mode.js', () => ({
+  defaultWatchModeDependencies: {
+    fileExists: vi.fn(),
+    render: vi.fn(),
+    watchFile: vi.fn(),
+    writeOutput: vi.fn(),
+    writeStdout: vi.fn(),
+    writeStderr: vi.fn(),
+    addSignalListener: vi.fn(),
+    removeSignalListener: vi.fn(),
+    setProcessExitCode: vi.fn(),
+  },
+  startRenderWatchMode: vi.fn(),
+}));
+
 import { writeFileSync } from 'fs';
 import { main } from '../src/cli';
 import { initCommand } from '../src/commands/init.js';
 import { renderCommand } from '../src/commands/render.js';
 import { validateCommand } from '../src/commands/validate.js';
+import { defaultWatchModeDependencies, startRenderWatchMode } from '../src/watch-mode.js';
 
 describe('cli-main', () => {
   const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
@@ -48,9 +64,9 @@ describe('cli-main', () => {
   it('renders to stdout when no output path is provided', async () => {
     vi.mocked(renderCommand).mockResolvedValue('rendered-output');
 
-    await main(['node', 'cli.js', 'render', '-t', 'template.templ', '-i', '{"name":"World"}']);
+    await main(['node', 'cli.js', 'render', '-t', 'template.templ', '-i', 'data.json']);
 
-    expect(renderCommand).toHaveBeenCalledWith('template.templ', '{"name":"World"}');
+    expect(renderCommand).toHaveBeenCalledWith('template.templ', 'data.json');
     expect(stdoutSpy).toHaveBeenCalledWith('rendered-output\n');
     expect(writeFileSync).not.toHaveBeenCalled();
   });
@@ -65,13 +81,40 @@ describe('cli-main', () => {
       '-t',
       'template.templ',
       '-i',
-      '{"name":"World"}',
+      'data.json',
       '-o',
       'result.txt',
     ]);
 
-    expect(renderCommand).toHaveBeenCalledWith('template.templ', '{"name":"World"}');
+    expect(renderCommand).toHaveBeenCalledWith('template.templ', 'data.json');
     expect(writeFileSync).toHaveBeenCalledWith('result.txt', 'rendered-output', 'utf-8');
+  });
+
+  it('delegates to watch mode when --watch is provided', async () => {
+    vi.mocked(startRenderWatchMode).mockResolvedValue();
+
+    await main(['node', 'cli.js', 'render', '-t', 'template.templ', '-i', 'data.json', '--watch']);
+
+    expect(startRenderWatchMode).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(startRenderWatchMode).mock.calls[0]?.[0]).toEqual({
+      template: 'template.templ',
+      input: 'data.json',
+      output: undefined,
+    });
+    expect(vi.mocked(startRenderWatchMode).mock.calls[0]?.[1]).toMatchObject({
+      ...defaultWatchModeDependencies,
+      render: renderCommand,
+    });
+    expect(renderCommand).not.toHaveBeenCalled();
+  });
+
+  it('reports watch mode startup failures', async () => {
+    vi.mocked(startRenderWatchMode).mockRejectedValue(new Error('watch failed'));
+
+    await main(['node', 'cli.js', 'render', '-t', 'template.templ', '-i', 'data.json', '--watch']);
+
+    expect(stderrSpy).toHaveBeenCalledWith('Error: watch failed\n');
+    expect(process.exitCode).toBe(1);
   });
 
   it('reports template as valid when validation succeeds', async () => {
@@ -115,14 +158,14 @@ describe('cli-main', () => {
   it('catches command failures and sets exit code', async () => {
     vi.mocked(renderCommand).mockRejectedValue(new Error('render exploded'));
 
-    await main(['node', 'cli.js', 'render', '-t', 'template.templ', '-i', '{"name":"World"}']);
+    await main(['node', 'cli.js', 'render', '-t', 'template.templ', '-i', 'data.json']);
 
     expect(stderrSpy).toHaveBeenCalledWith('Error: render exploded\n');
     expect(process.exitCode).toBe(1);
   });
 
   it('errors when render template is missing and no config default is available', async () => {
-    await main(['node', 'cli.js', 'render', '-i', '{"name":"World"}']);
+    await main(['node', 'cli.js', 'render', '-i', 'data.json']);
 
     expect(stderrSpy).toHaveBeenCalledWith(
       'Error: Template file path is required (pass --template or set defaultTemplate in .templjs.json)\n'
@@ -139,8 +182,15 @@ describe('cli-main', () => {
     expect(process.exitCode).toBe(1);
   });
 
+  it('errors when validate template path is explicitly empty', async () => {
+    await main(['node', 'cli.js', 'validate', '-t', '']);
+
+    expect(stderrSpy).toHaveBeenCalledWith('Error: Template file path must not be empty\n');
+    expect(process.exitCode).toBe(1);
+  });
+
   it('errors when template path is explicitly empty', async () => {
-    await main(['node', 'cli.js', 'render', '-t', '', '-i', '{"name":"World"}']);
+    await main(['node', 'cli.js', 'render', '-t', '', '-i', 'data.json']);
 
     expect(stderrSpy).toHaveBeenCalledWith('Error: Template file path must not be empty\n');
     expect(process.exitCode).toBe(1);
