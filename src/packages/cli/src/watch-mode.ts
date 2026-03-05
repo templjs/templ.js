@@ -43,7 +43,7 @@ export async function startRenderWatchMode(
 ): Promise<void> {
   if (!deps.fileExists(options.input)) {
     throw new Error(
-      `Watch mode requires an input file path. Received "${options.input}". Inline JSON is not supported in --watch mode`
+      `Watch mode requires a regular input file path. Received "${options.input}". Inline JSON and stdin (-) are not supported in --watch mode`
     );
   }
 
@@ -97,8 +97,16 @@ export async function startRenderWatchMode(
     }, debounceMs);
   };
 
-  const templateWatcher = deps.watchFile(options.template, scheduleRender);
-  const inputWatcher = deps.watchFile(options.input, scheduleRender);
+  let templateWatcher: FSWatcher | undefined;
+  let inputWatcher: FSWatcher | undefined;
+
+  try {
+    templateWatcher = deps.watchFile(options.template, scheduleRender);
+    inputWatcher = deps.watchFile(options.input, scheduleRender);
+  } catch (error) {
+    templateWatcher?.close();
+    throw error;
+  }
 
   await executeRender();
 
@@ -113,8 +121,10 @@ export async function startRenderWatchMode(
       if (debounceTimer) {
         clearTimeout(debounceTimer);
       }
-      templateWatcher.close();
-      inputWatcher.close();
+      templateWatcher?.off('error', onWatcherError);
+      inputWatcher?.off('error', onWatcherError);
+      templateWatcher?.close();
+      inputWatcher?.close();
       deps.removeSignalListener('SIGINT', onSigInt);
       deps.removeSignalListener('SIGTERM', onSigTerm);
       deps.setProcessExitCode(exitCode);
@@ -123,7 +133,14 @@ export async function startRenderWatchMode(
 
     const onSigInt = (): void => cleanup(130);
     const onSigTerm = (): void => cleanup(0);
+    const onWatcherError = (error: Error): void => {
+      const message = error instanceof Error ? error.message : String(error);
+      deps.writeStderr(`Watch error: ${message}\n`);
+      cleanup(1);
+    };
 
+    templateWatcher?.on('error', onWatcherError);
+    inputWatcher?.on('error', onWatcherError);
     deps.addSignalListener('SIGINT', onSigInt);
     deps.addSignalListener('SIGTERM', onSigTerm);
   });

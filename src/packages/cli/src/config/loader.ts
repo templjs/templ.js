@@ -52,7 +52,7 @@ function resolveEnvPlaceholders<T>(value: T): T {
     return resolveEnvValue(value) as T;
   }
   if (Array.isArray(value)) {
-    return value.map((item) => resolveEnvPlaceholders(item)) as T;
+    return value.map(resolveEnvPlaceholders) as T;
   }
   if (value !== null && typeof value === 'object') {
     const resolved: Record<string, unknown> = {};

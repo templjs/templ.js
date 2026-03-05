@@ -103,6 +103,9 @@ describe('CLI Config File Support (WI-032)', () => {
       if (process.platform === 'win32') {
         return;
       }
+      if (typeof process.getuid === 'function' && process.getuid() === 0) {
+        return;
+      }
 
       const configPath = resolve(tempDir, '.templjs.json');
       process.chdir(tempDir);
