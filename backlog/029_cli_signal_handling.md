@@ -9,6 +9,8 @@ priority: critical
 estimated: 6
 assignee: ''
 start_date: 2026-03-05
+pr_number: 23
+pr_url: https://github.com/templjs/templ.js/pull/23
 links:
   depends_on:
     - '[[017_cli_commands]]'
