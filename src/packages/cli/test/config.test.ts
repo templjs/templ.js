@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { writeFileSync, mkdirSync, rmSync, mkdtempSync } from 'fs';
+import { writeFileSync, mkdirSync, rmSync, mkdtempSync, chmodSync } from 'fs';
 import { resolve, basename, join } from 'path';
 import { tmpdir } from 'os';
 import { cwd } from 'process';
@@ -97,6 +97,116 @@ describe('CLI Config File Support (WI-032)', () => {
       writeFileSync(resolve(tempDir, '.templjs.json'), JSON.stringify(invalidConfig));
 
       expect(() => loadConfig()).toThrow(/Invalid .templjs.json/);
+    });
+
+    it('rethrows non-ENOENT access errors during config discovery', () => {
+      if (process.platform === 'win32') {
+        return;
+      }
+      if (typeof process.getuid === 'function' && process.getuid() === 0) {
+        return;
+      }
+
+      const configPath = resolve(tempDir, '.templjs.json');
+      process.chdir(tempDir);
+      writeFileSync(configPath, '{"defaultTemplate":"x.tmpl"}');
+      chmodSync(configPath, 0o000);
+
+      try {
+        expect(() => loadConfig()).toThrow(/EACCES|Failed to load \.templjs\.json/);
+      } finally {
+        chmodSync(configPath, 0o644);
+      }
+    });
+
+    it('resolves environment variable placeholders in config values', () => {
+      const previousTemplateEnv = process.env.TEMPLJS_TEMPLATE_PATH;
+      process.env.TEMPLJS_TEMPLATE_PATH = 'env-template.tmpl';
+
+      try {
+        process.chdir(tempDir);
+        writeFileSync(
+          resolve(tempDir, '.templjs.json'),
+          JSON.stringify({
+            defaultTemplate: '${TEMPLJS_TEMPLATE_PATH}',
+          })
+        );
+
+        const loaded = loadConfig();
+        expect(loaded.defaultTemplate).toBe('env-template.tmpl');
+      } finally {
+        if (previousTemplateEnv === undefined) {
+          delete process.env.TEMPLJS_TEMPLATE_PATH;
+        } else {
+          process.env.TEMPLJS_TEMPLATE_PATH = previousTemplateEnv;
+        }
+      }
+    });
+
+    it('supports environment variable placeholders with fallback values', () => {
+      const previousOutputEnv = process.env.TEMPLJS_OUTPUT_PATH;
+      delete process.env.TEMPLJS_OUTPUT_PATH;
+
+      try {
+        process.chdir(tempDir);
+        writeFileSync(
+          resolve(tempDir, '.templjs.json'),
+          JSON.stringify({
+            defaultOutput: '${TEMPLJS_OUTPUT_PATH:-out/result.txt}',
+          })
+        );
+
+        const loaded = loadConfig();
+        expect(loaded.defaultOutput).toBe('out/result.txt');
+      } finally {
+        if (previousOutputEnv !== undefined) {
+          process.env.TEMPLJS_OUTPUT_PATH = previousOutputEnv;
+        }
+      }
+    });
+
+    it('throws when environment variable placeholder has no value and no fallback', () => {
+      const previousTemplateEnv = process.env.TEMPLJS_TEMPLATE_PATH;
+      delete process.env.TEMPLJS_TEMPLATE_PATH;
+
+      try {
+        process.chdir(tempDir);
+        writeFileSync(
+          resolve(tempDir, '.templjs.json'),
+          JSON.stringify({
+            defaultTemplate: '${TEMPLJS_TEMPLATE_PATH}',
+          })
+        );
+
+        expect(() => loadConfig()).toThrow(/Missing environment variable "TEMPLJS_TEMPLATE_PATH"/);
+      } finally {
+        if (previousTemplateEnv !== undefined) {
+          process.env.TEMPLJS_TEMPLATE_PATH = previousTemplateEnv;
+        }
+      }
+    });
+
+    it('preserves arrays during placeholder resolution before schema validation', () => {
+      const previousListEnv = process.env.TEMPLJS_LIST_VALUE;
+      process.env.TEMPLJS_LIST_VALUE = 'item-from-env';
+
+      try {
+        process.chdir(tempDir);
+        writeFileSync(
+          resolve(tempDir, '.templjs.json'),
+          JSON.stringify({
+            templateDelimiters: ['${TEMPLJS_LIST_VALUE}'],
+          })
+        );
+
+        expect(() => loadConfig()).toThrow(/\/templateDelimiters: must be object/);
+      } finally {
+        if (previousListEnv === undefined) {
+          delete process.env.TEMPLJS_LIST_VALUE;
+        } else {
+          process.env.TEMPLJS_LIST_VALUE = previousListEnv;
+        }
+      }
     });
   });
 
@@ -224,6 +334,28 @@ describe('CLI Config File Support (WI-032)', () => {
 
       expect(loaded.templateDelimiters).toBeUndefined();
       expect(loaded.validation).toBeUndefined();
+    });
+
+    it('applies object-like CLI overrides for template delimiters and validation', () => {
+      const loaded = loadConfig({
+        templateDelimiters: {
+          statement_start: '<<',
+          statement_end: '>>',
+        },
+        validation: {
+          validateInput: false,
+          schemaPath: 'override-schema.json',
+        },
+      });
+
+      expect(loaded.templateDelimiters).toEqual({
+        statement_start: '<<',
+        statement_end: '>>',
+      });
+      expect(loaded.validation).toEqual({
+        validateInput: false,
+        schemaPath: 'override-schema.json',
+      });
     });
   });
 
