@@ -2,9 +2,9 @@
 id: wi-029
 type: work-item
 subtype: task
-lifecycle: draft
+lifecycle: active
 title: '029: Implement CLI Signal Handling and Advanced I/O'
-status: proposed
+status: in-progress
 priority: critical
 estimated: 6
 assignee: ''
