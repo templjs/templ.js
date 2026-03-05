@@ -10,6 +10,10 @@ import { CliConfig, ResolvedConfig } from './types.js';
 import { CLI_CONFIG_SCHEMA } from './schema.js';
 
 const CONFIG_FILENAME = '.templjs.json';
+// ENV_VAR_PATTERN: Matches ${VAR} or ${VAR:-fallback} syntax.
+// Limitations: Does not support nested ${...} in fallbacks (e.g., ${VAR:-${OTHER}})
+// because the non-greedy .*? stops at the first }. Also, ${VAR:-} yields an empty fallback.
+// For nested variable support, replace this regex with a proper parser or recursive resolver.
 const ENV_VAR_PATTERN = /\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-(.*?))?\}/g;
 const ajv = new Ajv({ allErrors: true });
 const validateCliConfig = ajv.compile<CliConfig>(CLI_CONFIG_SCHEMA);

@@ -3,7 +3,6 @@ import { Readable } from 'stream';
 
 vi.mock('fs', () => ({
   readFileSync: vi.fn(),
-  existsSync: vi.fn(() => false),
   statSync: vi.fn(() => ({ size: 0 })),
   createReadStream: vi.fn(),
 }));
@@ -17,11 +16,17 @@ import { renderTemplate } from '@templjs/core';
 import { renderCommand } from '../../src/commands/render';
 
 describe('renderCommand', () => {
-  it('renders template output from file and JSON payload', async () => {
-    vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
+  it('renders template output from file and JSON data', async () => {
+    vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(readFileSync).mockImplementation((value) => {
+      if (value === 'template.templ') {
+        return 'Hello {{ name }}';
+      }
+      return '{"name":"World"}';
+    });
     vi.mocked(renderTemplate).mockReturnValue('Hello World');
 
-    const output = await renderCommand('template.templ', '{"name":"World"}');
+    const output = await renderCommand('template.templ', 'data.json');
 
     expect(output).toBe('Hello World');
     expect(readFileSync).toHaveBeenCalledWith('template.templ', 'utf-8');
@@ -29,8 +34,6 @@ describe('renderCommand', () => {
   });
 
   it('loads JSON payload from input file path when path exists', async () => {
-    const { existsSync } = await import('fs');
-    vi.mocked(existsSync).mockImplementation((value) => value === 'data.json');
     vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
     vi.mocked(readFileSync).mockImplementation((value) => {
       if (value === 'template.templ') {
@@ -49,8 +52,6 @@ describe('renderCommand', () => {
   it('streams large input files and reports progress', async () => {
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
     try {
-      const { existsSync } = await import('fs');
-      vi.mocked(existsSync).mockImplementation((value) => value === 'huge.json');
       vi.mocked(statSync).mockReturnValue({ size: 20 * 1024 * 1024 } as ReturnType<
         typeof statSync
       >);
@@ -81,18 +82,56 @@ describe('renderCommand', () => {
   });
 
   it('surfaces JSON parsing failures with context', async () => {
-    vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
+    vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(readFileSync).mockImplementation((value) => {
+      if (value === 'template.templ') {
+        return 'Hello {{ name }}';
+      }
+      return '{bad-json';
+    });
 
-    await expect(renderCommand('template.templ', '{bad-json')).rejects.toThrow(
+    await expect(renderCommand('template.templ', 'bad.json')).rejects.toThrow(
       'Render failed: Failed to parse input data as JSON'
     );
   });
 
   it('rejects non-object JSON payloads', async () => {
-    vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
+    vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(readFileSync).mockImplementation((value) => {
+      if (value === 'template.templ') {
+        return 'Hello {{ name }}';
+      }
+      return '["array"]';
+    });
 
-    await expect(renderCommand('template.templ', '["array"]')).rejects.toThrow(
+    await expect(renderCommand('template.templ', 'array.json')).rejects.toThrow(
       'Render failed: Failed to parse input data as JSON: Input data must be a JSON object'
+    );
+  });
+
+  it('throws error when input file does not exist', async () => {
+    vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
+    vi.mocked(statSync).mockImplementation(() => {
+      const error: NodeJS.ErrnoException = new Error('ENOENT: no such file or directory');
+      error.code = 'ENOENT';
+      throw error;
+    });
+
+    await expect(renderCommand('template.templ', 'missing.json')).rejects.toThrow(
+      'Render failed: Input file not found: missing.json. Use "-" to read from stdin or provide a valid file path.'
+    );
+  });
+
+  it('throws error when permission denied reading input file', async () => {
+    vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
+    vi.mocked(statSync).mockImplementation(() => {
+      const error: NodeJS.ErrnoException = new Error('EACCES: permission denied');
+      error.code = 'EACCES';
+      throw error;
+    });
+
+    await expect(renderCommand('template.templ', 'forbidden.json')).rejects.toThrow(
+      'Render failed: Permission denied reading input file: forbidden.json'
     );
   });
 

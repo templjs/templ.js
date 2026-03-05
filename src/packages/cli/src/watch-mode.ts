@@ -19,7 +19,7 @@ export interface WatchModeDependencies {
   setProcessExitCode: (code: number) => void;
 }
 
-const DEFAULT_DEBOUNCE_MS = 75;
+export const DEFAULT_DEBOUNCE_MS = 75;
 
 export const defaultWatchModeDependencies: WatchModeDependencies = {
   fileExists: existsSync,
@@ -41,9 +41,15 @@ export async function startRenderWatchMode(
   options: WatchModeOptions,
   deps: WatchModeDependencies
 ): Promise<void> {
+  if (!deps.fileExists(options.template)) {
+    throw new Error(
+      `Watch mode requires an existing template file path. Received "${options.template}". Please provide a valid template file.`
+    );
+  }
+
   if (!deps.fileExists(options.input)) {
     throw new Error(
-      `Watch mode requires a regular input file path. Received "${options.input}". Inline JSON and stdin (-) are not supported in --watch mode`
+      `Watch mode requires an existing input file path. Received "${options.input}". Stdin (-) is not supported in --watch mode`
     );
   }
 
@@ -53,7 +59,7 @@ export async function startRenderWatchMode(
   let closed = false;
   let debounceTimer: NodeJS.Timeout | undefined;
 
-  const executeRender = async (): Promise<void> => {
+  async function executeRender(): Promise<void> {
     if (closed) {
       return;
     }
@@ -78,10 +84,21 @@ export async function startRenderWatchMode(
       isRendering = false;
       if (rerenderQueued) {
         rerenderQueued = false;
-        void executeRender();
+        triggerRender();
       }
     }
-  };
+  }
+
+  function triggerRender(): void {
+    void executeRender().catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      try {
+        deps.writeStderr(`Unexpected watch render loop error: ${message}\n`);
+      } catch {
+        // Best effort only; avoid surfacing unhandled rejection from logging.
+      }
+    });
+  }
 
   const scheduleRender = (): void => {
     if (closed) {
@@ -93,7 +110,7 @@ export async function startRenderWatchMode(
     }
     debounceTimer = setTimeout(() => {
       debounceTimer = undefined;
-      void executeRender();
+      triggerRender();
     }, debounceMs);
   };
 
@@ -132,9 +149,9 @@ export async function startRenderWatchMode(
     };
 
     const onSigInt = (): void => cleanup(130);
-    const onSigTerm = (): void => cleanup(0);
+    const onSigTerm = (): void => cleanup(143);
     const onWatcherError = (error: Error): void => {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = error.message;
       deps.writeStderr(`Watch error: ${message}\n`);
       cleanup(1);
     };

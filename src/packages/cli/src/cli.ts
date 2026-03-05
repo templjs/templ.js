@@ -31,7 +31,10 @@ function createProgram(): Command {
     .command('render')
     .description('Render template with JSON data')
     .option('-t, --template <path>', 'Template file path')
-    .requiredOption('-i, --input <pathOrJson>', 'Input JSON file path or inline JSON payload')
+    .requiredOption(
+      '-i, --input <path>',
+      'Input file path or "-" for stdin (inline JSON not supported)'
+    )
     .option('--input-format <format>', 'Input format override (json|yaml|toml|xml)')
     .option('--output-format <format>', 'Output format override (text|json|html|markdown)')
     .option('-o, --output <path>', 'Output file path (defaults to stdout)')

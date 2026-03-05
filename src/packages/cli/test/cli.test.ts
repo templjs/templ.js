@@ -64,9 +64,9 @@ describe('cli-main', () => {
   it('renders to stdout when no output path is provided', async () => {
     vi.mocked(renderCommand).mockResolvedValue('rendered-output');
 
-    await main(['node', 'cli.js', 'render', '-t', 'template.templ', '-i', '{"name":"World"}']);
+    await main(['node', 'cli.js', 'render', '-t', 'template.templ', '-i', 'data.json']);
 
-    expect(renderCommand).toHaveBeenCalledWith('template.templ', '{"name":"World"}');
+    expect(renderCommand).toHaveBeenCalledWith('template.templ', 'data.json');
     expect(stdoutSpy).toHaveBeenCalledWith('rendered-output\n');
     expect(writeFileSync).not.toHaveBeenCalled();
   });
@@ -81,12 +81,12 @@ describe('cli-main', () => {
       '-t',
       'template.templ',
       '-i',
-      '{"name":"World"}',
+      'data.json',
       '-o',
       'result.txt',
     ]);
 
-    expect(renderCommand).toHaveBeenCalledWith('template.templ', '{"name":"World"}');
+    expect(renderCommand).toHaveBeenCalledWith('template.templ', 'data.json');
     expect(writeFileSync).toHaveBeenCalledWith('result.txt', 'rendered-output', 'utf-8');
   });
 
@@ -154,14 +154,14 @@ describe('cli-main', () => {
   it('catches command failures and sets exit code', async () => {
     vi.mocked(renderCommand).mockRejectedValue(new Error('render exploded'));
 
-    await main(['node', 'cli.js', 'render', '-t', 'template.templ', '-i', '{"name":"World"}']);
+    await main(['node', 'cli.js', 'render', '-t', 'template.templ', '-i', 'data.json']);
 
     expect(stderrSpy).toHaveBeenCalledWith('Error: render exploded\n');
     expect(process.exitCode).toBe(1);
   });
 
   it('errors when render template is missing and no config default is available', async () => {
-    await main(['node', 'cli.js', 'render', '-i', '{"name":"World"}']);
+    await main(['node', 'cli.js', 'render', '-i', 'data.json']);
 
     expect(stderrSpy).toHaveBeenCalledWith(
       'Error: Template file path is required (pass --template or set defaultTemplate in .templjs.json)\n'
@@ -179,7 +179,7 @@ describe('cli-main', () => {
   });
 
   it('errors when template path is explicitly empty', async () => {
-    await main(['node', 'cli.js', 'render', '-t', '', '-i', '{"name":"World"}']);
+    await main(['node', 'cli.js', 'render', '-t', '', '-i', 'data.json']);
 
     expect(stderrSpy).toHaveBeenCalledWith('Error: Template file path must not be empty\n');
     expect(process.exitCode).toBe(1);

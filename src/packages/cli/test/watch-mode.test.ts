@@ -47,7 +47,7 @@ describe('watch-mode', () => {
 
   it('rejects inline JSON input for watch mode', async () => {
     const deps = {
-      fileExists: vi.fn(() => false),
+      fileExists: vi.fn((path) => path === 'template.templ'),
       render: vi.fn(),
       watchFile: vi.fn(),
       writeOutput: vi.fn(),
@@ -66,7 +66,31 @@ describe('watch-mode', () => {
         },
         deps
       )
-    ).rejects.toThrow('Watch mode requires a regular input file path');
+    ).rejects.toThrow('Watch mode requires an existing input file path');
+  });
+
+  it('rejects missing template file for watch mode', async () => {
+    const deps = {
+      fileExists: vi.fn((path) => path !== 'missing.templ'),
+      render: vi.fn(),
+      watchFile: vi.fn(),
+      writeOutput: vi.fn(),
+      writeStdout: vi.fn(),
+      writeStderr: vi.fn(),
+      addSignalListener: vi.fn(),
+      removeSignalListener: vi.fn(),
+      setProcessExitCode: vi.fn(),
+    };
+
+    await expect(
+      startRenderWatchMode(
+        {
+          template: 'missing.templ',
+          input: 'data.json',
+        },
+        deps
+      )
+    ).rejects.toThrow('Watch mode requires an existing template file path');
   });
 
   it('renders initially and on debounced change, then cleans up on SIGINT', async () => {
@@ -101,10 +125,9 @@ describe('watch-mode', () => {
       },
       deps
     );
-
-    await Promise.resolve();
-
-    expect(deps.render).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => {
+      expect(deps.render).toHaveBeenCalledTimes(1);
+    });
     expect(deps.writeStdout).toHaveBeenCalledWith('rendered-content\n');
 
     watchers.get('template.templ')?.emit();
@@ -163,7 +186,7 @@ describe('watch-mode', () => {
     signalHandlers.SIGTERM?.();
     await runPromise;
 
-    expect(deps.setProcessExitCode).toHaveBeenCalledWith(0);
+    expect(deps.setProcessExitCode).toHaveBeenCalledWith(143);
     expect(watchers[0]?.close).toHaveBeenCalledTimes(1);
     expect(watchers[1]?.close).toHaveBeenCalledTimes(1);
   });
@@ -205,17 +228,18 @@ describe('watch-mode', () => {
       deps
     );
 
-    await Promise.resolve();
+    await vi.waitFor(() => {
+      expect(deps.render).toHaveBeenCalledTimes(1);
+    });
+
     watchers.get('template.templ')?.emit();
     await vi.advanceTimersByTimeAsync(1);
-    expect(deps.render).toHaveBeenCalledTimes(1);
 
     resolveRender?.();
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(deps.render).toHaveBeenCalledTimes(2);
+    await vi.waitFor(() => {
+      expect(deps.render).toHaveBeenCalledTimes(2);
+    });
     resolveRender?.();
-    await Promise.resolve();
     await vi.waitFor(() => {
       expect(signalHandlers.SIGINT).toBeTypeOf('function');
     });
@@ -233,7 +257,7 @@ describe('watch-mode', () => {
 
     const deps = {
       fileExists: vi.fn(() => true),
-      render: vi.fn().mockRejectedValue('boom'),
+      render: vi.fn().mockRejectedValue(new Error('boom')),
       watchFile: vi.fn((path: string, listener: () => void) => {
         const watcher = createFakeWatcher(listener);
         watchers.set(path, watcher);
@@ -258,9 +282,9 @@ describe('watch-mode', () => {
       deps
     );
 
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(deps.writeStderr).toHaveBeenCalledWith('Error: boom\n');
+    await vi.waitFor(() => {
+      expect(deps.writeStderr).toHaveBeenCalledWith('Error: boom\n');
+    });
 
     watchers.get('template.templ')?.emit();
     signalHandlers.SIGTERM?.();
@@ -269,6 +293,76 @@ describe('watch-mode', () => {
     await runPromise;
 
     expect(deps.render).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports queued rerender rejections when render error logging throws', async () => {
+    let resolveRender: (() => void) | undefined;
+    const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
+    const watchers = new Map<string, FakeWatcher>();
+
+    const deps = {
+      fileExists: vi.fn(() => true),
+      render: vi
+        .fn()
+        .mockImplementationOnce(
+          () =>
+            new Promise<string>((resolve) => {
+              resolveRender = () => resolve('initial-render');
+            })
+        )
+        .mockRejectedValueOnce(new Error('boom')),
+      watchFile: vi.fn((path: string, listener: () => void) => {
+        const watcher = createFakeWatcher(listener);
+        watchers.set(path, watcher);
+        return watcher as unknown as ReturnType<typeof deps.watchFile>;
+      }),
+      writeOutput: vi.fn(),
+      writeStdout: vi.fn(() => true),
+      writeStderr: vi.fn((data: string) => {
+        if (data === 'Error: boom\n') {
+          throw new Error('stderr exploded');
+        }
+        return true;
+      }),
+      addSignalListener: vi.fn((signal: NodeJS.Signals, handler: () => void) => {
+        signalHandlers[signal] = handler;
+      }),
+      removeSignalListener: vi.fn(),
+      setProcessExitCode: vi.fn(),
+    };
+
+    const runPromise = startRenderWatchMode(
+      {
+        template: 'template.templ',
+        input: 'data.json',
+        debounceMs: 1,
+      },
+      deps
+    );
+
+    await vi.waitFor(() => {
+      expect(deps.render).toHaveBeenCalledTimes(1);
+    });
+
+    watchers.get('template.templ')?.emit();
+    await vi.advanceTimersByTimeAsync(1);
+
+    resolveRender?.();
+    await vi.waitFor(() => {
+      expect(deps.render).toHaveBeenCalledTimes(2);
+    });
+
+    await vi.waitFor(() => {
+      expect(deps.writeStderr).toHaveBeenCalledWith(
+        'Unexpected watch render loop error: stderr exploded\n'
+      );
+    });
+
+    await vi.waitFor(() => {
+      expect(signalHandlers.SIGINT).toBeTypeOf('function');
+    });
+    signalHandlers.SIGINT?.();
+    await runPromise;
   });
 
   it('cleans up the first watcher if subsequent watcher setup fails', async () => {
