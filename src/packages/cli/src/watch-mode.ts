@@ -79,7 +79,11 @@ export async function startRenderWatchMode(
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      deps.writeStderr(`Error: ${message}\n`);
+      try {
+        deps.writeStderr(`Error: ${message}\n`);
+      } catch {
+        // Best effort only; avoid surfacing unhandled rejection from logging.
+      }
     } finally {
       isRendering = false;
       if (rerenderQueued) {
@@ -125,10 +129,6 @@ export async function startRenderWatchMode(
     throw error;
   }
 
-  await executeRender();
-
-  deps.writeStderr(`Watching ${options.template} and ${options.input}. Press Ctrl+C to stop.\n`);
-
   await new Promise<void>((resolve) => {
     const cleanup = (exitCode: number): void => {
       if (closed) {
@@ -151,8 +151,11 @@ export async function startRenderWatchMode(
     const onSigInt = (): void => cleanup(130);
     const onSigTerm = (): void => cleanup(143);
     const onWatcherError = (error: Error): void => {
-      const message = error.message;
-      deps.writeStderr(`Watch error: ${message}\n`);
+      try {
+        deps.writeStderr(`Watch error: ${error.message}\n`);
+      } catch {
+        // Best effort only; avoid surfacing unhandled rejection from logging.
+      }
       cleanup(1);
     };
 
@@ -160,5 +163,24 @@ export async function startRenderWatchMode(
     inputWatcher?.on('error', onWatcherError);
     deps.addSignalListener('SIGINT', onSigInt);
     deps.addSignalListener('SIGTERM', onSigTerm);
+
+    const startWatching = async (): Promise<void> => {
+      await executeRender();
+      if (!closed) {
+        deps.writeStderr(
+          `Watching ${options.template} and ${options.input}. Press Ctrl+C to stop.\n`
+        );
+      }
+    };
+
+    void startWatching().catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      try {
+        deps.writeStderr(`Unexpected watch mode startup error: ${message}\n`);
+      } catch {
+        // Best effort only; avoid surfacing unhandled rejection from logging.
+      }
+      cleanup(1);
+    });
   });
 }

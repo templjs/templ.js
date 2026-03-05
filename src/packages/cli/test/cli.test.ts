@@ -45,7 +45,7 @@ import { main } from '../src/cli';
 import { initCommand } from '../src/commands/init.js';
 import { renderCommand } from '../src/commands/render.js';
 import { validateCommand } from '../src/commands/validate.js';
-import { startRenderWatchMode } from '../src/watch-mode.js';
+import { defaultWatchModeDependencies, startRenderWatchMode } from '../src/watch-mode.js';
 
 describe('cli-main', () => {
   const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
@@ -100,6 +100,10 @@ describe('cli-main', () => {
       template: 'template.templ',
       input: 'data.json',
       output: undefined,
+    });
+    expect(vi.mocked(startRenderWatchMode).mock.calls[0]?.[1]).toMatchObject({
+      ...defaultWatchModeDependencies,
+      render: renderCommand,
     });
     expect(renderCommand).not.toHaveBeenCalled();
   });

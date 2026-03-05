@@ -37,7 +37,7 @@ async function readPayload(dataOrPath: string): Promise<string> {
 
       const progress = Math.min(100, Math.floor((bytesRead / inputStats.size) * 100));
       const progressBucket = Math.floor(progress / 25);
-      if (progressBucket > lastProgressBucket || progress === 100) {
+      if (progressBucket > lastProgressBucket) {
         process.stderr.write(`Reading large input file (${progress}%)\n`);
         lastProgressBucket = progressBucket;
       }
