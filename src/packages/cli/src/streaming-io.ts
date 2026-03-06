@@ -45,7 +45,11 @@ export async function* readFileStream(
       bytesRead += Buffer.byteLength(value, options.encoding ?? 'utf-8');
 
       // Call progress callback periodically
-      if (options.onProgress && totalBytes && bytesRead - lastProgressUpdate > 1024 * 1024) {
+      if (
+        options.onProgress &&
+        totalBytes !== undefined &&
+        bytesRead - lastProgressUpdate > 1024 * 1024
+      ) {
         options.onProgress(bytesRead, totalBytes);
         lastProgressUpdate = bytesRead;
       }
@@ -58,7 +62,7 @@ export async function* readFileStream(
     }
 
     // Final progress update
-    if (options.onProgress && totalBytes) {
+    if (options.onProgress && totalBytes !== undefined) {
       options.onProgress(bytesRead, totalBytes);
     }
   }
