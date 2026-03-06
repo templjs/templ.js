@@ -3,8 +3,9 @@
  * Renders a template with input data
  */
 
-import { createReadStream, readFileSync, statSync } from 'fs';
+import { readFileSync, statSync } from 'fs';
 import { renderTemplate } from '@templjs/core';
+import { readFileStream, shouldStream } from '../streaming-io.js';
 
 const LARGE_INPUT_THRESHOLD_BYTES = 10 * 1024 * 1024;
 
@@ -21,26 +22,25 @@ async function readPayload(dataOrPath: string): Promise<string> {
   // Handle file errors gracefully: attempt stat/read directly and handle file errors in catch block
   try {
     const inputStats = statSync(dataOrPath);
-    if (inputStats.size <= LARGE_INPUT_THRESHOLD_BYTES) {
+    if (!shouldStream(inputStats.size, LARGE_INPUT_THRESHOLD_BYTES)) {
       return readFileSync(dataOrPath, 'utf-8');
     }
 
     const chunks: string[] = [];
-    const stream = createReadStream(dataOrPath, { encoding: 'utf-8' });
-    let bytesRead = 0;
     let lastProgressBucket = -1;
 
-    for await (const chunk of stream) {
-      const value = typeof chunk === 'string' ? chunk : chunk.toString('utf-8');
-      chunks.push(value);
-      bytesRead += Buffer.byteLength(value);
-
-      const progress = Math.min(100, Math.floor((bytesRead / inputStats.size) * 100));
-      const progressBucket = Math.floor(progress / 25);
-      if (progressBucket > lastProgressBucket) {
-        process.stderr.write(`Reading large input file (${progress}%)\n`);
-        lastProgressBucket = progressBucket;
-      }
+    for await (const chunk of readFileStream(dataOrPath, inputStats.size, {
+      encoding: 'utf-8',
+      onProgress: (bytesRead) => {
+        const progress = Math.min(100, Math.floor((bytesRead / inputStats.size) * 100));
+        const progressBucket = Math.floor(progress / 25);
+        if (progressBucket > lastProgressBucket) {
+          process.stderr.write(`Reading large input file (${progress}%)\n`);
+          lastProgressBucket = progressBucket;
+        }
+      },
+    })) {
+      chunks.push(chunk);
     }
 
     return chunks.join('');

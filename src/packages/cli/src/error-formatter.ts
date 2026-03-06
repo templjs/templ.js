@@ -32,7 +32,7 @@ export function formatErrorContext(
   const showLineNumbers = options.showLineNumbers ?? true;
   const highlightColumn = options.highlightColumn ?? true;
 
-  const lines = source.split('\n');
+  const lines = source.split(/\r?\n/);
 
   // Validate line number
   if (lineNumber < 1 || lineNumber > lines.length) {
@@ -104,8 +104,16 @@ export function formatError(
  */
 export function provideErrorSuggestion(errorMessage: string): string | undefined {
   // File not found (check before generic "not found")
-  if (errorMessage.includes('ENOENT') || errorMessage.includes('File not found')) {
+  if (
+    errorMessage.includes('ENOENT') ||
+    errorMessage.includes('File not found') ||
+    errorMessage.toLowerCase().includes('no such file')
+  ) {
     return 'Verify the file path exists and is readable';
+  }
+
+  if (errorMessage.includes('EISDIR')) {
+    return 'Expected a file path but received a directory path';
   }
 
   // Permission errors
@@ -118,7 +126,7 @@ export function provideErrorSuggestion(errorMessage: string): string | undefined
   }
 
   // Undefined variable suggestions
-  if (errorMessage.includes('undefined') || errorMessage.includes('not found')) {
+  if (errorMessage.includes('undefined')) {
     return 'Did you check that the variable exists in your data?';
   }
 

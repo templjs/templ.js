@@ -4,7 +4,7 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '30: Re-enable Coverage Thresholds in CI'
-status: in-progress
+status: ready
 status_reason: reopened_for_dependency_consistency
 priority: medium
 estimated: 1

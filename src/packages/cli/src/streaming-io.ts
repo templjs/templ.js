@@ -39,22 +39,28 @@ export async function* readFileStream(
   let bytesRead = 0;
   let lastProgressUpdate = 0;
 
-  for await (const chunk of stream) {
-    const value = typeof chunk === 'string' ? chunk : chunk.toString(options.encoding ?? 'utf-8');
-    bytesRead += Buffer.byteLength(value, options.encoding ?? 'utf-8');
+  try {
+    for await (const chunk of stream) {
+      const value = typeof chunk === 'string' ? chunk : chunk.toString(options.encoding ?? 'utf-8');
+      bytesRead += Buffer.byteLength(value, options.encoding ?? 'utf-8');
 
-    // Call progress callback periodically
-    if (options.onProgress && totalBytes && bytesRead - lastProgressUpdate > 1024 * 1024) {
-      options.onProgress(bytesRead, totalBytes);
-      lastProgressUpdate = bytesRead;
+      // Call progress callback periodically
+      if (options.onProgress && totalBytes && bytesRead - lastProgressUpdate > 1024 * 1024) {
+        options.onProgress(bytesRead, totalBytes);
+        lastProgressUpdate = bytesRead;
+      }
+
+      yield value;
+    }
+  } finally {
+    if (!stream.destroyed) {
+      stream.destroy();
     }
 
-    yield value;
-  }
-
-  // Final progress update
-  if (options.onProgress && totalBytes) {
-    options.onProgress(bytesRead, totalBytes);
+    // Final progress update
+    if (options.onProgress && totalBytes) {
+      options.onProgress(bytesRead, totalBytes);
+    }
   }
 }
 
@@ -81,7 +87,7 @@ export function createFileWriteStream(
  * @returns True if file should be streamed
  */
 export function shouldStream(fileSize: number, threshold: number = LARGE_FILE_THRESHOLD): boolean {
-  return fileSize > threshold;
+  return fileSize >= threshold;
 }
 
 /**

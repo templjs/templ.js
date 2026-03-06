@@ -52,7 +52,10 @@ export function registerSignalHandlers(options: SignalHandlerOptions = {}): () =
         process.stderr.write(`Error during ${signal} cleanup: ${message}\n`);
       }
     } finally {
-      process.exit(exitCode);
+      process.exitCode = exitCode;
+      setImmediate(() => {
+        process.exit(exitCode);
+      });
     }
   };
 
@@ -73,12 +76,16 @@ export function registerSignalHandlers(options: SignalHandlerOptions = {}): () =
 
   process.on('SIGINT', sigintHandler);
   process.on('SIGTERM', sigtermHandler);
-  process.on('SIGPIPE', sigpipeHandler);
+  if (process.platform !== 'win32') {
+    process.on('SIGPIPE', sigpipeHandler);
+  }
 
   // Return cleanup function to remove handlers
   return () => {
     process.removeListener('SIGINT', sigintHandler);
     process.removeListener('SIGTERM', sigtermHandler);
-    process.removeListener('SIGPIPE', sigpipeHandler);
+    if (process.platform !== 'win32') {
+      process.removeListener('SIGPIPE', sigpipeHandler);
+    }
   };
 }

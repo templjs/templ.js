@@ -19,6 +19,8 @@ import { version } from './index.js';
 import { loadConfig, applyConfig } from './config/index.js';
 import { defaultWatchModeDependencies, startRenderWatchMode } from './watch-mode.js';
 import { registerSignalHandlers } from './signal-handler.js';
+import { detectTTY } from './tty-detection.js';
+import { provideErrorSuggestion } from './error-formatter.js';
 
 function createProgram(): Command {
   const program = new Command();
@@ -153,16 +155,22 @@ function createProgram(): Command {
 
 export async function main(argv = process.argv): Promise<void> {
   const program = createProgram();
-  const cleanupSignalHandlers = registerSignalHandlers();
+  const watchModeRequested = argv.includes('--watch') || argv.includes('-w');
+  const cleanupSignalHandlers = watchModeRequested ? undefined : registerSignalHandlers();
 
   try {
     await program.parseAsync(argv);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const tty = detectTTY();
+    const suggestion = provideErrorSuggestion(message);
     process.stderr.write(`Error: ${message}\n`);
+    if (tty.isInteractive && suggestion) {
+      process.stderr.write(`Hint: ${suggestion}\n`);
+    }
     process.exitCode = 1;
   } finally {
-    cleanupSignalHandlers();
+    cleanupSignalHandlers?.();
   }
 }
 

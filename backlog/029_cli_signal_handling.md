@@ -75,7 +75,7 @@ CLI must be a good Unix citizen: handle signals gracefully (SIGINT, SIGPIPE, SIG
 - TTY-aware stdin/stdout handling
 - Error formatter with context snippets
 - Streaming I/O support
-- ~15+~41 passing I/O and signal tests (exceeds 15+ requirement)
+- 41 passing I/O and signal tests (exceeds 15+ requirement)
 
 ## Acceptance Criteria
 
