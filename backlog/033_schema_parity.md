@@ -8,6 +8,7 @@ status: in-progress
 priority: high
 estimated: 12
 assignee: ''
+actual: 13
 pr_number: 24
 pr_url: https://github.com/templjs/templ.js/pull/24
 links:

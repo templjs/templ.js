@@ -18,6 +18,9 @@ function getTomlModule(): { parse: (input: string) => unknown } {
       );
     }
   }
+  if (!tomlParser) {
+    throw new Error('Failed to load TOML parser module');
+  }
   return tomlParser;
 }
 
