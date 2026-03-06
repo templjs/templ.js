@@ -91,7 +91,7 @@ describe('renderCommand', () => {
     });
 
     await expect(renderCommand('template.templ', 'bad.json')).rejects.toThrow(
-      'Render failed: Failed to parse input data as JSON'
+      /Render failed.*Failed to parse input data.*Invalid JSON/
     );
   });
 
@@ -105,7 +105,7 @@ describe('renderCommand', () => {
     });
 
     await expect(renderCommand('template.templ', 'array.json')).rejects.toThrow(
-      'Render failed: Failed to parse input data as JSON: Input data must be a JSON object'
+      /Render failed.*Failed to parse input data.*Input data must be a JSON object/
     );
   });
 
