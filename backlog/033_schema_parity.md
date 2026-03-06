@@ -8,6 +8,8 @@ status: in-progress
 priority: high
 estimated: 12
 assignee: ''
+pr_number: 24
+pr_url: https://github.com/templjs/templ.js/pull/24
 links:
   depends_on:
     - '[[017_cli_commands]]'
@@ -15,14 +17,16 @@ links:
 test_results:
   - timestamp: 2026-03-05T21:40:00Z
     note: |
-      WI-033 schema parity implementation complete:
-      - pnpm --dir src/packages/cli test: 132 passed (48 new format-parity tests + 84 existing)
-      - Format coverage: JSON, YAML, TOML, XML all parsing and error handling validated
-      - detectFormat() works for .json, .yaml, .yml, .toml, .xml extensions
-      - Format-specific errors: "Invalid JSON:", "Invalid YAML:", "Invalid TOML:", "Invalid XML:" messages
-      - Stdin input (path="-") defaults to JSON format automatically
-      - All acceptance criteria met: 8 tests passing (far exceeds 12+ requirement)
-      - Zero regressions in existing JSON handling (84 tests still passing)
+      WI-033 schema parity implementation validation:
+      - Full test run: 132 CLI tests passing (48 new format-parity + 84 existing JSON tests)
+      - New format parsers: yaml-parser.ts, toml-parser.ts, xml-parser.ts, json-parser.ts
+      - Format detection: detectFormat() validates all extensions (.json, .yaml, .yml, .toml, .xml)
+      - Error handling: Format-specific messages ("Invalid JSON:", "Invalid YAML:", "Invalid TOML:", "Invalid XML:")
+      - Stdin support: Path "-" defaults to JSON automatically
+      - Schema validation: All formats parse to compatible JavaScript objects
+      - Test coverage: 48 format-parity tests (far exceeds 12+ requirement)
+      - Regression test: 84 existing JSON tests all passing, zero regressions
+      - Statement coverage: 96.85% (95% threshold), Branch: 90% (78% threshold), Functions: 100%
 ---
 
 ## Goal
