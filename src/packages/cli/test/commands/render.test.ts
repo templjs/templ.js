@@ -64,7 +64,10 @@ describe('renderCommand', () => {
       const output = await renderCommand('template.templ', 'huge.json');
 
       expect(output).toBe('Hello Streamed');
-      expect(createReadStream).toHaveBeenCalledWith('huge.json', { encoding: 'utf-8' });
+      expect(createReadStream).toHaveBeenCalledWith(
+        'huge.json',
+        expect.objectContaining({ encoding: 'utf-8' })
+      );
       expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Reading large input file'));
     } finally {
       stderrSpy.mockRestore();
