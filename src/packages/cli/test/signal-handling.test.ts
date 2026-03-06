@@ -186,6 +186,7 @@ describe('signal-handler', () => {
   });
 
   it('times out if handler hangs indefinitely', { timeout: 10000 }, async () => {
+    vi.useFakeTimers();
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
     // Create a handler that never resolves (infinite hang)
@@ -198,15 +199,41 @@ describe('signal-handler', () => {
     const cleanup = registerSignalHandlers({ onSigInt });
     process.emit('SIGINT');
 
-    // The timeout is 5 seconds inside the handler, so check briefly after
-    // We're mainly verifying that the handler was called
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // Advance timers to trigger the timeout
+    await vi.advanceTimersByTimeAsync(5100);
 
     // Handler should have been called
     expect(onSigInt).toHaveBeenCalled();
+    // Exit should have been called after timeout
+    expect(exitSpy).toHaveBeenCalledWith(130);
 
     cleanup();
     exitSpy.mockRestore();
+    vi.useRealTimers();
+  });
+
+  it('handles non-Error exceptions thrown by handler', async () => {
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+
+    // Throw string instead of Error object
+    const onSigInt = vi.fn(() => {
+      throw 'String exception, not an Error object';
+    });
+
+    const cleanup = registerSignalHandlers({ onSigInt });
+    process.emit('SIGINT');
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Should catch the string exception and write to stderr using String() fallback
+    expect(stderrSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/Error during SIGINT cleanup.*String exception/)
+    );
+    expect(exitSpy).toHaveBeenCalledWith(130);
+    cleanup();
+    exitSpy.mockRestore();
+    stderrSpy.mockRestore();
   });
 });
 
