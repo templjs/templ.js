@@ -30,12 +30,22 @@ export function registerSignalHandlers(options: SignalHandlerOptions = {}): () =
 
     try {
       if (handler) {
-        await handler();
+        // Create a timeout promise that rejects after 5 seconds
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error(`Handler timeout for ${signal}`));
+          }, 5000);
+        });
+        // Race the handler against the timeout
+        await Promise.race([handler(), timeoutPromise]);
       }
     } catch (error) {
       // Prevent handler errors from interfering with shutdown
       const message = error instanceof Error ? error.message : String(error);
-      process.stderr.write(`Error during ${signal} cleanup: ${message}\n`);
+      // Only write errors to stderr if not SIGPIPE (silent exit)
+      if (signal !== 'SIGPIPE') {
+        process.stderr.write(`Error during ${signal} cleanup: ${message}\n`);
+      }
     } finally {
       process.exit(exitCode);
     }
