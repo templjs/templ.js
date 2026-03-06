@@ -62,7 +62,7 @@ CLI must be a good Unix citizen: handle signals gracefully (SIGINT, SIGPIPE, SIG
   - `--verbose`: Show debug info and timing
   - `--json`: JSON output for machine parsing
 - [x] Implement streaming for large files:
-  - Handle >1MB inputs without buffering issues
+  - Handle >10MB inputs without buffering issues
   - Respect memory limits
   - Progress indicators for large renders
 - [x] Add comprehensive error messages:
