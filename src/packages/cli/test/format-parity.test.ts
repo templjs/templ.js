@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock fs module
 vi.mock('fs', () => ({
@@ -87,9 +87,10 @@ describe('Parser Factory', () => {
       expect(parser).toBeInstanceOf(TomlParser);
     });
 
-    it('returns XmlParser for xml format', () => {
-      const parser = getParser('xml');
-      expect(parser).toBeInstanceOf(XmlParser);
+    it('throws for xml format in sync parser factory', () => {
+      expect(() => getParser('xml')).toThrow(
+        'XML parsing is only supported via parseDataAsync (async API).'
+      );
     });
 
     it('throws for unsupported format', () => {
@@ -224,7 +225,7 @@ describe('XML Parser', () => {
   const parser = new XmlParser();
 
   it('throws for synchronous parse method', () => {
-    expect(() => parser.parse()).toThrow('XML parsing requires async method');
+    expect(() => parser.parse('<root />')).toThrow('XML parsing requires async method');
   });
 
   it('parses valid XML asynchronously', async () => {
@@ -295,6 +296,10 @@ describe('parseDataAsync', () => {
 });
 
 describe('renderCommand with multiple formats', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('renders template with JSON data', async () => {
     vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
     vi.mocked(readFileSync).mockImplementation((value) => {

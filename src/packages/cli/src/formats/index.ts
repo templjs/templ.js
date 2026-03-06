@@ -40,7 +40,7 @@ export function getParser(format: SupportedFormat): FormatParser {
     case 'toml':
       return new TomlParser();
     case 'xml':
-      return new XmlParser();
+      throw new Error('XML parsing is only supported via parseDataAsync (async API).');
     default:
       throw new Error(`Unsupported format: ${format}`);
   }
@@ -57,6 +57,12 @@ export function parseData(content: string, filePath: string): Record<string, unk
   if (!format) {
     throw new Error(
       `Unable to detect format from file path: ${filePath}. Supported formats: .json, .yaml, .yml, .toml, .xml`
+    );
+  }
+
+  if (format === 'xml') {
+    throw new Error(
+      'XML parsing is asynchronous. Use parseDataAsync(content, filePath) for .xml inputs.'
     );
   }
 
