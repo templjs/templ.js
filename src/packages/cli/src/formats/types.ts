@@ -18,7 +18,7 @@ export interface FormatParserAsync extends FormatParser {
   /**
    * Async parse method for formats that require it
    */
-  parseAsync?(content: string): Promise<Record<string, unknown>>;
+  parseAsync(content: string): Promise<Record<string, unknown>>;
 }
 
 export type SupportedFormat = 'json' | 'yaml' | 'toml' | 'xml';

@@ -2,7 +2,7 @@
  * YAML format parser
  */
 
-import { FormatParser } from './types';
+import { FormatParser } from './types.js';
 import * as jsYaml from 'js-yaml';
 
 export class YamlParser implements FormatParser {

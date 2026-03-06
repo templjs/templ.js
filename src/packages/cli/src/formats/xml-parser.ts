@@ -2,7 +2,7 @@
  * XML format parser
  */
 
-import { FormatParserAsync } from './types';
+import { FormatParserAsync } from './types.js';
 import { parseStringPromise } from 'xml2js';
 
 export class XmlParser implements FormatParserAsync {
@@ -19,9 +19,6 @@ export class XmlParser implements FormatParserAsync {
       return result as Record<string, unknown>;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      if (message.includes('xml2js')) {
-        throw error; // Re-throw dependency error
-      }
       throw new Error(`Invalid XML: ${message}`, { cause: error });
     }
   }

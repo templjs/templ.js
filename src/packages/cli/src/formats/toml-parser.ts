@@ -2,7 +2,7 @@
  * TOML format parser
  */
 
-import { FormatParser } from './types';
+import { FormatParser } from './types.js';
 import * as tomlParser from '@iarna/toml';
 
 export class TomlParser implements FormatParser {

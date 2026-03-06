@@ -5,7 +5,7 @@
 
 import { createReadStream, readFileSync, statSync } from 'fs';
 import { renderTemplate } from '@templjs/core';
-import { parseDataAsync } from '../formats';
+import { parseDataAsync } from '../formats/index.js';
 
 const LARGE_INPUT_THRESHOLD_BYTES = 10 * 1024 * 1024;
 

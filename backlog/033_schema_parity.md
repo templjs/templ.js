@@ -9,25 +9,27 @@ priority: high
 estimated: 12
 assignee: ''
 actual: 13
-pr_number: 24
-pr_url: https://github.com/templjs/templ.js/pull/24
+commits:
+  78e3fbd: 'fix(backlog,formats): address PR #24 major blocking issues'
+  f1394b6: 'docs(wi-033): add PR metadata to backlog item'
+  f6eb420: 'feat(cli): implement WI-033 schema parity with multi-format input parsing'
 links:
   depends_on:
     - '[[017_cli_commands]]'
     - '[[008_query_engine]]'
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/24
 test_results:
-  - timestamp: 2026-03-05T21:40:00Z
+  - timestamp: 2026-03-05T21:45:00Z
     note: |
       WI-033 schema parity implementation validation:
-      - Full test run: 132 CLI tests passing (48 new format-parity + 84 existing JSON tests)
-      - New format parsers: yaml-parser.ts, toml-parser.ts, xml-parser.ts, json-parser.ts
-      - Format detection: detectFormat() validates all extensions (.json, .yaml, .yml, .toml, .xml)
-      - Error handling: Format-specific messages ("Invalid JSON:", "Invalid YAML:", "Invalid TOML:", "Invalid XML:")
-      - Stdin support: Path "-" defaults to JSON automatically
-      - Schema validation: All formats parse to compatible JavaScript objects
-      - Test coverage: 48 format-parity tests (far exceeds 12+ requirement)
-      - Regression test: 84 existing JSON tests all passing, zero regressions
-      - Statement coverage: 96.85% (95% threshold), Branch: 90% (78% threshold), Functions: 100%
+      - Multi-format parsing: JSON, YAML, TOML, XML all working
+      - Format detection: All extensions detected (.json, .yaml, .yml, .toml, .xml)
+      - Format-specific errors with clear messages ("Invalid JSON:", "Invalid YAML:", etc)
+      - Stdin support (path="-") defaults to JSON automatically
+      - Test coverage: 48 format-parity tests + 84 existing = 132 total CLI tests
+      - All 8 acceptance criteria met with zero regressions
+      - Statement coverage: 96.85% (95% threshold), Branch: 90% (78% threshold)
 ---
 
 ## Goal
@@ -51,7 +53,7 @@ WI-017 implemented basic CLI commands with JSON input. This work item extends va
 - [x] Schema validation works across all formats
 - [x] Format errors have clear messages
 - [x] Format auto-detection working
-- [x] 12+ tests passing
+- [x] 48+ tests passing (exceeds 12+ requirement)
 - [x] No regressions in JSON handling
 
 ## Input Formats

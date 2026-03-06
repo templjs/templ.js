@@ -2,7 +2,7 @@
  * JSON format parser
  */
 
-import { FormatParser } from './types';
+import { FormatParser } from './types.js';
 
 export class JsonParser implements FormatParser {
   formatName = 'JSON';
