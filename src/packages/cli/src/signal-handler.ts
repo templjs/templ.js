@@ -3,10 +3,13 @@
  * Registers handlers for SIGINT, SIGTERM, and SIGPIPE
  */
 
+import { detectTTY, getTimeoutForMode } from './tty-detection.js';
+
 export interface SignalHandlerOptions {
   onSigInt?: () => void | Promise<void>;
   onSigTerm?: () => void | Promise<void>;
   onSigPipe?: () => void | Promise<void>;
+  cleanupTimeoutMs?: number;
 }
 
 /**
@@ -17,6 +20,8 @@ export interface SignalHandlerOptions {
  */
 export function registerSignalHandlers(options: SignalHandlerOptions = {}): () => void {
   let isHandling = false;
+  const tty = detectTTY();
+  const cleanupTimeoutMs = options.cleanupTimeoutMs ?? getTimeoutForMode(tty.isInteractive);
 
   const handleSignal = async (
     signal: string,
@@ -35,7 +40,7 @@ export function registerSignalHandlers(options: SignalHandlerOptions = {}): () =
         const timeoutPromise = new Promise<never>((_, reject) => {
           timeoutId = setTimeout(() => {
             reject(new Error(`Handler timeout for ${signal}`));
-          }, 5000);
+          }, cleanupTimeoutMs);
         });
         // Race the handler against the timeout
         try {

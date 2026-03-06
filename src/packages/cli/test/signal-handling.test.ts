@@ -6,7 +6,13 @@ import { Writable } from 'stream';
 import { registerSignalHandlers, type SignalHandlerOptions } from '../src/signal-handler';
 import { formatErrorContext, formatError, provideErrorSuggestion } from '../src/error-formatter';
 import { detectTTY, getTimeoutForMode } from '../src/tty-detection';
-import { shouldStream, LARGE_FILE_THRESHOLD, streamToString } from '../src/streaming-io';
+import {
+  shouldStream,
+  LARGE_FILE_THRESHOLD,
+  streamToString,
+  readFileStream,
+  createFileWriteStream,
+} from '../src/streaming-io';
 
 describe('signal-handler', () => {
   afterEach(() => {
@@ -52,6 +58,10 @@ describe('signal-handler', () => {
   });
 
   it('registers SIGPIPE handler that exits with code 141', async () => {
+    if (process.platform === 'win32') {
+      return;
+    }
+
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
     const options: SignalHandlerOptions = { onSigPipe: () => {} };
 
@@ -153,6 +163,10 @@ describe('signal-handler', () => {
   });
 
   it('SIGPIPE errors are silent (no stderr output)', async () => {
+    if (process.platform === 'win32') {
+      return;
+    }
+
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
 
@@ -176,7 +190,7 @@ describe('signal-handler', () => {
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
     const onSigInt = vi.fn();
 
-    const cleanup = registerSignalHandlers({ onSigInt });
+    const cleanup = registerSignalHandlers({ onSigInt, cleanupTimeoutMs: 5000 });
 
     // Emit multiple signals in rapid succession
     process.emit('SIGINT');
@@ -505,12 +519,8 @@ describe('Streaming I/O and Large File Support', () => {
     const tenMB = 10 * 1024 * 1024;
 
     // Create 10MB file
-    const writeStream = fs.createWriteStream(largePath);
-    const chunkSize = 1024;
-    for (let i = 0; i < tenMB / chunkSize; i++) {
-      writeStream.write('x'.repeat(chunkSize));
-    }
-    await new Promise((resolve) => writeStream.end(resolve));
+    const buffer = Buffer.alloc(tenMB, 'x');
+    await fs.promises.writeFile(largePath, buffer);
 
     // Verify file was created
     const stats = await fs.promises.stat(largePath);
@@ -521,7 +531,6 @@ describe('Streaming I/O and Large File Support', () => {
     const heapBefore = process.memoryUsage().heapUsed;
 
     // Stream the file
-    const { readFileStream } = await import('../src/streaming-io');
     let totalBytesRead = 0;
     for await (const chunk of readFileStream(largePath, tenMB)) {
       totalBytesRead += Buffer.byteLength(chunk);
@@ -540,6 +549,10 @@ describe('Streaming I/O and Large File Support', () => {
   });
 
   it('handles SIGPIPE when output stream is closed prematurely', async () => {
+    if (process.platform === 'win32') {
+      return;
+    }
+
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
 
@@ -613,8 +626,6 @@ describe('Streaming I/O and Large File Support', () => {
 
     const progressUpdates: Array<{ bytes: number; total?: number }> = [];
 
-    const { readFileStream } = await import('../src/streaming-io');
-
     for await (const _chunk of readFileStream(largePath, fileSize, {
       onProgress: (bytesRead, totalBytes) => {
         progressUpdates.push({ bytes: bytesRead, total: totalBytes });
@@ -634,8 +645,6 @@ describe('Streaming I/O and Large File Support', () => {
 
   it('handles streaming writes without memory accumulation', async () => {
     const outputPath = path.join(tmpDir, 'stream-write.txt');
-    const { createFileWriteStream } = await import('../src/streaming-io');
-
     const writeStream = createFileWriteStream(outputPath);
 
     // Measure memory before
@@ -679,8 +688,6 @@ describe('Streaming I/O and Large File Support', () => {
     const testPath = path.join(tmpDir, 'chunked.txt');
     await fs.promises.writeFile(testPath, 'a'.repeat(1024 * 100)); // 100KB
 
-    const { readFileStream } = await import('../src/streaming-io');
-
     const customChunkSize = 8 * 1024; // 8KB
     const chunks: string[] = [];
 
@@ -700,7 +707,6 @@ describe('Streaming I/O and Large File Support', () => {
   });
 
   it('handles stream errors gracefully', async () => {
-    const { readFileStream } = await import('../src/streaming-io');
     const nonExistentPath = path.join(tmpDir, 'does-not-exist.txt');
 
     await expect(async () => {

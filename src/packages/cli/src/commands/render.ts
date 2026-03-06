@@ -5,7 +5,7 @@
 
 import { readFileSync, statSync } from 'fs';
 import { renderTemplate } from '@templjs/core';
-import { readFileStream, shouldStream } from '../streaming-io.js';
+import { readFileStream, shouldStream, streamToString } from '../streaming-io.js';
 
 const LARGE_INPUT_THRESHOLD_BYTES = 10 * 1024 * 1024;
 
@@ -26,10 +26,9 @@ async function readPayload(dataOrPath: string): Promise<string> {
       return readFileSync(dataOrPath, 'utf-8');
     }
 
-    const chunks: string[] = [];
     let lastProgressBucket = -1;
 
-    for await (const chunk of readFileStream(dataOrPath, inputStats.size, {
+    const stream = readFileStream(dataOrPath, inputStats.size, {
       encoding: 'utf-8',
       onProgress: (bytesRead) => {
         const progress = Math.min(100, Math.floor((bytesRead / inputStats.size) * 100));
@@ -39,11 +38,9 @@ async function readPayload(dataOrPath: string): Promise<string> {
           lastProgressBucket = progressBucket;
         }
       },
-    })) {
-      chunks.push(chunk);
-    }
+    });
 
-    return chunks.join('');
+    return await streamToString(stream);
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code === 'ENOENT') {

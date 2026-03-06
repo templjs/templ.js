@@ -38,6 +38,7 @@ export async function* readFileStream(
 
   let bytesRead = 0;
   let lastProgressUpdate = 0;
+  let completed = false;
 
   try {
     for await (const chunk of stream) {
@@ -45,24 +46,22 @@ export async function* readFileStream(
       bytesRead += Buffer.byteLength(value, options.encoding ?? 'utf-8');
 
       // Call progress callback periodically
-      if (
-        options.onProgress &&
-        totalBytes !== undefined &&
-        bytesRead - lastProgressUpdate > 1024 * 1024
-      ) {
+      if (options.onProgress && bytesRead - lastProgressUpdate > 1024 * 1024) {
         options.onProgress(bytesRead, totalBytes);
         lastProgressUpdate = bytesRead;
       }
 
       yield value;
     }
+
+    completed = true;
   } finally {
     if (!stream.destroyed) {
       stream.destroy();
     }
 
-    // Final progress update
-    if (options.onProgress && totalBytes !== undefined) {
+    // Final progress update (only after successful completion)
+    if (completed && options.onProgress) {
       options.onProgress(bytesRead, totalBytes);
     }
   }
@@ -100,9 +99,9 @@ export function shouldStream(fileSize: number, threshold: number = LARGE_FILE_TH
  * @returns Promise resolving to complete string
  */
 export async function streamToString(stream: AsyncIterable<string>): Promise<string> {
-  const chunks: string[] = [];
+  let content = '';
   for await (const chunk of stream) {
-    chunks.push(chunk);
+    content += chunk;
   }
-  return chunks.join('');
+  return content;
 }
