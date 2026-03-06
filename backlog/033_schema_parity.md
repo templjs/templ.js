@@ -2,16 +2,29 @@
 id: wi-033
 type: work-item
 subtype: story
-lifecycle: draft
+lifecycle: active
 title: '33: Implement Schema Parity (JSON/YAML/TOML Input Formats)'
-status: proposed
+status: in-progress
 priority: high
 estimated: 12
 assignee: ''
+pr_number: 24
+pr_url: https://github.com/templjs/templ.js/pull/24
 links:
   depends_on:
     - '[[017_cli_commands]]'
     - '[[008_query_engine]]'
+test_results:
+  - timestamp: 2026-03-05T21:45:00Z
+    note: |
+      WI-033 schema parity implementation validation:
+      - Multi-format parsing: JSON, YAML, TOML, XML all working
+      - Format detection: All extensions detected (.json, .yaml, .yml, .toml, .xml)
+      - Format-specific errors with clear messages ("Invalid JSON:", "Invalid YAML:", etc)
+      - Stdin support (path="-") defaults to JSON automatically
+      - Test coverage: 48 format-parity tests + 84 existing = 132 total CLI tests
+      - All 8 acceptance criteria met with zero regressions
+      - Statement coverage: 96.85% (95% threshold), Branch: 90% (78% threshold)
 ---
 
 ## Goal
@@ -29,14 +42,14 @@ WI-017 implemented basic CLI commands with JSON input. This work item extends va
 
 ## Acceptance Criteria
 
-- [ ] YAML input parsing and validation working
-- [ ] TOML input parsing and validation working
-- [ ] XML input parsing and validation working
-- [ ] Schema validation works across all formats
-- [ ] Format errors have clear messages
-- [ ] Format auto-detection working
-- [ ] 12+ tests passing
-- [ ] No regressions in JSON handling
+- [x] YAML input parsing and validation working
+- [x] TOML input parsing and validation working
+- [x] XML input parsing and validation working
+- [x] Schema validation works across all formats
+- [x] Format errors have clear messages
+- [x] Format auto-detection working
+- [x] 48+ tests passing (exceeds 12+ requirement)
+- [x] No regressions in JSON handling
 
 ## Input Formats
 
