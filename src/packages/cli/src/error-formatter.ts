@@ -57,7 +57,7 @@ export function formatErrorContext(
 
     // Add column marker for the error line
     if (i === lineNumber - 1 && highlightColumn && column > 0) {
-      const offset = showLineNumbers ? 6 : 0; // Account for line number prefix
+      const offset = showLineNumbers ? prefix.length : 0;
       const marker = ' '.repeat(offset + column - 1) + '^';
       contextParts.push(marker);
     }

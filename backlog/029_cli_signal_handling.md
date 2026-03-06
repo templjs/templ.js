@@ -9,11 +9,16 @@ priority: critical
 estimated: 6
 assignee: ''
 start_date: 2026-03-05
-pr_number: 23
-pr_url: https://github.com/templjs/templ.js/pull/23
+commits:
+  fe801d3: 'test(signal-handler): add timeout and non-Error exception coverage'
+  31c23a0: 'fix(signal-handler): prevent infinite hang with handler timeout'
+  9cb775e: 'docs(wi-029): add PR metadata to backlog item'
+  d101044: 'feat(cli): implement WI-029 signal handling, TTY detection, error formatting, and streaming I/O'
 links:
   depends_on:
     - '[[017_cli_commands]]'
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/23
 test_results:
   - timestamp: 2026-03-05T15:33:17Z
     note: |
@@ -49,7 +54,7 @@ CLI must be a good Unix citizen: handle signals gracefully (SIGINT, SIGPIPE, SIG
   - Show 3 lines before/after error location
   - Highlight error column with ASCII `^` marker
   - Include line numbers
-- [x] Add verbosity control:
+- [ ] Add verbosity control:
   - `--quiet`: No output except errors
   - `--verbose`: Show debug info and timing
   - `--json`: JSON output for machine parsing

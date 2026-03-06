@@ -41,7 +41,7 @@ export async function* readFileStream(
 
   for await (const chunk of stream) {
     const value = typeof chunk === 'string' ? chunk : chunk.toString(options.encoding ?? 'utf-8');
-    bytesRead += Buffer.byteLength(value);
+    bytesRead += Buffer.byteLength(value, options.encoding ?? 'utf-8');
 
     // Call progress callback periodically
     if (options.onProgress && totalBytes && bytesRead - lastProgressUpdate > 1024 * 1024) {

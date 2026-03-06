@@ -126,14 +126,20 @@ describe('signal-handler', () => {
   });
 
   it('cleanup function removes signal listeners', () => {
+    const beforeListeners = new Set(process.listeners('SIGINT'));
+
     const cleanup = registerSignalHandlers({});
-    const initialCount = process.listeners('SIGINT').length;
+    const afterRegisterListeners = process.listeners('SIGINT');
+    const newListeners = afterRegisterListeners.filter(
+      (listener) => !beforeListeners.has(listener)
+    );
 
     cleanup();
-    const finalCount = process.listeners('SIGINT').length;
+    const afterCleanupListeners = process.listeners('SIGINT');
 
-    // Count should be same or less after cleanup
-    expect(finalCount).toBeLessThanOrEqual(initialCount);
+    for (const listener of newListeners) {
+      expect(afterCleanupListeners).not.toContain(listener);
+    }
   });
 
   it('cleanup function is idempotent', () => {
@@ -525,9 +531,11 @@ describe('Streaming I/O and Large File Support', () => {
     const heapAfter = process.memoryUsage().heapUsed;
     const heapDelta = heapAfter - heapBefore;
 
-    // Memory growth should be much less than file size
-    // Allow 10MB growth (streaming overhead + buffers + GC variance)
-    expect(heapDelta).toBeLessThan(10 * 1024 * 1024);
+    if (global.gc) {
+      expect(heapDelta).toBeLessThan(5 * 1024 * 1024);
+    } else {
+      expect(heapDelta).toBeLessThan(10 * 1024 * 1024);
+    }
     expect(totalBytesRead).toBeGreaterThanOrEqual(tenMB);
   });
 
@@ -656,8 +664,11 @@ describe('Streaming I/O and Large File Support', () => {
     const heapAfter = process.memoryUsage().heapUsed;
     const heapDelta = heapAfter - heapBefore;
 
-    // Memory growth should be minimal (< 8MB for buffers + GC variance)
-    expect(heapDelta).toBeLessThan(8 * 1024 * 1024);
+    if (global.gc) {
+      expect(heapDelta).toBeLessThan(5 * 1024 * 1024);
+    } else {
+      expect(heapDelta).toBeLessThan(8 * 1024 * 1024);
+    }
 
     // Verify file was written
     const stats = await fs.promises.stat(outputPath);

@@ -18,6 +18,7 @@ import { validateCommand } from './commands/validate.js';
 import { version } from './index.js';
 import { loadConfig, applyConfig } from './config/index.js';
 import { defaultWatchModeDependencies, startRenderWatchMode } from './watch-mode.js';
+import { registerSignalHandlers } from './signal-handler.js';
 
 function createProgram(): Command {
   const program = new Command();
@@ -152,6 +153,7 @@ function createProgram(): Command {
 
 export async function main(argv = process.argv): Promise<void> {
   const program = createProgram();
+  const cleanupSignalHandlers = registerSignalHandlers();
 
   try {
     await program.parseAsync(argv);
@@ -159,6 +161,8 @@ export async function main(argv = process.argv): Promise<void> {
     const message = error instanceof Error ? error.message : String(error);
     process.stderr.write(`Error: ${message}\n`);
     process.exitCode = 1;
+  } finally {
+    cleanupSignalHandlers();
   }
 }
 

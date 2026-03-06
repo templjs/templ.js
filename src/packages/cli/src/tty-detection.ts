@@ -19,8 +19,8 @@ export function detectTTY(): TTYDetectionResult {
   const stdoutIsTTY = process.stdout.isTTY ?? false;
   const stderrIsTTY = process.stderr.isTTY ?? false;
 
-  // Interactive mode is when all streams are TTYs
-  // Or at minimum when stdin and stdout are TTYs
+  // Interactive mode is when both stdin and stdout are TTYs.
+  // stderr being a TTY is reported separately and not required for interactivity.
   const isInteractive = stdinIsTTY && stdoutIsTTY;
 
   return {

@@ -30,14 +30,19 @@ export function registerSignalHandlers(options: SignalHandlerOptions = {}): () =
 
     try {
       if (handler) {
+        let timeoutId: NodeJS.Timeout;
         // Create a timeout promise that rejects after 5 seconds
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => {
+          timeoutId = setTimeout(() => {
             reject(new Error(`Handler timeout for ${signal}`));
           }, 5000);
         });
         // Race the handler against the timeout
-        await Promise.race([handler(), timeoutPromise]);
+        try {
+          await Promise.race([handler(), timeoutPromise]);
+        } finally {
+          clearTimeout(timeoutId!);
+        }
       }
     } catch (error) {
       // Prevent handler errors from interfering with shutdown
