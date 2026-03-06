@@ -71,6 +71,47 @@ describe('cli-main', () => {
     expect(writeFileSync).not.toHaveBeenCalled();
   });
 
+  it('suppresses render stdout in quiet mode', async () => {
+    vi.mocked(renderCommand).mockResolvedValue('rendered-output');
+
+    await main(['node', 'cli.js', '--quiet', 'render', '-t', 'template.templ', '-i', 'data.json']);
+
+    expect(renderCommand).toHaveBeenCalledWith('template.templ', 'data.json');
+    expect(stdoutSpy).not.toHaveBeenCalledWith('rendered-output\n');
+  });
+
+  it('emits json envelope for render to stdout', async () => {
+    vi.mocked(renderCommand).mockResolvedValue('rendered-output');
+
+    await main(['node', 'cli.js', '--json', 'render', '-t', 'template.templ', '-i', 'data.json']);
+
+    expect(renderCommand).toHaveBeenCalledWith('template.templ', 'data.json');
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"ok":true/));
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"command":"render"/));
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"output":"rendered-output"/));
+  });
+
+  it('emits json envelope for render with output file', async () => {
+    vi.mocked(renderCommand).mockResolvedValue('rendered-output');
+
+    await main([
+      'node',
+      'cli.js',
+      '--json',
+      'render',
+      '-t',
+      'template.templ',
+      '-i',
+      'data.json',
+      '-o',
+      'result.txt',
+    ]);
+
+    expect(writeFileSync).toHaveBeenCalledWith('result.txt', 'rendered-output', 'utf-8');
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"wroteFile":true/));
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"outputPath":"result.txt"/));
+  });
+
   it('renders to file when output path is provided', async () => {
     vi.mocked(renderCommand).mockResolvedValue('rendered-output');
 
@@ -127,6 +168,17 @@ describe('cli-main', () => {
     expect(process.exitCode).toBeUndefined();
   });
 
+  it('emits json envelope for validate success', async () => {
+    vi.mocked(validateCommand).mockResolvedValue(true);
+
+    await main(['node', 'cli.js', '--json', 'validate', '-t', 'template.templ']);
+
+    expect(validateCommand).toHaveBeenCalledWith('template.templ', undefined);
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"ok":true/));
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"command":"validate"/));
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"valid":true/));
+  });
+
   it('sets exit code when validation fails', async () => {
     vi.mocked(validateCommand).mockResolvedValue(false);
 
@@ -146,6 +198,62 @@ describe('cli-main', () => {
     expect(stdoutSpy).toHaveBeenCalledWith('starter-template');
   });
 
+  it('emits json envelope for init without output path', async () => {
+    vi.mocked(initCommand).mockResolvedValue('starter-template');
+
+    await main(['node', 'cli.js', '--json', 'init', '-f', 'markdown']);
+
+    expect(initCommand).toHaveBeenCalledWith({ format: 'markdown', output: undefined });
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"command":"init"/));
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"output":"starter-template"/));
+  });
+
+  it('emits json envelope for init with output path', async () => {
+    vi.mocked(initCommand).mockResolvedValue('starter-template');
+
+    await main(['node', 'cli.js', '--json', 'init', '-f', 'json', '-o', 'starter.templ']);
+
+    expect(initCommand).toHaveBeenCalledWith({ format: 'json', output: 'starter.templ' });
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"wroteFile":true/));
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"outputPath":"starter.templ"/));
+  });
+
+  it('writes verbose diagnostics to stderr', async () => {
+    vi.mocked(renderCommand).mockResolvedValue('rendered-output');
+
+    await main([
+      'node',
+      'cli.js',
+      '--verbose',
+      'render',
+      '-t',
+      'template.templ',
+      '-i',
+      'data.json',
+    ]);
+
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('[verbose]'));
+  });
+
+  it('quiet mode overrides verbose output', async () => {
+    vi.mocked(renderCommand).mockResolvedValue('rendered-output');
+
+    await main([
+      'node',
+      'cli.js',
+      '--quiet',
+      '--verbose',
+      'render',
+      '-t',
+      'template.templ',
+      '-i',
+      'data.json',
+    ]);
+
+    expect(stderrSpy).not.toHaveBeenCalledWith(expect.stringContaining('[verbose]'));
+    expect(stdoutSpy).not.toHaveBeenCalledWith('rendered-output\n');
+  });
+
   it('does not write init output to stdout when output path is provided', async () => {
     vi.mocked(initCommand).mockResolvedValue('starter-template');
 
@@ -161,6 +269,17 @@ describe('cli-main', () => {
     await main(['node', 'cli.js', 'render', '-t', 'template.templ', '-i', 'data.json']);
 
     expect(stderrSpy).toHaveBeenCalledWith('Error: render exploded\n');
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('emits json error envelope when json mode is enabled', async () => {
+    vi.mocked(renderCommand).mockRejectedValue(new Error('render exploded'));
+
+    await main(['node', 'cli.js', '--json', 'render', '-t', 'template.templ', '-i', 'data.json']);
+
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/"ok":false/));
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/"command":"main"/));
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/"error":"render exploded"/));
     expect(process.exitCode).toBe(1);
   });
 

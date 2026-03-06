@@ -32,6 +32,13 @@ test_results:
       - Memory validation: 10MB file streaming runs with < 5MB heap delta
       - All 7 tasks completed, all 8 acceptance criteria met
       - Statement coverage: 98.72% (95% threshold)
+  - timestamp: 2026-03-06T00:00:00Z
+    note: |
+      Follow-up verification for WI-029 verbosity controls:
+      - Implemented global `--quiet`, `--verbose`, and `--json` flags in CLI entrypoint
+      - Added deterministic JSON success/error envelopes for render/validate/init flows
+      - Added integration coverage for quiet suppression, verbose diagnostics, JSON output, and precedence
+      - Tests run: `src/packages/cli/test/cli.test.ts` (27 passed), remaining CLI tests set (66 passed)
 ---
 
 ## Goal
@@ -61,6 +68,7 @@ CLI must be a good Unix citizen: handle signals gracefully (SIGINT, SIGPIPE, SIG
   - `--quiet`: No output except errors
   - `--verbose`: Show debug info and timing
   - `--json`: JSON output for machine parsing
+  - Verified in CLI with integration tests on 2026-03-06
 - [x] Implement streaming for large files:
   - Handle >10MB inputs without buffering issues
   - Respect memory limits
