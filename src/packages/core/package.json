@@ -4,6 +4,7 @@
   "description": "Core template parser, renderer, and query engine for templjs",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -21,7 +22,7 @@
     "test:watch": "vitest --config vitest.config.ts",
     "test:coverage": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts --coverage",
     "lint": "echo 'No linting configured yet'",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist tsconfig.tsbuildinfo"
   },
   "keywords": [
     "template",

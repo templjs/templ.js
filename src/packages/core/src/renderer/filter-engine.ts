@@ -2,7 +2,7 @@
  * Filter and function application engine
  */
 
-import type { FilterFunction } from './types';
+import type { FilterFunction } from './types.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyValue = any;

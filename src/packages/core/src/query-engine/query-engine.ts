@@ -19,12 +19,12 @@ import type {
   QueryResult,
   TypeInfo,
 } from './types';
-import { arrayFunctions } from './functions/array-functions';
-import { datetimeFunctions } from './functions/datetime-functions';
-import { numberFunctions } from './functions/number-functions';
-import { objectFunctions } from './functions/object-functions';
-import { stringFunctions } from './functions/string-functions';
-import { utilityFunctions } from './functions/utility-functions';
+import { arrayFunctions } from './functions/array-functions.js';
+import { datetimeFunctions } from './functions/datetime-functions.js';
+import { numberFunctions } from './functions/number-functions.js';
+import { objectFunctions } from './functions/object-functions.js';
+import { stringFunctions } from './functions/string-functions.js';
+import { utilityFunctions } from './functions/utility-functions.js';
 
 /**
  * Internal registry entry for a function.

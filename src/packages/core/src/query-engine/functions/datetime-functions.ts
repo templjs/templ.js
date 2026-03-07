@@ -7,7 +7,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { FunctionSignature, FilterFunction } from '../types';
+import type { FunctionSignature, FilterFunction } from '../types.js';
 
 // DateTime function signatures
 export const nowSignature: FunctionSignature = {

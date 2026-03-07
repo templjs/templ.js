@@ -2,7 +2,7 @@
  * Types for the template renderer
  */
 
-import type { Position } from '../lexer/types';
+import type { Position } from '../lexer/types.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyValue = any;

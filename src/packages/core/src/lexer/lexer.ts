@@ -1,5 +1,5 @@
-import type { Token, Position, DelimiterConfig, LexerOptions } from './types';
-import { TokenType, DEFAULT_DELIMITERS } from './types';
+import type { Token, Position, DelimiterConfig, LexerOptions } from './types.js';
+import { TokenType, DEFAULT_DELIMITERS } from './types.js';
 
 /**
  * Tokenize a template string into structured tokens

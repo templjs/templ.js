@@ -4,7 +4,7 @@
  * Cross-category helper functions.
  */
 
-import type { FunctionSignature, FilterFunction } from '../types';
+import type { FunctionSignature, FilterFunction } from '../types.js';
 
 export const defaultSignature: FunctionSignature = {
   name: 'default',

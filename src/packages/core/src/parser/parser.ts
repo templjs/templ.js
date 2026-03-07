@@ -2,8 +2,8 @@
  * Chevrotain-based parser that converts tokens into an Abstract Syntax Tree
  */
 
-import type { Token } from '../lexer/types';
-import { TokenType } from '../lexer/types';
+import type { Token } from '../lexer/types.js';
+import { TokenType } from '../lexer/types.js';
 import type {
   ASTNode,
   TemplateNode,
@@ -22,7 +22,7 @@ import type {
   ParseResult,
   ParseError,
 } from './types';
-import { parseExpressionWithPriorityList } from './parsers';
+import { parseExpressionWithPriorityList } from './parsers.js';
 
 /**
  * Parser for converting token stream into AST

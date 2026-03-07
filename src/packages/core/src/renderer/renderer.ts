@@ -13,10 +13,10 @@ import type {
   TextNode,
   ExpressionStatementNode,
 } from '../parser/types';
-import type { RenderContext, RenderResult, RenderOptions, RenderError } from './types';
-import { VariableResolver } from './variable-resolver';
-import { createBuiltinFilterMap } from './filter-engine';
-import { evaluateExpression as evaluateStandaloneExpression } from './evaluators';
+import type { RenderContext, RenderResult, RenderOptions, RenderError } from './types.js';
+import { VariableResolver } from './variable-resolver.js';
+import { createBuiltinFilterMap } from './filter-engine.js';
+import { evaluateExpression as evaluateStandaloneExpression } from './evaluators.js';
 
 type AnyValue = any;
 type NormalizedRenderOptions = Omit<Required<RenderOptions>, 'undefinedValue'> & {

@@ -2,7 +2,7 @@
  * Query path validation utilities
  */
 
-import type { JSONSchema } from './types';
+import type { JSONSchema } from './types.js';
 
 /**
  * Extract all valid paths from a JSON Schema

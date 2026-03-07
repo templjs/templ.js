@@ -5,9 +5,9 @@
 import Ajv from 'ajv';
 import type { ValidateFunction, ErrorObject } from 'ajv';
 import addFormats from 'ajv-formats';
-import type { ValidationResult, ValidationError, SchemaMetadata, JSONSchema } from './types';
-import { extractPaths, fuzzyMatch, isValidPath, normalizePath } from './queryPathValidator';
-import { inferSchemaFromValue } from './schemaInference';
+import type { ValidationResult, ValidationError, SchemaMetadata, JSONSchema } from './types.js';
+import { extractPaths, fuzzyMatch, isValidPath, normalizePath } from './queryPathValidator.js';
+import { inferSchemaFromValue } from './schemaInference.js';
 
 /**
  * Schema validator with query path validation and schema inference
