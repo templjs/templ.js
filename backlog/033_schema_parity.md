@@ -4,16 +4,21 @@ type: work-item
 subtype: story
 lifecycle: active
 title: '33: Implement Schema Parity (JSON/YAML/TOML Input Formats)'
-status: in-progress
+status: ready-for-review
 priority: high
 estimated: 12
 assignee: ''
-pr_number: 24
-pr_url: https://github.com/templjs/templ.js/pull/24
+actual: 13
+commits:
+  78e3fbd: 'fix(backlog,formats): address PR #24 major blocking issues'
+  f1394b6: 'docs(wi-033): add PR metadata to backlog item'
+  f6eb420: 'feat(cli): implement WI-033 schema parity with multi-format input parsing'
 links:
   depends_on:
     - '[[017_cli_commands]]'
     - '[[008_query_engine]]'
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/24
 test_results:
   - timestamp: 2026-03-05T21:45:00Z
     note: |
@@ -25,6 +30,10 @@ test_results:
       - Test coverage: 48 format-parity tests + 84 existing = 132 total CLI tests
       - All 8 acceptance criteria met with zero regressions
       - Statement coverage: 96.85% (95% threshold), Branch: 90% (78% threshold)
+  - timestamp: 2026-03-07T00:00:00Z
+    note: |
+      Ready for review: All acceptance criteria met, 13 hours invested.
+      PR #24 ready for merge. Moving to ready-for-review status.
 ---
 
 ## Goal
@@ -80,15 +89,15 @@ templjs render --input data.xml --template output.md.tmpl
 
 ## Tasks
 
-- [ ] Add YAML parser (libyaml or similar)
-- [ ] Add TOML parser
-- [ ] Add XML parser
-- [ ] Format auto-detection by file extension
-- [ ] Format-specific error handling
-- [ ] Schema validation on parsed structures
-- [ ] Type coercion if needed
-- [ ] Document format-specific requirements
-- [ ] Write tests (12+ tests)
+- [x] Add YAML parser (libyaml or similar)
+- [x] Add TOML parser
+- [x] Add XML parser
+- [x] Format auto-detection by file extension
+- [x] Format-specific error handling
+- [x] Schema validation on parsed structures
+- [x] Type coercion if needed
+- [x] Document format-specific requirements
+- [x] Write tests (12+ tests)
 
 ## Implementation Notes
 

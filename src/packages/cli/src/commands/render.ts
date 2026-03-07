@@ -5,6 +5,7 @@
 
 import { createReadStream, readFileSync, statSync } from 'fs';
 import { renderTemplate } from '@templjs/core';
+import { parseDataAsync } from '../formats/index.js';
 
 const LARGE_INPUT_THRESHOLD_BYTES = 10 * 1024 * 1024;
 
@@ -64,14 +65,10 @@ async function parseData(dataOrPath: string): Promise<Record<string, unknown>> {
   const payload = await readPayload(dataOrPath);
 
   try {
-    const parsed = JSON.parse(payload) as unknown;
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new Error('Input data must be a JSON object');
-    }
-    return parsed as Record<string, unknown>;
+    return await parseDataAsync(payload, dataOrPath);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to parse input data as JSON: ${message}`, { cause: error });
+    throw new Error(`Failed to parse input data: ${message}`, { cause: error });
   }
 }
 
