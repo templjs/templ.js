@@ -108,6 +108,11 @@ export function renderTemplate(
     // Parse the tokens
     const parseResult = parse(tokens);
 
+    if (parseResult.errors.length > 0) {
+      const errorMessages = parseResult.errors.map((error) => `${error.type}: ${error.message}`);
+      throw new Error(`Failed to parse template: ${errorMessages.join('; ')}`);
+    }
+
     if (!parseResult.ast) {
       throw new Error('Failed to parse template: no AST generated');
     }
@@ -117,14 +122,19 @@ export function renderTemplate(
 
     if (!renderResult.success && options?.throwOnError) {
       const errorMessages = renderResult.errors.map((e) => e.message).join('; ');
-      throw new Error(`Render failed: ${errorMessages}`);
+      throw new Error(errorMessages);
     }
 
     return renderResult.output;
   } catch (error) {
-    throw new Error(`Render failed: ${error instanceof Error ? error.message : String(error)}`, {
-      cause: error,
-    });
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.startsWith('Render failed:')) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error(message, { cause: error });
+    }
+    throw new Error(`Render failed: ${message}`, { cause: error });
   }
 }
 

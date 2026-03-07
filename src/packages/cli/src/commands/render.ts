@@ -61,6 +61,11 @@ async function readPayload(dataOrPath: string): Promise<string> {
     if (code === 'EACCES' || code === 'EPERM') {
       throw new Error(`Permission denied reading input file: ${dataOrPath}`, { cause: error });
     }
+    if (code === 'EISDIR' || code === 'ENOTDIR') {
+      throw new Error(`Invalid input file path (not a regular file): ${dataOrPath}`, {
+        cause: error,
+      });
+    }
     // Propagate other file system errors
     throw error;
   }
@@ -203,6 +208,11 @@ async function parseDataStream(dataOrPath: string): Promise<Record<string, unkno
     }
     if (code === 'EACCES' || code === 'EPERM') {
       throw new Error(`Permission denied reading input file: ${dataOrPath}`, { cause: error });
+    }
+    if (code === 'EISDIR' || code === 'ENOTDIR') {
+      throw new Error(`Invalid input file path (not a regular file): ${dataOrPath}`, {
+        cause: error,
+      });
     }
 
     const message = error instanceof Error ? error.message : String(error);

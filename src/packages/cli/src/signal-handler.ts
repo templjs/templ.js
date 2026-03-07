@@ -36,7 +36,7 @@ export function registerSignalHandlers(options: SignalHandlerOptions = {}): () =
     try {
       if (handler) {
         let timeoutId: NodeJS.Timeout;
-        // Create a timeout promise that rejects after 5 seconds
+        // Create a timeout promise using the configured cleanup timeout for the current mode
         const timeoutPromise = new Promise<never>((_, reject) => {
           timeoutId = setTimeout(() => {
             reject(new Error(`Handler timeout for ${signal}`));
@@ -58,9 +58,19 @@ export function registerSignalHandlers(options: SignalHandlerOptions = {}): () =
       }
     } finally {
       process.exitCode = exitCode;
-      setImmediate(() => {
-        process.exit(exitCode);
-      });
+      const hasPendingWrites =
+        process.stdout.writableLength > 0 || process.stderr.writableLength > 0;
+
+      if (hasPendingWrites) {
+        const forceExitTimer = setTimeout(() => {
+          process.exit(exitCode);
+        }, cleanupTimeoutMs);
+        forceExitTimer.unref();
+      } else {
+        setImmediate(() => {
+          process.exit(exitCode);
+        });
+      }
     }
   };
 

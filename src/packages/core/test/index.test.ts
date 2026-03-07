@@ -34,7 +34,15 @@ describe('core entrypoint', () => {
   it('creates renderer with render function', () => {
     const renderer = createRenderer();
     expect(typeof renderer.render).toBe('function');
-    const result = renderer.render({ type: 'template', statements: [] }, {});
+    const result = renderer.render(
+      {
+        type: 'template',
+        children: [],
+        start: { line: 1, column: 0 },
+        end: { line: 1, column: 0 },
+      },
+      {}
+    );
     expect(result).toHaveProperty('output');
     expect(result).toHaveProperty('errors');
     expect(result).toHaveProperty('success');
@@ -48,6 +56,23 @@ describe('core entrypoint', () => {
   it('renders a simple template', () => {
     const result = renderTemplate('Hello {{name}}!', { name: 'World' });
     expect(result).toBe('Hello World!');
+  });
+
+  it('throws parse failures instead of rendering recovered AST', () => {
+    expect(() => renderTemplate('{% if condition %}hello', {})).toThrow(
+      /Render failed: Failed to parse template:/
+    );
+  });
+
+  it('does not duplicate render failure prefix', () => {
+    try {
+      renderTemplate('{{ value | unknownFilter }}', { value: 'test' }, { throwOnError: true });
+      throw new Error('Expected renderTemplate to throw');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      expect(message.startsWith('Render failed:')).toBe(true);
+      expect(message).not.toContain('Render failed: Render failed:');
+    }
   });
 
   it('validates correct template syntax', () => {

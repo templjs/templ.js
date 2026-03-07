@@ -220,6 +220,21 @@ describe('renderCommand', () => {
     );
   });
 
+  it('throws a file-path specific error for directory-style input paths', async () => {
+    vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
+    vi.mocked(statSync).mockImplementation(() => {
+      const error: NodeJS.ErrnoException = new Error('EISDIR: illegal operation on a directory');
+      error.code = 'EISDIR';
+      throw error;
+    });
+
+    await expect(
+      renderCommand('template.templ', 'directory', {
+        inputFormat: 'json',
+      })
+    ).rejects.toThrow('Render failed: Invalid input file path (not a regular file): directory');
+  });
+
   it('rethrows unexpected file errors while reading input payload', async () => {
     vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
     vi.mocked(statSync).mockImplementation(() => {
@@ -381,6 +396,24 @@ describe('renderCommand', () => {
       })
     ).rejects.toThrow(
       'Render failed: Failed to parse input data as JSON: Multiple JSON root values are not supported'
+    );
+  });
+
+  it('surfaces non-JSON filesystem errors in stream-json mode with file-path context', async () => {
+    vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
+    vi.mocked(statSync).mockImplementation(() => {
+      const error: NodeJS.ErrnoException = new Error('ENOTDIR: not a directory');
+      error.code = 'ENOTDIR';
+      throw error;
+    });
+
+    await expect(
+      renderCommand('template.templ', 'not-a-directory', {
+        experimentalStreamJson: true,
+        inputFormat: 'json',
+      })
+    ).rejects.toThrow(
+      'Render failed: Invalid input file path (not a regular file): not-a-directory'
     );
   });
 
