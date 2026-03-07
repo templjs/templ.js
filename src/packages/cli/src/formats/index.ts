@@ -40,7 +40,7 @@ export function getParser(format: SupportedFormat): FormatParser {
     case 'toml':
       return new TomlParser();
     case 'xml':
-      return new XmlParser();
+      throw new Error('XML parsing is only supported via parseDataAsync (async API).');
     default:
       throw new Error(`Unsupported format: ${format}`);
   }
@@ -60,6 +60,12 @@ export function parseData(content: string, filePath: string): Record<string, unk
     );
   }
 
+  if (format === 'xml') {
+    throw new Error(
+      'XML parsing is asynchronous. Use parseDataAsync(content, filePath) for .xml inputs.'
+    );
+  }
+
   const parser = getParser(format);
   return parser.parse(content);
 }
@@ -67,16 +73,16 @@ export function parseData(content: string, filePath: string): Record<string, unk
 /**
  * Parse content with async support for XML
  * @param content Content to parse
- * @param filePath File path for format detection (defaults to JSON for stdin "-")
+ * @param filePath File path for format detection (use "-" for stdin, defaults to JSON)
  * @returns Promise resolving to parsed data
  */
 export async function parseDataAsync(
   content: string,
   filePath: string
 ): Promise<Record<string, unknown>> {
-  // Default stdin ("-") to JSON format
-  const effectivePath = filePath === '-' ? 'input.json' : filePath;
-  const format = detectFormat(effectivePath);
+  // Default to JSON for stdin
+  const format = filePath === '-' ? 'json' : detectFormat(filePath);
+
   if (!format) {
     throw new Error(
       `Unable to detect format from file path: ${filePath}. Supported formats: .json, .yaml, .yml, .toml, .xml`

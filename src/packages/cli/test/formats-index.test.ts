@@ -3,7 +3,6 @@ import { detectFormat, getParser, parseData, parseDataAsync } from '../src/forma
 import { JsonParser } from '../src/formats/json-parser.js';
 import { YamlParser } from '../src/formats/yaml-parser.js';
 import { TomlParser } from '../src/formats/toml-parser.js';
-import { XmlParser } from '../src/formats/xml-parser.js';
 import { SUPPORTED_EXTENSIONS } from '../src/formats/types.js';
 
 describe('formats index', () => {
@@ -28,7 +27,9 @@ describe('formats index', () => {
     expect(getParser('json')).toBeInstanceOf(JsonParser);
     expect(getParser('yaml')).toBeInstanceOf(YamlParser);
     expect(getParser('toml')).toBeInstanceOf(TomlParser);
-    expect(getParser('xml')).toBeInstanceOf(XmlParser);
+    expect(() => getParser('xml')).toThrow(
+      'XML parsing is only supported via parseDataAsync (async API).'
+    );
   });
 
   it('throws for unsupported parser format', () => {
@@ -55,7 +56,7 @@ describe('formats index', () => {
   });
 
   it('parses xml asynchronously and defaults stdin to json in parseDataAsync', async () => {
-    await expect(parseDataAsync('<root/>', 'data.xml')).resolves.toEqual({ xml: '<root/>' });
+    await expect(parseDataAsync('<root/>', 'data.xml')).resolves.toEqual({ root: '' });
     await expect(parseDataAsync('{"from":"stdin"}', '-')).resolves.toEqual({ from: 'stdin' });
   });
 
@@ -68,7 +69,9 @@ describe('formats index', () => {
   it('throws parser-specific validation errors', () => {
     expect(() => parseData('[1,2,3]', 'data.json')).toThrow('Input data must be a JSON object');
     expect(() => parseData('- item', 'data.yaml')).toThrow('Input data must be a YAML object');
-    expect(() => parseData('not-an-assignment', 'data.toml')).toThrow('Invalid TOML line');
-    expect(() => parseData('plain-text', 'data.xml')).toThrow('Invalid XML: expected XML document');
+    expect(() => parseData('not-an-assignment', 'data.toml')).toThrow('Invalid TOML');
+    expect(() => parseData('plain-text', 'data.xml')).toThrow(
+      'XML parsing is asynchronous. Use parseDataAsync(content, filePath) for .xml inputs.'
+    );
   });
 });

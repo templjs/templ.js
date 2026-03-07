@@ -66,7 +66,11 @@ describe('cli-main', () => {
 
     await main(['node', 'cli.js', 'render', '-t', 'template.templ', '-i', 'data.json']);
 
-    expect(renderCommand).toHaveBeenCalledWith('template.templ', 'data.json');
+    expect(renderCommand).toHaveBeenCalledWith(
+      'template.templ',
+      'data.json',
+      expect.objectContaining({ outputFormat: 'text' })
+    );
     expect(stdoutSpy).toHaveBeenCalledWith('rendered-output\n');
     expect(writeFileSync).not.toHaveBeenCalled();
   });
@@ -85,9 +89,14 @@ describe('cli-main', () => {
       '--experimental-stream-json',
     ]);
 
-    expect(renderCommand).toHaveBeenCalledWith('template.templ', 'data.json', {
-      experimentalStreamJson: true,
-    });
+    expect(renderCommand).toHaveBeenCalledWith(
+      'template.templ',
+      'data.json',
+      expect.objectContaining({
+        experimentalStreamJson: true,
+        outputFormat: 'text',
+      })
+    );
   });
 
   it('suppresses render stdout in quiet mode', async () => {
@@ -95,7 +104,11 @@ describe('cli-main', () => {
 
     await main(['node', 'cli.js', '--quiet', 'render', '-t', 'template.templ', '-i', 'data.json']);
 
-    expect(renderCommand).toHaveBeenCalledWith('template.templ', 'data.json');
+    expect(renderCommand).toHaveBeenCalledWith(
+      'template.templ',
+      'data.json',
+      expect.objectContaining({ outputFormat: 'text' })
+    );
     expect(stdoutSpy).not.toHaveBeenCalledWith('rendered-output\n');
   });
 
@@ -104,7 +117,11 @@ describe('cli-main', () => {
 
     await main(['node', 'cli.js', '--json', 'render', '-t', 'template.templ', '-i', 'data.json']);
 
-    expect(renderCommand).toHaveBeenCalledWith('template.templ', 'data.json');
+    expect(renderCommand).toHaveBeenCalledWith(
+      'template.templ',
+      'data.json',
+      expect.objectContaining({ outputFormat: 'text' })
+    );
     expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"ok":true/));
     expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"command":"render"/));
     expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"output":"rendered-output"/));
@@ -146,7 +163,11 @@ describe('cli-main', () => {
       'result.txt',
     ]);
 
-    expect(renderCommand).toHaveBeenCalledWith('template.templ', 'data.json');
+    expect(renderCommand).toHaveBeenCalledWith(
+      'template.templ',
+      'data.json',
+      expect.objectContaining({ outputFormat: 'text' })
+    );
     expect(writeFileSync).toHaveBeenCalledWith('result.txt', 'rendered-output', 'utf-8');
   });
 
@@ -161,11 +182,19 @@ describe('cli-main', () => {
       input: 'data.json',
       output: undefined,
     });
-    expect(vi.mocked(startRenderWatchMode).mock.calls[0]?.[1]).toMatchObject({
-      ...defaultWatchModeDependencies,
-      render: renderCommand,
-    });
+    const watchDeps = vi.mocked(startRenderWatchMode).mock.calls[0]?.[1];
+    expect(watchDeps?.fileExists).toBe(defaultWatchModeDependencies.fileExists);
+    expect(watchDeps?.watchFile).toBe(defaultWatchModeDependencies.watchFile);
+    expect(watchDeps?.writeOutput).toBe(defaultWatchModeDependencies.writeOutput);
+    expect(typeof watchDeps?.render).toBe('function');
     expect(renderCommand).not.toHaveBeenCalled();
+
+    await watchDeps?.render('template.templ', 'data.json');
+    expect(renderCommand).toHaveBeenCalledWith(
+      'template.templ',
+      'data.json',
+      expect.objectContaining({ outputFormat: 'text' })
+    );
   });
 
   it('reports watch mode startup failures', async () => {
@@ -178,7 +207,7 @@ describe('cli-main', () => {
   });
 
   it('reports template as valid when validation succeeds', async () => {
-    vi.mocked(validateCommand).mockResolvedValue(true);
+    vi.mocked(validateCommand).mockResolvedValue({ valid: true, errors: [] });
 
     await main(['node', 'cli.js', 'validate', '-t', 'template.templ']);
 
@@ -188,7 +217,7 @@ describe('cli-main', () => {
   });
 
   it('emits json envelope for validate success', async () => {
-    vi.mocked(validateCommand).mockResolvedValue(true);
+    vi.mocked(validateCommand).mockResolvedValue({ valid: true, errors: [] });
 
     await main(['node', 'cli.js', '--json', 'validate', '-t', 'template.templ']);
 
@@ -198,13 +227,18 @@ describe('cli-main', () => {
     expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"valid":true/));
   });
 
-  it('sets exit code when validation fails', async () => {
-    vi.mocked(validateCommand).mockResolvedValue(false);
+  it('treats validation failures as operational errors', async () => {
+    vi.mocked(validateCommand).mockResolvedValue({
+      valid: false,
+      errors: ['ParserError: unexpected end tag'],
+    });
 
     await main(['node', 'cli.js', 'validate', '-t', 'template.templ']);
 
     expect(validateCommand).toHaveBeenCalledWith('template.templ', undefined);
-    expect(stdoutSpy).toHaveBeenCalledWith('Template has errors\n');
+    expect(stderrSpy).toHaveBeenCalledWith(
+      'Error: Template has errors: ParserError: unexpected end tag\n'
+    );
     expect(process.exitCode).toBe(1);
   });
 
@@ -334,7 +368,9 @@ describe('cli-main', () => {
     expect(process.exitCode).toBe(1);
   });
 
-  it('errors on unsupported render input format', async () => {
+  it('passes supported render input format overrides to render command', async () => {
+    vi.mocked(renderCommand).mockResolvedValue('rendered-output');
+
     await main([
       'node',
       'cli.js',
@@ -342,18 +378,25 @@ describe('cli-main', () => {
       '-t',
       'template.templ',
       '-i',
-      '{"name":"World"}',
+      'data.yaml',
       '--input-format',
       'yaml',
     ]);
 
-    expect(stderrSpy).toHaveBeenCalledWith(
-      'Error: Unsupported input format "yaml". Only "json" is currently supported in render\n'
+    expect(renderCommand).toHaveBeenCalledWith(
+      'template.templ',
+      'data.yaml',
+      expect.objectContaining({
+        inputFormat: 'yaml',
+        outputFormat: 'text',
+      })
     );
-    expect(process.exitCode).toBe(1);
+    expect(process.exitCode).toBeUndefined();
   });
 
-  it('errors on unsupported render output format', async () => {
+  it('passes supported render output format overrides to render command', async () => {
+    vi.mocked(renderCommand).mockResolvedValue('<p>ok</p>');
+
     await main([
       'node',
       'cli.js',
@@ -361,13 +404,55 @@ describe('cli-main', () => {
       '-t',
       'template.templ',
       '-i',
-      '{"name":"World"}',
+      'data.json',
       '--output-format',
       'html',
     ]);
 
+    expect(renderCommand).toHaveBeenCalledWith(
+      'template.templ',
+      'data.json',
+      expect.objectContaining({
+        outputFormat: 'html',
+      })
+    );
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it('errors on unsupported render input format values', async () => {
+    await main([
+      'node',
+      'cli.js',
+      'render',
+      '-t',
+      'template.templ',
+      '-i',
+      'data.json',
+      '--input-format',
+      'ini',
+    ]);
+
     expect(stderrSpy).toHaveBeenCalledWith(
-      'Error: Unsupported output format "html". Only "text" is currently supported in render\n'
+      'Error: Unsupported input format "ini". Use one of: json, yaml, toml, xml\n'
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('errors on unsupported render output format values', async () => {
+    await main([
+      'node',
+      'cli.js',
+      'render',
+      '-t',
+      'template.templ',
+      '-i',
+      'data.json',
+      '--output-format',
+      'yaml',
+    ]);
+
+    expect(stderrSpy).toHaveBeenCalledWith(
+      'Error: Unsupported output format "yaml". Use one of: text, json, html, markdown\n'
     );
     expect(process.exitCode).toBe(1);
   });
@@ -394,6 +479,23 @@ describe('cli-main', () => {
 
     expect(stderrSpy).toHaveBeenCalledWith(
       'Error: Unsupported init format "text". Use one of: markdown, html, json, yaml\n'
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('normalizes commander parse errors through error output policy', async () => {
+    await main(['node', 'cli.js', 'unknown-command']);
+
+    expect(stderrSpy).toHaveBeenCalledWith("Error: unknown command 'unknown-command'\n");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('emits commander parse errors as json envelope in json mode', async () => {
+    await main(['node', 'cli.js', '--json', 'render']);
+
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/"ok":false/));
+    expect(stderrSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/required option '-i, --input <path>' not specified/)
     );
     expect(process.exitCode).toBe(1);
   });

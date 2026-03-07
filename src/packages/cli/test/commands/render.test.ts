@@ -49,6 +49,58 @@ describe('renderCommand', () => {
     expect(renderTemplate).toHaveBeenCalledWith('Hello {{ name }}', { name: 'FromFile' });
   });
 
+  it('parses YAML payloads from input files', async () => {
+    vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(readFileSync).mockImplementation((value) => {
+      if (value === 'template.templ') {
+        return 'Hello {{ name }}';
+      }
+      return 'name: World';
+    });
+    vi.mocked(renderTemplate).mockReturnValue('Hello World');
+
+    const output = await renderCommand('template.templ', 'data.yaml');
+
+    expect(output).toBe('Hello World');
+    expect(renderTemplate).toHaveBeenCalledWith('Hello {{ name }}', { name: 'World' });
+  });
+
+  it('parses TOML payloads from input files', async () => {
+    vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(readFileSync).mockImplementation((value) => {
+      if (value === 'template.templ') {
+        return 'Hello {{ name }}';
+      }
+      return 'name = "World"';
+    });
+    vi.mocked(renderTemplate).mockReturnValue('Hello World');
+
+    const output = await renderCommand('template.templ', 'data.toml');
+
+    expect(output).toBe('Hello World');
+    expect(renderTemplate).toHaveBeenCalledWith('Hello {{ name }}', { name: 'World' });
+  });
+
+  it('parses XML payloads with explicit input format', async () => {
+    vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(readFileSync).mockImplementation((value) => {
+      if (value === 'template.templ') {
+        return 'Hello {{ xml }}';
+      }
+      return '<root><name>World</name></root>';
+    });
+    vi.mocked(renderTemplate).mockReturnValue('Hello XML');
+
+    const output = await renderCommand('template.templ', 'data.xml');
+
+    expect(output).toBe('Hello XML');
+    expect(renderTemplate).toHaveBeenCalledWith('Hello {{ xml }}', {
+      root: {
+        name: ['World'],
+      },
+    });
+  });
+
   it('streams large input files and reports progress', async () => {
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
     try {
@@ -94,7 +146,7 @@ describe('renderCommand', () => {
     });
 
     await expect(renderCommand('template.templ', 'bad.json')).rejects.toThrow(
-      'Render failed: Failed to parse input data as JSON:'
+      /Render failed: Failed to parse input data as JSON:/
     );
   });
 
@@ -108,8 +160,38 @@ describe('renderCommand', () => {
     });
 
     await expect(renderCommand('template.templ', 'array.json')).rejects.toThrow(
-      'Render failed: Failed to parse input data as JSON: Input data must be a JSON object'
+      'Render failed: Failed to parse input data as JSON: Invalid JSON: Input data must be a JSON object'
     );
+  });
+
+  it('formats JSON output when output-format json is requested', async () => {
+    vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(readFileSync).mockImplementation((value) => {
+      if (value === 'template.templ') {
+        return 'Hello {{ name }}';
+      }
+      return '{"name":"World"}';
+    });
+    vi.mocked(renderTemplate).mockReturnValue('{"ok":true,"count":2}');
+
+    const output = await renderCommand('template.templ', 'data.json', { outputFormat: 'json' });
+
+    expect(output).toBe('{\n  "ok": true,\n  "count": 2\n}');
+  });
+
+  it('fails on invalid JSON output when output validation is enabled', async () => {
+    vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(readFileSync).mockImplementation((value) => {
+      if (value === 'template.templ') {
+        return 'Hello {{ name }}';
+      }
+      return '{"name":"World"}';
+    });
+    vi.mocked(renderTemplate).mockReturnValue('not-json');
+
+    await expect(
+      renderCommand('template.templ', 'data.json', { outputFormat: 'json', validateOutput: true })
+    ).rejects.toThrow('Render failed: Rendered output is not valid JSON:');
   });
 
   it('throws error when input file does not exist', async () => {

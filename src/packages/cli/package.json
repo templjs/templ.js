@@ -44,12 +44,17 @@
   "dependencies": {
     "@templjs/core": "workspace:*",
     "commander": "^14.0.3",
-    "jsonparse": "^1.3.1"
+    "jsonparse": "^1.3.1",
+    "js-yaml": "^4.1.0",
+    "@iarna/toml": "^2.2.5",
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "@vitest/coverage-v8": "^4.0.2",
     "typescript": "^5.3.0",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "@types/js-yaml": "^4.0.5",
+    "@types/xml2js": "^0.4.11"
   }
 }

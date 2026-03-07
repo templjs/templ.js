@@ -12,9 +12,14 @@ import {
   shouldStream,
   streamToString,
 } from '../streaming-io.js';
+import { detectFormat, getParser, XmlParser } from '../formats/index.js';
+import type { SupportedFormat } from '../formats/types.js';
 
 export interface RenderCommandOptions {
   experimentalStreamJson?: boolean;
+  inputFormat?: SupportedFormat;
+  outputFormat?: 'text' | 'json' | 'html' | 'markdown';
+  validateOutput?: boolean;
 }
 
 async function readPayload(dataOrPath: string): Promise<string> {
@@ -65,6 +70,59 @@ function streamJsonEnabled(options?: RenderCommandOptions): boolean {
   return (
     options?.experimentalStreamJson === true || process.env.TEMPLJS_EXPERIMENTAL_STREAM_JSON === '1'
   );
+}
+
+function resolveInputFormat(dataOrPath: string, options?: RenderCommandOptions): SupportedFormat {
+  if (options?.inputFormat !== undefined) {
+    return options.inputFormat;
+  }
+
+  if (dataOrPath === '-') {
+    return 'json';
+  }
+
+  const detectedFormat = detectFormat(dataOrPath);
+  if (detectedFormat !== null) {
+    return detectedFormat;
+  }
+
+  throw new Error(
+    `Unable to detect input format from "${dataOrPath}". Use --input-format=json|yaml|toml|xml or a supported file extension.`
+  );
+}
+
+async function parsePayloadByFormat(
+  payload: string,
+  inputFormat: SupportedFormat
+): Promise<Record<string, unknown>> {
+  if (inputFormat === 'xml') {
+    return new XmlParser().parseAsync(payload);
+  }
+
+  return getParser(inputFormat).parse(payload);
+}
+
+function formatOutput(
+  rendered: string,
+  outputFormat: NonNullable<RenderCommandOptions['outputFormat']>,
+  validateOutput: boolean
+): string {
+  switch (outputFormat) {
+    case 'text':
+    case 'html':
+    case 'markdown':
+      return rendered;
+    case 'json':
+      try {
+        return JSON.stringify(JSON.parse(rendered), null, 2);
+      } catch (error) {
+        if (validateOutput) {
+          const message = error instanceof Error ? error.message : String(error);
+          throw new Error(`Rendered output is not valid JSON: ${message}`, { cause: error });
+        }
+        return rendered;
+      }
+  }
 }
 
 function validateParsedObject(parsed: unknown): Record<string, unknown> {
@@ -156,19 +214,22 @@ async function parseData(
   dataOrPath: string,
   options?: RenderCommandOptions
 ): Promise<Record<string, unknown>> {
-  if (streamJsonEnabled(options)) {
+  const inputFormat = resolveInputFormat(dataOrPath, options);
+
+  if (inputFormat === 'json' && streamJsonEnabled(options)) {
     return parseDataStream(dataOrPath);
   }
 
   const payload = await readPayload(dataOrPath);
 
   try {
-    // JSON.parse requires the full payload in memory.
-    const parsed = JSON.parse(payload) as unknown;
+    const parsed = await parsePayloadByFormat(payload, inputFormat);
     return validateParsedObject(parsed);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to parse input data as JSON: ${message}`, { cause: error });
+    throw new Error(`Failed to parse input data as ${inputFormat.toUpperCase()}: ${message}`, {
+      cause: error,
+    });
   }
 }
 
@@ -180,8 +241,12 @@ export async function renderCommand(
   try {
     const templateContent = readFileSync(templatePath, 'utf-8');
     const parsedData = await parseData(dataOrPath, options);
-    const result = renderTemplate(templateContent, parsedData);
-    return result;
+    const rendered = renderTemplate(templateContent, parsedData);
+    return formatOutput(
+      rendered,
+      options?.outputFormat ?? 'text',
+      options?.validateOutput !== false
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Render failed: ${message}`, { cause: error });
