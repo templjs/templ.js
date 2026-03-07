@@ -21,7 +21,7 @@ import type {
   ErrorNode,
   ParseResult,
   ParseError,
-} from './types';
+} from './types.js';
 import { parseExpressionWithPriorityList } from './parsers.js';
 
 /**

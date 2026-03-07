@@ -18,7 +18,7 @@ import type {
   QueryOptions,
   QueryResult,
   TypeInfo,
-} from './types';
+} from './types.js';
 import { arrayFunctions } from './functions/array-functions.js';
 import { datetimeFunctions } from './functions/datetime-functions.js';
 import { numberFunctions } from './functions/number-functions.js';

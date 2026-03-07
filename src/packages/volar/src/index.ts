@@ -20,7 +20,7 @@ export {
   DEFAULT_DELIMITERS,
   type TokenInfo,
   type DelimiterConfig,
-} from './semantic-token-provider';
+} from './semantic-token-provider.js';
 
 /**
  * Base format types that templates can embed

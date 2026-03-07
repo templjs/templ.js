@@ -12,7 +12,7 @@ import type {
   ForNode,
   TextNode,
   ExpressionStatementNode,
-} from '../parser/types';
+} from '../parser/types.js';
 import type { RenderContext, RenderResult, RenderOptions, RenderError } from './types.js';
 import { VariableResolver } from './variable-resolver.js';
 import { createBuiltinFilterMap } from './filter-engine.js';
