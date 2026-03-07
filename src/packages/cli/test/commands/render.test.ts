@@ -218,4 +218,112 @@ describe('renderCommand', () => {
       }
     }
   });
+
+  it('enables stream-json parser via environment variable', async () => {
+    const previousFlag = process.env.TEMPLJS_EXPERIMENTAL_STREAM_JSON;
+    process.env.TEMPLJS_EXPERIMENTAL_STREAM_JSON = '1';
+
+    vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(createReadStream).mockReturnValue(
+      Readable.from(['{"name":"', 'EnvFlag"}']) as ReturnType<typeof createReadStream>
+    );
+    vi.mocked(readFileSync).mockImplementation((value) => {
+      if (value === 'template.templ') {
+        return 'Hello {{ name }}';
+      }
+      throw new Error('data file should not be read with readFileSync in stream-json mode');
+    });
+    vi.mocked(renderTemplate).mockReturnValue('Hello EnvFlag');
+
+    try {
+      const output = await renderCommand('template.templ', 'data.json');
+      expect(output).toBe('Hello EnvFlag');
+      expect(renderTemplate).toHaveBeenCalledWith('Hello {{ name }}', { name: 'EnvFlag' });
+    } finally {
+      if (previousFlag === undefined) {
+        delete process.env.TEMPLJS_EXPERIMENTAL_STREAM_JSON;
+      } else {
+        process.env.TEMPLJS_EXPERIMENTAL_STREAM_JSON = previousFlag;
+      }
+    }
+  });
+
+  it('reports progress for large files in experimental stream-json mode', async () => {
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+
+    vi.mocked(statSync).mockReturnValue({ size: 20 * 1024 * 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(createReadStream).mockReturnValue(
+      Readable.from(['{"name":"', 'LargeStream"}']) as ReturnType<typeof createReadStream>
+    );
+    vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
+    vi.mocked(renderTemplate).mockReturnValue('Hello LargeStream');
+
+    try {
+      const output = await renderCommand('template.templ', 'huge.json', {
+        experimentalStreamJson: true,
+      });
+
+      expect(output).toBe('Hello LargeStream');
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Reading large input file'));
+    } finally {
+      stderrSpy.mockRestore();
+    }
+  });
+
+  it('rejects array payloads in experimental stream-json mode', async () => {
+    vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(createReadStream).mockReturnValue(
+      Readable.from(['["not-object"]']) as ReturnType<typeof createReadStream>
+    );
+    vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
+
+    await expect(
+      renderCommand('template.templ', 'array.json', {
+        experimentalStreamJson: true,
+      })
+    ).rejects.toThrow(
+      'Render failed: Failed to parse input data as JSON: Input data must be a JSON object'
+    );
+  });
+
+  it('rejects multiple root values in experimental stream-json mode', async () => {
+    vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(createReadStream).mockReturnValue(
+      Readable.from(['{"name":"A"}{"name":"B"}']) as ReturnType<typeof createReadStream>
+    );
+    vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
+
+    await expect(
+      renderCommand('template.templ', 'multi-root.json', {
+        experimentalStreamJson: true,
+      })
+    ).rejects.toThrow(
+      'Render failed: Failed to parse input data as JSON: Multiple JSON root values are not supported'
+    );
+  });
+
+  it('rejects empty stdin in experimental stream-json mode', async () => {
+    vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
+
+    const originalStdinDescriptor = Object.getOwnPropertyDescriptor(process, 'stdin');
+    Object.defineProperty(process, 'stdin', {
+      configurable: true,
+      enumerable: true,
+      get: () => Readable.from([]),
+    });
+
+    try {
+      await expect(
+        renderCommand('template.templ', '-', {
+          experimentalStreamJson: true,
+        })
+      ).rejects.toThrow(
+        'Render failed: Failed to parse input data as JSON: Input data is empty or incomplete JSON'
+      );
+    } finally {
+      if (originalStdinDescriptor) {
+        Object.defineProperty(process, 'stdin', originalStdinDescriptor);
+      }
+    }
+  });
 });
