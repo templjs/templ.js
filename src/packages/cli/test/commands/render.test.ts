@@ -172,4 +172,50 @@ describe('renderCommand', () => {
       }
     }
   });
+
+  it('parses input file with experimental streaming JSON parser when enabled', async () => {
+    vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(createReadStream).mockReturnValue(
+      Readable.from(['{"name":"', 'StreamJson"}']) as ReturnType<typeof createReadStream>
+    );
+    vi.mocked(readFileSync).mockImplementation((value) => {
+      if (value === 'template.templ') {
+        return 'Hello {{ name }}';
+      }
+      throw new Error('data file should not be read with readFileSync in stream-json mode');
+    });
+    vi.mocked(renderTemplate).mockReturnValue('Hello StreamJson');
+
+    const output = await renderCommand('template.templ', 'data.json', {
+      experimentalStreamJson: true,
+    });
+
+    expect(output).toBe('Hello StreamJson');
+    expect(renderTemplate).toHaveBeenCalledWith('Hello {{ name }}', { name: 'StreamJson' });
+  });
+
+  it('parses stdin with experimental streaming JSON parser when enabled', async () => {
+    vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
+    vi.mocked(renderTemplate).mockReturnValue('Hello StreamStdin');
+
+    const originalStdinDescriptor = Object.getOwnPropertyDescriptor(process, 'stdin');
+    Object.defineProperty(process, 'stdin', {
+      configurable: true,
+      enumerable: true,
+      get: () => Readable.from(['{"name":"StreamStdin"}']),
+    });
+
+    try {
+      const output = await renderCommand('template.templ', '-', {
+        experimentalStreamJson: true,
+      });
+
+      expect(output).toBe('Hello StreamStdin');
+      expect(renderTemplate).toHaveBeenCalledWith('Hello {{ name }}', { name: 'StreamStdin' });
+    } finally {
+      if (originalStdinDescriptor) {
+        Object.defineProperty(process, 'stdin', originalStdinDescriptor);
+      }
+    }
+  });
 });

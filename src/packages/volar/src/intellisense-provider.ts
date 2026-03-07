@@ -132,7 +132,7 @@ function getPathCompletions(metadata: SchemaMetadata, pathPrefix: string): Compl
   const entry = metadata[path];
   const properties = entry?.properties ?? [];
 
-  return properties.map((prop) => ({
+  return properties.map((prop: string) => ({
     label: prop,
     kind: 'property',
     detail: entry?.itemType ? `type: ${entry.itemType}` : entry?.type,

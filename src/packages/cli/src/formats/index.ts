@@ -3,18 +3,18 @@
  */
 
 import { extname } from 'path';
-import { JsonParser } from './json-parser';
-import { YamlParser } from './yaml-parser';
-import { TomlParser } from './toml-parser';
-import { XmlParser } from './xml-parser';
-import { FormatParser, SupportedFormat, SUPPORTED_EXTENSIONS } from './types';
+import { JsonParser } from './json-parser.js';
+import { YamlParser } from './yaml-parser.js';
+import { TomlParser } from './toml-parser.js';
+import { XmlParser } from './xml-parser.js';
+import { FormatParser, SupportedFormat, SUPPORTED_EXTENSIONS } from './types.js';
 
 export type { FormatParser, SupportedFormat };
 export { SUPPORTED_EXTENSIONS };
-export { JsonParser } from './json-parser';
-export { YamlParser } from './yaml-parser';
-export { TomlParser } from './toml-parser';
-export { XmlParser } from './xml-parser';
+export { JsonParser } from './json-parser.js';
+export { YamlParser } from './yaml-parser.js';
+export { TomlParser } from './toml-parser.js';
+export { XmlParser } from './xml-parser.js';
 
 /**
  * Detect format from file path extension

@@ -5,26 +5,28 @@
  * validating syntax, and generating output files.
  */
 
+import { renderTemplate, validateTemplate as validateTemplateCore } from '@templjs/core';
+
 export const version = '0.1.0';
 
 /**
- * Process a template file with data
+ * Process a template with data
+ * @param template - Template string to process
+ * @param data - Data for rendering
+ * @returns Rendered template output
  */
-export function processTemplate(_templatePath: string, _dataPath: string): string {
-  // TODO: Implement template processing
-  // const lexer = core.createLexer();
-  // const parser = core.createParser();
-  // const renderer = core.createRenderer();
-
-  return 'Template processing not yet implemented';
+export function processTemplate(template: string, data: Record<string, unknown>): string {
+  return renderTemplate(template, data);
 }
 
 /**
  * Validate template syntax
+ * @param template - Template string to validate
+ * @returns Whether the template is valid
  */
-export function validateTemplate(_templatePath: string): boolean {
-  // TODO: Implement validation
-  return true;
+export function validateTemplate(template: string): boolean {
+  const result = validateTemplateCore(template);
+  return result.valid;
 }
 
 export default {

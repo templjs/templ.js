@@ -50,6 +50,7 @@ function createProgram(): Command {
     )
     .option('--input-format <format>', 'Input format override (json|yaml|toml|xml)')
     .option('--output-format <format>', 'Output format override (text|json|html|markdown)')
+    .option('--experimental-stream-json', 'Use experimental streaming JSON parser for render input')
     .option('-o, --output <path>', 'Output file path (defaults to stdout)')
     .option('-w, --watch', 'Watch template/input files and re-render on changes')
     .option('--no-validate-input', 'Skip input validation when supported by core')
@@ -63,6 +64,7 @@ function createProgram(): Command {
           watch: boolean;
           inputFormat?: string;
           outputFormat?: string;
+          experimentalStreamJson?: boolean;
           validateInput: boolean;
           validateOutput: boolean;
         },
@@ -109,7 +111,14 @@ function createProgram(): Command {
           mode,
           `Rendering template "${finalOptions.template}" with input "${finalOptions.input}"`
         );
-        const rendered = await renderCommand(finalOptions.template, finalOptions.input);
+        const experimentalStreamJson =
+          finalOptions.experimentalStreamJson === true ||
+          process.env.TEMPLJS_EXPERIMENTAL_STREAM_JSON === '1';
+        const rendered = experimentalStreamJson
+          ? await renderCommand(finalOptions.template, finalOptions.input, {
+              experimentalStreamJson: true,
+            })
+          : await renderCommand(finalOptions.template, finalOptions.input);
         const durationMs = Date.now() - startedAt;
         if (finalOptions.output) {
           writeFileSync(finalOptions.output, rendered, 'utf-8');

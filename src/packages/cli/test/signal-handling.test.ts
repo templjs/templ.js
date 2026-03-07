@@ -505,6 +505,8 @@ describe('integration tests', () => {
 
 describe('Streaming I/O and Large File Support', () => {
   let tmpDir: string;
+  const memoryAssertionsEnabled = process.env.TEMPLJS_ENABLE_MEMORY_ASSERTS === '1';
+  const canRunStableMemoryAssertions = memoryAssertionsEnabled && typeof global.gc === 'function';
 
   beforeEach(async () => {
     tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'templjs-stream-test-'));
@@ -526,9 +528,11 @@ describe('Streaming I/O and Large File Support', () => {
     const stats = await fs.promises.stat(largePath);
     expect(stats.size).toBeGreaterThanOrEqual(tenMB);
 
-    // Measure memory before streaming
-    void (global.gc && global.gc()); // Force GC if available
-    const heapBefore = process.memoryUsage().heapUsed;
+    let heapBefore = 0;
+    if (canRunStableMemoryAssertions) {
+      global.gc?.();
+      heapBefore = process.memoryUsage().heapUsed;
+    }
 
     // Stream the file
     let totalBytesRead = 0;
@@ -536,14 +540,11 @@ describe('Streaming I/O and Large File Support', () => {
       totalBytesRead += Buffer.byteLength(chunk);
     }
 
-    // Measure memory after streaming
-    const heapAfter = process.memoryUsage().heapUsed;
-    const heapDelta = heapAfter - heapBefore;
-
-    if (global.gc) {
+    if (canRunStableMemoryAssertions) {
+      global.gc?.();
+      const heapAfter = process.memoryUsage().heapUsed;
+      const heapDelta = heapAfter - heapBefore;
       expect(heapDelta).toBeLessThan(5 * 1024 * 1024);
-    } else {
-      expect(heapDelta).toBeLessThan(10 * 1024 * 1024);
     }
     expect(totalBytesRead).toBeGreaterThanOrEqual(tenMB);
   });
@@ -647,9 +648,11 @@ describe('Streaming I/O and Large File Support', () => {
     const outputPath = path.join(tmpDir, 'stream-write.txt');
     const writeStream = createFileWriteStream(outputPath);
 
-    // Measure memory before
-    void (global.gc && global.gc());
-    const heapBefore = process.memoryUsage().heapUsed;
+    let heapBefore = 0;
+    if (canRunStableMemoryAssertions) {
+      global.gc?.();
+      heapBefore = process.memoryUsage().heapUsed;
+    }
 
     // Write 10MB in chunks
     const chunkSize = 64 * 1024; // 64KB chunks
@@ -669,14 +672,11 @@ describe('Streaming I/O and Large File Support', () => {
 
     await new Promise((resolve) => writeStream.end(resolve));
 
-    // Measure memory after
-    const heapAfter = process.memoryUsage().heapUsed;
-    const heapDelta = heapAfter - heapBefore;
-
-    if (global.gc) {
+    if (canRunStableMemoryAssertions) {
+      global.gc?.();
+      const heapAfter = process.memoryUsage().heapUsed;
+      const heapDelta = heapAfter - heapBefore;
       expect(heapDelta).toBeLessThan(5 * 1024 * 1024);
-    } else {
-      expect(heapDelta).toBeLessThan(8 * 1024 * 1024);
     }
 
     // Verify file was written

@@ -1,5 +1,5 @@
 import YAML from 'yaml';
-import { FormatParser } from './types';
+import type { FormatParser } from './types.js';
 
 export class YamlParser implements FormatParser {
   parse(content: string): Record<string, unknown> {

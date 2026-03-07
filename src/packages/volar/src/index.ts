@@ -253,5 +253,5 @@ export default {
   createTempljsLanguagePlugin,
 };
 
-export * from './diagnostic-provider';
-export * from './intellisense-provider';
+export * from './diagnostic-provider.js';
+export * from './intellisense-provider.js';

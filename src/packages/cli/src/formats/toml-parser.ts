@@ -1,4 +1,4 @@
-import { FormatParser } from './types';
+import type { FormatParser } from './types.js';
 
 function parseTomlScalar(value: string): unknown {
   if (value === 'true') return true;

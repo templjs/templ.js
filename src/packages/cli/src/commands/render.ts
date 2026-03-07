@@ -5,24 +5,28 @@
 
 import { readFileSync, statSync } from 'fs';
 import { renderTemplate } from '@templjs/core';
-import { readFileStream, shouldStream, streamToString } from '../streaming-io.js';
+import JSONParser from 'jsonparse';
+import {
+  LARGE_FILE_THRESHOLD,
+  readFileStream,
+  shouldStream,
+  streamToString,
+} from '../streaming-io.js';
 
-const LARGE_INPUT_THRESHOLD_BYTES = 10 * 1024 * 1024;
+export interface RenderCommandOptions {
+  experimentalStreamJson?: boolean;
+}
 
 async function readPayload(dataOrPath: string): Promise<string> {
   if (dataOrPath === '-') {
-    const chunks: string[] = [];
-    for await (const chunk of process.stdin) {
-      const value = typeof chunk === 'string' ? chunk : chunk.toString('utf-8');
-      chunks.push(value);
-    }
-    return chunks.join('');
+    process.stdin.setEncoding('utf-8');
+    return streamToString(process.stdin as AsyncIterable<string>);
   }
 
   // Handle file errors gracefully: attempt stat/read directly and handle file errors in catch block
   try {
     const inputStats = statSync(dataOrPath);
-    if (!shouldStream(inputStats.size, LARGE_INPUT_THRESHOLD_BYTES)) {
+    if (!shouldStream(inputStats.size, LARGE_FILE_THRESHOLD)) {
       return readFileSync(dataOrPath, 'utf-8');
     }
 
@@ -57,25 +61,125 @@ async function readPayload(dataOrPath: string): Promise<string> {
   }
 }
 
-async function parseData(dataOrPath: string): Promise<Record<string, unknown>> {
+function streamJsonEnabled(options?: RenderCommandOptions): boolean {
+  return (
+    options?.experimentalStreamJson === true || process.env.TEMPLJS_EXPERIMENTAL_STREAM_JSON === '1'
+  );
+}
+
+function validateParsedObject(parsed: unknown): Record<string, unknown> {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Input data must be a JSON object');
+  }
+  return parsed as Record<string, unknown>;
+}
+
+function createProgressReporter(totalBytes: number): (bytesRead: number) => void {
+  let lastProgressBucket = -1;
+
+  return (bytesRead: number) => {
+    const progress = Math.min(100, Math.floor((bytesRead / totalBytes) * 100));
+    const progressBucket = Math.floor(progress / 25);
+    if (progressBucket > lastProgressBucket) {
+      process.stderr.write(`Reading large input file (${progress}%)\n`);
+      lastProgressBucket = progressBucket;
+    }
+  };
+}
+
+function createFileInputStream(dataOrPath: string): AsyncIterable<string> {
+  const inputStats = statSync(dataOrPath);
+  const onProgress = shouldStream(inputStats.size, LARGE_FILE_THRESHOLD)
+    ? createProgressReporter(inputStats.size)
+    : undefined;
+
+  return readFileStream(dataOrPath, inputStats.size, {
+    encoding: 'utf-8',
+    onProgress,
+  });
+}
+
+async function parseJsonObjectStream(
+  stream: AsyncIterable<string>
+): Promise<Record<string, unknown>> {
+  const parser = new JSONParser();
+  let rootValue: unknown;
+  let sawRootValue = false;
+
+  parser.onValue = function onValue(this: { stack: unknown[] }, value: unknown): void {
+    if (this.stack.length === 0) {
+      if (sawRootValue) {
+        throw new Error('Multiple JSON root values are not supported');
+      }
+      rootValue = value;
+      sawRootValue = true;
+    }
+  };
+
+  for await (const chunk of stream) {
+    parser.write(chunk);
+  }
+
+  if (!sawRootValue) {
+    throw new Error('Input data is empty or incomplete JSON');
+  }
+
+  return validateParsedObject(rootValue);
+}
+
+async function parseDataStream(dataOrPath: string): Promise<Record<string, unknown>> {
+  try {
+    if (dataOrPath === '-') {
+      process.stdin.setEncoding('utf-8');
+      return await parseJsonObjectStream(process.stdin as AsyncIterable<string>);
+    }
+
+    return await parseJsonObjectStream(createFileInputStream(dataOrPath));
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT') {
+      throw new Error(
+        `Input file not found: ${dataOrPath}. Use "-" to read from stdin or provide a valid file path.`,
+        { cause: error }
+      );
+    }
+    if (code === 'EACCES' || code === 'EPERM') {
+      throw new Error(`Permission denied reading input file: ${dataOrPath}`, { cause: error });
+    }
+
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to parse input data as JSON: ${message}`, { cause: error });
+  }
+}
+
+async function parseData(
+  dataOrPath: string,
+  options?: RenderCommandOptions
+): Promise<Record<string, unknown>> {
+  if (streamJsonEnabled(options)) {
+    return parseDataStream(dataOrPath);
+  }
+
   const payload = await readPayload(dataOrPath);
 
   try {
+    // JSON.parse requires the full payload in memory.
     const parsed = JSON.parse(payload) as unknown;
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new Error('Input data must be a JSON object');
-    }
-    return parsed as Record<string, unknown>;
+    return validateParsedObject(parsed);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to parse input data as JSON: ${message}`, { cause: error });
   }
 }
 
-export async function renderCommand(templatePath: string, dataOrPath: string): Promise<string> {
+export async function renderCommand(
+  templatePath: string,
+  dataOrPath: string,
+  options?: RenderCommandOptions
+): Promise<string> {
   try {
     const templateContent = readFileSync(templatePath, 'utf-8');
-    const parsedData = await parseData(dataOrPath);
+    const parsedData = await parseData(dataOrPath, options);
     const result = renderTemplate(templateContent, parsedData);
     return result;
   } catch (error) {

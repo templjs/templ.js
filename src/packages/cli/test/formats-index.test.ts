@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { detectFormat, getParser, parseData, parseDataAsync } from '../src/formats/index';
-import { JsonParser } from '../src/formats/json-parser';
-import { YamlParser } from '../src/formats/yaml-parser';
-import { TomlParser } from '../src/formats/toml-parser';
-import { XmlParser } from '../src/formats/xml-parser';
-import { SUPPORTED_EXTENSIONS } from '../src/formats/types';
+import { JsonParser } from '../src/formats/json-parser.js';
+import { YamlParser } from '../src/formats/yaml-parser.js';
+import { TomlParser } from '../src/formats/toml-parser.js';
+import { XmlParser } from '../src/formats/xml-parser.js';
+import { SUPPORTED_EXTENSIONS } from '../src/formats/types.js';
 
 describe('formats index', () => {
   it('exports supported extensions map', () => {

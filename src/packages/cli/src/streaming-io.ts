@@ -99,9 +99,9 @@ export function shouldStream(fileSize: number, threshold: number = LARGE_FILE_TH
  * @returns Promise resolving to complete string
  */
 export async function streamToString(stream: AsyncIterable<string>): Promise<string> {
-  let content = '';
+  const chunks: string[] = [];
   for await (const chunk of stream) {
-    content += chunk;
+    chunks.push(chunk);
   }
-  return content;
+  return chunks.join('');
 }

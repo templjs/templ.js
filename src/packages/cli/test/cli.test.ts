@@ -71,6 +71,25 @@ describe('cli-main', () => {
     expect(writeFileSync).not.toHaveBeenCalled();
   });
 
+  it('passes experimental stream-json option to render command when enabled', async () => {
+    vi.mocked(renderCommand).mockResolvedValue('rendered-output');
+
+    await main([
+      'node',
+      'cli.js',
+      'render',
+      '-t',
+      'template.templ',
+      '-i',
+      'data.json',
+      '--experimental-stream-json',
+    ]);
+
+    expect(renderCommand).toHaveBeenCalledWith('template.templ', 'data.json', {
+      experimentalStreamJson: true,
+    });
+  });
+
   it('suppresses render stdout in quiet mode', async () => {
     vi.mocked(renderCommand).mockResolvedValue('rendered-output');
 

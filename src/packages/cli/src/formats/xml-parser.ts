@@ -1,4 +1,4 @@
-import { FormatParser } from './types';
+import type { FormatParser } from './types.js';
 
 export class XmlParser implements FormatParser {
   parse(content: string): Record<string, unknown> {

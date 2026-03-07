@@ -1,6 +1,6 @@
 import { SchemaValidator, type JSONSchema } from '@templjs/core';
-import type { IntellisenseDelimiters } from './intellisense-provider';
-import { LineColumnMapper, RangeMapper, generatePositionMappings } from './position-mapping';
+import type { IntellisenseDelimiters } from './intellisense-provider.js';
+import { LineColumnMapper, RangeMapper, generatePositionMappings } from './position-mapping.js';
 
 export enum DiagnosticSeverity {
   Error = 1,
