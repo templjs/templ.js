@@ -490,6 +490,13 @@ describe('cli-main', () => {
     expect(process.exitCode).toBe(1);
   });
 
+  it('handles help output without setting an error exit code', async () => {
+    await main(['node', 'cli.js', '--help']);
+
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringContaining('Usage: templjs'));
+    expect(process.exitCode).toBeUndefined();
+  });
+
   it('emits commander parse errors as json envelope in json mode', async () => {
     await main(['node', 'cli.js', '--json', 'render']);
 

@@ -232,6 +232,56 @@ describe('signal-handler', () => {
     vi.useRealTimers();
   });
 
+  it('defers forced exit when output streams still have pending writes', async () => {
+    vi.useFakeTimers();
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+    const stdoutLengthDescriptor = Object.getOwnPropertyDescriptor(
+      process.stdout,
+      'writableLength'
+    );
+    const stderrLengthDescriptor = Object.getOwnPropertyDescriptor(
+      process.stderr,
+      'writableLength'
+    );
+
+    try {
+      Object.defineProperty(process.stdout, 'writableLength', {
+        configurable: true,
+        get: () => 1,
+      });
+      Object.defineProperty(process.stderr, 'writableLength', {
+        configurable: true,
+        get: () => 0,
+      });
+
+      const cleanup = registerSignalHandlers({ cleanupTimeoutMs: 25 });
+      process.emit('SIGINT');
+
+      await vi.advanceTimersByTimeAsync(24);
+      expect(exitSpy).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(exitSpy).toHaveBeenCalledWith(130);
+
+      cleanup();
+    } finally {
+      exitSpy.mockRestore();
+      vi.useRealTimers();
+      if (stdoutLengthDescriptor) {
+        Object.defineProperty(process.stdout, 'writableLength', stdoutLengthDescriptor);
+      } else {
+        delete (process.stdout as { writableLength?: number }).writableLength;
+      }
+
+      if (stderrLengthDescriptor) {
+        Object.defineProperty(process.stderr, 'writableLength', stderrLengthDescriptor);
+      } else {
+        delete (process.stderr as { writableLength?: number }).writableLength;
+      }
+    }
+  });
+
   it('handles non-Error exceptions thrown by handler', async () => {
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
