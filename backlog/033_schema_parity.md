@@ -4,7 +4,7 @@ type: work-item
 subtype: story
 lifecycle: active
 title: '33: Implement Schema Parity (JSON/YAML/TOML Input Formats)'
-status: in-progress
+status: ready-for-review
 priority: high
 estimated: 12
 assignee: ''
@@ -30,6 +30,10 @@ test_results:
       - Test coverage: 48 format-parity tests + 84 existing = 132 total CLI tests
       - All 8 acceptance criteria met with zero regressions
       - Statement coverage: 96.85% (95% threshold), Branch: 90% (78% threshold)
+  - timestamp: 2026-03-07T00:00:00Z
+    note: |
+      Ready for review: All acceptance criteria met, 13 hours invested.
+      PR #24 ready for merge. Moving to ready-for-review status.
 ---
 
 ## Goal
