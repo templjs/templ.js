@@ -22,9 +22,44 @@ export function resolveOutputModeFromCommand(command: Command): OutputMode {
 }
 
 export function resolveOutputModeFromArgv(argv: string[]): OutputMode {
-  const quiet = argv.includes('--quiet') || argv.includes('-q');
-  const verbose = quiet ? false : argv.includes('--verbose') || argv.includes('-v');
-  const json = argv.includes('--json');
+  let quiet = false;
+  let verbose = false;
+  let json = false;
+
+  for (const arg of argv) {
+    if (arg === '--') {
+      break;
+    }
+
+    if (!arg.startsWith('-') || arg === '-') {
+      continue;
+    }
+
+    if (arg.startsWith('--')) {
+      if (arg === '--quiet') {
+        quiet = true;
+      } else if (arg === '--verbose') {
+        verbose = true;
+      } else if (arg === '--json') {
+        json = true;
+      }
+      continue;
+    }
+
+    for (let i = 1; i < arg.length; i += 1) {
+      const flag = arg[i];
+      if (flag === 'q') {
+        quiet = true;
+      } else if (flag === 'v') {
+        verbose = true;
+      }
+    }
+  }
+
+  if (quiet) {
+    verbose = false;
+  }
+
   return { quiet, verbose, json };
 }
 

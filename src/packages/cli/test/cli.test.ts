@@ -99,6 +99,29 @@ describe('cli-main', () => {
     );
   });
 
+  it('passes validateInput=false to render command when --no-validate-input is used', async () => {
+    vi.mocked(renderCommand).mockResolvedValue('rendered-output');
+
+    await main([
+      'node',
+      'cli.js',
+      'render',
+      '-t',
+      'template.templ',
+      '-i',
+      'data.json',
+      '--no-validate-input',
+    ]);
+
+    expect(renderCommand).toHaveBeenCalledWith(
+      'template.templ',
+      'data.json',
+      expect.objectContaining({
+        validateInput: false,
+      })
+    );
+  });
+
   it('suppresses render stdout in quiet mode', async () => {
     vi.mocked(renderCommand).mockResolvedValue('rendered-output');
 

@@ -171,6 +171,7 @@ function createProgram(): Command {
                   process.env.TEMPLJS_EXPERIMENTAL_STREAM_JSON === '1',
                 inputFormat,
                 outputFormat,
+                validateInput: finalOptions.validateInput,
                 validateOutput: finalOptions.validateOutput,
               }),
           }
@@ -185,6 +186,7 @@ function createProgram(): Command {
           process.env.TEMPLJS_EXPERIMENTAL_STREAM_JSON === '1',
         inputFormat,
         outputFormat,
+        validateInput: finalOptions.validateInput,
         validateOutput: finalOptions.validateOutput,
       });
 

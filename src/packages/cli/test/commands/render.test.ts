@@ -164,6 +164,24 @@ describe('renderCommand', () => {
     );
   });
 
+  it('allows non-object JSON payloads when input validation is disabled', async () => {
+    vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(readFileSync).mockImplementation((value) => {
+      if (value === 'template.templ') {
+        return 'Hello {{ data }}';
+      }
+      return '["array"]';
+    });
+    vi.mocked(renderTemplate).mockReturnValue('array output');
+
+    const output = await renderCommand('template.templ', 'array.json', {
+      validateInput: false,
+    });
+
+    expect(output).toBe('array output');
+    expect(renderTemplate).toHaveBeenCalledWith('Hello {{ data }}', ['array']);
+  });
+
   it('formats JSON output when output-format json is requested', async () => {
     vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
     vi.mocked(readFileSync).mockImplementation((value) => {
@@ -381,6 +399,23 @@ describe('renderCommand', () => {
     ).rejects.toThrow(
       'Render failed: Failed to parse input data as JSON: Input data must be a JSON object'
     );
+  });
+
+  it('allows array payloads in stream-json mode when input validation is disabled', async () => {
+    vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(createReadStream).mockReturnValue(
+      Readable.from(['["streamed-array"]']) as ReturnType<typeof createReadStream>
+    );
+    vi.mocked(readFileSync).mockReturnValue('Hello {{ data }}');
+    vi.mocked(renderTemplate).mockReturnValue('streamed array output');
+
+    const output = await renderCommand('template.templ', 'array.json', {
+      experimentalStreamJson: true,
+      validateInput: false,
+    });
+
+    expect(output).toBe('streamed array output');
+    expect(renderTemplate).toHaveBeenCalledWith('Hello {{ data }}', ['streamed-array']);
   });
 
   it('rejects multiple root values in experimental stream-json mode', async () => {

@@ -19,6 +19,7 @@ export interface RenderCommandOptions {
   experimentalStreamJson?: boolean;
   inputFormat?: SupportedFormat;
   outputFormat?: 'text' | 'json' | 'html' | 'markdown';
+  validateInput?: boolean;
   validateOutput?: boolean;
 }
 
@@ -98,10 +99,20 @@ function resolveInputFormat(dataOrPath: string, options?: RenderCommandOptions):
 
 async function parsePayloadByFormat(
   payload: string,
-  inputFormat: SupportedFormat
-): Promise<Record<string, unknown>> {
+  inputFormat: SupportedFormat,
+  validateInput: boolean
+): Promise<unknown> {
   if (inputFormat === 'xml') {
     return new XmlParser().parseAsync(payload);
+  }
+
+  if (inputFormat === 'json' && !validateInput) {
+    try {
+      return JSON.parse(payload) as unknown;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Invalid JSON: ${message}`, { cause: error });
+    }
   }
 
   return getParser(inputFormat).parse(payload);
@@ -137,6 +148,14 @@ function validateParsedObject(parsed: unknown): Record<string, unknown> {
   return parsed as Record<string, unknown>;
 }
 
+function normalizeParsedInput(parsed: unknown, validateInput: boolean): Record<string, unknown> {
+  if (validateInput) {
+    return validateParsedObject(parsed);
+  }
+
+  return parsed as Record<string, unknown>;
+}
+
 function createProgressReporter(totalBytes: number): (bytesRead: number) => void {
   let lastProgressBucket = -1;
 
@@ -163,7 +182,8 @@ function createFileInputStream(dataOrPath: string): AsyncIterable<string> {
 }
 
 async function parseJsonObjectStream(
-  stream: AsyncIterable<string>
+  stream: AsyncIterable<string>,
+  validateInput: boolean
 ): Promise<Record<string, unknown>> {
   const parser = new JSONParser();
   let rootValue: unknown;
@@ -187,17 +207,20 @@ async function parseJsonObjectStream(
     throw new Error('Input data is empty or incomplete JSON');
   }
 
-  return validateParsedObject(rootValue);
+  return normalizeParsedInput(rootValue, validateInput);
 }
 
-async function parseDataStream(dataOrPath: string): Promise<Record<string, unknown>> {
+async function parseDataStream(
+  dataOrPath: string,
+  validateInput: boolean
+): Promise<Record<string, unknown>> {
   try {
     if (dataOrPath === '-') {
       process.stdin.setEncoding('utf-8');
-      return await parseJsonObjectStream(process.stdin as AsyncIterable<string>);
+      return await parseJsonObjectStream(process.stdin as AsyncIterable<string>, validateInput);
     }
 
-    return await parseJsonObjectStream(createFileInputStream(dataOrPath));
+    return await parseJsonObjectStream(createFileInputStream(dataOrPath), validateInput);
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code === 'ENOENT') {
@@ -225,16 +248,17 @@ async function parseData(
   options?: RenderCommandOptions
 ): Promise<Record<string, unknown>> {
   const inputFormat = resolveInputFormat(dataOrPath, options);
+  const validateInput = options?.validateInput !== false;
 
   if (inputFormat === 'json' && streamJsonEnabled(options)) {
-    return parseDataStream(dataOrPath);
+    return parseDataStream(dataOrPath, validateInput);
   }
 
   const payload = await readPayload(dataOrPath);
 
   try {
-    const parsed = await parsePayloadByFormat(payload, inputFormat);
-    return validateParsedObject(parsed);
+    const parsed = await parsePayloadByFormat(payload, inputFormat, validateInput);
+    return normalizeParsedInput(parsed, validateInput);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to parse input data as ${inputFormat.toUpperCase()}: ${message}`, {
