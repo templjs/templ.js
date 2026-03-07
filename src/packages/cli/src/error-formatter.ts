@@ -103,40 +103,43 @@ export function formatError(
  * Try to provide helpful error message for common template/data errors
  */
 export function provideErrorSuggestion(errorMessage: string): string | undefined {
+  const normalized = errorMessage.toLowerCase();
+
   // File not found (check before generic "not found")
   if (
-    errorMessage.includes('ENOENT') ||
-    errorMessage.includes('File not found') ||
-    errorMessage.toLowerCase().includes('no such file')
+    normalized.includes('enoent') ||
+    normalized.includes('file not found') ||
+    normalized.includes('no such file')
   ) {
     return 'Verify the file path exists and is readable';
   }
 
-  if (errorMessage.includes('EISDIR')) {
+  // Directory provided where file is expected
+  if (normalized.includes('eisdir') || normalized.includes('illegal operation on a directory')) {
     return 'Expected a file path but received a directory path';
   }
 
   // Permission errors
   if (
-    errorMessage.includes('EACCES') ||
-    errorMessage.includes('EPERM') ||
-    errorMessage.includes('Permission')
+    normalized.includes('eacces') ||
+    normalized.includes('eperm') ||
+    normalized.includes('permission')
   ) {
     return 'Check file permissions for read/write access';
   }
 
   // Undefined variable suggestions
-  if (errorMessage.includes('undefined')) {
+  if (normalized.includes('undefined') || normalized.includes('not found')) {
     return 'Did you check that the variable exists in your data?';
   }
 
   // JSON parsing errors
-  if (errorMessage.includes('JSON')) {
+  if (normalized.includes('json')) {
     return 'Ensure your input data is valid JSON format';
   }
 
   // YAML/TOML errors (future)
-  if (errorMessage.includes('YAML') || errorMessage.includes('TOML')) {
+  if (normalized.includes('yaml') || normalized.includes('toml')) {
     return 'Check the syntax of your input file';
   }
 

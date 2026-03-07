@@ -23,7 +23,7 @@ export interface StreamingWriteOptions {
  * Read a file in chunks, suitable for large files
  * @param path - File path to read
  * @param totalBytes - Total file size (optional, for progress)
- * @param options - Streaming options
+ * @param options - Streaming options (`onProgress` fires every ~1MB and once at completion)
  * @returns Async iterator of chunks
  */
 export async function* readFileStream(
@@ -46,7 +46,11 @@ export async function* readFileStream(
       bytesRead += Buffer.byteLength(value, options.encoding ?? 'utf-8');
 
       // Call progress callback periodically
-      if (options.onProgress && bytesRead - lastProgressUpdate > 1024 * 1024) {
+      if (
+        options.onProgress &&
+        totalBytes !== undefined &&
+        bytesRead - lastProgressUpdate > 1024 * 1024
+      ) {
         options.onProgress(bytesRead, totalBytes);
         lastProgressUpdate = bytesRead;
       }
@@ -61,7 +65,7 @@ export async function* readFileStream(
     }
 
     // Final progress update (only after successful completion)
-    if (completed && options.onProgress) {
+    if (completed && options.onProgress && totalBytes !== undefined) {
       options.onProgress(bytesRead, totalBytes);
     }
   }
