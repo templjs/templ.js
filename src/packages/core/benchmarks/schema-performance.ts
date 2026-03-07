@@ -3,7 +3,7 @@
  * Run with: node benchmarks/schema-performance.js
  */
 
-import { SchemaValidator } from '../src/schema/SchemaValidator';
+import { SchemaValidator } from '../src/schema/SchemaValidator.js';
 
 const complexSchema = {
   type: 'object',

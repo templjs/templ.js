@@ -9,7 +9,7 @@ import core, {
   validateTemplate,
   version,
 } from '../src/index';
-import { QueryEngine } from '../src/query-engine/query-engine';
+import { QueryEngine } from '../src/query-engine/query-engine.js';
 
 describe('core entrypoint', () => {
   it('exports version', () => {

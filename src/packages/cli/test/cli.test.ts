@@ -41,7 +41,7 @@ vi.mock('../src/watch-mode.js', () => ({
 }));
 
 import { writeFileSync } from 'fs';
-import { main } from '../src/cli';
+import { main } from '../src/cli.js';
 import { initCommand } from '../src/commands/init.js';
 import { renderCommand } from '../src/commands/render.js';
 import { validateCommand } from '../src/commands/validate.js';

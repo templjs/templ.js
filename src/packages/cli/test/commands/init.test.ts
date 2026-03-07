@@ -5,7 +5,7 @@ vi.mock('fs', () => ({
 }));
 
 import { writeFileSync } from 'fs';
-import { initCommand } from '../../src/commands/init';
+import { initCommand } from '../../src/commands/init.js';
 
 describe('initCommand', () => {
   it('returns starter template for a supported format', async () => {

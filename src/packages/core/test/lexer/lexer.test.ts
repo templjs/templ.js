@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { tokenize } from '../../src/lexer/lexer';
-import { TokenType } from '../../src/lexer/types';
+import { tokenize } from '../../src/lexer/lexer.js';
+import { TokenType } from '../../src/lexer/types.js';
 
 describe('Lexer', () => {
   describe('Tokenization', () => {

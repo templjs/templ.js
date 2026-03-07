@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { performance } from 'perf_hooks';
-import type { ASTNode, ExpressionNode, TemplateNode } from '../../src/parser/types';
-import { parse } from '../../src/parser/parser';
-import { tokenize } from '../../src/lexer/lexer';
-import { Renderer, render } from '../../src/renderer/renderer';
-import { literal, variable, binary, filtered, template, POS } from './renderer.test-helpers';
+import type { ASTNode, ExpressionNode, TemplateNode } from '../../src/parser/types.js';
+import { parse } from '../../src/parser/parser.js';
+import { tokenize } from '../../src/lexer/lexer.js';
+import { Renderer, render } from '../../src/renderer/renderer.js';
+import { literal, variable, binary, filtered, template, POS } from './renderer.test-helpers.js';
 
 describe('Renderer', () => {
   describe('Renderer edge cases', () => {

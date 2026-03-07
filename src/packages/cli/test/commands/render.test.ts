@@ -13,7 +13,7 @@ vi.mock('@templjs/core', () => ({
 
 import { createReadStream, readFileSync, statSync } from 'fs';
 import { renderTemplate } from '@templjs/core';
-import { renderCommand } from '../../src/commands/render';
+import { renderCommand } from '../../src/commands/render.js';
 
 describe('renderCommand', () => {
   it('renders template output from file and JSON data', async () => {

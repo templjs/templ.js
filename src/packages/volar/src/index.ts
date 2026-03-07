@@ -109,6 +109,9 @@ class TempljsVirtualCode implements VirtualCode {
   id = 'root';
   languageId: string;
   snapshot: ts.IScriptSnapshot;
+  private baseFormat: BaseFormat;
+  private original: string;
+  private cleaned: string;
   mappings: Array<{
     sourceOffsets: number[];
     generatedOffsets: number[];
@@ -118,14 +121,166 @@ class TempljsVirtualCode implements VirtualCode {
   embeddedCodes: VirtualCode[] = [];
 
   constructor(original: string, baseFormat: BaseFormat, snapshot: ts.IScriptSnapshot) {
+    this.baseFormat = baseFormat;
     this.languageId = getBaseFormatLanguageId(baseFormat);
     this.snapshot = snapshot;
+    this.original = original;
 
     // Generate cleaned code (strip template syntax)
     const { cleaned, mappings: positionMappings } = this.stripTemplateSyntax(original);
+    this.cleaned = cleaned;
 
     // Create position mappings for accurate error reporting
     this.mappings = this.createMappings(original, cleaned, positionMappings);
+  }
+
+  updateFromChange(
+    snapshot: ts.IScriptSnapshot,
+    baseFormat: BaseFormat,
+    changeRange?: ts.TextChangeRange
+  ): TempljsVirtualCode {
+    if (baseFormat !== this.baseFormat || !changeRange) {
+      this.rebuildFromSnapshot(snapshot, baseFormat);
+      return this;
+    }
+
+    const start = changeRange.span.start;
+    const oldLength = changeRange.span.length;
+    const newLength = changeRange.newLength;
+    const insertedText = snapshot.getText(start, start + newLength);
+
+    if (!this.applyEdit(start, oldLength, insertedText)) {
+      this.rebuildFromSnapshot(snapshot, baseFormat);
+      return this;
+    }
+
+    this.snapshot = snapshot;
+    this.mappings = this.createMappings(this.original, this.cleaned, []);
+    return this;
+  }
+
+  private rebuildFromSnapshot(snapshot: ts.IScriptSnapshot, baseFormat: BaseFormat): void {
+    const source = snapshot.getText(0, snapshot.getLength());
+    const { cleaned, mappings: positionMappings } = this.stripTemplateSyntax(source);
+
+    this.baseFormat = baseFormat;
+    this.languageId = getBaseFormatLanguageId(baseFormat);
+    this.snapshot = snapshot;
+    this.original = source;
+    this.cleaned = cleaned;
+    this.mappings = this.createMappings(source, cleaned, positionMappings);
+  }
+
+  private applyEdit(start: number, deleteLength: number, insertedText: string): boolean {
+    const removedText = this.original.slice(start, start + deleteLength);
+
+    // Simple case: no template markers involved, apply edit directly
+    if (this.isSimpleEdit(removedText, insertedText)) {
+      this.original =
+        this.original.slice(0, start) + insertedText + this.original.slice(start + deleteLength);
+      this.cleaned =
+        this.cleaned.slice(0, start) + insertedText + this.cleaned.slice(start + deleteLength);
+      return true;
+    }
+
+    // Template markers detected: use bounded window reprocessing
+    return this.applyBoundedEdit(start, deleteLength, insertedText);
+  }
+
+  private isSimpleEdit(removedText: string, insertedText: string): boolean {
+    return !/[{}%#]/.test(removedText) && !/[{}%#]/.test(insertedText);
+  }
+
+  /**
+   * Apply edit using bounded window reprocessing when template markers are involved.
+   * Expands change to nearby line boundaries and reprocesses only that region.
+   */
+  private applyBoundedEdit(start: number, deleteLength: number, insertedText: string): boolean {
+    const MAX_WINDOW_SIZE = 5000; // Characters
+    const window = this.findEditWindow(start, deleteLength, MAX_WINDOW_SIZE);
+
+    if (!window) {
+      // Window too large or couldn't find safe boundaries
+      return false;
+    }
+
+    // Determine cleaned positions for window boundaries BEFORE updating original
+    const cleanedWindowStart = this.mapOriginalToCleaned(window.start);
+    const cleanedWindowEnd = this.mapOriginalToCleaned(window.end);
+
+    // Apply the edit to original text
+    const before = this.original.slice(0, start);
+    const after = this.original.slice(start + deleteLength);
+    this.original = before + insertedText + after;
+
+    // Reprocess the bounded window in the updated original
+    const windowStart = window.start;
+    const windowEnd = window.end - deleteLength + insertedText.length; // Adjust for length change
+    const windowText = this.original.slice(windowStart, windowEnd);
+
+    // Re-strip template syntax for this window
+    const { cleaned: windowCleaned } = this.stripTemplateSyntax(windowText);
+
+    // Reconstruct cleaned text with the reprocessed window
+    const cleanedBefore = this.cleaned.slice(0, cleanedWindowStart);
+    const cleanedAfter = this.cleaned.slice(cleanedWindowEnd);
+    this.cleaned = cleanedBefore + windowCleaned + cleanedAfter;
+
+    return true;
+  }
+
+  /**
+   * Find a bounded window around the edit region, expanding to line boundaries.
+   * Returns null if window would exceed max size.
+   */
+  private findEditWindow(
+    start: number,
+    deleteLength: number,
+    maxSize: number
+  ): { start: number; end: number } | null {
+    const end = start + deleteLength;
+
+    // Expand to previous line boundary
+    let windowStart = start;
+    while (windowStart > 0 && windowStart > start - maxSize / 2) {
+      windowStart--;
+      if (this.original[windowStart] === '\n') {
+        windowStart++; // Include from start of line
+        break;
+      }
+    }
+
+    // Expand to next line boundary
+    let windowEnd = end;
+    while (windowEnd < this.original.length && windowEnd < end + maxSize / 2) {
+      if (this.original[windowEnd] === '\n') {
+        windowEnd++; // Include newline
+        break;
+      }
+      windowEnd++;
+    }
+
+    // Verify window size is reasonable
+    if (windowEnd - windowStart > maxSize) {
+      return null;
+    }
+
+    return { start: windowStart, end: windowEnd };
+  }
+
+  /**
+   * Map position in original text to approximate position in cleaned text.
+   * This is a simple linear approximation for window boundary calculation.
+   */
+  private mapOriginalToCleaned(originalPos: number): number {
+    if (this.original.length === 0) return 0;
+
+    // Simple proportional mapping
+    const ratio = this.cleaned.length / this.original.length;
+    const mapped = Math.floor(originalPos * ratio);
+
+    // Clamp to valid range
+    return Math.max(0, Math.min(mapped, this.cleaned.length));
   }
 
   /**
@@ -210,6 +365,43 @@ class TempljsVirtualCode implements VirtualCode {
 
 export const version = '0.1.0';
 
+class TempljsLanguagePlugin implements LanguagePlugin {
+  private readonly virtualCodeByUri = new Map<string, TempljsVirtualCode>();
+
+  createVirtualCode(uri: string, _languageId: string, snapshot: ts.IScriptSnapshot): VirtualCode {
+    const baseFormat = detectBaseFormat(uri);
+    const source = snapshot.getText(0, snapshot.getLength());
+    const virtualCode = new TempljsVirtualCode(source, baseFormat, snapshot);
+    this.virtualCodeByUri.set(uri, virtualCode);
+    return virtualCode;
+  }
+
+  updateVirtualCode(
+    uri: string,
+    _virtualCode: TempljsVirtualCode,
+    snapshot: ts.IScriptSnapshot
+  ): TempljsVirtualCode {
+    const baseFormat = detectBaseFormat(uri);
+    const cachedVirtualCode = this.virtualCodeByUri.get(uri) ?? _virtualCode;
+
+    if (!(cachedVirtualCode instanceof TempljsVirtualCode)) {
+      const source = snapshot.getText(0, snapshot.getLength());
+      const rebuilt = new TempljsVirtualCode(source, baseFormat, snapshot);
+      this.virtualCodeByUri.set(uri, rebuilt);
+      return rebuilt;
+    }
+
+    const changeRange = snapshot.getChangeRange(cachedVirtualCode.snapshot);
+    const updated = cachedVirtualCode.updateFromChange(
+      snapshot,
+      baseFormat,
+      changeRange ?? undefined
+    );
+    this.virtualCodeByUri.set(uri, updated);
+    return updated;
+  }
+}
+
 /**
  * Create the templjs language plugin for Volar
  *
@@ -220,32 +412,7 @@ export const version = '0.1.0';
  * 4. Maintains position mappings for accurate error reporting
  */
 export function createTempljsLanguagePlugin(): LanguagePlugin {
-  return {
-    createVirtualCode(uri: string, _languageId: string, snapshot: ts.IScriptSnapshot): VirtualCode {
-      // Detect base format from file extension
-      const baseFormat = detectBaseFormat(uri);
-
-      // Get the original source code from snapshot
-      const source = snapshot.getText(0, snapshot.getLength());
-
-      // Create virtual code with stripped template syntax
-      const virtualCode = new TempljsVirtualCode(source, baseFormat, snapshot);
-
-      return virtualCode;
-    },
-
-    updateVirtualCode(
-      uri: string,
-      _virtualCode: TempljsVirtualCode,
-      snapshot: ts.IScriptSnapshot
-    ): TempljsVirtualCode {
-      // Recalculate virtual code on document change
-      const source = snapshot.getText(0, snapshot.getLength());
-      const baseFormat = detectBaseFormat(uri);
-
-      return new TempljsVirtualCode(source, baseFormat, snapshot);
-    },
-  };
+  return new TempljsLanguagePlugin();
 }
 
 export default {

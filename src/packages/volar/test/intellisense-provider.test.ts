@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { IntellisenseProvider } from '../src/intellisense-provider';
+import { IntellisenseProvider } from '../src/intellisense-provider.js';
 
 const sampleSchema = {
   type: 'object',

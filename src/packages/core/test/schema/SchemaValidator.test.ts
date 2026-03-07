@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { SchemaValidator } from '../../src/schema/SchemaValidator';
-import type { JSONSchema } from '../../src/schema/types';
+import { SchemaValidator } from '../../src/schema/SchemaValidator.js';
+import type { JSONSchema } from '../../src/schema/types.js';
 import {
   extractPaths,
   fuzzyMatch,

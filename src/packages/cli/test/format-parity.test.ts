@@ -14,7 +14,7 @@ vi.mock('@templjs/core', () => ({
 
 import { readFileSync, statSync } from 'fs';
 import { renderTemplate } from '@templjs/core';
-import { renderCommand } from '../src/commands/render';
+import { renderCommand } from '../src/commands/render.js';
 import {
   detectFormat,
   getParser,

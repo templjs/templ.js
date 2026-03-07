@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { performance } from 'node:perf_hooks';
-import { QueryEngine, filter, query } from '../../src/query-engine/query-engine';
-import type { FunctionSignature } from '../../src/query-engine/types';
+import { QueryEngine, filter, query } from '../../src/query-engine/query-engine.js';
+import type { FunctionSignature } from '../../src/query-engine/types.js';
 
 function makeSignature(
   name: string,

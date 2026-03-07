@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { QueryEngine } from '../../src/query-engine/query-engine';
+import { QueryEngine } from '../../src/query-engine/query-engine.js';
 import {
   assign as assignObjectHandler,
   merge as mergeObjectHandler,

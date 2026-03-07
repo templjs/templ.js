@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import cli from '../src/index';
-import { processTemplate, validateTemplate, version } from '../src/index';
+import cli from '../src/index.js';
+import { processTemplate, validateTemplate, version } from '../src/index.js';
 
 describe('cli-index', () => {
   it('exposes stable version and default export', () => {

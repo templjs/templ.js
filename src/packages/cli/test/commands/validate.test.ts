@@ -10,7 +10,7 @@ vi.mock('@templjs/core', () => ({
 
 import { readFileSync } from 'fs';
 import { validateTemplate as coreValidateTemplate } from '@templjs/core';
-import { validateCommand } from '../../src/commands/validate';
+import { validateCommand } from '../../src/commands/validate.js';
 
 describe('validateCommand', () => {
   it.each([

@@ -3,9 +3,9 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { Writable } from 'stream';
-import { registerSignalHandlers, type SignalHandlerOptions } from '../src/signal-handler';
-import { formatErrorContext, formatError, provideErrorSuggestion } from '../src/error-formatter';
-import { detectTTY, getTimeoutForMode } from '../src/tty-detection';
+import { registerSignalHandlers, type SignalHandlerOptions } from '../src/signal-handler.js';
+import { formatErrorContext, formatError, provideErrorSuggestion } from '../src/error-formatter.js';
+import { detectTTY, getTimeoutForMode } from '../src/tty-detection.js';
 import {
   shouldStream,
   LARGE_FILE_THRESHOLD,

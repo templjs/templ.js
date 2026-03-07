@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createTempljsLanguagePlugin } from '../src/index';
+import { createTempljsLanguagePlugin } from '../src/index.js';
 
 describe('LanguagePlugin', () => {
   const plugin = createTempljsLanguagePlugin();
@@ -238,6 +238,179 @@ describe('LanguagePlugin', () => {
       const updated = plugin.updateVirtualCode('file:///test.md.tmpl', virtualCode, snapshot);
 
       expect(updated).toBeDefined();
+    });
+
+    it('should handle template marker edits using bounded window', () => {
+      // Create document with template markup
+      const initialContent = 'Line 1\nLine 2 with {{ var }}\nLine 3\nLine 4';
+      const initialSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return initialContent;
+          return initialContent.slice(start, end);
+        },
+        getLength: () => initialContent.length,
+        getChangeRange: function (oldSnapshot?: any) {
+          if (!oldSnapshot) return undefined;
+          return undefined;
+        },
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///test.md.tmpl',
+        'templjs-markdown',
+        initialSnapshot
+      );
+
+      if (!virtualCode) {
+        throw new Error('Failed to create initial virtual code');
+      }
+
+      // Edit that adds template markers (insert "{% if true %}" at position 7)
+      const updatedContent = 'Line 1\n{% if true %}Line 2 with {{ var }}\nLine 3\nLine 4';
+      const updateSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return updatedContent;
+          return updatedContent.slice(start, end);
+        },
+        getLength: () => updatedContent.length,
+        getChangeRange: function (oldSnapshot?: any) {
+          if (!oldSnapshot || oldSnapshot === initialSnapshot) {
+            return {
+              span: { start: 7, length: 0 },
+              newLength: 14, // "{% if true %}"
+            };
+          }
+          return undefined;
+        },
+      };
+
+      const updated = plugin.updateVirtualCode('file:///test.md.tmpl', virtualCode, updateSnapshot);
+
+      // Should successfully update using bounded window (not full rebuild)
+      expect(updated).toBeDefined();
+      expect(updated.languageId).toBe('markdown');
+
+      // Verify the virtual code has correct structure
+      expect(updated.snapshot).toBe(updateSnapshot);
+    });
+
+    it('should handle template marker deletion using bounded window', () => {
+      // Create document with template markup
+      const initialContent = 'Line 1\n{% block %}Content{% endblock %}\nLine 3';
+      const initialSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return initialContent;
+          return initialContent.slice(start, end);
+        },
+        getLength: () => initialContent.length,
+        getChangeRange: function (oldSnapshot?: any) {
+          if (!oldSnapshot) return undefined;
+          return undefined;
+        },
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///test.md.tmpl',
+        'templjs-markdown',
+        initialSnapshot
+      );
+
+      if (!virtualCode) {
+        throw new Error('Failed to create initial virtual code');
+      }
+
+      // Delete template block (remove "{% block %}" at position 7, length 12)
+      const updatedContent = 'Line 1\nContent{% endblock %}\nLine 3';
+      const updateSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return updatedContent;
+          return updatedContent.slice(start, end);
+        },
+        getLength: () => updatedContent.length,
+        getChangeRange: function (oldSnapshot?: any) {
+          if (!oldSnapshot || oldSnapshot === initialSnapshot) {
+            return {
+              span: { start: 7, length: 12 },
+              newLength: 0,
+            };
+          }
+          return undefined;
+        },
+      };
+
+      const updated = plugin.updateVirtualCode('file:///test.md.tmpl', virtualCode, updateSnapshot);
+
+      // Should successfully update using bounded window (not full rebuild)
+      expect(updated).toBeDefined();
+      expect(updated.languageId).toBe('markdown');
+      expect(updated.snapshot).toBe(updateSnapshot);
+    });
+
+    it('falls back to full rebuild when bounded edit window cannot be found', () => {
+      const huge = 'x'.repeat(8000);
+      const initialContent = `${huge}\n{{ value }}\n${huge}`;
+      const initialSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return initialContent;
+          return initialContent.slice(start, end);
+        },
+        getLength: () => initialContent.length,
+        getChangeRange: function () {
+          return undefined;
+        },
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///large.md.tmpl',
+        'templjs-markdown',
+        initialSnapshot
+      );
+
+      const updatedContent = `${huge}\n${'y'.repeat(3000)}\n${huge}`;
+      const updateSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return updatedContent;
+          return updatedContent.slice(start, end);
+        },
+        getLength: () => updatedContent.length,
+        getChangeRange: function () {
+          return {
+            span: { start: huge.length + 1, length: 3000 },
+            newLength: 3000,
+          };
+        },
+      };
+
+      const updated = plugin.updateVirtualCode(
+        'file:///large.md.tmpl',
+        virtualCode,
+        updateSnapshot as any
+      );
+
+      expect(updated.snapshot).toBe(updateSnapshot);
+      expect(updated.languageId).toBe('markdown');
+    });
+
+    it('rebuilds when updateVirtualCode receives a non-Templjs virtual code instance', () => {
+      const content = 'Hello {{name}}';
+      const snapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return content;
+          return content.slice(start, end);
+        },
+        getLength: () => content.length,
+        getChangeRange: () => undefined,
+      };
+
+      const updated = plugin.updateVirtualCode(
+        'file:///fallback.md.tmpl',
+        { snapshot: null } as any,
+        snapshot as any
+      );
+
+      expect(updated).toBeDefined();
+      expect(updated.languageId).toBe('markdown');
+      expect(updated.snapshot).toBe(snapshot);
     });
   });
 

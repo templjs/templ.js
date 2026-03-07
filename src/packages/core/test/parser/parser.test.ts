@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { tokenize } from '../../src/lexer/lexer';
-import { parse } from '../../src/parser/parser';
+import { tokenize } from '../../src/lexer/lexer.js';
+import { parse } from '../../src/parser/parser.js';
 import type {
   ExpressionStatementNode,
   IfNode,
