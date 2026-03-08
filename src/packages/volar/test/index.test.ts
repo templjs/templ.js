@@ -2,7 +2,7 @@
  * Tests for @templjs/volar language plugin
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createTempljsLanguagePlugin } from '../src/index.js';
 import { collectDiagnostics } from '../src/diagnostic-provider.js';
 import { IntellisenseProvider } from '../src/intellisense-provider.js';
@@ -819,6 +819,89 @@ describe('LanguagePlugin', () => {
       expect(updated).toBeDefined();
       expect(updated.languageId).toBe('markdown');
       expect(updated.snapshot).toBe(snapshot);
+    });
+
+    it('covers mapOriginalToCleaned fallback branches for empty and sparse offset tables', () => {
+      const content = 'abcde';
+      const snapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return content;
+          return content.slice(start, end);
+        },
+        getLength: () => content.length,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///offset-fallback.md.tmpl',
+        'templjs-markdown',
+        snapshot
+      ) as any;
+
+      virtualCode.original = content;
+      virtualCode.originalToCleanedOffsets = [];
+      expect(virtualCode.mapOriginalToCleaned(3)).toBe(0);
+
+      virtualCode.originalToCleanedOffsets = [0];
+      expect(virtualCode.mapOriginalToCleaned(3)).toBe(0);
+    });
+
+    it('covers mapOriginalOffsetToCleaned divergence branches', () => {
+      const content = 'seed';
+      const snapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return content;
+          return content.slice(start, end);
+        },
+        getLength: () => content.length,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///offset-divergence.md.tmpl',
+        'templjs-markdown',
+        snapshot
+      ) as any;
+
+      virtualCode.original = 'abcdef';
+      virtualCode.cleaned = 'abcX';
+      expect(virtualCode.mapOriginalOffsetToCleaned(4)).toBeNull();
+
+      virtualCode.original = 'abc';
+      virtualCode.cleaned = 'abcdef';
+      expect(virtualCode.mapOriginalOffsetToCleaned(9)).toBe(virtualCode.cleaned.length);
+
+      virtualCode.original = 'abcdef';
+      virtualCode.cleaned = 'abc';
+      expect(virtualCode.mapOriginalOffsetToCleaned(5)).toBeNull();
+    });
+
+    it('falls back from simple edit to bounded edit when offset mapping fails', () => {
+      const content = 'seed';
+      const snapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return content;
+          return content.slice(start, end);
+        },
+        getLength: () => content.length,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///simple-fallback.md.tmpl',
+        'templjs-markdown',
+        snapshot
+      ) as any;
+
+      virtualCode.original = 'abcdef';
+      virtualCode.cleaned = 'XYZ';
+      const boundedSpy = vi.spyOn(virtualCode, 'applyBoundedEdit').mockReturnValue(true);
+
+      const updated = virtualCode.applyEdit(2, 0, 'q');
+
+      expect(updated).toBe(true);
+      expect(boundedSpy).toHaveBeenCalledWith(2, 0, 'q');
+      boundedSpy.mockRestore();
     });
   });
 
