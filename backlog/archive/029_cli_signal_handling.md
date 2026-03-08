@@ -2,14 +2,16 @@
 id: wi-029
 type: work-item
 subtype: task
-lifecycle: active
+lifecycle: inactive
 title: '029: Implement CLI Signal Handling and Advanced I/O'
-status: ready-for-review
+status: closed
+status_reason: merged_to_main
 priority: critical
 estimated: 6
 actual: 6
 assignee: ''
 start_date: 2026-03-05
+end_date: 2026-03-08
 commits:
   fe801d3: 'test(signal-handler): add timeout and non-Error exception coverage'
   31c23a0: 'fix(signal-handler): prevent infinite hang with handler timeout'
@@ -53,6 +55,14 @@ test_results:
       - Updated Volar index, semantic-token-provider, diagnostic-provider, and intellisense-provider to use shared delimiter helpers
       - Added full-stack custom delimiter E2E regression suite (`src/packages/volar/test/custom-delimiters.e2e.test.ts`)
       - Validation: full Volar test suite passed (214 passed, 0 failed)
+  - timestamp: 2026-03-08T00:00:00Z
+    note: |
+      PR #23 merged to main successfully:
+      - All Copilot and CodeRabbit review comments resolved
+      - Final review blockers addressed: VirtualCode snapshot semantics, streaming buffering, incremental optimization, schema messaging
+      - Created 3 backlog items for deferred improvements (WI-035, WI-036, WI-037)
+      - Pre-push quality gates passed: frontmatter lint (38 items), ESLint (4 projects), tests (1478 passing), coverage thresholds met
+      - Merge commit: c345727e0fe935932b7168826c22976442a4821b
 ---
 
 ## Goal
