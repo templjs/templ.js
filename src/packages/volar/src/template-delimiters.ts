@@ -39,6 +39,28 @@ export function resolveDelimiters(delimiters: Partial<DelimiterConfig> = {}): De
     throw new Error('resolveDelimiters: delimiter values must be distinct');
   }
 
+  const hasPrefixOverlap = (left: string, right: string): boolean =>
+    left !== right && (left.startsWith(right) || right.startsWith(left));
+
+  const starts = [resolved.statementStart, resolved.expressionStart, resolved.commentStart];
+  const ends = [resolved.statementEnd, resolved.expressionEnd, resolved.commentEnd];
+
+  for (let i = 0; i < starts.length; i += 1) {
+    for (let j = i + 1; j < starts.length; j += 1) {
+      if (hasPrefixOverlap(starts[i], starts[j])) {
+        throw new Error('resolveDelimiters: start delimiters must not overlap by prefix');
+      }
+    }
+  }
+
+  for (let i = 0; i < ends.length; i += 1) {
+    for (let j = i + 1; j < ends.length; j += 1) {
+      if (hasPrefixOverlap(ends[i], ends[j])) {
+        throw new Error('resolveDelimiters: end delimiters must not overlap by prefix');
+      }
+    }
+  }
+
   return resolved;
 }
 

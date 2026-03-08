@@ -15,8 +15,39 @@ import {
 } from '../src/streaming-io.js';
 
 describe('signal-handler', () => {
+  const initialSignalListeners = {
+    SIGINT: [...process.listeners('SIGINT')],
+    SIGTERM: [...process.listeners('SIGTERM')],
+    SIGPIPE: [...process.listeners('SIGPIPE')],
+  };
+
+  let baselineSigIntListeners = 0;
+
+  beforeEach(() => {
+    baselineSigIntListeners = process.listeners('SIGINT').length;
+  });
+
   afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    for (const signal of ['SIGINT', 'SIGTERM', 'SIGPIPE'] as const) {
+      for (const listener of process.listeners(signal)) {
+        process.removeListener(signal, listener as (...args: any[]) => void);
+      }
+      for (const listener of initialSignalListeners[signal]) {
+        process.on(signal, listener as (...args: any[]) => void);
+      }
+    }
     vi.clearAllMocks();
+  });
+
+  it('can leak listeners when cleanup is not called within a test', () => {
+    registerSignalHandlers({});
+    expect(process.listeners('SIGINT').length).toBeGreaterThan(baselineSigIntListeners);
+  });
+
+  it('starts next test without leaked SIGINT listeners from prior test', () => {
+    expect(process.listeners('SIGINT').length).toBe(initialSignalListeners.SIGINT.length);
   });
 
   it('registers SIGINT handler that exits with code 130', async () => {

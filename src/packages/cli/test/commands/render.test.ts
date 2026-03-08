@@ -133,7 +133,11 @@ describe('renderCommand', () => {
       vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
       vi.mocked(renderTemplate).mockReturnValue('Hello Streamed');
 
-      const output = await renderCommand('template.templ', 'huge.json');
+      const output = await renderCommand('template.templ', 'huge.json', {
+        progressReporter: (message: string) => {
+          process.stderr.write(`${message}\n`);
+        },
+      });
 
       expect(output).toBe('Hello Streamed');
       expect(createReadStream).toHaveBeenCalledWith(
@@ -144,6 +148,46 @@ describe('renderCommand', () => {
     } finally {
       stderrSpy.mockRestore();
     }
+  });
+
+  it('does not emit progress to stderr by default for large files', async () => {
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+    try {
+      vi.mocked(statSync).mockReturnValue({ size: 20 * 1024 * 1024 } as ReturnType<
+        typeof statSync
+      >);
+      vi.mocked(createReadStream).mockReturnValue(
+        Readable.from(['{"name":"', 'NoNoise"}']) as ReturnType<typeof createReadStream>
+      );
+      vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
+      vi.mocked(renderTemplate).mockReturnValue('Hello NoNoise');
+
+      const output = await renderCommand('template.templ', 'huge.json');
+
+      expect(output).toBe('Hello NoNoise');
+      expect(stderrSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('Reading large input file')
+      );
+    } finally {
+      stderrSpy.mockRestore();
+    }
+  });
+
+  it('routes progress through progressReporter when provided', async () => {
+    const progressReporter = vi.fn();
+    vi.mocked(statSync).mockReturnValue({ size: 20 * 1024 * 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(createReadStream).mockReturnValue(
+      Readable.from(['{"name":"', 'ProgressHook"}']) as ReturnType<typeof createReadStream>
+    );
+    vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
+    vi.mocked(renderTemplate).mockReturnValue('Hello ProgressHook');
+
+    const output = await renderCommand('template.templ', 'huge.json', {
+      progressReporter,
+    } as any);
+
+    expect(output).toBe('Hello ProgressHook');
+    expect(progressReporter).toHaveBeenCalled();
   });
 
   it('wraps failures with render context', async () => {
@@ -416,6 +460,9 @@ describe('renderCommand', () => {
     try {
       const output = await renderCommand('template.templ', 'huge.json', {
         experimentalStreamJson: true,
+        progressReporter: (message: string) => {
+          process.stderr.write(`${message}\n`);
+        },
       });
 
       expect(output).toBe('Hello LargeStream');
