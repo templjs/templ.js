@@ -265,7 +265,7 @@ describe('cli-main', () => {
     expect(process.exitCode).toBe(1);
   });
 
-  it('reports dedicated schema-not-supported error for validate --schema', async () => {
+  it('reports dedicated schema-not-supported warning for validate --schema', async () => {
     vi.mocked(validateCommand).mockResolvedValue({
       valid: true,
       errors: [],
@@ -276,9 +276,9 @@ describe('cli-main', () => {
     await main(['node', 'cli.js', 'validate', '-t', 'template.templ', '-s', 'schema.json']);
 
     expect(stderrSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Schema validation is not supported yet')
+      'Warning: Schema validation flag provided (schema.json) but schema validation is not yet wired in @templjs/core\n'
     );
-    expect(process.exitCode).toBe(1);
+    expect(process.exitCode).toBeUndefined();
   });
 
   it('writes starter template to stdout when no init output is provided', async () => {
