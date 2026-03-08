@@ -6,7 +6,7 @@ import {
   objectLength as objectLengthHandler,
   omit as omitObjectHandler,
   pick as pickObjectHandler,
-} from '../../src/query-engine/functions/object-functions';
+} from '../../src/query-engine/functions/object-functions.js';
 
 const engine = new QueryEngine();
 

@@ -17,7 +17,7 @@ import {
   timestamp as timestampDatetimeHandler,
   timezone as timezoneDatetimeHandler,
   toISO as toISOHandler,
-} from '../../src/query-engine/functions/datetime-functions';
+} from '../../src/query-engine/functions/datetime-functions.js';
 
 const engine = new QueryEngine();
 const baseTs = Date.UTC(2024, 1, 18, 12, 34, 56);

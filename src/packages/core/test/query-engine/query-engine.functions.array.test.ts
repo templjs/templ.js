@@ -19,7 +19,7 @@ import {
   sort as sortArrayHandler,
   size as sizeArrayHandler,
   unique as uniqueArrayHandler,
-} from '../../src/query-engine/functions/array-functions';
+} from '../../src/query-engine/functions/array-functions.js';
 
 const engine = new QueryEngine();
 

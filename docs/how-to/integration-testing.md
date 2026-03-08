@@ -326,10 +326,10 @@ it('integration test', () => {
 });
 
 // ✅ GOOD: Use real implementations
-it('lexer + parser integration', () => {
-  import { tokenize } from '../lexer';
-  import { parse } from '../parser';
+import { tokenize } from '../lexer';
+import { parse } from '../parser';
 
+it('lexer + parser integration', () => {
   const tokens = tokenize('{{name}}');
   const ast = parse(tokens);
   expect(ast.errors).toHaveLength(0);

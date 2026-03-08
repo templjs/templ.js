@@ -4,6 +4,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { createTempljsLanguagePlugin } from '../src/index.js';
+import { collectDiagnostics } from '../src/diagnostic-provider.js';
+import { IntellisenseProvider } from '../src/intellisense-provider.js';
 
 describe('LanguagePlugin', () => {
   const plugin = createTempljsLanguagePlugin();
@@ -240,6 +242,31 @@ describe('LanguagePlugin', () => {
       expect(updated).toBeDefined();
     });
 
+    it('treats single-symbol edits as simple edits (non-template)', () => {
+      const content = 'color: #fff;\nbody { margin: 0; }\nvalue: 100%';
+      const snapshot = {
+        getText: () => content,
+        getLength: () => content.length,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///style.css.tmpl',
+        'templjs-markdown',
+        snapshot
+      );
+      const helpers = virtualCode as unknown as {
+        isSimpleEdit: (removedText: string, insertedText: string) => boolean;
+      };
+
+      expect(helpers.isSimpleEdit('{', 'x')).toBe(true);
+      expect(helpers.isSimpleEdit('', '#')).toBe(true);
+      expect(helpers.isSimpleEdit('', '%')).toBe(true);
+      expect(helpers.isSimpleEdit('{{', '')).toBe(false);
+      expect(helpers.isSimpleEdit('', '{%')).toBe(false);
+      expect(helpers.isSimpleEdit('', '#}')).toBe(false);
+    });
+
     it('should handle template marker edits using bounded window', () => {
       // Create document with template markup
       const initialContent = 'Line 1\nLine 2 with {{ var }}\nLine 3\nLine 4';
@@ -346,7 +373,388 @@ describe('LanguagePlugin', () => {
       expect(updated.snapshot).toBe(updateSnapshot);
     });
 
+    it('should regenerate accurate position mappings after incremental edits', () => {
+      // Regression test: verify mappings aren't discarded with empty array
+      // Create document with template markers
+      const initialContent = 'Title\n\n{{ variable }}\n\nContent here';
+      const initialSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return initialContent;
+          return initialContent.slice(start, end);
+        },
+        getLength: () => initialContent.length,
+        getChangeRange: function (oldSnapshot?: any) {
+          if (!oldSnapshot) return undefined;
+          return undefined;
+        },
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///test.md.tmpl',
+        'templjs-markdown',
+        initialSnapshot
+      );
+
+      if (!virtualCode) {
+        throw new Error('Failed to create initial virtual code');
+      }
+
+      // Verify initial mappings exist and are valid
+      expect(virtualCode.mappings).toBeDefined();
+      expect(virtualCode.mappings.length).toBeGreaterThan(0);
+
+      // Apply a simple edit (no template markers in change)
+      const updatedContent = 'Title\n\n{{ variable }}\n\nContent here with more text';
+      const updateSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return updatedContent;
+          return updatedContent.slice(start, end);
+        },
+        getLength: () => updatedContent.length,
+        getChangeRange: function (oldSnapshot?: any) {
+          if (!oldSnapshot || oldSnapshot === initialSnapshot) {
+            return {
+              span: { start: 31, length: 0 },
+              newLength: 15, // " with more text"
+            };
+          }
+          return undefined;
+        },
+      };
+
+      const updated = plugin.updateVirtualCode('file:///test.md.tmpl', virtualCode, updateSnapshot);
+
+      // Verify mappings were regenerated, not discarded
+      expect(updated.mappings).toBeDefined();
+      expect(updated.mappings.length).toBeGreaterThan(0);
+
+      // Mappings should still be valid after the edit
+      expect(updated.mappings[0]).toBeDefined();
+      expect(updated.mappings[0].sourceOffsets).toBeDefined();
+      expect(updated.mappings[0].generatedOffsets).toBeDefined();
+      expect(updated.mappings[0].data).toBeDefined();
+
+      // Position mapping should still work (no empty array regression)
+      expect(updated.snapshot).toBe(updateSnapshot);
+    });
+
+    it('should regenerate accurate position mappings after template marker edits', () => {
+      // Regression test: verify mappings are accurate after bounded window reprocessing
+      const initialContent = 'Start\n\nMiddle\n\nEnd';
+      const initialSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return initialContent;
+          return initialContent.slice(start, end);
+        },
+        getLength: () => initialContent.length,
+        getChangeRange: function (oldSnapshot?: any) {
+          if (!oldSnapshot) return undefined;
+          return undefined;
+        },
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///test.md.tmpl',
+        'templjs-markdown',
+        initialSnapshot
+      );
+
+      if (!virtualCode) {
+        throw new Error('Failed to create initial virtual code');
+      }
+
+      // Add template markers (triggers bounded window reprocessing)
+      const updatedContent = 'Start\n\n{% if true %}Middle{% endif %}\n\nEnd';
+      const updateSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return updatedContent;
+          return updatedContent.slice(start, end);
+        },
+        getLength: () => updatedContent.length,
+        getChangeRange: function (oldSnapshot?: any) {
+          if (!oldSnapshot || oldSnapshot === initialSnapshot) {
+            return {
+              span: { start: 7, length: 6 },
+              newLength: 29, // "{% if true %}Middle{% endif %}"
+            };
+          }
+          return undefined;
+        },
+      };
+
+      const updated = plugin.updateVirtualCode('file:///test.md.tmpl', virtualCode, updateSnapshot);
+
+      // Verify mappings exist and are valid after template marker edit
+      expect(updated.mappings).toBeDefined();
+      expect(updated.mappings.length).toBeGreaterThan(0);
+      expect(updated.mappings[0].sourceOffsets).toBeDefined();
+      expect(updated.mappings[0].generatedOffsets).toBeDefined();
+      expect(updated.mappings[0].lengths).toBeDefined();
+      expect(updated.mappings[0].data).toBeDefined();
+
+      // Verify mapping data includes expected features
+      expect(updated.mappings[0].data.verification).toBe(true);
+      expect(updated.mappings[0].data.completion).toBe(true);
+    });
+
+    it('keeps cleaned output identical to full rebuild for bounded edits with earlier multiline templates', () => {
+      // Regression test for mapOriginalToCleaned: proportional mapping can drift when
+      // earlier multiline template blocks compress cleaned offsets.
+      const initialContent = [
+        'Header',
+        '{% if user %}',
+        'A'.repeat(2500),
+        'B'.repeat(2500),
+        '{% endif %}',
+        'Body line one',
+        'Body line two',
+        'Footer',
+      ].join('\n');
+
+      const initialSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return initialContent;
+          return initialContent.slice(start, end);
+        },
+        getLength: () => initialContent.length,
+        getChangeRange: () => undefined,
+      };
+
+      const incrementalPlugin = createTempljsLanguagePlugin();
+      const virtualCode = incrementalPlugin.createVirtualCode(
+        'file:///regression.md.tmpl',
+        'templjs-markdown',
+        initialSnapshot
+      );
+
+      const target = 'Body line two';
+      const targetStart = initialContent.indexOf(target);
+      const replacement = '{% if enabled %}Body line two{% endif %}';
+      const updatedContent =
+        initialContent.slice(0, targetStart) +
+        replacement +
+        initialContent.slice(targetStart + target.length);
+
+      const updateSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return updatedContent;
+          return updatedContent.slice(start, end);
+        },
+        getLength: () => updatedContent.length,
+        getChangeRange: (oldSnapshot?: unknown) => {
+          if (!oldSnapshot || oldSnapshot === initialSnapshot) {
+            return {
+              span: { start: targetStart, length: target.length },
+              newLength: replacement.length,
+            };
+          }
+          return undefined;
+        },
+      };
+
+      const incremental = incrementalPlugin.updateVirtualCode(
+        'file:///regression.md.tmpl',
+        virtualCode,
+        updateSnapshot
+      );
+
+      // Compare against ground truth from full rebuild of the final content.
+      const rebuildPlugin = createTempljsLanguagePlugin();
+      const rebuilt = rebuildPlugin.createVirtualCode(
+        'file:///regression.md.tmpl',
+        'templjs-markdown',
+        {
+          getText: (start?: number, end?: number) => {
+            if (start === undefined || end === undefined) return updatedContent;
+            return updatedContent.slice(start, end);
+          },
+          getLength: () => updatedContent.length,
+          getChangeRange: () => undefined,
+        }
+      );
+
+      expect((incremental as any).cleaned).toBe((rebuilt as any).cleaned);
+      expect((incremental as any).original).toBe(updatedContent);
+    });
+
+    it('maps original offsets to exact cleaned offsets for multiline template content', () => {
+      // Regression test for mapOriginalToCleaned: verify exact offsets, not proportional estimates.
+      const content = [
+        'Header',
+        '{#',
+        'A'.repeat(1500),
+        'B'.repeat(1500),
+        '#}',
+        'Body line one',
+        'Body line two',
+      ].join('\n');
+
+      const snapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return content;
+          return content.slice(start, end);
+        },
+        getLength: () => content.length,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///offsets.md.tmpl',
+        'templjs-markdown',
+        snapshot
+      ) as any;
+
+      const expectedOriginalToCleaned = (source: string, originalOffset: number): number => {
+        const clamped = Math.max(0, Math.min(originalOffset, source.length));
+        const templatePattern = /(\{[%#{][\s\S]*?[%#}]\})/g;
+
+        let cleanedPos = 0;
+        let lastIndex = 0;
+        let match: RegExpExecArray | null;
+
+        while ((match = templatePattern.exec(source)) !== null) {
+          const blockStart = match.index;
+          const blockText = match[0];
+          const blockEnd = blockStart + blockText.length;
+
+          if (clamped <= blockStart) {
+            return cleanedPos + (clamped - lastIndex);
+          }
+
+          cleanedPos += blockStart - lastIndex;
+
+          const firstNewline = blockText.indexOf('\n');
+
+          if (clamped <= blockEnd) {
+            const rel = clamped - blockStart;
+            let relMapped = 0;
+
+            for (let i = 0; i < rel; i++) {
+              const ch = blockText[i];
+              const advance = firstNewline === -1 || i < firstNewline ? 1 : ch === '\n' ? 1 : 0;
+              relMapped += advance;
+            }
+
+            return cleanedPos + relMapped;
+          }
+
+          for (let i = 0; i < blockText.length; i++) {
+            const ch = blockText[i];
+            const advance = firstNewline === -1 || i < firstNewline ? 1 : ch === '\n' ? 1 : 0;
+            cleanedPos += advance;
+          }
+
+          lastIndex = blockEnd;
+        }
+
+        return cleanedPos + (clamped - lastIndex);
+      };
+
+      const checkpoints = new Set<number>([
+        0,
+        content.indexOf('{#'),
+        content.indexOf('Body line one'),
+        content.indexOf('Body line two'),
+        content.length,
+      ]);
+
+      // Sample many offsets to ensure non-linear regions are covered.
+      for (let offset = 0; offset <= content.length; offset += 137) {
+        checkpoints.add(offset);
+      }
+
+      for (const offset of checkpoints) {
+        const expected = expectedOriginalToCleaned(content, offset);
+        const actual = virtualCode.mapOriginalToCleaned(offset);
+        expect(actual).toBe(expected);
+      }
+    });
+
+    it('should correctly map offsets when applying simple edits after bounded edits', () => {
+      // Regression test: verify offset mapping works when original and cleaned diverge
+      // Step 1: Create initial content
+      const initialContent = 'Header\n\nContent\n\nFooter';
+      const initialSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return initialContent;
+          return initialContent.slice(start, end);
+        },
+        getLength: () => initialContent.length,
+        getChangeRange: function (oldSnapshot?: any) {
+          if (!oldSnapshot) return undefined;
+          return undefined;
+        },
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///test.md.tmpl',
+        'templjs-markdown',
+        initialSnapshot
+      );
+
+      if (!virtualCode) {
+        throw new Error('Failed to create initial virtual code');
+      }
+
+      // Step 2: Apply an edit that adds template markers (forces bounded window processing)
+      // This may cause original and cleaned to have different lengths
+      const withTemplateContent = 'Header\n\n{% block %}Content{% endblock %}\n\nFooter';
+      const templateSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return withTemplateContent;
+          return withTemplateContent.slice(start, end);
+        },
+        getLength: () => withTemplateContent.length,
+        getChangeRange: function (oldSnapshot?: any) {
+          if (!oldSnapshot || oldSnapshot === initialSnapshot) {
+            return {
+              span: { start: 9, length: 7 },
+              newLength: 30, // "{% block %}Content{% endblock %}"
+            };
+          }
+          return undefined;
+        },
+      };
+
+      const afterTemplate = plugin.updateVirtualCode(
+        'file:///test.md.tmpl',
+        virtualCode,
+        templateSnapshot
+      );
+
+      // Step 3: Apply a simple edit (no template markers) after the template region
+      // This edit should use correct offset mapping for cleaned text
+      const finalContent = 'Header\n\n{% block %}Content{% endblock %}\n\nFooter text';
+      const finalSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return finalContent;
+          return finalContent.slice(start, end);
+        },
+        getLength: () => finalContent.length,
+        getChangeRange: function (oldSnapshot?: any) {
+          if (!oldSnapshot || oldSnapshot === templateSnapshot) {
+            return {
+              span: { start: 47, length: 0 },
+              newLength: 5, // " text"
+            };
+          }
+          return undefined;
+        },
+      };
+
+      const final = plugin.updateVirtualCode('file:///test.md.tmpl', afterTemplate, finalSnapshot);
+
+      // Verify the final virtual code is valid and didn't corrupt cleaned text
+      expect(final).toBeDefined();
+      expect(final.languageId).toBe('markdown');
+      expect(final.snapshot).toBe(finalSnapshot);
+      expect(final.mappings).toBeDefined();
+      expect(final.mappings.length).toBeGreaterThan(0);
+    });
+
     it('falls back to full rebuild when bounded edit window cannot be found', () => {
+      // Create content with large blocks without newlines to force window expansion beyond MAX_WINDOW_SIZE (5000)
+      // The 8000-char block has no line breaks, so finding window boundaries will exceed the size limit
       const huge = 'x'.repeat(8000);
       const initialContent = `${huge}\n{{ value }}\n${huge}`;
       const initialSnapshot = {
@@ -411,6 +819,121 @@ describe('LanguagePlugin', () => {
       expect(updated).toBeDefined();
       expect(updated.languageId).toBe('markdown');
       expect(updated.snapshot).toBe(snapshot);
+    });
+  });
+
+  describe('Custom delimiter integration', () => {
+    it('supports custom delimiters end-to-end across diagnostics and intellisense', () => {
+      const provider = new IntellisenseProvider();
+      const schema = {
+        type: 'object',
+        properties: {
+          user: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+            },
+          },
+        },
+      };
+
+      const delimiters = {
+        statementStart: '<<',
+        statementEnd: '>>',
+        expressionStart: '<:',
+        expressionEnd: ':>',
+        commentStart: '<#',
+        commentEnd: '#>',
+      };
+
+      const template = '<< if user.name >>\nHello <: user.name :>\n<< endif >>';
+
+      const diagnostics = collectDiagnostics(template, { schema, delimiters });
+      expect(diagnostics).toHaveLength(0);
+
+      const completions = provider.getCompletions('<: us :>', 4, {
+        schema,
+        delimiters,
+      });
+      expect(completions.some((item) => item.label === 'user')).toBe(true);
+
+      const hover = provider.getHover('<: user.name :>', 6, {
+        schema,
+        delimiters,
+      });
+      expect(hover?.contents).toContain('user.name');
+    });
+
+    it('supports custom delimiters in virtual-code create/update flow', () => {
+      const customPlugin = createTempljsLanguagePlugin({
+        delimiters: {
+          statementStart: '<<',
+          statementEnd: '>>',
+          expressionStart: '<:',
+          expressionEnd: ':>',
+          commentStart: '<#',
+          commentEnd: '#>',
+        },
+      });
+
+      const initialContent = 'Header\nValue: <: user.name :>\nFooter';
+      const initialSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return initialContent;
+          return initialContent.slice(start, end);
+        },
+        getLength: () => initialContent.length,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = customPlugin.createVirtualCode(
+        'file:///custom.md.tmpl',
+        'templjs-markdown',
+        initialSnapshot
+      );
+
+      if (!virtualCode) {
+        throw new Error('Failed to create initial virtual code');
+      }
+
+      const replacement = '<< if user.name >>Value: <: user.name :><< endif >>';
+      const target = 'Value: <: user.name :>';
+      const start = initialContent.indexOf(target);
+      const updatedContent =
+        initialContent.slice(0, start) + replacement + initialContent.slice(start + target.length);
+
+      const updateSnapshot = {
+        getText: (snapshotStart?: number, snapshotEnd?: number) => {
+          if (snapshotStart === undefined || snapshotEnd === undefined) return updatedContent;
+          return updatedContent.slice(snapshotStart, snapshotEnd);
+        },
+        getLength: () => updatedContent.length,
+        getChangeRange: (oldSnapshot?: unknown) => {
+          if (!oldSnapshot || oldSnapshot === initialSnapshot) {
+            return {
+              span: { start, length: target.length },
+              newLength: replacement.length,
+            };
+          }
+          return undefined;
+        },
+      };
+
+      const updated = customPlugin.updateVirtualCode(
+        'file:///custom.md.tmpl',
+        virtualCode,
+        updateSnapshot
+      );
+
+      expect(updated).toBeDefined();
+      expect(updated.snapshot).toBe(updateSnapshot);
+      expect(updated.languageId).toBe('markdown');
+
+      const updatedAccess = updated as unknown as { cleaned: string };
+      expect(updatedAccess.cleaned).not.toContain('<<');
+      expect(updatedAccess.cleaned).not.toContain('>>');
+      expect(updatedAccess.cleaned).not.toContain('<:');
+      expect(updatedAccess.cleaned).not.toContain(':>');
     });
   });
 

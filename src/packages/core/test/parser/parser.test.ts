@@ -9,7 +9,7 @@ import type {
   BlockNode,
   VariableNode,
   LiteralNode,
-} from '../../src/parser/types';
+} from '../../src/parser/types.js';
 
 describe('parse', () => {
   describe('Parser - Basic Functionality', () => {

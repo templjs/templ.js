@@ -5,7 +5,7 @@ import {
   RangeMapper,
   generatePositionMappings,
   type PositionMapping,
-} from '../src/position-mapping';
+} from '../src/position-mapping.js';
 
 describe('PositionMapper', () => {
   it('should map single position from original to cleaned', () => {

@@ -10,6 +10,12 @@
 
 import type { CodeInformation, LanguagePlugin, VirtualCode } from '@volar/language-core';
 import type * as ts from 'typescript';
+import {
+  buildDelimiterPairPattern,
+  buildTemplateBlockPattern,
+  resolveDelimiters,
+  type DelimiterConfig as TemplateDelimiterConfig,
+} from './template-delimiters.js';
 
 // Export semantic token provider
 export {
@@ -41,6 +47,30 @@ const EXTENSION_TO_BASE_FORMAT: Record<string, BaseFormat> = {
 };
 
 const TEMPLATE_MARKERS = ['.templ.', '.tmpl.'] as const;
+
+interface CompiledDelimiterPatterns {
+  delimiters: TemplateDelimiterConfig;
+  delimiterPairPattern: RegExp;
+  templateBlockPattern: RegExp;
+}
+
+export interface TempljsLanguagePluginOptions {
+  delimiters?: Partial<TemplateDelimiterConfig>;
+}
+
+function compileDelimiterPatterns(
+  delimiters: Partial<TemplateDelimiterConfig> = {}
+): CompiledDelimiterPatterns {
+  const resolvedDelimiters = resolveDelimiters(delimiters);
+  const delimiterPairPattern = buildDelimiterPairPattern(resolvedDelimiters);
+  const templateBlockPattern = buildTemplateBlockPattern(resolvedDelimiters);
+
+  return {
+    delimiters: resolvedDelimiters,
+    delimiterPairPattern,
+    templateBlockPattern,
+  };
+}
 
 const DEFAULT_CODE_INFORMATION: CodeInformation = {
   verification: true,
@@ -112,6 +142,9 @@ class TempljsVirtualCode implements VirtualCode {
   private baseFormat: BaseFormat;
   private original: string;
   private cleaned: string;
+  private readonly delimiterPairPattern: RegExp;
+  private readonly templateBlockPattern: RegExp;
+  private originalToCleanedOffsets: number[] = [0];
   mappings: Array<{
     sourceOffsets: number[];
     generatedOffsets: number[];
@@ -120,15 +153,27 @@ class TempljsVirtualCode implements VirtualCode {
   }> = [];
   embeddedCodes: VirtualCode[] = [];
 
-  constructor(original: string, baseFormat: BaseFormat, snapshot: ts.IScriptSnapshot) {
+  constructor(
+    original: string,
+    baseFormat: BaseFormat,
+    snapshot: ts.IScriptSnapshot,
+    patterns: CompiledDelimiterPatterns
+  ) {
     this.baseFormat = baseFormat;
     this.languageId = getBaseFormatLanguageId(baseFormat);
     this.snapshot = snapshot;
     this.original = original;
+    this.delimiterPairPattern = patterns.delimiterPairPattern;
+    this.templateBlockPattern = patterns.templateBlockPattern;
 
     // Generate cleaned code (strip template syntax)
-    const { cleaned, mappings: positionMappings } = this.stripTemplateSyntax(original);
+    const {
+      cleaned,
+      mappings: positionMappings,
+      originalToCleanedOffsets,
+    } = this.stripTemplateSyntax(original);
     this.cleaned = cleaned;
+    this.originalToCleanedOffsets = originalToCleanedOffsets;
 
     // Create position mappings for accurate error reporting
     this.mappings = this.createMappings(original, cleaned, positionMappings);
@@ -155,19 +200,34 @@ class TempljsVirtualCode implements VirtualCode {
     }
 
     this.snapshot = snapshot;
-    this.mappings = this.createMappings(this.original, this.cleaned, []);
+
+    // Regenerate accurate cleaned text + position mappings after the edit
+    const {
+      cleaned,
+      mappings: freshMappings,
+      originalToCleanedOffsets,
+    } = this.stripTemplateSyntax(this.original);
+    this.cleaned = cleaned;
+    this.originalToCleanedOffsets = originalToCleanedOffsets;
+    this.mappings = this.createMappings(this.original, this.cleaned, freshMappings);
+
     return this;
   }
 
   private rebuildFromSnapshot(snapshot: ts.IScriptSnapshot, baseFormat: BaseFormat): void {
     const source = snapshot.getText(0, snapshot.getLength());
-    const { cleaned, mappings: positionMappings } = this.stripTemplateSyntax(source);
+    const {
+      cleaned,
+      mappings: positionMappings,
+      originalToCleanedOffsets,
+    } = this.stripTemplateSyntax(source);
 
     this.baseFormat = baseFormat;
     this.languageId = getBaseFormatLanguageId(baseFormat);
     this.snapshot = snapshot;
     this.original = source;
     this.cleaned = cleaned;
+    this.originalToCleanedOffsets = originalToCleanedOffsets;
     this.mappings = this.createMappings(source, cleaned, positionMappings);
   }
 
@@ -176,10 +236,23 @@ class TempljsVirtualCode implements VirtualCode {
 
     // Simple case: no template markers involved, apply edit directly
     if (this.isSimpleEdit(removedText, insertedText)) {
+      // Map original offsets to cleaned offsets (they may have diverged after bounded edits)
+      const mappedStart = this.mapOriginalOffsetToCleaned(start);
+      const mappedEnd = this.mapOriginalOffsetToCleaned(start + deleteLength);
+
+      if (mappedStart === null || mappedEnd === null || mappedEnd < mappedStart) {
+        // Mapping failed, fall back to bounded edit
+        return this.applyBoundedEdit(start, deleteLength, insertedText);
+      }
+
+      // Apply edit to original (using original offsets)
       this.original =
         this.original.slice(0, start) + insertedText + this.original.slice(start + deleteLength);
+
+      // Apply edit to cleaned (using mapped offsets)
       this.cleaned =
-        this.cleaned.slice(0, start) + insertedText + this.cleaned.slice(start + deleteLength);
+        this.cleaned.slice(0, mappedStart) + insertedText + this.cleaned.slice(mappedEnd);
+
       return true;
     }
 
@@ -188,7 +261,9 @@ class TempljsVirtualCode implements VirtualCode {
   }
 
   private isSimpleEdit(removedText: string, insertedText: string): boolean {
-    return !/[{}%#]/.test(removedText) && !/[{}%#]/.test(insertedText);
+    return (
+      !this.delimiterPairPattern.test(removedText) && !this.delimiterPairPattern.test(insertedText)
+    );
   }
 
   /**
@@ -269,18 +344,68 @@ class TempljsVirtualCode implements VirtualCode {
   }
 
   /**
-   * Map position in original text to approximate position in cleaned text.
-   * This is a simple linear approximation for window boundary calculation.
+   * Map position in original text to exact position in cleaned text.
    */
   private mapOriginalToCleaned(originalPos: number): number {
-    if (this.original.length === 0) return 0;
+    if (this.originalToCleanedOffsets.length === 0) {
+      return 0;
+    }
 
-    // Simple proportional mapping
-    const ratio = this.cleaned.length / this.original.length;
-    const mapped = Math.floor(originalPos * ratio);
+    const clamped = Math.max(0, Math.min(originalPos, this.original.length));
+    const mapped = this.originalToCleanedOffsets[clamped];
 
-    // Clamp to valid range
-    return Math.max(0, Math.min(mapped, this.cleaned.length));
+    if (mapped === undefined) {
+      return this.originalToCleanedOffsets[this.originalToCleanedOffsets.length - 1] ?? 0;
+    }
+
+    return mapped;
+  }
+
+  /**
+   * Map position in original text to exact position in cleaned text.
+   * Returns null if accurate mapping cannot be determined.
+   */
+  private mapOriginalOffsetToCleaned(originalPos: number): number | null {
+    // If lengths match, texts are still aligned (initial state or only simple edits)
+    if (this.original.length === this.cleaned.length) {
+      return Math.max(0, Math.min(originalPos, this.cleaned.length));
+    }
+
+    // If lengths differ, we need to account for potential divergence
+    // Walk through both strings to find corresponding position
+    let origIdx = 0;
+    let cleanIdx = 0;
+
+    // Scan to find the mapped position
+    while (
+      origIdx < originalPos &&
+      origIdx < this.original.length &&
+      cleanIdx < this.cleaned.length
+    ) {
+      // If characters match, advance both
+      if (this.original[origIdx] === this.cleaned[cleanIdx]) {
+        origIdx++;
+        cleanIdx++;
+      } else {
+        // Check if this is a template marker region in original
+        // If we find a mismatch, we can't reliably map - return null
+        // This indicates the texts have diverged in a complex way
+        return null;
+      }
+    }
+
+    // If we've reached the target position in original, return cleaned position
+    if (origIdx === originalPos) {
+      return cleanIdx;
+    }
+
+    // If original position is beyond the scanned region, use proportional approximation
+    if (origIdx >= this.original.length) {
+      return this.cleaned.length;
+    }
+
+    // Couldn't determine accurate mapping
+    return null;
   }
 
   /**
@@ -289,14 +414,17 @@ class TempljsVirtualCode implements VirtualCode {
   private stripTemplateSyntax(source: string): {
     cleaned: string;
     mappings: Array<{ src: number; dst: number }>;
+    originalToCleanedOffsets: number[];
   } {
     const mappings: Array<{ src: number; dst: number }> = [];
+    const originalToCleanedOffsets = new Array<number>(source.length + 1);
     let cleaned = '';
     let dstPos = 0;
+    let srcPos = 0;
 
-    // Simple regex-based stripping for now
-    // Matches: {% ... %}, {{ ... }}, {# ... #}
-    const templatePattern = /(\{[%#{][\s\S]*?[%#}]\})/g;
+    originalToCleanedOffsets[0] = 0;
+
+    const templatePattern = new RegExp(this.templateBlockPattern.source, 'g');
     let lastIndex = 0;
     let match;
 
@@ -304,7 +432,11 @@ class TempljsVirtualCode implements VirtualCode {
       // Add content before template block
       const beforeBlock = source.substring(lastIndex, match.index);
       cleaned += beforeBlock;
-      dstPos += beforeBlock.length;
+      for (let i = 0; i < beforeBlock.length; i++) {
+        srcPos++;
+        dstPos++;
+        originalToCleanedOffsets[srcPos] = dstPos;
+      }
 
       // Replace template block with whitespace (preserve line structure)
       const templateBlock = match[0];
@@ -314,7 +446,14 @@ class TempljsVirtualCode implements VirtualCode {
         .join('');
 
       cleaned += placeholder;
-      dstPos += placeholder.length;
+      const firstNewline = templateBlock.indexOf('\n');
+      for (let i = 0; i < templateBlock.length; i++) {
+        const ch = templateBlock[i];
+        const advance = firstNewline === -1 || i < firstNewline ? 1 : ch === '\n' ? 1 : 0;
+        srcPos++;
+        dstPos += advance;
+        originalToCleanedOffsets[srcPos] = dstPos;
+      }
 
       mappings.push({
         src: lastIndex,
@@ -327,8 +466,13 @@ class TempljsVirtualCode implements VirtualCode {
     // Add remaining content
     const remaining = source.substring(lastIndex);
     cleaned += remaining;
+    for (let i = 0; i < remaining.length; i++) {
+      srcPos++;
+      dstPos++;
+      originalToCleanedOffsets[srcPos] = dstPos;
+    }
 
-    return { cleaned, mappings };
+    return { cleaned, mappings, originalToCleanedOffsets };
   }
 
   /**
@@ -367,11 +511,16 @@ export const version = '0.1.0';
 
 class TempljsLanguagePlugin implements LanguagePlugin {
   private readonly virtualCodeByUri = new Map<string, TempljsVirtualCode>();
+  private readonly patterns: CompiledDelimiterPatterns;
+
+  constructor(options: TempljsLanguagePluginOptions = {}) {
+    this.patterns = compileDelimiterPatterns(options.delimiters);
+  }
 
   createVirtualCode(uri: string, _languageId: string, snapshot: ts.IScriptSnapshot): VirtualCode {
     const baseFormat = detectBaseFormat(uri);
     const source = snapshot.getText(0, snapshot.getLength());
-    const virtualCode = new TempljsVirtualCode(source, baseFormat, snapshot);
+    const virtualCode = new TempljsVirtualCode(source, baseFormat, snapshot, this.patterns);
     this.virtualCodeByUri.set(uri, virtualCode);
     return virtualCode;
   }
@@ -386,7 +535,7 @@ class TempljsLanguagePlugin implements LanguagePlugin {
 
     if (!(cachedVirtualCode instanceof TempljsVirtualCode)) {
       const source = snapshot.getText(0, snapshot.getLength());
-      const rebuilt = new TempljsVirtualCode(source, baseFormat, snapshot);
+      const rebuilt = new TempljsVirtualCode(source, baseFormat, snapshot, this.patterns);
       this.virtualCodeByUri.set(uri, rebuilt);
       return rebuilt;
     }
@@ -411,8 +560,10 @@ class TempljsLanguagePlugin implements LanguagePlugin {
  * 3. Delegates to base format language servers (markdown, JSON, etc.)
  * 4. Maintains position mappings for accurate error reporting
  */
-export function createTempljsLanguagePlugin(): LanguagePlugin {
-  return new TempljsLanguagePlugin();
+export function createTempljsLanguagePlugin(
+  options: TempljsLanguagePluginOptions = {}
+): LanguagePlugin {
+  return new TempljsLanguagePlugin(options);
 }
 
 export default {

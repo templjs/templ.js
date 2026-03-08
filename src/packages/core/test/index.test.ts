@@ -8,7 +8,7 @@ import core, {
   renderTemplate,
   validateTemplate,
   version,
-} from '../src/index';
+} from '../src/index.js';
 import { QueryEngine } from '../src/query-engine/query-engine.js';
 
 describe('core entrypoint', () => {

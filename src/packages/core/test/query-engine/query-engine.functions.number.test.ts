@@ -9,7 +9,7 @@ import {
   product as productNumberHandler,
   round as roundNumberHandler,
   toFixed as toFixedNumberHandler,
-} from '../../src/query-engine/functions/number-functions';
+} from '../../src/query-engine/functions/number-functions.js';
 
 const engine = new QueryEngine();
 

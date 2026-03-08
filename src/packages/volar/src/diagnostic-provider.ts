@@ -1,6 +1,7 @@
 import { SchemaValidator, type JSONSchema } from '@templjs/core';
 import type { IntellisenseDelimiters } from './intellisense-provider.js';
 import { LineColumnMapper, RangeMapper, generatePositionMappings } from './position-mapping.js';
+import { buildBlockPattern, resolveDelimiters, DEFAULT_DELIMITERS } from './template-delimiters.js';
 
 export enum DiagnosticSeverity {
   Error = 1,
@@ -35,15 +36,6 @@ export interface DiagnosticOptions {
   delimiters?: Partial<TemplateDelimiters>;
   baseDiagnostics?: DiagnosticItem[];
 }
-
-const DEFAULT_DELIMITERS: TemplateDelimiters = {
-  statementStart: '{%',
-  statementEnd: '%}',
-  expressionStart: '{{',
-  expressionEnd: '}}',
-  commentStart: '{#',
-  commentEnd: '#}',
-};
 
 const DEFAULT_FILTERS = new Set([
   'upper',
@@ -81,21 +73,13 @@ interface BlockStackEntry {
   start: number;
 }
 
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 function getDelimiters(options?: DiagnosticOptions): TemplateDelimiters {
-  return { ...DEFAULT_DELIMITERS, ...(options?.delimiters ?? {}) };
-}
-
-function buildBlockRegex(start: string, end: string): RegExp {
-  return new RegExp(`${escapeRegex(start)}[\\s\\S]*?${escapeRegex(end)}`, 'g');
+  return resolveDelimiters(options?.delimiters);
 }
 
 function extractBlocks(text: string, start: string, end: string): BlockMatch[] {
   const blocks: BlockMatch[] = [];
-  const regex = buildBlockRegex(start, end);
+  const regex = buildBlockPattern(start, end);
   let match: RegExpExecArray | null;
 
   while ((match = regex.exec(text)) !== null) {
@@ -359,9 +343,9 @@ export function remapDiagnosticsToOriginal(
 ): DiagnosticItem[] {
   if (baseDiagnostics.length === 0) return [];
 
-  const templateRegex = buildBlockRegex(delimiters.statementStart, delimiters.statementEnd);
-  const expressionRegex = buildBlockRegex(delimiters.expressionStart, delimiters.expressionEnd);
-  const commentRegex = buildBlockRegex(delimiters.commentStart, delimiters.commentEnd);
+  const templateRegex = buildBlockPattern(delimiters.statementStart, delimiters.statementEnd);
+  const expressionRegex = buildBlockPattern(delimiters.expressionStart, delimiters.expressionEnd);
+  const commentRegex = buildBlockPattern(delimiters.commentStart, delimiters.commentEnd);
 
   const combinedRegex = new RegExp(
     `${templateRegex.source}|${expressionRegex.source}|${commentRegex.source}`,

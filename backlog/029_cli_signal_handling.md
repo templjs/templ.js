@@ -39,6 +39,20 @@ test_results:
       - Added deterministic JSON success/error envelopes for render/validate/init flows
       - Added integration coverage for quiet suppression, verbose diagnostics, JSON output, and precedence
       - Tests run: `src/packages/cli/test/cli.test.ts` (27 passed), remaining CLI tests set (66 passed)
+  - timestamp: 2026-03-07T00:00:00Z
+    note: |
+      PR #23 review follow-up verification (Volar integration path):
+      - Updated incremental edit classification to detect template delimiter pairs (`{{`, `}}`, `{%`, `%}`, `{#`, `#}`) instead of single symbols
+      - Added regression test ensuring single-symbol edits (`{`, `}`, `%`, `#`) remain simple edits
+      - Added end-to-end custom delimiter integration regression across diagnostics + intellisense
+      - Volar validation run: 212 tests passed (0 failed)
+  - timestamp: 2026-03-07T00:30:00Z
+    note: |
+      Delimiter consistency and E2E regression follow-up:
+      - Refactored delimiter detection/parsing into shared utility (`src/packages/volar/src/template-delimiters.ts`)
+      - Updated Volar index, semantic-token-provider, diagnostic-provider, and intellisense-provider to use shared delimiter helpers
+      - Added full-stack custom delimiter E2E regression suite (`src/packages/volar/test/custom-delimiters.e2e.test.ts`)
+      - Validation: full Volar test suite passed (214 passed, 0 failed)
 ---
 
 ## Goal
@@ -68,7 +82,6 @@ CLI must be a good Unix citizen: handle signals gracefully (SIGINT, SIGPIPE, SIG
   - `--quiet`: No output except errors
   - `--verbose`: Show debug info and timing
   - `--json`: JSON output for machine parsing
-  - Verified in CLI with integration tests on 2026-03-06
 - [x] Implement streaming for large files:
   - Handle >10MB inputs without buffering issues
   - Respect memory limits

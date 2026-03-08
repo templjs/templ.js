@@ -11,13 +11,13 @@ import {
   levenshteinDistance,
   isValidPath,
   normalizePath,
-} from '../../src/schema/queryPathValidator';
+} from '../../src/schema/queryPathValidator.js';
 import {
   inferType,
   inferObjectSchema,
   inferArraySchema,
   mergeSchemas,
-} from '../../src/schema/schemaInference';
+} from '../../src/schema/schemaInference.js';
 
 describe('SchemaValidator', () => {
   describe('Schema Loading and Compilation', () => {

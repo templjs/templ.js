@@ -4,6 +4,13 @@
  * Provides semantic highlighting for template syntax including keywords, variables, and filters.
  */
 
+import {
+  buildBlockPattern,
+  resolveDelimiters,
+  type DelimiterConfig,
+  DEFAULT_DELIMITERS,
+} from './template-delimiters.js';
+
 /**
  * Semantic token types for template syntax highlighting
  */
@@ -103,36 +110,8 @@ export interface TokenInfo {
   modifiers?: string[];
 }
 
-/**
- * Delimiter configuration for template syntax
- */
-export interface DelimiterConfig {
-  commentStart: string;
-  commentEnd: string;
-  statementStart: string;
-  statementEnd: string;
-  expressionStart: string;
-  expressionEnd: string;
-}
-
-/**
- * Default delimiters for template syntax
- */
-export const DEFAULT_DELIMITERS: DelimiterConfig = {
-  commentStart: '{#',
-  commentEnd: '#}',
-  statementStart: '{%',
-  statementEnd: '%}',
-  expressionStart: '{{',
-  expressionEnd: '}}',
-};
-
-/**
- * Escape special regex characters in delimiter
- */
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+export type { DelimiterConfig };
+export { DEFAULT_DELIMITERS };
 
 /**
  * Extract semantic tokens from template text
@@ -144,16 +123,13 @@ export function extractSemanticTokens(
   text: string,
   delimiters: Partial<DelimiterConfig> = {}
 ): TokenInfo[] {
-  const config = { ...DEFAULT_DELIMITERS, ...delimiters };
+  const config = resolveDelimiters(delimiters);
   const tokens: TokenInfo[] = [];
 
   if (!text) return tokens;
 
   // Match template comments
-  const commentPattern = new RegExp(
-    escapeRegex(config.commentStart) + '[\\s\\S]*?' + escapeRegex(config.commentEnd),
-    'g'
-  );
+  const commentPattern = buildBlockPattern(config.commentStart, config.commentEnd);
   let match: RegExpExecArray | null;
 
   commentPattern.lastIndex = 0;
@@ -166,10 +142,7 @@ export function extractSemanticTokens(
   }
 
   // Match template statements
-  const statementPattern = new RegExp(
-    escapeRegex(config.statementStart) + '[\\s\\S]*?' + escapeRegex(config.statementEnd),
-    'g'
-  );
+  const statementPattern = buildBlockPattern(config.statementStart, config.statementEnd);
   statementPattern.lastIndex = 0;
   while ((match = statementPattern.exec(text)) !== null) {
     tokens.push({
@@ -194,10 +167,7 @@ export function extractSemanticTokens(
   }
 
   // Match template expressions
-  const expressionPattern = new RegExp(
-    escapeRegex(config.expressionStart) + '[\\s\\S]*?' + escapeRegex(config.expressionEnd),
-    'g'
-  );
+  const expressionPattern = buildBlockPattern(config.expressionStart, config.expressionEnd);
   expressionPattern.lastIndex = 0;
   while ((match = expressionPattern.exec(text)) !== null) {
     tokens.push({

@@ -6,7 +6,7 @@ import {
   padEnd as padEndStringHandler,
   padStart as padStartStringHandler,
   slice as sliceStringHandler,
-} from '../../src/query-engine/functions/string-functions';
+} from '../../src/query-engine/functions/string-functions.js';
 
 const engine = new QueryEngine();
 

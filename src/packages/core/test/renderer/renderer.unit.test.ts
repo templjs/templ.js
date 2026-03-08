@@ -7,7 +7,7 @@ import type {
   LiteralNode,
   UnaryOpNode,
   VariableNode,
-} from '../../src/parser/types';
+} from '../../src/parser/types.js';
 import { evaluateError, evaluateExpression } from '../../src/renderer/evaluators.js';
 import type { RenderContext } from '../../src/renderer/types.js';
 

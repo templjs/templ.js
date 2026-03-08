@@ -70,6 +70,13 @@ export function writeVerbose(mode: OutputMode, message: string): void {
   process.stderr.write(`[verbose] ${message}\n`);
 }
 
+/**
+ * Writes success output according to the selected output mode.
+ *
+ * In JSON mode, output is newline-terminated.
+ * In text mode, `textOutput` is written as-is via `process.stdout.write(textOutput)`
+ * without appending a trailing `\n` to preserve streaming/chunked output behavior.
+ */
 export function writeSuccess(
   mode: OutputMode,
   payload: JsonSuccessPayload,

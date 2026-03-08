@@ -12,7 +12,7 @@ import {
   streamToString,
   readFileStream,
   createFileWriteStream,
-} from '../src/streaming-io';
+} from '../src/streaming-io.js';
 
 describe('signal-handler', () => {
   afterEach(() => {

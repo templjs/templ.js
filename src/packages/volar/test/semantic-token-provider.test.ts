@@ -9,7 +9,7 @@ import {
   SemanticTokenModifiers,
   SemanticTokenTypes,
   DEFAULT_DELIMITERS,
-} from '../src/semantic-token-provider';
+} from '../src/semantic-token-provider.js';
 
 describe('SemanticTokenProvider', () => {
   describe('Basic Token Types', () => {
