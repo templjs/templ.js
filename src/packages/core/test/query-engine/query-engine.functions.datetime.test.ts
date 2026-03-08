@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { QueryEngine } from '../../src/query-engine/query-engine';
+import { QueryEngine } from '../../src/query-engine/query-engine.js';
 import {
   addDays as addDaysHandler,
   addHours as addHoursHandler,
@@ -17,7 +17,7 @@ import {
   timestamp as timestampDatetimeHandler,
   timezone as timezoneDatetimeHandler,
   toISO as toISOHandler,
-} from '../../src/query-engine/functions/datetime-functions';
+} from '../../src/query-engine/functions/datetime-functions.js';
 
 const engine = new QueryEngine();
 const baseTs = Date.UTC(2024, 1, 18, 12, 34, 56);

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { tokenize } from '../../src/lexer/lexer';
-import { parse } from '../../src/parser/parser';
+import { tokenize } from '../../src/lexer/lexer.js';
+import { parse } from '../../src/parser/parser.js';
 import type {
   ExpressionStatementNode,
   IfNode,
@@ -9,7 +9,7 @@ import type {
   BlockNode,
   VariableNode,
   LiteralNode,
-} from '../../src/parser/types';
+} from '../../src/parser/types.js';
 
 describe('parse', () => {
   describe('Parser - Basic Functionality', () => {

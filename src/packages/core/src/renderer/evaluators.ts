@@ -8,10 +8,10 @@ import type {
   LiteralNode,
   UnaryOpNode,
   VariableNode,
-} from '../parser/types';
-import type { RenderContext, RenderError } from './types';
-import { VariableResolver } from './variable-resolver';
-import { createBuiltinFilterMap } from './filter-engine';
+} from '../parser/types.js';
+import type { RenderContext, RenderError } from './types.js';
+import { VariableResolver } from './variable-resolver.js';
+import { createBuiltinFilterMap } from './filter-engine.js';
 
 type AnyValue = any;
 

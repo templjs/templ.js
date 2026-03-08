@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { QueryEngine } from '../../src/query-engine/query-engine';
+import { QueryEngine } from '../../src/query-engine/query-engine.js';
 import {
   concat as concatArrayHandler,
   filter as filterArrayHandler,
@@ -19,7 +19,7 @@ import {
   sort as sortArrayHandler,
   size as sizeArrayHandler,
   unique as uniqueArrayHandler,
-} from '../../src/query-engine/functions/array-functions';
+} from '../../src/query-engine/functions/array-functions.js';
 
 const engine = new QueryEngine();
 

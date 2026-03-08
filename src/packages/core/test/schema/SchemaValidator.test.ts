@@ -3,21 +3,21 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { SchemaValidator } from '../../src/schema/SchemaValidator';
-import type { JSONSchema } from '../../src/schema/types';
+import { SchemaValidator } from '../../src/schema/SchemaValidator.js';
+import type { JSONSchema } from '../../src/schema/types.js';
 import {
   extractPaths,
   fuzzyMatch,
   levenshteinDistance,
   isValidPath,
   normalizePath,
-} from '../../src/schema/queryPathValidator';
+} from '../../src/schema/queryPathValidator.js';
 import {
   inferType,
   inferObjectSchema,
   inferArraySchema,
   mergeSchemas,
-} from '../../src/schema/schemaInference';
+} from '../../src/schema/schemaInference.js';
 
 describe('SchemaValidator', () => {
   describe('Schema Loading and Compilation', () => {

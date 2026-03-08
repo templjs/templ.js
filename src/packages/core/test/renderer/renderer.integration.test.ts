@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { render, Renderer } from '../../src/renderer/renderer';
-import { parse } from '../../src/parser/parser';
-import type { ASTNode } from '../../src/parser/types';
-import { tokenize } from '../../src/lexer/lexer';
-import { RenderError, RenderResult } from '../../src/renderer/types';
+import { render, Renderer } from '../../src/renderer/renderer.js';
+import { parse } from '../../src/parser/parser.js';
+import type { ASTNode } from '../../src/parser/types.js';
+import { tokenize } from '../../src/lexer/lexer.js';
+import { RenderError, RenderResult } from '../../src/renderer/types.js';
 
 describe('Renderer', () => {
   describe('variable resolution', () => {

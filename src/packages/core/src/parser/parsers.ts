@@ -28,7 +28,7 @@ import type {
   FilterNode,
   VariableNode,
   FunctionCallNode,
-} from './types';
+} from './types.js';
 
 /**
  * Result of binary operator matching with left and right operands

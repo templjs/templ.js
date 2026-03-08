@@ -205,6 +205,119 @@ it('should tokenize expression', () => {
 | **Watch Mode Restart** | <500ms | `nx test --watch`    |
 | **Coverage Report**    | <10s   | `nx test --coverage` |
 
+### Public API Integration Testing
+
+**Critical Requirement**: Every exported function in a package's public API must have integration tests that verify the full call chain without mocking internal dependencies.
+
+#### Why This Matters
+
+Component implementations can pass all unit tests while exported wrapper functions remain unimplemented stubs. This gap occurs when:
+
+1. **Unit tests focus on internal implementations** (e.g., `Renderer` class) ✅
+2. **Public API wrappers are never tested end-to-end** (e.g., `renderTemplate()` function) ❌
+3. **Consumer tests mock the public API** instead of calling it ❌
+
+**Real Example**: WI-007 implemented `Renderer` class with 239 passing tests, but left `renderTemplate()` as a throwing stub. CLI tests mocked `renderTemplate()`, so the issue wasn't caught until manual CLI testing.
+
+#### Testing Requirements
+
+When a work item introduces or modifies public exports:
+
+| Test Type             | Purpose                                           | Mocking Policy                |
+| --------------------- | ------------------------------------------------- | ----------------------------- |
+| **Unit Tests**        | Verify component logic in isolation               | ✅ Mock external deps         |
+| **Integration Tests** | Verify exported functions work end-to-end         | ❌ Use real implementations   |
+| **Public API Tests**  | Verify exports call internal components correctly | ❌ No mocks for internal deps |
+
+#### Implementation Pattern
+
+**❌ Don't do this alone:**
+
+```typescript
+// tests/commands/render.test.ts
+vi.mock('@templjs/core', () => ({
+  renderTemplate: vi.fn(), // This hides implementation gaps!
+}));
+
+it('renders template', async () => {
+  vi.mocked(renderTemplate).mockReturnValue('output');
+  // Test passes even if renderTemplate throws "not implemented"
+});
+```
+
+**✅ Do this in addition:**
+
+```typescript
+// tests/integration/public-api.test.ts
+import { renderTemplate, validateTemplate } from '@templjs/core';
+
+describe('Public API Integration', () => {
+  it('renderTemplate wires lexer → parser → renderer', () => {
+    // No mocks - calls the real implementation
+    const result = renderTemplate('Hello {{name}}!', { name: 'World' });
+    expect(result).toBe('Hello World!');
+  });
+
+  it('validateTemplate uses real parser', () => {
+    const valid = validateTemplate('Hello {{name}}!');
+    expect(valid.valid).toBe(true);
+
+    const invalid = validateTemplate('{{unclosed');
+    expect(invalid.valid).toBe(false);
+    expect(invalid.errors).toBeDefined();
+  });
+});
+```
+
+#### Work Item Acceptance Criteria
+
+Before marking a work item `closed`, verify:
+
+- [ ] **Unit tests**: Components work in isolation (95%+ coverage)
+- [ ] **Integration tests**: Components work together with real dependencies
+- [ ] **Public API tests**: At least one test per exported function without mocking internal deps
+- [ ] **E2E test**: One complete user workflow (CLI, file I/O, etc.)
+- [ ] **No stubs remaining**: Run actual CLI/API calls to verify implementations
+
+#### Test Organization
+
+```bash
+packages/core/
+├── src/
+│   ├── lexer/
+│   │   ├── lexer.ts
+│   │   └── lexer.test.ts           # Unit tests
+│   ├── parser/
+│   │   ├── parser.ts
+│   │   └── parser.test.ts          # Unit tests
+│   ├── renderer/
+│   │   ├── renderer.ts
+│   │   └── renderer.test.ts        # Unit tests
+│   └── index.ts                     # PUBLIC API
+├── test/
+│   ├── integration/
+│   │   ├── public-api.test.ts      # Integration: test index.ts exports
+│   │   └── end-to-end.test.ts      # E2E: full workflows
+│   └── fixtures/
+└── vitest.config.ts
+```
+
+#### Mock Boundaries
+
+**When to mock:**
+
+- External I/O (filesystem, network, database)
+- Time/randomness (dates, Math.random)
+- Third-party services (Stripe, Auth0)
+- Cross-package boundaries in CLI tests
+
+**When NOT to mock:**
+
+- Same-package internal functions
+- Public API exports being tested
+- Lexer → Parser → Renderer chain
+- Core library functions in integration tests
+
 ## CI/CD Integration
 
 ### GitHub Actions Workflow

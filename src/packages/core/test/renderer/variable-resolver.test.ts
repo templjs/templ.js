@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { VariableResolver } from '../../src/renderer/variable-resolver';
+import { VariableResolver } from '../../src/renderer/variable-resolver.js';
 
 describe('VariableResolver', () => {
   const resolver = new VariableResolver();

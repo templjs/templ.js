@@ -8,8 +8,8 @@ import core, {
   renderTemplate,
   validateTemplate,
   version,
-} from '../src/index';
-import { QueryEngine } from '../src/query-engine/query-engine';
+} from '../src/index.js';
+import { QueryEngine } from '../src/query-engine/query-engine.js';
 
 describe('core entrypoint', () => {
   it('exports version', () => {
@@ -17,22 +17,35 @@ describe('core entrypoint', () => {
     expect(core.version).toBe(packageVersion);
   });
 
-  it('creates lexer placeholder with tokenize function', () => {
+  it('creates lexer with tokenize function', () => {
     const lexer = createLexer();
     expect(typeof lexer.tokenize).toBe('function');
-    expect(lexer.tokenize('any input')).toEqual([]);
+    expect(lexer.tokenize('{{name}}')).toBeDefined();
   });
 
-  it('creates parser placeholder with parse function', () => {
+  it('creates parser with parse function', () => {
     const parser = createParser();
     expect(typeof parser.parse).toBe('function');
-    expect(parser.parse([])).toBeNull();
+    const result = parser.parse([]);
+    expect(result).toHaveProperty('ast');
+    expect(result).toHaveProperty('errors');
   });
 
-  it('creates renderer placeholder with render function', () => {
+  it('creates renderer with render function', () => {
     const renderer = createRenderer();
     expect(typeof renderer.render).toBe('function');
-    expect(renderer.render({}, {})).toBe('');
+    const result = renderer.render(
+      {
+        type: 'template',
+        children: [],
+        start: { line: 1, column: 0 },
+        end: { line: 1, column: 0 },
+      },
+      {}
+    );
+    expect(result).toHaveProperty('output');
+    expect(result).toHaveProperty('errors');
+    expect(result).toHaveProperty('success');
   });
 
   it('creates query engine instance', () => {
@@ -40,16 +53,39 @@ describe('core entrypoint', () => {
     expect(engine).toBeInstanceOf(QueryEngine);
   });
 
-  it('throws for renderTemplate until implemented', () => {
-    expect(() => renderTemplate('hello', {})).toThrow(
-      'renderTemplate not yet implemented - implement in Phase 2 (WI-007)'
+  it('renders a simple template', () => {
+    const result = renderTemplate('Hello {{name}}!', { name: 'World' });
+    expect(result).toBe('Hello World!');
+  });
+
+  it('throws parse failures instead of rendering recovered AST', () => {
+    expect(() => renderTemplate('{% if condition %}hello', {})).toThrow(
+      /Render failed: Failed to parse template:/
     );
   });
 
-  it('throws for validateTemplate until implemented', () => {
-    expect(() => validateTemplate('hello')).toThrow(
-      'validateTemplate not yet implemented - implement in Phase 2 (WI-006, WI-025)'
-    );
+  it('does not duplicate render failure prefix', () => {
+    try {
+      renderTemplate('{{ value | unknownFilter }}', { value: 'test' }, { throwOnError: true });
+      throw new Error('Expected renderTemplate to throw');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      expect(message.startsWith('Render failed:')).toBe(true);
+      expect(message).not.toContain('Render failed: Render failed:');
+    }
+  });
+
+  it('validates correct template syntax', () => {
+    const result = validateTemplate('Hello {{name}}!');
+    expect(result.valid).toBe(true);
+    expect(result.errors).toBeUndefined();
+  });
+
+  it('detects invalid template syntax', () => {
+    const result = validateTemplate('{{unclosed');
+    expect(result.valid).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors?.length).toBeGreaterThan(0);
   });
 
   it('default export maps public API functions', () => {

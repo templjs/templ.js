@@ -7,7 +7,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { FunctionSignature, FilterFunction } from '../types';
+import type { FunctionSignature, FilterFunction } from '../types.js';
 
 // Array function signatures
 export const lengthSignature: FunctionSignature = {

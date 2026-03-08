@@ -10,16 +10,16 @@ vi.mock('@templjs/core', () => ({
 
 import { readFileSync } from 'fs';
 import { validateTemplate as coreValidateTemplate } from '@templjs/core';
-import { validateCommand } from '../../src/commands/validate';
+import { validateCommand } from '../../src/commands/validate.js';
 
 describe('validateCommand', () => {
   it.each([
-    { valid: true, expected: true },
-    { valid: false, expected: false },
+    { valid: true, expected: { valid: true, errors: [] } },
+    { valid: false, expected: { valid: false, errors: ['bad'] } },
   ])('returns $expected when core validation is $valid', async ({ valid, expected }) => {
     vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
     vi.mocked(coreValidateTemplate).mockReturnValue({ valid, errors: valid ? [] : ['bad'] });
-    await expect(validateCommand('template.templ')).resolves.toBe(expected);
+    await expect(validateCommand('template.templ')).resolves.toEqual(expected);
 
     expect(readFileSync).toHaveBeenCalledWith('template.templ', 'utf-8');
     expect(coreValidateTemplate).toHaveBeenCalledWith('Hello {{ name }}');
@@ -37,17 +37,14 @@ describe('validateCommand', () => {
   });
 
   it('warns when schema path is provided before core wiring', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    try {
-      vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
-      vi.mocked(coreValidateTemplate).mockReturnValue({ valid: true, errors: [] });
+    vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
+    vi.mocked(coreValidateTemplate).mockReturnValue({ valid: true, errors: [] });
 
-      await expect(validateCommand('template.templ', 'schema.json')).resolves.toBe(true);
-      expect(warnSpy).toHaveBeenCalledWith(
-        'Schema validation flag provided (schema.json) but schema validation is not yet wired in @templjs/core'
-      );
-    } finally {
-      warnSpy.mockRestore();
-    }
+    await expect(validateCommand('template.templ', 'schema.json')).resolves.toEqual({
+      valid: true,
+      errors: [],
+      schemaWarning:
+        'Schema validation flag provided (schema.json) but schema validation is not yet wired in @templjs/core',
+    });
   });
 });

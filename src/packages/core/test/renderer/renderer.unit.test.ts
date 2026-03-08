@@ -7,9 +7,9 @@ import type {
   LiteralNode,
   UnaryOpNode,
   VariableNode,
-} from '../../src/parser/types';
-import { evaluateError, evaluateExpression } from '../../src/renderer/evaluators';
-import type { RenderContext } from '../../src/renderer/types';
+} from '../../src/parser/types.js';
+import { evaluateError, evaluateExpression } from '../../src/renderer/evaluators.js';
+import type { RenderContext } from '../../src/renderer/types.js';
 
 const POS = { line: 1, column: 0 };
 

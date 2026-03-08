@@ -36,6 +36,20 @@ templjs watch template.yaml data.json --output output.yaml
 - `validate` - Check template syntax
 - `watch` - Watch files and regenerate on changes
 
+## Experimental
+
+The `render` command supports an opt-in streaming JSON parser for large inputs:
+
+```bash
+templjs render --template template.templ --input data.json --experimental-stream-json
+```
+
+You can also enable it via environment variable:
+
+```bash
+TEMPLJS_EXPERIMENTAL_STREAM_JSON=1 templjs render --template template.templ --input data.json
+```
+
 ## Status
 
 🚧 **Under Development** - This package is part of the initial monorepo setup and CLI functionality is being implemented.

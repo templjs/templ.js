@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { QueryEngine } from '../../src/query-engine/query-engine';
+import { QueryEngine } from '../../src/query-engine/query-engine.js';
 import {
   avg as avgNumberHandler,
   log as logNumberHandler,
@@ -9,7 +9,7 @@ import {
   product as productNumberHandler,
   round as roundNumberHandler,
   toFixed as toFixedNumberHandler,
-} from '../../src/query-engine/functions/number-functions';
+} from '../../src/query-engine/functions/number-functions.js';
 
 const engine = new QueryEngine();
 

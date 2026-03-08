@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { QueryEngine } from '../../src/query-engine/query-engine';
-import { extendedFunctions, wiBaselineFunctions } from './catalog';
+import { QueryEngine } from '../../src/query-engine/query-engine.js';
+import { extendedFunctions, wiBaselineFunctions } from './catalog.js';
 
 describe('QueryEngine catalog parity', () => {
   it('contains all WI baseline functions', () => {

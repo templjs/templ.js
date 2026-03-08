@@ -4,15 +4,22 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '029: Implement CLI Signal Handling and Advanced I/O'
-status: in-progress
+status: ready-for-review
 priority: critical
 estimated: 6
+actual: 6
 assignee: ''
-pr_number: 23
-pr_url: https://github.com/templjs/templ.js/pull/23
+start_date: 2026-03-05
+commits:
+  fe801d3: 'test(signal-handler): add timeout and non-Error exception coverage'
+  31c23a0: 'fix(signal-handler): prevent infinite hang with handler timeout'
+  9cb775e: 'docs(wi-029): add PR metadata to backlog item'
+  d101044: 'feat(cli): implement WI-029 signal handling, TTY detection, error formatting, and streaming I/O'
 links:
   depends_on:
     - '[[017_cli_commands]]'
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/23
 test_results:
   - timestamp: 2026-03-05T21:50:00Z
     note: |
@@ -25,6 +32,27 @@ test_results:
       - Memory validation: 10MB file streaming runs with < 5MB heap delta
       - All 7 tasks completed, all 8 acceptance criteria met
       - Statement coverage: 98.72% (95% threshold)
+  - timestamp: 2026-03-06T00:00:00Z
+    note: |
+      Follow-up verification for WI-029 verbosity controls:
+      - Implemented global `--quiet`, `--verbose`, and `--json` flags in CLI entrypoint
+      - Added deterministic JSON success/error envelopes for render/validate/init flows
+      - Added integration coverage for quiet suppression, verbose diagnostics, JSON output, and precedence
+      - Tests run: `src/packages/cli/test/cli.test.ts` (27 passed), remaining CLI tests set (66 passed)
+  - timestamp: 2026-03-07T00:00:00Z
+    note: |
+      PR #23 review follow-up verification (Volar integration path):
+      - Updated incremental edit classification to detect template delimiter pairs (`{{`, `}}`, `{%`, `%}`, `{#`, `#}`) instead of single symbols
+      - Added regression test ensuring single-symbol edits (`{`, `}`, `%`, `#`) remain simple edits
+      - Added end-to-end custom delimiter integration regression across diagnostics + intellisense
+      - Volar validation run: 212 tests passed (0 failed)
+  - timestamp: 2026-03-07T00:30:00Z
+    note: |
+      Delimiter consistency and E2E regression follow-up:
+      - Refactored delimiter detection/parsing into shared utility (`src/packages/volar/src/template-delimiters.ts`)
+      - Updated Volar index, semantic-token-provider, diagnostic-provider, and intellisense-provider to use shared delimiter helpers
+      - Added full-stack custom delimiter E2E regression suite (`src/packages/volar/test/custom-delimiters.e2e.test.ts`)
+      - Validation: full Volar test suite passed (214 passed, 0 failed)
 ---
 
 ## Goal
@@ -55,15 +83,15 @@ CLI must be a good Unix citizen: handle signals gracefully (SIGINT, SIGPIPE, SIG
   - `--verbose`: Show debug info and timing
   - `--json`: JSON output for machine parsing
 - [x] Implement streaming for large files:
-  - Handle >1MB inputs without buffering issues
+  - Handle >=10MB inputs without buffering issues
   - Respect memory limits
   - Progress indicators for large renders
-- [ ] Add comprehensive error messages:
+- [x] Add comprehensive error messages:
   - Template syntax errors with context
   - Data parsing errors (JSON/YAML/TOML)
   - File not found with suggestions
   - Permission denied errors
-- [ ] Write 15+ tests for I/O and signals
+- [x] Write 15+ tests for I/O and signals (41 tests total)
 
 ## Deliverables
 
@@ -71,18 +99,18 @@ CLI must be a good Unix citizen: handle signals gracefully (SIGINT, SIGPIPE, SIG
 - TTY-aware stdin/stdout handling
 - Error formatter with context snippets
 - Streaming I/O support
-- 15+ passing I/O tests
+- 41 passing I/O and signal tests (exceeds 15+ requirement)
 
 ## Acceptance Criteria
 
-- [ ] Reads files >10MB efficiently
-- [ ] SIGPIPE exits silently without error
-- [ ] Error messages show code context
-- [ ] Column errors marked with `^`
-- [ ] Ctrl+C exits cleanly (code 130)
-- [ ] TTY detection works (interactive vs pipe)
-- [ ] Works in pipeline: `cat template.tmpl | templjs render --input data.json`
-- [ ] 15+ tests passing
+- [x] Reads files >=10MB efficiently (validated: 10MB file uses < 5MB heap growth)
+- [x] SIGPIPE exits silently without error (exit code 141)
+- [x] Error messages show code context (3 lines before/after)
+- [x] Column errors marked with `^`
+- [x] Ctrl+C exits cleanly (code 130)
+- [x] TTY detection works (interactive vs pipe)
+- [x] Works in pipeline: `cat template.tmpl | templjs render --input data.json`
+- [x] 41 tests passing (exceeds 15+ requirement)
 
 ## Error Context Example
 

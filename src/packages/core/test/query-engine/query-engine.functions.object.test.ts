@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { QueryEngine } from '../../src/query-engine/query-engine';
+import { QueryEngine } from '../../src/query-engine/query-engine.js';
 import {
   assign as assignObjectHandler,
   merge as mergeObjectHandler,
   objectLength as objectLengthHandler,
   omit as omitObjectHandler,
   pick as pickObjectHandler,
-} from '../../src/query-engine/functions/object-functions';
+} from '../../src/query-engine/functions/object-functions.js';
 
 const engine = new QueryEngine();
 

@@ -14,6 +14,12 @@ assignee: ''
 test_results:
   - timestamp: 2026-02-19T08:14:01.077Z
     note: Local hooks and configs exist; external org setup not verified
+  - timestamp: 2026-03-04T12:00:00Z
+    note: |
+      Closure evidence for archived WI-004:
+      - Merged PR: https://github.com/templjs/templ.js/pull/1
+      - CI: passing on merge (lint + tests)
+      - All task checklist items completed and actual effort recorded
 commits:
   22ae441: 'feat(infra): add GitHub templates, CI/CD workflows, and pre-commit hooks'
 links:

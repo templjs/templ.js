@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { QueryEngine } from '../../src/query-engine/query-engine';
+import { QueryEngine } from '../../src/query-engine/query-engine.js';
 import {
   capitalize as capitalizeStringHandler,
   join as joinStringHandler,
   padEnd as padEndStringHandler,
   padStart as padStartStringHandler,
   slice as sliceStringHandler,
-} from '../../src/query-engine/functions/string-functions';
+} from '../../src/query-engine/functions/string-functions.js';
 
 const engine = new QueryEngine();
 

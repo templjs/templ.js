@@ -188,36 +188,49 @@ export function loadConfig(cliFlags: Record<string, unknown> = {}): ResolvedConf
  * Applies config values to command options (as plain object).
  * Config defaults only fill in missing values (not overriding explicit options).
  */
-export function applyConfig(
-  options: Record<string, unknown>,
+export type AppliedConfigOptions = Partial<{
+  template: string;
+  output: string;
+  inputFormat: 'json' | 'yaml' | 'toml' | 'xml';
+  outputFormat: 'text' | 'json' | 'html' | 'markdown';
+  validateInput: boolean;
+  validateOutput: boolean;
+  schema: string;
+}>;
+
+export function applyConfig<TOptions extends object>(
+  options: TOptions,
   config: ResolvedConfig
-): Record<string, unknown> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const result: any = { ...options };
+): TOptions & AppliedConfigOptions {
+  const result: TOptions & AppliedConfigOptions = { ...options };
+  const optionValues = options as Record<string, unknown>;
 
   // Apply config defaults only if CLI option was not provided
-  if (config.defaultTemplate !== undefined && options.template === undefined) {
+  if (config.defaultTemplate !== undefined && optionValues.template === undefined) {
     result.template = config.defaultTemplate;
   }
-  if (config.defaultOutput !== undefined && options.output === undefined) {
+  if (config.defaultOutput !== undefined && optionValues.output === undefined) {
     result.output = config.defaultOutput;
   }
-  if (config.inputFormat !== undefined && options.inputFormat === undefined) {
+  if (config.inputFormat !== undefined && optionValues.inputFormat === undefined) {
     result.inputFormat = config.inputFormat;
   }
-  if (config.outputFormat !== undefined && options.outputFormat === undefined) {
+  if (config.outputFormat !== undefined && optionValues.outputFormat === undefined) {
     result.outputFormat = config.outputFormat;
   }
 
   // Validation config
   if (config.validation) {
-    if (config.validation.validateInput !== undefined && options.validateInput === undefined) {
+    if (config.validation.validateInput !== undefined && optionValues.validateInput === undefined) {
       result.validateInput = config.validation.validateInput;
     }
-    if (config.validation.validateOutput !== undefined && options.validateOutput === undefined) {
+    if (
+      config.validation.validateOutput !== undefined &&
+      optionValues.validateOutput === undefined
+    ) {
       result.validateOutput = config.validation.validateOutput;
     }
-    if (config.validation.schemaPath !== undefined && options.schema === undefined) {
+    if (config.validation.schemaPath !== undefined && optionValues.schema === undefined) {
       result.schema = config.validation.schemaPath;
     }
   }

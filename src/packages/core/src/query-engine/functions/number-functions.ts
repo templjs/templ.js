@@ -5,7 +5,7 @@
  * trigonometric functions, and other mathematical operations.
  */
 
-import type { FunctionSignature, FilterFunction } from '../types';
+import type { FunctionSignature, FilterFunction } from '../types.js';
 
 // Number function signatures
 export const roundSignature: FunctionSignature = {

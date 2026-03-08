@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import cli from '../src/index';
-import { processTemplate, validateTemplate, version } from '../src/index';
+import cli from '../src/index.js';
+import { processTemplate, validateTemplate, version } from '../src/index.js';
 
 describe('cli-index', () => {
   it('exposes stable version and default export', () => {
@@ -8,13 +8,13 @@ describe('cli-index', () => {
     expect(cli.version).toBe(version);
   });
 
-  it('returns placeholder response for processTemplate', () => {
-    expect(processTemplate('template.templ', 'data.json')).toBe(
-      'Template processing not yet implemented'
-    );
+  it('processes template with data', () => {
+    const result = processTemplate('Hello {{name}}!', { name: 'World' });
+    expect(result).toBe('Hello World!');
   });
 
-  it('returns success placeholder for validateTemplate', () => {
-    expect(validateTemplate('template.templ')).toBe(true);
+  it('validates template syntax', () => {
+    expect(validateTemplate('Hello {{name}}!')).toBe(true);
+    expect(validateTemplate('{{unclosed')).toBe(false);
   });
 });

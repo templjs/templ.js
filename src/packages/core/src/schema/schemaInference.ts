@@ -2,7 +2,7 @@
  * JSON Schema inference from sample data
  */
 
-import type { JSONSchema } from './types';
+import type { JSONSchema } from './types.js';
 
 /**
  * Infer JSON type from a value

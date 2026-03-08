@@ -14,7 +14,7 @@ vi.mock('@templjs/core', () => ({
 
 import { readFileSync, statSync } from 'fs';
 import { renderTemplate } from '@templjs/core';
-import { renderCommand } from '../src/commands/render';
+import { renderCommand } from '../src/commands/render.js';
 import {
   detectFormat,
   getParser,
@@ -313,7 +313,11 @@ describe('renderCommand with multiple formats', () => {
     const output = await renderCommand('template.tmpl', 'data.json');
 
     expect(output).toBe('Hello World');
-    expect(renderTemplate).toHaveBeenCalledWith('Hello {{ name }}', { name: 'World' });
+    expect(renderTemplate).toHaveBeenCalledWith(
+      'Hello {{ name }}',
+      { name: 'World' },
+      { throwOnError: true }
+    );
   });
 
   it('renders template with YAML data', async () => {
@@ -329,7 +333,11 @@ describe('renderCommand with multiple formats', () => {
     const output = await renderCommand('template.tmpl', 'data.yaml');
 
     expect(output).toBe('Hello World');
-    expect(renderTemplate).toHaveBeenCalledWith('Hello {{ name }}', { name: 'World' });
+    expect(renderTemplate).toHaveBeenCalledWith(
+      'Hello {{ name }}',
+      { name: 'World' },
+      { throwOnError: true }
+    );
   });
 
   it('renders template with TOML data', async () => {
@@ -345,7 +353,11 @@ describe('renderCommand with multiple formats', () => {
     const output = await renderCommand('template.tmpl', 'data.toml');
 
     expect(output).toBe('Hello World');
-    expect(renderTemplate).toHaveBeenCalledWith('Hello {{ name }}', { name: 'World' });
+    expect(renderTemplate).toHaveBeenCalledWith(
+      'Hello {{ name }}',
+      { name: 'World' },
+      { throwOnError: true }
+    );
   });
 
   it('fails with clear error for invalid JSON', async () => {
@@ -380,7 +392,7 @@ describe('renderCommand with multiple formats', () => {
     vi.mocked(readFileSync).mockReturnValue('{}');
 
     await expect(renderCommand('template.tmpl', 'data.txt')).rejects.toThrow(
-      /Render failed.*Unable to detect format from file path/
+      /Render failed.*Unable to detect input format/
     );
   });
 });

@@ -1,4 +1,8 @@
 import { SchemaValidator, type SchemaMetadata } from '@templjs/core';
+import {
+  resolveDelimiters,
+  type DelimiterConfig as IntellisenseDelimiters,
+} from './template-delimiters.js';
 
 export interface CompletionItem {
   label: string;
@@ -30,14 +34,7 @@ export interface IntellisenseOptions {
   delimiters?: Partial<IntellisenseDelimiters>;
 }
 
-export interface IntellisenseDelimiters {
-  statementStart: string;
-  statementEnd: string;
-  expressionStart: string;
-  expressionEnd: string;
-  commentStart: string;
-  commentEnd: string;
-}
+export type { IntellisenseDelimiters };
 
 export interface FilterSignature {
   name: string;
@@ -45,15 +42,6 @@ export interface FilterSignature {
   returnType: string;
   parameters: Array<{ name: string; type: string; description?: string }>;
 }
-
-const DEFAULT_DELIMITERS: IntellisenseDelimiters = {
-  statementStart: '{%',
-  statementEnd: '%}',
-  expressionStart: '{{',
-  expressionEnd: '}}',
-  commentStart: '{#',
-  commentEnd: '#}',
-};
 
 const DEFAULT_KEYWORDS = [
   'if',
@@ -103,7 +91,7 @@ const DEFAULT_FILTERS: FilterSignature[] = [
 const VARIABLE_PATH_REGEX = /^[A-Za-z_][\w]*(?:\[[^\]]+\])*(?:\.[A-Za-z_][\w]*(?:\[[^\]]+\])*)*/;
 
 function getDelimiters(options?: IntellisenseOptions): IntellisenseDelimiters {
-  return { ...DEFAULT_DELIMITERS, ...(options?.delimiters ?? {}) };
+  return resolveDelimiters(options?.delimiters);
 }
 
 function findEnclosingRange(
@@ -132,7 +120,7 @@ function getPathCompletions(metadata: SchemaMetadata, pathPrefix: string): Compl
   const entry = metadata[path];
   const properties = entry?.properties ?? [];
 
-  return properties.map((prop) => ({
+  return properties.map((prop: string) => ({
     label: prop,
     kind: 'property',
     detail: entry?.itemType ? `type: ${entry.itemType}` : entry?.type,

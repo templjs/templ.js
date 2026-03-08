@@ -6,21 +6,29 @@
 import { readFileSync } from 'fs';
 import { validateTemplate } from '@templjs/core';
 
-export async function validateCommand(templatePath: string, schemaPath?: string): Promise<boolean> {
+export interface ValidateCommandResult {
+  valid: boolean;
+  errors: string[];
+  schemaWarning?: string;
+}
+
+export async function validateCommand(
+  templatePath: string,
+  schemaPath?: string
+): Promise<ValidateCommandResult> {
   try {
     const templateContent = readFileSync(templatePath, 'utf-8');
     const result = validateTemplate(templateContent);
+    const errors = result.errors ?? [];
+    const schemaWarning = schemaPath
+      ? `Schema validation flag provided (${schemaPath}) but schema validation is not yet wired in @templjs/core`
+      : undefined;
 
-    if (schemaPath) {
-      console.warn(
-        `Schema validation flag provided (${schemaPath}) but schema validation is not yet wired in @templjs/core`
-      );
-    }
-
-    if (result.errors && result.errors.length > 0) {
-      console.error('Validation errors:', result.errors);
-    }
-    return result.valid;
+    return {
+      valid: result.valid,
+      errors,
+      ...(schemaWarning ? { schemaWarning } : {}),
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Validation failed: ${message}`, { cause: error });

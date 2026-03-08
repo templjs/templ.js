@@ -5,7 +5,7 @@
  * trimming, searching, and pattern matching.
  */
 
-import type { FunctionSignature, FilterFunction } from '../types';
+import type { FunctionSignature, FilterFunction } from '../types.js';
 
 // String function signatures
 export const upperSignature: FunctionSignature = {

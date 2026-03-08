@@ -35,6 +35,70 @@ proposed → ready → in-progress → ready-for-review → closed
    - `actual` hours recorded
    - Test results documented
 
+## Testing Requirements Before Closing Work Items
+
+**Critical**: When a work item introduces or modifies public package exports, verify **all layers** are properly implemented and tested.
+
+### Pre-Closure Testing Checklist
+
+Before marking a work item as `closed`, ensure:
+
+#### 1. Component-Level Testing ✅
+
+- [ ] All unit tests passing (95%+ coverage on new code)
+- [ ] Component logic verified in isolation
+- [ ] Mocked dependencies as appropriate
+
+#### 2. Integration Testing ✅
+
+- [ ] Integration tests added for cross-component interactions
+- [ ] Real implementations used (not mocked) within the same package
+- [ ] Multi-module workflows verified
+
+#### 3. Public API Testing ✅ **← Often Missed!**
+
+- [ ] **Every exported function** has at least one integration test
+- [ ] Tests call the **real implementation** (no mocking internal deps)
+- [ ] Wrapper functions properly delegate to internal implementations
+- [ ] Run manual verification: `node dist/cli.js <command>` or similar
+
+#### 4. End-to-End Testing ✅
+
+- [ ] At least one complete user workflow passes
+- [ ] CLI commands work with actual file I/O
+- [ ] Error messages are helpful and accurate
+
+### Common Integration Gaps to Avoid
+
+❌ **Anti-Pattern**: Implementing `Renderer` class but leaving `renderTemplate()` as a stub
+❌ **Anti-Pattern**: All tests mock `@templjs/core` exports, hiding stub errors
+❌ **Anti-Pattern**: Tests verify "should throw not implemented" instead of actual behavior
+
+✅ **Best Practice**: Add `test/integration/public-api.test.ts` that imports and calls real exports
+✅ **Best Practice**: Run the actual CLI/API manually to verify it works
+✅ **Best Practice**: Update stub tests to verify real behavior once implemented
+
+### Example: Verifying Public API Implementation
+
+```typescript
+// ❌ BAD: This test will pass even if renderTemplate is a stub
+vi.mock('@templjs/core', () => ({
+  renderTemplate: vi.fn(() => 'mocked output'),
+}));
+
+// ✅ GOOD: This test calls the real implementation
+import { renderTemplate } from '@templjs/core';
+
+it('renderTemplate works end-to-end', () => {
+  const result = renderTemplate('{{name}}', { name: 'World' });
+  expect(result).toBe('World');
+});
+```
+
+### Reference
+
+See [ADR-006: Testing Strategy](../docs/adr/006-testing.md#public-api-integration-testing) for detailed guidance on public API testing.
+
 ## Commands
 
 - Validate: `pnpm run lint:frontmatter`

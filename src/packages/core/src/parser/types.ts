@@ -2,7 +2,7 @@
  * Abstract Syntax Tree (AST) node types for templjs templates
  */
 
-import type { Position } from '../lexer/types';
+import type { Position } from '../lexer/types.js';
 
 /**
  * Base interface for all AST nodes

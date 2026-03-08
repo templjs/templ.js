@@ -4,6 +4,7 @@
   "description": "Command-line interface for templjs template processing",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "type": "module",
   "bin": {
     "templjs": "./dist/cli.js"
   },
@@ -23,8 +24,9 @@
     "test": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "test:coverage": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts --coverage",
+    "test:memory": "TEMPLJS_ENABLE_MEMORY_ASSERTS=1 NODE_OPTIONS=--expose-gc vitest run --config vitest.config.ts test/signal-handling.test.ts",
     "lint": "echo 'No linting configured yet'",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist tsconfig.tsbuildinfo"
   },
   "keywords": [
     "cli",
@@ -42,15 +44,16 @@
   "dependencies": {
     "@templjs/core": "workspace:*",
     "commander": "^14.0.3",
+    "jsonparse": "^1.3.1",
     "js-yaml": "^4.1.0",
     "@iarna/toml": "^2.2.5",
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^4.0.2",
-    "vitest": "^4.0.18",
-    "typescript": "^5.3.0",
     "@types/node": "^20.11.0",
+    "@vitest/coverage-v8": "^4.0.2",
+    "typescript": "^5.3.0",
+    "vitest": "^4.0.18",
     "@types/js-yaml": "^4.0.5",
     "@types/xml2js": "^0.4.11"
   }
