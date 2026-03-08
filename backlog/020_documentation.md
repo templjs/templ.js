@@ -13,6 +13,9 @@ links:
     - '[[005_chevrotain_lexer]]'
     - '[[006_chevrotain_parser]]'
     - '[[007_ast_renderer]]'
+    - '[[029_cli_signal_handling]]'
+    - '[[032_cli_config_files]]'
+    - '[[033_schema_parity]]'
 ---
 
 ## Goal
