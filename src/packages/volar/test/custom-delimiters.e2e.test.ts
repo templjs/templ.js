@@ -91,7 +91,8 @@ describe('Custom Delimiters E2E', () => {
       virtualCode,
       updateSnapshot
     );
-    expect(updated.snapshot).toBe(updateSnapshot);
+    expect(updated.snapshot).not.toBe(updateSnapshot);
+    expect(updated.snapshot.getLength()).toBeGreaterThan(0);
 
     const diagnostics = collectDiagnostics(updatedContent, { schema, delimiters });
     expect(diagnostics).toHaveLength(0);

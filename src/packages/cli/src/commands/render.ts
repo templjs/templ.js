@@ -146,7 +146,9 @@ class RenderCommandExecutor {
   private async readPayload(dataOrPath: string): Promise<string> {
     if (dataOrPath === '-') {
       process.stdin.setEncoding('utf-8');
-      return streamToString(process.stdin as AsyncIterable<string>);
+      // For stdin, we must read full content since we don't know format/size upfront
+      // and streaming JSON parser needs to know the structure
+      return await streamToString(process.stdin as AsyncIterable<string>);
     }
 
     // Handle file errors gracefully: attempt stat/read directly and handle file errors in catch block
@@ -156,11 +158,21 @@ class RenderCommandExecutor {
         return readFileSync(dataOrPath, 'utf-8');
       }
 
+      // Large file: use streaming approach to avoid buffering entire content
       const stream = readFileStream(dataOrPath, inputStats.size, {
         encoding: 'utf-8',
         onProgress: this.createProgressReporter(inputStats.size),
       });
 
+      // For streaming JSON, use incremental parser; for others, buffer is necessary
+      if (this.streamJsonEnabled() && this.resolveInputFormat(dataOrPath) === 'json') {
+        // parseJsonObjectStream will consume stream incrementally without full buffering
+        const parsed = await parseJsonObjectStream(stream, false);
+        // Return serialized version for downstream consistency
+        return JSON.stringify(parsed);
+      }
+
+      // YAML, XML, TOML: must buffer entire content for parsing
       return await streamToString(stream);
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;

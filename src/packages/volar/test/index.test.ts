@@ -318,7 +318,8 @@ describe('LanguagePlugin', () => {
       expect(updated.languageId).toBe('markdown');
 
       // Verify the virtual code has correct structure
-      expect(updated.snapshot).toBe(updateSnapshot);
+      expect(updated.snapshot).not.toBe(updateSnapshot);
+      expect(updated.snapshot.getLength()).toBeGreaterThan(0);
     });
 
     it('should handle template marker deletion using bounded window', () => {
@@ -370,7 +371,8 @@ describe('LanguagePlugin', () => {
       // Should successfully update using bounded window (not full rebuild)
       expect(updated).toBeDefined();
       expect(updated.languageId).toBe('markdown');
-      expect(updated.snapshot).toBe(updateSnapshot);
+      expect(updated.snapshot).not.toBe(updateSnapshot);
+      expect(updated.snapshot.getLength()).toBeGreaterThan(0);
     });
 
     it('should regenerate accurate position mappings after incremental edits', () => {
@@ -435,7 +437,8 @@ describe('LanguagePlugin', () => {
       expect(updated.mappings[0].data).toBeDefined();
 
       // Position mapping should still work (no empty array regression)
-      expect(updated.snapshot).toBe(updateSnapshot);
+      expect(updated.snapshot).not.toBe(updateSnapshot);
+      expect(updated.snapshot.getLength()).toBeGreaterThan(0);
     });
 
     it('should regenerate accurate position mappings after template marker edits', () => {
@@ -554,7 +557,12 @@ describe('LanguagePlugin', () => {
 
       const incremental = incrementalPlugin.updateVirtualCode(
         'file:///regression.md.tmpl',
-        virtualCode,
+        (() => {
+          if (!virtualCode) {
+            throw new Error('Failed to create initial virtual code');
+          }
+          return virtualCode;
+        })(),
         updateSnapshot
       );
 
@@ -747,7 +755,8 @@ describe('LanguagePlugin', () => {
       // Verify the final virtual code is valid and didn't corrupt cleaned text
       expect(final).toBeDefined();
       expect(final.languageId).toBe('markdown');
-      expect(final.snapshot).toBe(finalSnapshot);
+      expect(final.snapshot).not.toBe(finalSnapshot);
+      expect(final.snapshot.getLength()).toBeGreaterThan(0);
       expect(final.mappings).toBeDefined();
       expect(final.mappings.length).toBeGreaterThan(0);
     });
@@ -791,11 +800,17 @@ describe('LanguagePlugin', () => {
 
       const updated = plugin.updateVirtualCode(
         'file:///large.md.tmpl',
-        virtualCode,
+        (() => {
+          if (!virtualCode) {
+            throw new Error('Failed to create initial virtual code');
+          }
+          return virtualCode;
+        })(),
         updateSnapshot as any
       );
 
-      expect(updated.snapshot).toBe(updateSnapshot);
+      expect(updated.snapshot).not.toBe(updateSnapshot);
+      expect(updated.snapshot.getLength()).toBeGreaterThan(0);
       expect(updated.languageId).toBe('markdown');
     });
 
@@ -818,7 +833,8 @@ describe('LanguagePlugin', () => {
 
       expect(updated).toBeDefined();
       expect(updated.languageId).toBe('markdown');
-      expect(updated.snapshot).toBe(snapshot);
+      expect(updated.snapshot).not.toBe(snapshot);
+      expect(updated.snapshot.getLength()).toBeGreaterThan(0);
     });
 
     it('covers mapOriginalToCleaned fallback branches for empty and sparse offset tables', () => {
@@ -1008,7 +1024,8 @@ describe('LanguagePlugin', () => {
       );
 
       expect(updated).toBeDefined();
-      expect(updated.snapshot).toBe(updateSnapshot);
+      expect(updated.snapshot).not.toBe(updateSnapshot);
+      expect(updated.snapshot.getLength()).toBeGreaterThan(0);
       expect(updated.languageId).toBe('markdown');
 
       const updatedAccess = updated as unknown as { cleaned: string };
@@ -1289,7 +1306,7 @@ describe('LanguagePlugin', () => {
   });
 
   describe('Snapshot handling', () => {
-    it('should maintain snapshot reference', () => {
+    it('should expose cleaned snapshot content', () => {
       const mockSnapshot = {
         getText: () => 'test content',
         getLength: () => 12,
@@ -1302,7 +1319,10 @@ describe('LanguagePlugin', () => {
         mockSnapshot
       );
 
-      expect(virtualCode?.snapshot).toBe(mockSnapshot);
+      expect(virtualCode?.snapshot).not.toBe(mockSnapshot);
+      expect(virtualCode?.snapshot.getText(0, virtualCode.snapshot.getLength())).toBe(
+        'test content'
+      );
     });
 
     it('should call snapshot getText correctly', () => {

@@ -101,6 +101,19 @@ function getBaseFormatLanguageId(baseFormat: BaseFormat): string {
 }
 
 /**
+ * Create a TypeScript snapshot from cleaned code content
+ * Used to provide cleaned code to language services via Volar's virtual code
+ */
+function createCleanedSnapshot(text: string): ts.IScriptSnapshot {
+  return {
+    getText: (start: number, end?: number) =>
+      text.substring(start, end === undefined ? text.length : end),
+    getLength: () => text.length,
+    getChangeRange: () => undefined,
+  };
+}
+
+/**
  * Detect base format from file extension
  */
 function detectBaseFormat(fileUriString: string): BaseFormat {
@@ -139,6 +152,7 @@ class TempljsVirtualCode implements VirtualCode {
   id = 'root';
   languageId: string;
   snapshot: ts.IScriptSnapshot;
+  private sourceSnapshot: ts.IScriptSnapshot;
   private baseFormat: BaseFormat;
   private original: string;
   private cleaned: string;
@@ -161,7 +175,7 @@ class TempljsVirtualCode implements VirtualCode {
   ) {
     this.baseFormat = baseFormat;
     this.languageId = getBaseFormatLanguageId(baseFormat);
-    this.snapshot = snapshot;
+    this.sourceSnapshot = snapshot;
     this.original = original;
     this.delimiterPairPattern = patterns.delimiterPairPattern;
     this.templateBlockPattern = patterns.templateBlockPattern;
@@ -170,6 +184,7 @@ class TempljsVirtualCode implements VirtualCode {
     const { cleaned, originalToCleanedOffsets } = this.stripTemplateSyntax(original);
     this.cleaned = cleaned;
     this.originalToCleanedOffsets = originalToCleanedOffsets;
+    this.snapshot = createCleanedSnapshot(cleaned);
 
     // Create position mappings for accurate error reporting
     this.mappings = this.createMappings(original, cleaned, originalToCleanedOffsets);
@@ -189,19 +204,25 @@ class TempljsVirtualCode implements VirtualCode {
     const oldLength = changeRange.span.length;
     const newLength = changeRange.newLength;
     const insertedText = snapshot.getText(start, start + newLength);
+    const removedText = this.original.slice(start, start + oldLength);
+    const simpleEdit = this.isSimpleEdit(removedText, insertedText);
 
     if (!this.applyEdit(start, oldLength, insertedText)) {
       this.rebuildFromSnapshot(snapshot, baseFormat);
       return this;
     }
 
-    this.snapshot = snapshot;
+    // For template-marker edits, recompute exact offsets and mappings from full source.
+    // For simple edits, applyEdit already updates offsets/mappings incrementally.
+    if (!simpleEdit) {
+      const { cleaned, originalToCleanedOffsets } = this.stripTemplateSyntax(this.original);
+      this.cleaned = cleaned;
+      this.originalToCleanedOffsets = originalToCleanedOffsets;
+      this.mappings = this.createMappings(this.original, cleaned, originalToCleanedOffsets);
+    }
 
-    // Regenerate accurate cleaned text + position mappings after the edit
-    const { cleaned, originalToCleanedOffsets } = this.stripTemplateSyntax(this.original);
-    this.cleaned = cleaned;
-    this.originalToCleanedOffsets = originalToCleanedOffsets;
-    this.mappings = this.createMappings(this.original, this.cleaned, originalToCleanedOffsets);
+    this.sourceSnapshot = snapshot;
+    this.snapshot = createCleanedSnapshot(this.cleaned);
 
     return this;
   }
@@ -212,11 +233,16 @@ class TempljsVirtualCode implements VirtualCode {
 
     this.baseFormat = baseFormat;
     this.languageId = getBaseFormatLanguageId(baseFormat);
-    this.snapshot = snapshot;
+    this.sourceSnapshot = snapshot;
     this.original = source;
     this.cleaned = cleaned;
     this.originalToCleanedOffsets = originalToCleanedOffsets;
     this.mappings = this.createMappings(source, cleaned, originalToCleanedOffsets);
+    this.snapshot = createCleanedSnapshot(cleaned);
+  }
+
+  getSourceSnapshot(): ts.IScriptSnapshot {
+    return this.sourceSnapshot;
   }
 
   private applyEdit(start: number, deleteLength: number, insertedText: string): boolean {
@@ -241,11 +267,55 @@ class TempljsVirtualCode implements VirtualCode {
       this.cleaned =
         this.cleaned.slice(0, mappedStart) + insertedText + this.cleaned.slice(mappedEnd);
 
+      // Update offset map + mappings incrementally for simple edits
+      this.originalToCleanedOffsets = this.patchOffsetsForSimpleEdit(
+        this.originalToCleanedOffsets,
+        start,
+        deleteLength,
+        insertedText.length,
+        mappedStart,
+        mappedEnd
+      );
+      this.mappings = this.createMappings(
+        this.original,
+        this.cleaned,
+        this.originalToCleanedOffsets
+      );
+
       return true;
     }
 
     // Template markers detected: use bounded window reprocessing
     return this.applyBoundedEdit(start, deleteLength, insertedText);
+  }
+
+  private patchOffsetsForSimpleEdit(
+    previousOffsets: number[],
+    start: number,
+    deleteLength: number,
+    insertLength: number,
+    mappedStart: number,
+    mappedEnd: number
+  ): number[] {
+    const previousOriginalLength = previousOffsets.length - 1;
+    const nextOriginalLength = previousOriginalLength - deleteLength + insertLength;
+    const nextOffsets = new Array<number>(nextOriginalLength + 1);
+
+    for (let i = 0; i <= start; i++) {
+      nextOffsets[i] = previousOffsets[i] ?? 0;
+    }
+
+    for (let i = 1; i <= insertLength; i++) {
+      nextOffsets[start + i] = mappedStart + i;
+    }
+
+    const cleanedDelta = insertLength - (mappedEnd - mappedStart);
+    for (let i = start + deleteLength; i <= previousOriginalLength; i++) {
+      const shiftedIndex = i - deleteLength + insertLength;
+      nextOffsets[shiftedIndex] = (previousOffsets[i] ?? mappedEnd) + cleanedDelta;
+    }
+
+    return nextOffsets;
   }
 
   private isSimpleEdit(removedText: string, insertedText: string): boolean {
@@ -544,7 +614,7 @@ class TempljsLanguagePlugin implements LanguagePlugin {
       return rebuilt;
     }
 
-    const changeRange = snapshot.getChangeRange(cachedVirtualCode.snapshot);
+    const changeRange = snapshot.getChangeRange(cachedVirtualCode.getSourceSnapshot());
     const updated = cachedVirtualCode.updateFromChange(
       snapshot,
       baseFormat,

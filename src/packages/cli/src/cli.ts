@@ -240,12 +240,6 @@ function createProgram(): Command {
       const result = await validateCommand(templatePath, finalOptions.schema);
       const durationMs = Date.now() - startedAt;
 
-      if (finalOptions.schema && result.schemaWarning) {
-        throw new Error(
-          `Schema validation is not supported yet for '${finalOptions.schema}'. Remove --schema to run template-only validation.`
-        );
-      }
-
       if (result.schemaWarning && !mode.quiet && !mode.json) {
         process.stderr.write(`Warning: ${result.schemaWarning}\n`);
       }
