@@ -392,10 +392,10 @@ Content: {{ name | upper }}
     });
 
     it('should support all custom delimiters at once', () => {
-      const text = '<<comment>> <<if x>> <:name:> <<endif>>';
+      const text = '[[comment]] <<if x>> <:name:> <<endif>>';
       const tokens = extractSemanticTokens(text, {
-        commentStart: '<<',
-        commentEnd: '>>',
+        commentStart: '[[',
+        commentEnd: ']]',
         statementStart: '<<',
         statementEnd: '>>',
         expressionStart: '<:',

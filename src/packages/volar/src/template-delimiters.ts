@@ -21,7 +21,25 @@ export const DEFAULT_DELIMITERS: DelimiterConfig = {
 };
 
 export function resolveDelimiters(delimiters: Partial<DelimiterConfig> = {}): DelimiterConfig {
-  return { ...DEFAULT_DELIMITERS, ...delimiters };
+  const resolved: DelimiterConfig = {
+    commentStart: delimiters.commentStart ?? DEFAULT_DELIMITERS.commentStart,
+    commentEnd: delimiters.commentEnd ?? DEFAULT_DELIMITERS.commentEnd,
+    statementStart: delimiters.statementStart ?? DEFAULT_DELIMITERS.statementStart,
+    statementEnd: delimiters.statementEnd ?? DEFAULT_DELIMITERS.statementEnd,
+    expressionStart: delimiters.expressionStart ?? DEFAULT_DELIMITERS.expressionStart,
+    expressionEnd: delimiters.expressionEnd ?? DEFAULT_DELIMITERS.expressionEnd,
+  };
+
+  const values = Object.values(resolved);
+  if (values.some((value) => value.length === 0)) {
+    throw new Error('resolveDelimiters: delimiter values must be non-empty strings');
+  }
+
+  if (new Set(values).size !== values.length) {
+    throw new Error('resolveDelimiters: delimiter values must be distinct');
+  }
+
+  return resolved;
 }
 
 export function escapeDelimiterForRegex(value: string): string {

@@ -46,8 +46,12 @@ export function resolveOutputModeFromArgv(argv: string[]): OutputMode {
       continue;
     }
 
-    for (let i = 1; i < arg.length; i += 1) {
-      const flag = arg[i];
+    const shortBundle = arg.slice(1);
+    if (!/^[A-Za-z]+$/.test(shortBundle) || /[^qv]/i.test(shortBundle)) {
+      continue;
+    }
+
+    for (const flag of shortBundle) {
       if (flag === 'q') {
         quiet = true;
       } else if (flag === 'v') {
@@ -89,9 +93,9 @@ export function writeSuccess(
   if (mode.json) {
     process.stdout.write(
       `${JSON.stringify({
+        ...payload.data,
         ok: true,
         command: payload.command,
-        ...payload.data,
       })}\n`
     );
     return;

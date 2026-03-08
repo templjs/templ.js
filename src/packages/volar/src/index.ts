@@ -167,16 +167,12 @@ class TempljsVirtualCode implements VirtualCode {
     this.templateBlockPattern = patterns.templateBlockPattern;
 
     // Generate cleaned code (strip template syntax)
-    const {
-      cleaned,
-      mappings: positionMappings,
-      originalToCleanedOffsets,
-    } = this.stripTemplateSyntax(original);
+    const { cleaned, originalToCleanedOffsets } = this.stripTemplateSyntax(original);
     this.cleaned = cleaned;
     this.originalToCleanedOffsets = originalToCleanedOffsets;
 
     // Create position mappings for accurate error reporting
-    this.mappings = this.createMappings(original, cleaned, positionMappings);
+    this.mappings = this.createMappings(original, cleaned, originalToCleanedOffsets);
   }
 
   updateFromChange(
@@ -202,25 +198,17 @@ class TempljsVirtualCode implements VirtualCode {
     this.snapshot = snapshot;
 
     // Regenerate accurate cleaned text + position mappings after the edit
-    const {
-      cleaned,
-      mappings: freshMappings,
-      originalToCleanedOffsets,
-    } = this.stripTemplateSyntax(this.original);
+    const { cleaned, originalToCleanedOffsets } = this.stripTemplateSyntax(this.original);
     this.cleaned = cleaned;
     this.originalToCleanedOffsets = originalToCleanedOffsets;
-    this.mappings = this.createMappings(this.original, this.cleaned, freshMappings);
+    this.mappings = this.createMappings(this.original, this.cleaned, originalToCleanedOffsets);
 
     return this;
   }
 
   private rebuildFromSnapshot(snapshot: ts.IScriptSnapshot, baseFormat: BaseFormat): void {
     const source = snapshot.getText(0, snapshot.getLength());
-    const {
-      cleaned,
-      mappings: positionMappings,
-      originalToCleanedOffsets,
-    } = this.stripTemplateSyntax(source);
+    const { cleaned, originalToCleanedOffsets } = this.stripTemplateSyntax(source);
 
     this.baseFormat = baseFormat;
     this.languageId = getBaseFormatLanguageId(baseFormat);
@@ -228,7 +216,7 @@ class TempljsVirtualCode implements VirtualCode {
     this.original = source;
     this.cleaned = cleaned;
     this.originalToCleanedOffsets = originalToCleanedOffsets;
-    this.mappings = this.createMappings(source, cleaned, positionMappings);
+    this.mappings = this.createMappings(source, cleaned, originalToCleanedOffsets);
   }
 
   private applyEdit(start: number, deleteLength: number, insertedText: string): boolean {
@@ -366,46 +354,12 @@ class TempljsVirtualCode implements VirtualCode {
    * Returns null if accurate mapping cannot be determined.
    */
   private mapOriginalOffsetToCleaned(originalPos: number): number | null {
-    // If lengths match, texts are still aligned (initial state or only simple edits)
-    if (this.original.length === this.cleaned.length) {
-      return Math.max(0, Math.min(originalPos, this.cleaned.length));
+    const clamped = Math.max(0, Math.min(originalPos, this.original.length));
+    const mapped = this.originalToCleanedOffsets[clamped];
+    if (mapped === undefined) {
+      return null;
     }
-
-    // If lengths differ, we need to account for potential divergence
-    // Walk through both strings to find corresponding position
-    let origIdx = 0;
-    let cleanIdx = 0;
-
-    // Scan to find the mapped position
-    while (
-      origIdx < originalPos &&
-      origIdx < this.original.length &&
-      cleanIdx < this.cleaned.length
-    ) {
-      // If characters match, advance both
-      if (this.original[origIdx] === this.cleaned[cleanIdx]) {
-        origIdx++;
-        cleanIdx++;
-      } else {
-        // Check if this is a template marker region in original
-        // If we find a mismatch, we can't reliably map - return null
-        // This indicates the texts have diverged in a complex way
-        return null;
-      }
-    }
-
-    // If we've reached the target position in original, return cleaned position
-    if (origIdx === originalPos) {
-      return cleanIdx;
-    }
-
-    // If original position is beyond the scanned region, use proportional approximation
-    if (origIdx >= this.original.length) {
-      return this.cleaned.length;
-    }
-
-    // Couldn't determine accurate mapping
-    return null;
+    return mapped;
   }
 
   /**
@@ -481,7 +435,7 @@ class TempljsVirtualCode implements VirtualCode {
   private createMappings(
     original: string,
     cleaned: string,
-    _positionMappings: Array<{ src: number; dst: number }>
+    originalToCleanedOffsets: number[]
   ): VirtualCode['mappings'] {
     if (original === cleaned) {
       // No changes needed, create identity mapping
@@ -495,15 +449,65 @@ class TempljsVirtualCode implements VirtualCode {
       ];
     }
 
-    // Create offset-based mappings
-    return [
-      {
-        sourceOffsets: [0],
-        generatedOffsets: [0],
-        lengths: [Math.min(original.length, cleaned.length)],
-        data: DEFAULT_CODE_INFORMATION,
-      },
-    ];
+    const mappings: VirtualCode['mappings'] = [];
+    let runStart = -1;
+
+    for (let src = 0; src < original.length; src++) {
+      const current = originalToCleanedOffsets[src];
+      const next = originalToCleanedOffsets[src + 1];
+      const preserved =
+        current !== undefined &&
+        next !== undefined &&
+        next === current + 1 &&
+        current < cleaned.length;
+
+      if (preserved) {
+        if (runStart === -1) {
+          runStart = src;
+        }
+        continue;
+      }
+
+      if (runStart !== -1) {
+        const runLength = src - runStart;
+        const generatedStart = originalToCleanedOffsets[runStart] ?? 0;
+        if (runLength > 0) {
+          mappings.push({
+            sourceOffsets: [runStart],
+            generatedOffsets: [generatedStart],
+            lengths: [runLength],
+            data: DEFAULT_CODE_INFORMATION,
+          });
+        }
+        runStart = -1;
+      }
+    }
+
+    if (runStart !== -1) {
+      const runLength = original.length - runStart;
+      const generatedStart = originalToCleanedOffsets[runStart] ?? 0;
+      if (runLength > 0) {
+        mappings.push({
+          sourceOffsets: [runStart],
+          generatedOffsets: [generatedStart],
+          lengths: [runLength],
+          data: DEFAULT_CODE_INFORMATION,
+        });
+      }
+    }
+
+    if (mappings.length === 0) {
+      return [
+        {
+          sourceOffsets: [0],
+          generatedOffsets: [0],
+          lengths: [Math.min(original.length, cleaned.length)],
+          data: DEFAULT_CODE_INFORMATION,
+        },
+      ];
+    }
+
+    return mappings;
   }
 }
 

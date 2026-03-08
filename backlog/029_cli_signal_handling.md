@@ -83,7 +83,7 @@ CLI must be a good Unix citizen: handle signals gracefully (SIGINT, SIGPIPE, SIG
   - `--verbose`: Show debug info and timing
   - `--json`: JSON output for machine parsing
 - [x] Implement streaming for large files:
-  - Handle >10MB inputs without buffering issues
+  - Handle >=10MB inputs without buffering issues
   - Respect memory limits
   - Progress indicators for large renders
 - [x] Add comprehensive error messages:
@@ -103,7 +103,7 @@ CLI must be a good Unix citizen: handle signals gracefully (SIGINT, SIGPIPE, SIG
 
 ## Acceptance Criteria
 
-- [x] Reads files >10MB efficiently (validated: 10MB file uses < 5MB heap growth)
+- [x] Reads files >=10MB efficiently (validated: 10MB file uses < 5MB heap growth)
 - [x] SIGPIPE exits silently without error (exit code 141)
 - [x] Error messages show code context (3 lines before/after)
 - [x] Column errors marked with `^`

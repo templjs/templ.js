@@ -41,8 +41,10 @@ describe('validateCommand', () => {
     vi.mocked(coreValidateTemplate).mockReturnValue({ valid: true, errors: [] });
 
     await expect(validateCommand('template.templ', 'schema.json')).resolves.toEqual({
-      valid: true,
-      errors: [],
+      valid: false,
+      errors: [
+        'Schema validation flag provided (schema.json) but schema validation is not yet wired in @templjs/core',
+      ],
       schemaWarning:
         'Schema validation flag provided (schema.json) but schema validation is not yet wired in @templjs/core',
     });

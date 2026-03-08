@@ -22,7 +22,7 @@
     "test:watch": "vitest --config vitest.config.ts",
     "test:coverage": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts --coverage",
     "lint": "echo 'No linting configured yet'",
-    "clean": "rm -rf dist tsconfig.tsbuildinfo"
+    "clean": "node --input-type=module -e \"import { rmSync } from 'node:fs'; rmSync('dist', { recursive: true, force: true }); rmSync('tsconfig.tsbuildinfo', { force: true });\""
   },
   "keywords": [
     "template",

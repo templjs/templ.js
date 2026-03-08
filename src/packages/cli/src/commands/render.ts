@@ -153,7 +153,11 @@ function normalizeParsedInput(parsed: unknown, validateInput: boolean): Record<s
     return validateParsedObject(parsed);
   }
 
-  return parsed as Record<string, unknown>;
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    return parsed as Record<string, unknown>;
+  }
+
+  return { data: parsed };
 }
 
 function createProgressReporter(totalBytes: number): (bytesRead: number) => void {
@@ -275,7 +279,9 @@ export async function renderCommand(
   try {
     const templateContent = readFileSync(templatePath, 'utf-8');
     const parsedData = await parseData(dataOrPath, options);
-    const rendered = renderTemplate(templateContent, parsedData);
+    const rendered = renderTemplate(templateContent, parsedData, {
+      throwOnError: true,
+    });
     return formatOutput(
       rendered,
       options?.outputFormat ?? 'text',

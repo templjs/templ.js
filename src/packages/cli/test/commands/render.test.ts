@@ -30,7 +30,11 @@ describe('renderCommand', () => {
 
     expect(output).toBe('Hello World');
     expect(readFileSync).toHaveBeenCalledWith('template.templ', 'utf-8');
-    expect(renderTemplate).toHaveBeenCalledWith('Hello {{ name }}', { name: 'World' });
+    expect(renderTemplate).toHaveBeenCalledWith(
+      'Hello {{ name }}',
+      { name: 'World' },
+      { throwOnError: true }
+    );
   });
 
   it('loads JSON payload from input file path when path exists', async () => {
@@ -46,7 +50,11 @@ describe('renderCommand', () => {
     const output = await renderCommand('template.templ', 'data.json');
 
     expect(output).toBe('Hello FromFile');
-    expect(renderTemplate).toHaveBeenCalledWith('Hello {{ name }}', { name: 'FromFile' });
+    expect(renderTemplate).toHaveBeenCalledWith(
+      'Hello {{ name }}',
+      { name: 'FromFile' },
+      { throwOnError: true }
+    );
   });
 
   it('parses YAML payloads from input files', async () => {
@@ -62,7 +70,11 @@ describe('renderCommand', () => {
     const output = await renderCommand('template.templ', 'data.yaml');
 
     expect(output).toBe('Hello World');
-    expect(renderTemplate).toHaveBeenCalledWith('Hello {{ name }}', { name: 'World' });
+    expect(renderTemplate).toHaveBeenCalledWith(
+      'Hello {{ name }}',
+      { name: 'World' },
+      { throwOnError: true }
+    );
   });
 
   it('parses TOML payloads from input files', async () => {
@@ -78,7 +90,11 @@ describe('renderCommand', () => {
     const output = await renderCommand('template.templ', 'data.toml');
 
     expect(output).toBe('Hello World');
-    expect(renderTemplate).toHaveBeenCalledWith('Hello {{ name }}', { name: 'World' });
+    expect(renderTemplate).toHaveBeenCalledWith(
+      'Hello {{ name }}',
+      { name: 'World' },
+      { throwOnError: true }
+    );
   });
 
   it('parses XML payloads with explicit input format', async () => {
@@ -94,11 +110,15 @@ describe('renderCommand', () => {
     const output = await renderCommand('template.templ', 'data.xml');
 
     expect(output).toBe('Hello XML');
-    expect(renderTemplate).toHaveBeenCalledWith('Hello {{ xml }}', {
-      root: {
-        name: ['World'],
+    expect(renderTemplate).toHaveBeenCalledWith(
+      'Hello {{ xml }}',
+      {
+        root: {
+          name: ['World'],
+        },
       },
-    });
+      { throwOnError: true }
+    );
   });
 
   it('streams large input files and reports progress', async () => {
@@ -179,7 +199,11 @@ describe('renderCommand', () => {
     });
 
     expect(output).toBe('array output');
-    expect(renderTemplate).toHaveBeenCalledWith('Hello {{ data }}', ['array']);
+    expect(renderTemplate).toHaveBeenCalledWith(
+      'Hello {{ data }}',
+      { data: ['array'] },
+      { throwOnError: true }
+    );
   });
 
   it('formats JSON output when output-format json is requested', async () => {
@@ -280,7 +304,11 @@ describe('renderCommand', () => {
     try {
       const output = await renderCommand('template.templ', '-');
       expect(output).toBe('Hello Pipe');
-      expect(renderTemplate).toHaveBeenCalledWith('Hello {{ name }}', { name: 'Pipe' });
+      expect(renderTemplate).toHaveBeenCalledWith(
+        'Hello {{ name }}',
+        { name: 'Pipe' },
+        { throwOnError: true }
+      );
     } finally {
       if (originalStdinDescriptor) {
         Object.defineProperty(process, 'stdin', originalStdinDescriptor);
@@ -306,7 +334,11 @@ describe('renderCommand', () => {
     });
 
     expect(output).toBe('Hello StreamJson');
-    expect(renderTemplate).toHaveBeenCalledWith('Hello {{ name }}', { name: 'StreamJson' });
+    expect(renderTemplate).toHaveBeenCalledWith(
+      'Hello {{ name }}',
+      { name: 'StreamJson' },
+      { throwOnError: true }
+    );
   });
 
   it('parses stdin with experimental streaming JSON parser when enabled', async () => {
@@ -326,7 +358,11 @@ describe('renderCommand', () => {
       });
 
       expect(output).toBe('Hello StreamStdin');
-      expect(renderTemplate).toHaveBeenCalledWith('Hello {{ name }}', { name: 'StreamStdin' });
+      expect(renderTemplate).toHaveBeenCalledWith(
+        'Hello {{ name }}',
+        { name: 'StreamStdin' },
+        { throwOnError: true }
+      );
     } finally {
       if (originalStdinDescriptor) {
         Object.defineProperty(process, 'stdin', originalStdinDescriptor);
@@ -353,7 +389,11 @@ describe('renderCommand', () => {
     try {
       const output = await renderCommand('template.templ', 'data.json');
       expect(output).toBe('Hello EnvFlag');
-      expect(renderTemplate).toHaveBeenCalledWith('Hello {{ name }}', { name: 'EnvFlag' });
+      expect(renderTemplate).toHaveBeenCalledWith(
+        'Hello {{ name }}',
+        { name: 'EnvFlag' },
+        { throwOnError: true }
+      );
     } finally {
       if (previousFlag === undefined) {
         delete process.env.TEMPLJS_EXPERIMENTAL_STREAM_JSON;
@@ -415,7 +455,11 @@ describe('renderCommand', () => {
     });
 
     expect(output).toBe('streamed array output');
-    expect(renderTemplate).toHaveBeenCalledWith('Hello {{ data }}', ['streamed-array']);
+    expect(renderTemplate).toHaveBeenCalledWith(
+      'Hello {{ data }}',
+      { data: ['streamed-array'] },
+      { throwOnError: true }
+    );
   });
 
   it('rejects multiple root values in experimental stream-json mode', async () => {

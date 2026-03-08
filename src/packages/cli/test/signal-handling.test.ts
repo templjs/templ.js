@@ -104,7 +104,7 @@ describe('signal-handler', () => {
       handlerExecuted = true;
     });
 
-    const cleanup = registerSignalHandlers({ onSigInt });
+    const cleanup = registerSignalHandlers({ onSigInt, cleanupTimeoutMs: 5000 });
     process.emit('SIGINT');
 
     await new Promise((resolve) => setTimeout(resolve, 20));

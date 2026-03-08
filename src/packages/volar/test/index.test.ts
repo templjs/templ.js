@@ -846,7 +846,7 @@ describe('LanguagePlugin', () => {
       expect(virtualCode.mapOriginalToCleaned(3)).toBe(0);
     });
 
-    it('covers mapOriginalOffsetToCleaned divergence branches', () => {
+    it('maps offsets via originalToCleanedOffsets table', () => {
       const content = 'seed';
       const snapshot = {
         getText: (start?: number, end?: number) => {
@@ -865,15 +865,13 @@ describe('LanguagePlugin', () => {
 
       virtualCode.original = 'abcdef';
       virtualCode.cleaned = 'abcX';
-      expect(virtualCode.mapOriginalOffsetToCleaned(4)).toBeNull();
+      virtualCode.originalToCleanedOffsets = [0, 1, 2, 3, 4, 4, 4];
+      expect(virtualCode.mapOriginalOffsetToCleaned(4)).toBe(4);
+      expect(virtualCode.mapOriginalOffsetToCleaned(5)).toBe(4);
+      expect(virtualCode.mapOriginalOffsetToCleaned(9)).toBe(4);
 
-      virtualCode.original = 'abc';
-      virtualCode.cleaned = 'abcdef';
-      expect(virtualCode.mapOriginalOffsetToCleaned(9)).toBe(virtualCode.cleaned.length);
-
-      virtualCode.original = 'abcdef';
-      virtualCode.cleaned = 'abc';
-      expect(virtualCode.mapOriginalOffsetToCleaned(5)).toBeNull();
+      virtualCode.originalToCleanedOffsets = [];
+      expect(virtualCode.mapOriginalOffsetToCleaned(3)).toBeNull();
     });
 
     it('falls back from simple edit to bounded edit when offset mapping fails', () => {
@@ -895,6 +893,7 @@ describe('LanguagePlugin', () => {
 
       virtualCode.original = 'abcdef';
       virtualCode.cleaned = 'XYZ';
+      virtualCode.originalToCleanedOffsets = [];
       const boundedSpy = vi.spyOn(virtualCode, 'applyBoundedEdit').mockReturnValue(true);
 
       const updated = virtualCode.applyEdit(2, 0, 'q');

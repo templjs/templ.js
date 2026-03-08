@@ -25,8 +25,8 @@ export async function validateCommand(
       : undefined;
 
     return {
-      valid: result.valid,
-      errors,
+      valid: schemaWarning ? false : result.valid,
+      errors: schemaWarning ? [...errors, schemaWarning] : errors,
       ...(schemaWarning ? { schemaWarning } : {}),
     };
   } catch (error) {
