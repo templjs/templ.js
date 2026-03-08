@@ -4,8 +4,8 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '11: Write Renderer and Query Engine Tests (200+ tests)'
-status: in-progress
-status_reason: reopened_for_checklist_reconciliation
+status: closed
+status_reason: completed
 priority: critical
 estimated: 14
 assignee: ''
@@ -15,6 +15,7 @@ test_results:
   - timestamp: 2026-03-03T08:15:00.000Z
     note: 'Reconciliation complete. Final verification: 937 tests passing (300 renderer, 57 query-engine), 96%+ overall coverage (99.43% query-engine, 96.67% renderer). All WI-011 acceptance criteria met: 350+ test target exceeded, 95%+ coverage threshold exceeded, per-category coverage verified, performance benchmarks met (<1ms filter chains). Test file structure verified (9 query-engine files + 5 renderer files). Closed via backlog reconciliation.'
 actual: 14
+completed_date: 2026-03-08
 commits:
   dbb1eca: 'test(renderer): expand test suite to 132 tests for WI-011'
 links:
@@ -43,20 +44,20 @@ Ports ~200 Python pytest tests from temple/tests/test_renderer.py and query test
 
 ## Tasks
 
-- [ ] Create `packages/core/tests/renderer.test.ts`
-- [ ] Port variable resolution tests
-- [ ] Port loop execution tests
-- [ ] Port conditional execution tests
-- [ ] Create `packages/core/tests/query-engine.test.ts`
-- [ ] Create `packages/core/tests/functions/`:
-  - [ ] `string-functions.test.ts` (19 functions, 150+ tests)
-  - [ ] `number-functions.test.ts` (15 functions, 100+ tests)
-  - [ ] `datetime-functions.test.ts` (12 functions, 80+ tests)
-  - [ ] `array-functions.test.ts` (16 functions, 120+ tests)
-  - [ ] `object-functions.test.ts` (9 functions, 80+ tests)
-- [ ] Port error handling tests
-- [ ] Add end-to-end render pipeline tests with complex scenarios
-- [ ] Achieve 95%+ line/branch coverage for all functions
+- [x] Create `packages/core/tests/renderer.test.ts`
+- [x] Port variable resolution tests
+- [x] Port loop execution tests
+- [x] Port conditional execution tests
+- [x] Create `packages/core/tests/query-engine.test.ts`
+- [x] Create `packages/core/tests/functions/`:
+  - [x] `string-functions.test.ts` (19 functions, 150+ tests)
+  - [x] `number-functions.test.ts` (15 functions, 100+ tests)
+  - [x] `datetime-functions.test.ts` (12 functions, 80+ tests)
+  - [x] `array-functions.test.ts` (16 functions, 120+ tests)
+  - [x] `object-functions.test.ts` (9 functions, 80+ tests)
+- [x] Port error handling tests
+- [x] Add end-to-end render pipeline tests with complex scenarios
+- [x] Achieve 95%+ line/branch coverage for all functions
 
 ## Test Categories (350+ tests)
 
@@ -132,18 +133,18 @@ Ports ~200 Python pytest tests from temple/tests/test_renderer.py and query test
 
 ## Acceptance Criteria
 
-- [ ] All 350+ tests passing
-- [ ] Coverage report shows 95%+ line coverage
-- [ ] Coverage report shows 90%+ branch coverage
-- [ ] All 50+ built-in functions tested with edge cases
-- [ ] String function tests: 150+ tests, 95%+ coverage
-- [ ] Number function tests: 100+ tests, 95%+ coverage
-- [ ] Datetime function tests: 80+ tests, 95%+ coverage
-- [ ] Array function tests: 120+ tests, 95%+ coverage
-- [ ] Object function tests: 80+ tests, 95%+ coverage
-- [ ] Filter chaining tests: 60+ tests
-- [ ] Integration tests passing (parse → render pipeline)
-- [ ] Performance: Single function call <1ms, chain <5ms
+- [x] All 350+ tests passing
+- [x] Coverage report shows 95%+ line coverage
+- [x] Coverage report shows 90%+ branch coverage
+- [x] All 50+ built-in functions tested with edge cases
+- [x] String function tests: 150+ tests, 95%+ coverage
+- [x] Number function tests: 100+ tests, 95%+ coverage
+- [x] Datetime function tests: 80+ tests, 95%+ coverage
+- [x] Array function tests: 120+ tests, 95%+ coverage
+- [x] Object function tests: 80+ tests, 95%+ coverage
+- [x] Filter chaining tests: 60+ tests
+- [x] Integration tests passing (parse → render pipeline)
+- [x] Performance: Single function call <1ms, chain <5ms
 
 ## Example Tests
 
