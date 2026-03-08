@@ -156,6 +156,9 @@ function createProgram(): Command {
 
       if (finalOptions.watch === true) {
         writeVerbose(mode, 'Starting watch mode');
+        // Clean up global signal handlers before watch mode registers its own
+        globalSignalCleanup?.();
+        globalSignalCleanup = undefined;
         await startRenderWatchMode(
           {
             template: templatePath,
@@ -313,10 +316,14 @@ function createProgram(): Command {
   return program;
 }
 
+// Global signal handler cleanup function, shared between main() and action handlers
+let globalSignalCleanup: (() => void) | undefined;
+
 export async function main(argv = process.argv): Promise<void> {
   const program = createProgram();
-  const watchModeRequested = argv.includes('--watch') || argv.includes('-w');
-  const cleanupSignalHandlers = watchModeRequested ? undefined : registerSignalHandlers();
+  // Register signal handlers for non-watch-mode commands
+  // Watch mode will clean these up and register its own handlers
+  globalSignalCleanup = registerSignalHandlers();
   const mode = resolveOutputModeFromArgv(argv);
 
   try {
@@ -341,7 +348,8 @@ export async function main(argv = process.argv): Promise<void> {
     writeError(mode, 'main', message, tty.isInteractive ? suggestion : undefined);
     process.exitCode = 1;
   } finally {
-    cleanupSignalHandlers?.();
+    globalSignalCleanup?.();
+    globalSignalCleanup = undefined;
   }
 }
 
