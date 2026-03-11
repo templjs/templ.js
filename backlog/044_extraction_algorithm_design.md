@@ -1,0 +1,99 @@
+---
+id: wi-044
+type: work-item
+subtype: story
+lifecycle: draft
+title: '044: Design Template Extraction Algorithm and API'
+status: proposed
+priority: medium
+estimated: 4
+assignee: ''
+links:
+  depends_on:
+    - '[[043_template_extraction]]'
+    - '[[006_chevrotain_parser]]'
+  blocks:
+    - '[[045_extraction_engine]]'
+---
+
+## Goal
+
+Design the extraction algorithm, API surface, and data structures for template-based data extraction (reverse rendering).
+
+## Background
+
+Before implementing extraction, we need to:
+
+1. Define the algorithm for matching rendered output against template structure
+2. Design the TypeScript API for extraction functionality
+3. Specify data structures for extraction rules and intermediate results
+4. Document limitations and edge cases
+5. Create example test cases to guide implementation
+
+This design work will guide WI-045 (implementation) and ensure a clean, extensible architecture.
+
+## Tasks
+
+- [ ] Document extraction algorithm pseudocode
+- [ ] Design ExtractionEngine interface
+- [ ] Design ExtractionResult type (success/failure with diagnostics)
+- [ ] Define ExtractionRule data structure (per template token)
+- [ ] Design API for extract() function signature
+- [ ] Document ambiguity resolution strategy
+- [ ] Create 10+ example test cases (input/template/expected output)
+- [ ] Document known limitations and non-supported patterns
+- [ ] Review design with stakeholders
+- [ ] Update WI-043 epic with design decisions
+
+## Deliverables
+
+- Design document in `docs/design/extraction-algorithm.md`
+- TypeScript interface definitions in `src/packages/core/src/extraction/types.ts` (stub)
+- Test case examples in `docs/design/extraction-examples.md`
+- Updated epic documentation
+
+## Acceptance Criteria
+
+- [ ] Algorithm can handle simple expressions ({{ var }})
+- [ ] Algorithm can handle nested access ({{ obj.field }})
+- [ ] Algorithm can handle conditionals ({% if %})
+- [ ] Algorithm can handle loops ({% for %})
+- [ ] API design reviewed and approved
+- [ ] At least 10 test cases documented
+- [ ] Edge cases and limitations documented
+
+## Key Design Questions
+
+1. **Parsing Strategy**: Parse template once and generate extraction rules, or parse on-the-fly?
+2. **Ambiguity Handling**: Greedy matching or backtracking? User hints required?
+3. **Whitespace**: Normalize or preserve? Configurable?
+4. **Type Coercion**: Where does schema validation happen? Before or after extraction?
+5. **Error Reporting**: What granularity of errors? Line/column positions in output?
+6. **State Management**: How to track extraction context during traversal?
+
+## Example API Design (Sketch)
+
+```typescript
+interface ExtractionOptions {
+  schema: Schema;
+  template: string;
+  output: string;
+  strictWhitespace?: boolean;
+  allowAmbiguous?: boolean;
+}
+
+interface ExtractionResult {
+  success: boolean;
+  data?: unknown;
+  errors?: ExtractionError[];
+  warnings?: ExtractionWarning[];
+}
+
+function extract(options: ExtractionOptions): ExtractionResult;
+```
+
+## Non-Goals
+
+- Full implementation (deferred to WI-045)
+- CLI integration (deferred to WI-047)
+- Complex optimization strategies

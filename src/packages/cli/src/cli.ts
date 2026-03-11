@@ -51,6 +51,7 @@ interface RenderActionOptions {
 interface ValidateActionOptions {
   template?: string;
   schema?: string;
+  input?: string;
 }
 
 interface InitActionOptions {
@@ -229,20 +230,17 @@ function createProgram(): Command {
 
   program
     .command('validate')
-    .description('Validate template syntax')
+    .description('Validate template syntax and optional schema/input compatibility')
     .option('-t, --template <path>', 'Template file path')
-    .option('-s, --schema <path>', 'Optional schema path (future core integration)')
+    .option('-s, --schema <path>', 'Optional schema file path')
+    .option('-i, --input <path>', 'Optional input data path to validate against schema')
     .action(async (options: ValidateActionOptions, command: Command) => {
       const mode = resolveOutputModeFromCommand(command);
       const startedAt = Date.now();
       const finalOptions = applyConfig(options, loadConfig());
       const templatePath = requireTemplatePath(finalOptions.template);
-      const result = await validateCommand(templatePath, finalOptions.schema);
+      const result = await validateCommand(templatePath, finalOptions.schema, finalOptions.input);
       const durationMs = Date.now() - startedAt;
-
-      if (result.schemaWarning && !mode.quiet && !mode.json) {
-        process.stderr.write(`Warning: ${result.schemaWarning}\n`);
-      }
 
       if (!result.valid) {
         const details = result.errors.length > 0 ? `: ${result.errors.join('; ')}` : '';
@@ -255,7 +253,6 @@ function createProgram(): Command {
           command: 'validate',
           data: {
             valid: true,
-            ...(result.schemaWarning ? { warning: result.schemaWarning } : {}),
             durationMs,
           },
         },

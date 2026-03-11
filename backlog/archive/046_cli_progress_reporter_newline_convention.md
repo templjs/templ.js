@@ -2,7 +2,7 @@
 id: wi-046
 type: work-item
 subtype: task
-lifecycle: inactive
+lifecycle: active
 title: '46: Standardize Progress Reporter Callback Newline Convention'
 status: closed
 status_reason: obsolete
