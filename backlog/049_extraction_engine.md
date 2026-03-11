@@ -1,21 +1,21 @@
 ---
-id: wi-045
+id: wi-049
 type: work-item
 subtype: story
 lifecycle: draft
-title: '045: Implement Core Template Extraction Engine'
+title: '049: Implement Core Template Extraction Engine'
 status: proposed
 priority: medium
 estimated: 16
 assignee: ''
 links:
   depends_on:
-    - '[[044_extraction_algorithm_design]]'
+    - '[[048_extraction_algorithm_design]]'
     - '[[007_ast_renderer]]'
     - '[[006_chevrotain_parser]]'
   blocks:
-    - '[[046_extraction_validation]]'
-    - '[[047_extraction_cli]]'
+    - '[[050_extraction_validation]]'
+    - '[[051_extraction_cli]]'
 ---
 
 ## Goal
@@ -24,7 +24,7 @@ Implement the core extraction engine that can reverse-render templates: given ou
 
 ## Background
 
-Based on the design from WI-044, implement the extraction algorithm that:
+Based on the design from WI-048, implement the extraction algorithm that:
 
 1. Parses templates into extraction rules
 2. Matches rendered output against template patterns
@@ -32,7 +32,7 @@ Based on the design from WI-044, implement the extraction algorithm that:
 4. Handles basic template constructs (expressions, conditionals, loops)
 5. Reports extraction errors with positions
 
-This is the core engine - schema validation (WI-046) and CLI (WI-047) build on this.
+This is the core engine - schema validation (WI-050) and CLI (WI-051) build on this.
 
 ## Tasks
 
@@ -132,8 +132,8 @@ And output `ABC`, extract:
 
 ## Non-Goals
 
-- Schema validation (WI-046)
-- CLI integration (WI-047)
+- Schema validation (WI-050)
+- CLI integration (WI-051)
 - Complex ambiguity resolution
 - Performance optimization (can be addressed later)
 

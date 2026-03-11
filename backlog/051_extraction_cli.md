@@ -1,21 +1,21 @@
 ---
-id: wi-047
+id: wi-051
 type: work-item
 subtype: story
 lifecycle: draft
-title: '047: Implement Extraction CLI Command'
+title: '051: Implement Extraction CLI Command'
 status: proposed
 priority: medium
 estimated: 6
 assignee: ''
 links:
   depends_on:
-    - '[[045_extraction_engine]]'
-    - '[[046_extraction_validation]]'
+    - '[[049_extraction_engine]]'
+    - '[[050_extraction_validation]]'
     - '[[017_cli_commands]]'
     - '[[033_schema_parity]]'
   blocks:
-    - '[[048_extraction_tests]]'
+    - '[[052_extraction_tests]]'
 ---
 
 ## Goal
@@ -24,7 +24,7 @@ Add `templjs extract` CLI command that extracts structured data from rendered ou
 
 ## Background
 
-With the extraction engine (WI-045) and validation (WI-046) complete, we need a CLI interface for users to extract data from the command line. This mirrors the existing `templjs render` command but works in reverse.
+With the extraction engine (WI-049) and validation (WI-050) complete, we need a CLI for users to extract data from the command line. This mirrors the existing `templjs render` command but works in reverse.
 
 The CLI should:
 

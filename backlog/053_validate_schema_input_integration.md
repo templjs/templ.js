@@ -1,9 +1,9 @@
 ---
-id: wi-049
+id: wi-053
 type: work-item
 subtype: story
 lifecycle: active
-title: '049: Wire `validate` command to schema + input validation'
+title: '053: Wire `validate` command to schema + input validation'
 status: ready-for-review
 priority: high
 estimated: 3
@@ -12,7 +12,7 @@ actual: 2
 test_results:
   - timestamp: 2026-03-11T00:00:00Z
     note: |
-      Implementation validation completed for WI-049:
+      Implementation validation completed for WI-053:
       - Added schema-backed validate flow in CLI command handler
       - Added new validate input flag: `-i, --input <path>`
       - Replaced schema placeholder warning with real schema parsing + Ajv validation

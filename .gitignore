@@ -202,7 +202,7 @@ ehthumbs.db
 ehthumbs_vista.db
 *.stackdump
 [Dd]esktop.ini
-"$RECYCLE.BIN/"
+$RECYCLE.BIN/
 *.cab
 *.msi
 *.msix

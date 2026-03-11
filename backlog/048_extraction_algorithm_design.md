@@ -1,19 +1,19 @@
 ---
-id: wi-044
+id: wi-048
 type: work-item
 subtype: story
 lifecycle: draft
-title: '044: Design Template Extraction Algorithm and API'
+title: '048: Design Template Extraction Algorithm and API'
 status: proposed
 priority: medium
 estimated: 4
 assignee: ''
 links:
   depends_on:
-    - '[[043_template_extraction]]'
+    - '[[047_template_extraction]]'
     - '[[006_chevrotain_parser]]'
   blocks:
-    - '[[045_extraction_engine]]'
+    - '[[049_extraction_engine]]'
 ---
 
 ## Goal
@@ -30,7 +30,7 @@ Before implementing extraction, we need to:
 4. Document limitations and edge cases
 5. Create example test cases to guide implementation
 
-This design work will guide WI-045 (implementation) and ensure a clean, extensible architecture.
+This design work will guide WI-049 (implementation) and ensure a clean, extensible architecture.
 
 ## Tasks
 
@@ -43,7 +43,7 @@ This design work will guide WI-045 (implementation) and ensure a clean, extensib
 - [ ] Create 10+ example test cases (input/template/expected output)
 - [ ] Document known limitations and non-supported patterns
 - [ ] Review design with stakeholders
-- [ ] Update WI-043 epic with design decisions
+- [ ] Update WI-048 epic with design decisions
 
 ## Deliverables
 
@@ -58,6 +58,9 @@ This design work will guide WI-045 (implementation) and ensure a clean, extensib
 - [ ] Algorithm can handle nested access ({{ obj.field }})
 - [ ] Algorithm can handle conditionals ({% if %})
 - [ ] Algorithm can handle loops ({% for %})
+- [ ] Algorithm can handle nested constructs (loops within conditionals, etc.)
+- [ ] Algorithm can handle filters ({{ var | filter }}) by using inverse filter logic if available
+- [ ] Algorithm has a clear strategy for ambiguity resolution
 - [ ] API design reviewed and approved
 - [ ] At least 10 test cases documented
 - [ ] Edge cases and limitations documented

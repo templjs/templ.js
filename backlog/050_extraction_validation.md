@@ -1,19 +1,19 @@
 ---
-id: wi-046
+id: wi-050
 type: work-item
 subtype: story
 lifecycle: draft
-title: '046: Add Schema-Guided Extraction and Validation'
+title: '050: Add Schema-Guided Extraction and Validation'
 status: proposed
 priority: medium
 estimated: 8
 assignee: ''
 links:
   depends_on:
-    - '[[045_extraction_engine]]'
+    - '[[049_extraction_engine]]'
     - '[[008_query_engine]]'
   blocks:
-    - '[[047_extraction_cli]]'
+    - '[[051_extraction_cli]]'
 ---
 
 ## Goal
@@ -22,7 +22,7 @@ Enhance extraction engine with schema-guided extraction: use schema information 
 
 ## Background
 
-WI-045 implements basic extraction that returns strings. However, with schema information we can:
+WI-049 implements basic extraction that returns strings. However, with schema information we can:
 
 1. **Type Coercion**: Convert extracted strings to proper types (number, boolean, date)
 2. **Ambiguity Resolution**: Use schema constraints to prefer certain extractions

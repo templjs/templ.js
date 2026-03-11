@@ -1,18 +1,18 @@
 ---
-id: wi-048
+id: wi-052
 type: work-item
 subtype: task
 lifecycle: draft
-title: '048: Write Extraction Tests and Documentation'
+title: '052: Write Extraction Tests and Documentation'
 status: proposed
 priority: medium
 estimated: 6
 assignee: ''
 links:
   depends_on:
-    - '[[045_extraction_engine]]'
-    - '[[046_extraction_validation]]'
-    - '[[047_extraction_cli]]'
+    - '[[049_extraction_engine]]'
+    - '[[050_extraction_validation]]'
+    - '[[051_extraction_cli]]'
 ---
 
 ## Goal
@@ -21,7 +21,7 @@ Create comprehensive test suite and user documentation for template extraction f
 
 ## Background
 
-With extraction engine, validation, and CLI complete (WI-045, WI-046, WI-047), we need:
+With extraction engine, validation, and CLI complete (WI-049, WI-050, WI-051), we need:
 
 1. **End-to-end tests**: Full extraction workflows from real examples
 2. **Round-trip tests**: Verify extract(render(data)) === data

@@ -1,9 +1,9 @@
 ---
-id: wi-043
+id: wi-047
 type: work-item
 subtype: epic
 lifecycle: draft
-title: '043: Template Extraction Framework (Reverse Rendering)'
+title: '047: Template Extraction Framework (Reverse Rendering)'
 status: proposed
 priority: medium
 estimated: 40
@@ -14,11 +14,11 @@ links:
     - '[[008_query_engine]]'
     - '[[007_ast_renderer]]'
   blocks:
-    - '[[044_extraction_algorithm_design]]'
-    - '[[045_extraction_engine]]'
-    - '[[046_extraction_validation]]'
-    - '[[047_extraction_cli]]'
-    - '[[048_extraction_tests]]'
+    - '[[048_extraction_algorithm_design]]'
+    - '[[049_extraction_engine]]'
+    - '[[050_extraction_validation]]'
+    - '[[051_extraction_cli]]'
+    - '[[052_extraction_tests]]'
 ---
 
 ## Goal
@@ -119,12 +119,3 @@ This epic breaks down into the following work items:
 - Machine learning-based extraction
 - Template inference from examples only (schema + template required)
 - Supporting all template edge cases (focus on common patterns)
-
-## Estimated Effort
-
-- WI-044: 4 hours (design)
-- WI-045: 16 hours (core engine)
-- WI-046: 8 hours (validation)
-- WI-047: 6 hours (CLI)
-- WI-048: 6 hours (tests/docs)
-- **Total: 40 hours**
