@@ -5,7 +5,45 @@ const registerCommand = vi.fn((_name: string, _handler: () => void) => ({
 }));
 const showInformationMessage = vi.fn();
 const showErrorMessage = vi.fn();
+const outputChannel = {
+  appendLine: vi.fn(),
+  append: vi.fn(),
+  clear: vi.fn(),
+  show: vi.fn(),
+  hide: vi.fn(),
+  dispose: vi.fn(),
+  name: 'templjs',
+};
+const createOutputChannel = vi.fn(() => outputChannel);
+const activeTextEditor = {
+  document: {
+    uri: {
+      scheme: 'file',
+      toString: () => 'file:///workspace/backlog/054_bug_no_schema_aware_authoring.md',
+    },
+    getText: () => '---\n$templ-schema: .templjs/root.json\n---\n{{ user.name }}',
+  },
+};
 const createFileSystemWatcher = vi.fn(() => ({ dispose: vi.fn() }));
+const getConfiguration = vi.fn(() => ({
+  get: vi.fn((key: string): unknown => {
+    if (key === 'schemaPath') {
+      return '.templjs/schema.json';
+    }
+    if (key === 'contentSchemaPath') {
+      return '.templjs/content-schema.json';
+    }
+    if (key === 'schemas') {
+      return {
+        'backlog/**': {
+          schemaPath: 'https://schemas.example.com/work-item-frontmatter.json',
+          contentSchemaPath: 'https://schemas.example.com/work-item-content.json',
+        },
+      };
+    }
+    return undefined;
+  }),
+}));
 
 const start = vi.fn(() => Promise.resolve());
 const stop = vi.fn(() => Promise.resolve());
@@ -23,9 +61,12 @@ vi.mock('vscode', () => ({
   window: {
     showInformationMessage,
     showErrorMessage,
+    createOutputChannel,
+    activeTextEditor,
   },
   workspace: {
     createFileSystemWatcher,
+    getConfiguration,
   },
 }));
 
@@ -46,6 +87,9 @@ describe('extension-activation', () => {
     showInformationMessage.mockClear();
     showErrorMessage.mockClear();
     createFileSystemWatcher.mockClear();
+    createOutputChannel.mockClear();
+    outputChannel.dispose.mockClear();
+    getConfiguration.mockClear();
     start.mockClear();
     stop.mockClear();
     languageClientConstructor.mockClear();
@@ -131,8 +175,20 @@ describe('extension-activation', () => {
     module.activate(context as never);
 
     expect(createFileSystemWatcher).toHaveBeenCalledWith(
-      '**/*.{templ,tmpl}.{md,json,yaml,yml,html}'
+      '**/*.{md,json,yaml,yml,html}.{templ,tmpl,tpl}'
     );
+  });
+
+  it('creates a templjs output channel for language server logs', async () => {
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    expect(createOutputChannel).toHaveBeenCalledWith('templjs');
   });
 
   it('passes TypeScript SDK initialization options to the language client', async () => {
@@ -145,9 +201,29 @@ describe('extension-activation', () => {
     module.activate(context as never);
 
     const clientOptions = languageClientConstructor.mock.calls[0][3] as {
-      initializationOptions: { typescript?: { tsdk: string } | undefined };
+      initializationOptions: {
+        typescript?: { tsdk: string } | undefined;
+        schemaPath?: string;
+        contentSchemaPath?: string;
+        schemaPatterns?: Record<string, { schemaPath?: string; contentSchemaPath?: string }>;
+        documentContext?: { uri: string; content: string };
+      };
     };
     expect(clientOptions.initializationOptions.typescript?.tsdk).toContain('typescript/lib');
+    expect(clientOptions.initializationOptions.schemaPath).toBe('.templjs/schema.json');
+    expect(clientOptions.initializationOptions.contentSchemaPath).toBe(
+      '.templjs/content-schema.json'
+    );
+    expect(clientOptions.initializationOptions.schemaPatterns).toEqual({
+      'backlog/**': {
+        schemaPath: 'https://schemas.example.com/work-item-frontmatter.json',
+        contentSchemaPath: 'https://schemas.example.com/work-item-content.json',
+      },
+    });
+    expect(clientOptions.initializationOptions.documentContext).toEqual({
+      uri: 'file:///workspace/backlog/054_bug_no_schema_aware_authoring.md',
+      content: '---\n$templ-schema: .templjs/root.json\n---\n{{ user.name }}',
+    });
   });
 
   it('reports activation errors when language server initialization fails', async () => {
@@ -182,11 +258,62 @@ describe('extension-activation', () => {
     expect(createFileSystemWatcher).toHaveBeenCalled();
 
     const clientOptions = languageClientConstructor.mock.calls[0][3] as {
-      initializationOptions: { typescript?: { tsdk: string } | undefined };
+      initializationOptions: {
+        typescript?: { tsdk: string } | undefined;
+        schemaPath?: string;
+        contentSchemaPath?: string;
+        schemaPatterns?: Record<string, { schemaPath?: string; contentSchemaPath?: string }>;
+      };
     };
     expect(clientOptions.initializationOptions.typescript?.tsdk).toContain('typescript/lib');
+    expect(clientOptions.initializationOptions.schemaPath).toBe('.templjs/schema.json');
+    expect(clientOptions.initializationOptions.contentSchemaPath).toBe(
+      '.templjs/content-schema.json'
+    );
+    expect(clientOptions.initializationOptions.schemaPatterns).toEqual({
+      'backlog/**': {
+        schemaPath: 'https://schemas.example.com/work-item-frontmatter.json',
+        contentSchemaPath: 'https://schemas.example.com/work-item-content.json',
+      },
+    });
 
     delete (globalThis as { require?: unknown }).require;
+  });
+
+  it('omits schemaPath when templjs.schemaPath is blank', async () => {
+    getConfiguration.mockReturnValue({
+      get: vi.fn((key: string): unknown => {
+        if (key === 'schemaPath') {
+          return '   ';
+        }
+        if (key === 'contentSchemaPath') {
+          return '   ';
+        }
+        if (key === 'schemas') {
+          return {};
+        }
+        return undefined;
+      }),
+    });
+
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const clientOptions = languageClientConstructor.mock.calls[0][3] as {
+      initializationOptions: {
+        schemaPath?: string;
+        contentSchemaPath?: string;
+        schemaPatterns?: Record<string, { schemaPath?: string; contentSchemaPath?: string }>;
+      };
+    };
+    expect(clientOptions.initializationOptions.schemaPath).toBeUndefined();
+    expect(clientOptions.initializationOptions.contentSchemaPath).toBeUndefined();
+    expect(clientOptions.initializationOptions.schemaPatterns).toBeUndefined();
   });
 
   it('pushes command and language client into extension subscriptions', async () => {

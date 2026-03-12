@@ -18,12 +18,17 @@ import {
 } from 'vscode-languageclient/node';
 
 let languageClient: LanguageClient | undefined;
+let outputChannel: vscode.OutputChannel | undefined;
 
 /**
  * Activate the templjs extension
  */
 export function activate(context: vscode.ExtensionContext): void {
   console.log('[templjs] Extension activating...');
+
+  outputChannel = vscode.window.createOutputChannel('templjs');
+  context.subscriptions.push(outputChannel);
+  outputChannel.appendLine('[templjs] Extension activating...');
 
   // Register command to test activation
   const testCommand = vscode.commands.registerCommand('templjs.test', () => {
@@ -36,9 +41,11 @@ export function activate(context: vscode.ExtensionContext): void {
   try {
     initializeLanguageServer(context);
     console.log('[templjs] Language server initialized successfully');
+    outputChannel.appendLine('[templjs] Language client started');
     vscode.window.showInformationMessage('Templjs language support activated! ✨');
   } catch (error) {
     console.error('[templjs] Failed to initialize language server:', error);
+    outputChannel.appendLine(`[templjs] Failed to initialize language server: ${String(error)}`);
     vscode.window.showErrorMessage('Failed to activate Templjs: ' + String(error));
   }
 }
@@ -59,6 +66,10 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
   };
 
   const tsdk = getTypeScriptSdkPath();
+  const schemaPath = getSchemaPathFromSettings();
+  const contentSchemaPath = getContentSchemaPathFromSettings();
+  const schemaPatterns = getSchemaPatternsFromSettings();
+  const documentContext = getActiveDocumentContext();
 
   const clientOptions: LanguageClientOptions = {
     documentSelector: [
@@ -69,11 +80,17 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
     ],
     synchronize: {
       fileEvents: vscode.workspace.createFileSystemWatcher(
-        '**/*.{templ,tmpl}.{md,json,yaml,yml,html}'
+        '**/*.{md,json,yaml,yml,html}.{templ,tmpl,tpl}'
       ),
     },
+    outputChannel,
+    traceOutputChannel: outputChannel,
     initializationOptions: {
       typescript: tsdk ? { tsdk } : undefined,
+      schemaPath,
+      contentSchemaPath,
+      schemaPatterns,
+      documentContext,
     },
   };
 
@@ -86,6 +103,58 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(languageClient);
   void languageClient.start();
+}
+
+interface ActiveDocumentContext {
+  uri: string;
+  content: string;
+}
+
+function getActiveDocumentContext(): ActiveDocumentContext | undefined {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || editor.document.uri.scheme !== 'file') {
+    return undefined;
+  }
+
+  return {
+    uri: editor.document.uri.toString(),
+    content: editor.document.getText(),
+  };
+}
+
+function getContentSchemaPathFromSettings(): string | undefined {
+  const configuredPath = vscode.workspace
+    .getConfiguration('templjs')
+    .get<string>('contentSchemaPath')
+    ?.trim();
+
+  return configuredPath ? configuredPath : undefined;
+}
+
+interface GlobSchemaConfig {
+  schemaPath?: string;
+  contentSchemaPath?: string;
+}
+
+function getSchemaPatternsFromSettings(): Record<string, GlobSchemaConfig> | undefined {
+  const globSchemas = vscode.workspace
+    .getConfiguration('templjs')
+    .get<Record<string, GlobSchemaConfig>>('schemas', {});
+
+  if (Object.keys(globSchemas).length === 0) {
+    return undefined;
+  }
+
+  return globSchemas;
+}
+
+function getSchemaPathFromSettings(): string | undefined {
+  const configuredPath = vscode.workspace
+    .getConfiguration('templjs')
+    .get<string>('schemaPath')
+    ?.trim();
+
+  return configuredPath ? configuredPath : undefined;
 }
 
 function getTypeScriptSdkPath(): string | undefined {
@@ -103,7 +172,13 @@ function getTypeScriptSdkPath(): string | undefined {
 export function deactivate(): Thenable<void> | undefined {
   if (languageClient) {
     console.log('[templjs] Extension deactivating...');
-    return languageClient.stop();
+    outputChannel?.appendLine('[templjs] Extension deactivating...');
+    const stopPromise = languageClient.stop();
+    outputChannel?.dispose();
+    outputChannel = undefined;
+    return stopPromise;
   }
+  outputChannel?.dispose();
+  outputChannel = undefined;
   return undefined;
 }

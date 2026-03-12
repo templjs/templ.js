@@ -32,8 +32,10 @@
           "templjs-yaml"
         ],
         "extensions": [
-          ".templ.yaml",
-          ".templ.yml"
+          ".yaml.templ",
+          ".yml.templ",
+          ".yaml.tpl",
+          ".yml.tpl"
         ],
         "configuration": "./language-configuration.json"
       },
@@ -44,7 +46,8 @@
           "templjs-json"
         ],
         "extensions": [
-          ".templ.json"
+          ".json.templ",
+          ".json.tpl"
         ],
         "configuration": "./language-configuration.json"
       },
@@ -55,7 +58,8 @@
           "templjs-md"
         ],
         "extensions": [
-          ".templ.md"
+          ".md.templ",
+          ".md.tpl"
         ],
         "configuration": "./language-configuration.json"
       },
@@ -66,7 +70,8 @@
           "templjs-html"
         ],
         "extensions": [
-          ".templ.html"
+          ".html.templ",
+          ".html.tpl"
         ],
         "configuration": "./language-configuration.json"
       }
@@ -123,6 +128,50 @@
           ],
           "default": "off",
           "description": "Traces the communication between VS Code and the language server."
+        },
+        "templjs.schemaPath": {
+          "scope": "resource",
+          "type": "string",
+          "default": "",
+          "description": "Path to a JSON Schema file used for templjs variable completions and diagnostics. Relative paths resolve from the workspace root. Can be a filesystem path or HTTPS URL. (Deprecated: prefer templjs.schemas with glob patterns)"
+        },
+        "templjs.contentSchemaPath": {
+          "scope": "resource",
+          "type": "string",
+          "default": "",
+          "description": "Path to a JSON Schema file used for markdown content validation. Relative paths resolve from the workspace root. Can be a filesystem path or HTTPS URL."
+        },
+        "templjs.schemas": {
+          "scope": "resource",
+          "type": "object",
+          "default": {},
+          "description": "Glob-pattern-based schema configuration. Keys are glob patterns (e.g. 'backlog/**', 'docs/**'); values are objects with schemaPath and contentSchemaPath.",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "schemaPath": {
+                  "type": "string",
+                  "description": "Path or HTTPS URL to the templ schema (frontmatter) for files matching this glob pattern."
+                },
+                "contentSchemaPath": {
+                  "type": "string",
+                  "description": "Path or HTTPS URL to the content schema (markdown body) for files matching this glob pattern."
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "examples": {
+            "backlog/**": {
+              "schemaPath": "https://schemas.example.com/work-item-frontmatter.json",
+              "contentSchemaPath": "https://schemas.example.com/work-item-content.json"
+            },
+            "docs/**": {
+              "schemaPath": "schemas/doc-schema.json",
+              "contentSchemaPath": "schemas/doc-content-schema.json"
+            }
+          }
         }
       }
     }
@@ -140,13 +189,15 @@
   "dependencies": {
     "@templjs/volar": "workspace:*",
     "@volar/language-server": "~2.0.0",
+    "gray-matter": "^4.0.3",
+    "minimatch": "^9.0.0",
     "tslib": "^2.6.0",
     "vscode-languageclient": "^9.0.0"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^4.0.2",
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.85.0",
+    "@vitest/coverage-v8": "^4.0.2",
     "typescript": "^5.3.0",
     "vitest": "^4.0.18"
   },

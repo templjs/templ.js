@@ -56,6 +56,10 @@ interface CompiledDelimiterPatterns {
 
 export interface TempljsLanguagePluginOptions {
   delimiters?: Partial<TemplateDelimiterConfig>;
+  schema?: object;
+  schemaUri?: string;
+  contentSchema?: object;
+  contentSchemaUri?: string;
 }
 
 function compileDelimiterPatterns(

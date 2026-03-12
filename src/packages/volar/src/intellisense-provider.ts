@@ -3,6 +3,7 @@ import {
   resolveDelimiters,
   type DelimiterConfig as IntellisenseDelimiters,
 } from './template-delimiters.js';
+import { isOffsetInFrontmatter, type FrontmatterRange } from './frontmatter-zone.js';
 
 export interface CompletionItem {
   label: string;
@@ -29,6 +30,9 @@ export interface SignatureHelp {
 export interface IntellisenseOptions {
   schema?: object;
   schemaUri?: string;
+  contentSchema?: object;
+  contentSchemaUri?: string;
+  frontmatterRange?: FrontmatterRange;
   customFilters?: FilterSignature[];
   customKeywords?: string[];
   delimiters?: Partial<IntellisenseDelimiters>;
@@ -208,6 +212,22 @@ function normalizeExpression(text: string, delimiters: IntellisenseDelimiters): 
   return trimmed;
 }
 
+function getVariablePathAtOffset(content: string, offsetInContent: number): string | null {
+  const regex = /[A-Za-z_][\w]*(?:\[[^\]]+\])*(?:\.[A-Za-z_][\w]*(?:\[[^\]]+\])*)*/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(content)) !== null) {
+    const start = match.index;
+    const end = start + match[0].length;
+    if (offsetInContent >= start && offsetInContent <= end) {
+      return match[0];
+    }
+  }
+
+  const fallback = content.match(VARIABLE_PATH_REGEX);
+  return fallback ? fallback[0] : null;
+}
+
 function getCompletionPrefix(text: string): string {
   const trimmed = text.replace(/[}\])\s]+$/g, '').trim();
 
@@ -243,7 +263,11 @@ export class IntellisenseProvider {
       delimiters.statementEnd,
       true
     );
-    const metadata = getMetadata(options?.schema);
+    const useFrontmatterSchema = isOffsetInFrontmatter(text, offset, options?.frontmatterRange);
+    const activeSchema = useFrontmatterSchema
+      ? options?.schema
+      : (options?.contentSchema ?? options?.schema);
+    const metadata = getMetadata(activeSchema);
     const filters = [...DEFAULT_FILTERS, ...(options?.customFilters ?? [])];
     const keywords = [...DEFAULT_KEYWORDS, ...(options?.customKeywords ?? [])];
 
@@ -288,7 +312,11 @@ export class IntellisenseProvider {
     if (!expression) return null;
 
     const content = normalizeExpression(text.slice(expression.start, expression.end), delimiters);
-    const metadata = getMetadata(options?.schema);
+    const useFrontmatterSchema = isOffsetInFrontmatter(text, offset, options?.frontmatterRange);
+    const activeSchema = useFrontmatterSchema
+      ? options?.schema
+      : (options?.contentSchema ?? options?.schema);
+    const metadata = getMetadata(activeSchema);
     const filters = [...DEFAULT_FILTERS, ...(options?.customFilters ?? [])];
 
     const filterMatch = content.match(/\|\s*([A-Za-z_][\w]*)/);
@@ -322,15 +350,63 @@ export class IntellisenseProvider {
       delimiters.expressionEnd,
       false
     );
-    if (!expression || !options?.schemaUri) return null;
+    const statement = expression
+      ? null
+      : findEnclosingRange(text, offset, delimiters.statementStart, delimiters.statementEnd, false);
+    if (!expression && !statement) return null;
 
-    const content = normalizeExpression(text.slice(expression.start, expression.end), delimiters);
-    const variableMatch = content.match(VARIABLE_PATH_REGEX);
-    if (!variableMatch) return null;
+    const useFrontmatterSchema = isOffsetInFrontmatter(text, offset, options?.frontmatterRange);
+    const schemaUri = useFrontmatterSchema
+      ? options?.schemaUri
+      : (options?.contentSchemaUri ?? options?.schemaUri);
+    if (!schemaUri) return null;
+
+    if (expression) {
+      const content = normalizeExpression(text.slice(expression.start, expression.end), delimiters);
+      const contentStart = text.slice(expression.start, expression.end).indexOf(content);
+      const relativeOffset =
+        offset -
+        expression.start -
+        (contentStart >= 0 ? contentStart : delimiters.expressionStart.length);
+      const variableSegment = content.split('|')[0] ?? content;
+      if (content.indexOf('|') >= 0 && relativeOffset >= content.indexOf('|')) {
+        return null;
+      }
+      const variablePath = getVariablePathAtOffset(variableSegment, Math.max(0, relativeOffset));
+      if (!variablePath) return null;
+
+      return {
+        uri: schemaUri,
+        path: variablePath,
+      };
+    }
+
+    const statementRange = statement!;
+    const rawInner = text
+      .slice(statementRange.start, statementRange.end)
+      .slice(delimiters.statementStart.length, -delimiters.statementEnd.length);
+    const statementContent = rawInner.trim();
+    if (!statementContent) return null;
+
+    const expressionPart = statementContent.replace(/^[A-Za-z_][\w]*\b\s*/, '');
+    if (!expressionPart) return null;
+
+    const expressionPartStart = statementContent.length - expressionPart.length;
+    const statementOffset =
+      statementRange.start +
+      delimiters.statementStart.length +
+      (rawInner.indexOf(statementContent) >= 0 ? rawInner.indexOf(statementContent) : 0);
+    const relativeOffset = offset - statementOffset - expressionPartStart;
+    const variableSegment = expressionPart.split('|')[0] ?? expressionPart;
+    if (expressionPart.indexOf('|') >= 0 && relativeOffset >= expressionPart.indexOf('|')) {
+      return null;
+    }
+    const variablePath = getVariablePathAtOffset(variableSegment, Math.max(0, relativeOffset));
+    if (!variablePath) return null;
 
     return {
-      uri: options.schemaUri,
-      path: variableMatch[0],
+      uri: schemaUri,
+      path: variablePath,
     };
   }
 

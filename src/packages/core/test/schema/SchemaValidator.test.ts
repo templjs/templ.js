@@ -51,13 +51,109 @@ describe('SchemaValidator', () => {
       expect(result.valid).toBe(true);
     });
 
-    it('should throw error for invalid schema', () => {
+    it('should degrade gracefully for invalid schema', () => {
       const validator = new SchemaValidator();
       const invalidSchema = {
         type: 'invalid-type',
       } as unknown as JSONSchema;
 
-      expect(() => validator.loadSchema(invalidSchema)).toThrow();
+      expect(() => validator.loadSchema(invalidSchema)).not.toThrow();
+      expect(validator.isCompiled).toBe(false);
+      expect(validator.compilationError).toBeTruthy();
+    });
+
+    it('compiles a JSON Schema draft 2020-12 schema without throwing', () => {
+      const schema: JSONSchema = {
+        $schema: 'https://json-schema.org/draft/2020-12/schema',
+        $id: '/test/draft2020',
+        type: 'object',
+        unevaluatedProperties: false,
+        properties: {
+          title: { type: 'string' },
+          count: { type: 'integer' },
+        },
+      } as unknown as JSONSchema;
+
+      expect(() => new SchemaValidator(schema)).not.toThrow();
+    });
+
+    it('isCompiled is true when draft 2020-12 schema compiles successfully', () => {
+      const schema: JSONSchema = {
+        $schema: 'https://json-schema.org/draft/2020-12/schema',
+        type: 'object',
+        unevaluatedProperties: false,
+        properties: { title: { type: 'string' } },
+      } as unknown as JSONSchema;
+
+      const validator = new SchemaValidator(schema);
+      expect(validator.isCompiled).toBe(true);
+      expect(validator.compilationError).toBeNull();
+    });
+
+    it('validates data against a draft 2020-12 schema with unevaluatedProperties', () => {
+      const schema: JSONSchema = {
+        $schema: 'https://json-schema.org/draft/2020-12/schema',
+        type: 'object',
+        unevaluatedProperties: false,
+        properties: {
+          title: { type: 'string' },
+          count: { type: 'integer' },
+        },
+      } as unknown as JSONSchema;
+
+      const validator = new SchemaValidator(schema);
+      expect(validator.validate({ title: 'hello', count: 1 }).valid).toBe(true);
+      expect(validator.validate({ title: 'hello', extra: true }).valid).toBe(false);
+    });
+
+    it('degrades gracefully when schema contains an unresolvable remote $ref', () => {
+      const schema: JSONSchema = {
+        $schema: 'https://json-schema.org/draft/2020-12/schema',
+        type: 'object',
+        allOf: [{ $ref: 'https://does-not-exist.example.com/schemas/base.json#/$defs/core' }],
+        properties: { title: { type: 'string' } },
+      } as unknown as JSONSchema;
+
+      expect(() => new SchemaValidator(schema)).not.toThrow();
+    });
+
+    it('returns isCompiled=false and a compilationError when remote $ref is unresolvable', () => {
+      const schema: JSONSchema = {
+        $schema: 'https://json-schema.org/draft/2020-12/schema',
+        type: 'object',
+        allOf: [{ $ref: 'https://does-not-exist.example.com/schemas/base.json#/$defs/core' }],
+        properties: { title: { type: 'string' } },
+      } as unknown as JSONSchema;
+
+      const validator = new SchemaValidator(schema);
+      expect(validator.isCompiled).toBe(false);
+      expect(validator.compilationError).toBeTruthy();
+    });
+
+    it('validate() returns valid:true when compilation failed (graceful degradation)', () => {
+      const schema: JSONSchema = {
+        $schema: 'https://json-schema.org/draft/2020-12/schema',
+        type: 'object',
+        allOf: [{ $ref: 'https://does-not-exist.example.com/schemas/base.json' }],
+      } as unknown as JSONSchema;
+
+      const validator = new SchemaValidator(schema);
+      expect(() => validator.validate({ anything: true })).not.toThrow();
+      expect(validator.validate({ anything: true }).valid).toBe(true);
+    });
+
+    it('getMetadata() still returns property info even when compilation failed', () => {
+      const schema: JSONSchema = {
+        $schema: 'https://json-schema.org/draft/2020-12/schema',
+        type: 'object',
+        allOf: [{ $ref: 'https://does-not-exist.example.com/schemas/base.json' }],
+        properties: { title: { type: 'string' }, count: { type: 'integer' } },
+      } as unknown as JSONSchema;
+
+      const validator = new SchemaValidator(schema);
+      const metadata = validator.getMetadata();
+      expect(metadata).toHaveProperty('title');
+      expect(metadata).toHaveProperty('count');
     });
   });
 
@@ -539,6 +635,88 @@ describe('Query Path Validator', () => {
       expect(paths.has('items[0]')).toBe(true);
       expect(paths.has('items[0].name')).toBe(true);
     });
+
+    it('should extract paths through local #/definitions $ref', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          relationship: {
+            $ref: '#/definitions/relationship',
+          },
+        },
+        definitions: {
+          relationship: {
+            type: 'object',
+            properties: {
+              target: { type: 'string' },
+              type: { type: 'string' },
+            },
+          },
+        },
+      };
+
+      const paths = extractPaths(schema);
+
+      expect(paths.has('relationship')).toBe(true);
+      expect(paths.has('relationship.target')).toBe(true);
+      expect(paths.has('relationship.type')).toBe(true);
+    });
+
+    it('should extract paths through local #/$defs $ref in arrays', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          relationships: {
+            type: 'array',
+            items: {
+              $ref: '#/$defs/relationship',
+            },
+          },
+        },
+        $defs: {
+          relationship: {
+            type: 'object',
+            properties: {
+              target: { type: 'string' },
+              note: { type: 'string' },
+            },
+          },
+        },
+      };
+
+      const paths = extractPaths(schema);
+
+      expect(paths.has('relationships')).toBe(true);
+      expect(paths.has('relationships[0]')).toBe(true);
+      expect(paths.has('relationships[0].target')).toBe(true);
+      expect(paths.has('relationships[0].note')).toBe(true);
+    });
+
+    it('should avoid infinite recursion for self-referential local $ref', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          node: {
+            $ref: '#/definitions/node',
+          },
+        },
+        definitions: {
+          node: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              parent: { $ref: '#/definitions/node' },
+            },
+          },
+        },
+      };
+
+      const paths = extractPaths(schema);
+
+      expect(paths.has('node')).toBe(true);
+      expect(paths.has('node.name')).toBe(true);
+      expect(paths.has('node.parent')).toBe(true);
+    });
   });
 
   describe('levenshteinDistance', () => {
@@ -674,14 +852,18 @@ describe('Schema Inference', () => {
       const schema = inferArraySchema(['a', 'b', 'c']);
 
       expect(schema.type).toBe('array');
-      expect(schema.items?.type).toBe('string');
+      expect(Array.isArray(schema.items) ? schema.items[0]?.type : schema.items?.type).toBe(
+        'string'
+      );
     });
 
     it('should infer array of objects', () => {
       const schema = inferArraySchema([{ name: 'John' }, { name: 'Jane' }]);
 
       expect(schema.type).toBe('array');
-      expect(schema.items?.type).toBe('object');
+      expect(Array.isArray(schema.items) ? schema.items[0]?.type : schema.items?.type).toBe(
+        'object'
+      );
     });
 
     it('should handle empty arrays', () => {
@@ -749,7 +931,9 @@ describe('Schema Inference', () => {
       const merged = mergeSchemas(schema1, schema2);
 
       expect(merged.type).toBe('array');
-      expect(merged.items?.type).toBe('string');
+      expect(Array.isArray(merged.items) ? merged.items[0]?.type : merged.items?.type).toBe(
+        'string'
+      );
     });
 
     it('should merge arrays with different element types', () => {
@@ -1289,6 +1473,30 @@ describe('Integration Tests', () => {
       const metadata = validator.getMetadata();
 
       expect(metadata['level1.level2.level3']).toBeDefined();
+    });
+
+    it('should extract metadata from allOf-composed root schemas', () => {
+      const schema: JSONSchema = {
+        allOf: [
+          {
+            type: 'object',
+            properties: {
+              milestoneObjective: { type: 'string' },
+              successSignals: {
+                type: 'array',
+                items: { type: 'string' },
+              },
+            },
+          },
+        ],
+      };
+
+      const validator = new SchemaValidator(schema);
+      const metadata = validator.getMetadata();
+
+      expect(metadata.milestoneObjective).toBeDefined();
+      expect(metadata.successSignals).toBeDefined();
+      expect(metadata['successSignals[0]']).toBeDefined();
     });
 
     it('should track property metadata at nested levels', () => {

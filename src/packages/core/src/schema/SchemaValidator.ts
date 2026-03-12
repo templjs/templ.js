@@ -2,7 +2,7 @@
  * JSON Schema validator using Ajv
  */
 
-import Ajv from 'ajv';
+import Ajv2020 from 'ajv/dist/2020.js';
 import type { ValidateFunction, ErrorObject } from 'ajv';
 import addFormats from 'ajv-formats';
 import type { ValidationResult, ValidationError, SchemaMetadata, JSONSchema } from './types.js';
@@ -13,18 +13,19 @@ import { inferSchemaFromValue } from './schemaInference.js';
  * Schema validator with query path validation and schema inference
  */
 export class SchemaValidator {
-  private ajv: Ajv;
+  private ajv: Ajv2020;
   private currentSchema: JSONSchema | null = null;
   private validPaths: Set<string> = new Set();
   private compiledSchemas: Map<string, ValidateFunction> = new Map();
   private validateFunction: ValidateFunction | null = null;
+  private compileError: string | null = null;
 
   /**
    * Create a new SchemaValidator
    * @param schema - Optional JSON Schema to initialize with
    */
   constructor(schema?: JSONSchema) {
-    this.ajv = new Ajv({
+    this.ajv = new Ajv2020({
       allErrors: true,
       verbose: true,
       strictSchema: false,
@@ -56,12 +57,26 @@ export class SchemaValidator {
     // Compile schema
     try {
       this.validateFunction = this.ajv.compile(schema);
+      this.compileError = null;
       if (this.validateFunction) {
         this.compiledSchemas.set(cacheKey, this.validateFunction);
       }
     } catch (error) {
-      throw new Error(`Failed to compile schema: ${(error as Error).message}`, { cause: error });
+      // Degrade gracefully: unknown meta-schema or unresolvable remote $ref.
+      // Validation is skipped; completions and hover still work.
+      this.validateFunction = null;
+      this.compileError = (error as Error).message;
     }
+  }
+
+  /** Whether the schema compiled successfully. False means validation is skipped. */
+  get isCompiled(): boolean {
+    return this.validateFunction !== null;
+  }
+
+  /** The compile error message if compilation failed, otherwise null. */
+  get compilationError(): string | null {
+    return this.compileError;
   }
 
   /**
@@ -70,8 +85,12 @@ export class SchemaValidator {
    * @returns Validation result with errors if any
    */
   validate(data: unknown): ValidationResult {
-    if (!this.validateFunction || !this.currentSchema) {
+    if (!this.currentSchema) {
       throw new Error('No schema loaded. Call loadSchema() first.');
+    }
+    // Schema loaded but compile failed (e.g. remote $ref, unknown meta-schema).
+    if (!this.validateFunction) {
+      return { valid: true, errors: [] };
     }
 
     const valid = this.validateFunction(data);
@@ -251,6 +270,41 @@ export class SchemaValidator {
         const arrayPrefix = prefix ? `${prefix}[0]` : '[0]';
         // Array items don't have parent required, use undefined
         const subMetadata = this.extractMetadata(itemsSchema, arrayPrefix, undefined);
+        Object.assign(metadata, subMetadata);
+      }
+    }
+
+    // Handle combinators (allOf/anyOf/oneOf)
+    const combinators = [schema.allOf, schema.anyOf, schema.oneOf].filter(Boolean);
+    for (const combinator of combinators) {
+      if (!Array.isArray(combinator)) {
+        continue;
+      }
+
+      for (const subSchema of combinator) {
+        const subMetadata = this.extractMetadata(subSchema, prefix, parentRequired);
+
+        if (prefix && metadata[prefix] && subMetadata[prefix]) {
+          const current = metadata[prefix];
+          const incoming = subMetadata[prefix];
+
+          if (incoming.properties) {
+            current.properties = Array.from(
+              new Set([...(current.properties ?? []), ...incoming.properties])
+            );
+          }
+
+          if (incoming.itemType && !current.itemType) {
+            current.itemType = incoming.itemType;
+          }
+
+          if (current.type === 'any' && incoming.type) {
+            current.type = incoming.type;
+          }
+
+          delete subMetadata[prefix];
+        }
+
         Object.assign(metadata, subMetadata);
       }
     }

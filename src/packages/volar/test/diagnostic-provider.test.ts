@@ -28,6 +28,30 @@ const sampleSchema = {
   },
 };
 
+const frontmatterSchema = {
+  type: 'object',
+  properties: {
+    front: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+      },
+    },
+  },
+};
+
+const contentSchema = {
+  type: 'object',
+  properties: {
+    content: {
+      type: 'object',
+      properties: {
+        heading: { type: 'string' },
+      },
+    },
+  },
+};
+
 describe('DiagnosticProvider', () => {
   it('reports missing closing end tag', () => {
     const diagnostics = collectDiagnostics('{% if user.name %}\nHello', {
@@ -80,6 +104,55 @@ describe('DiagnosticProvider', () => {
       schema: sampleSchema,
     });
     expect(diagnostics.some((diag) => diag.code === 'templjs.undefinedVariable')).toBe(true);
+  });
+
+  it('does not flag loop alias property paths as undefined in expressions', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        relationships: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              type: { type: 'string' },
+              target: { type: 'string' },
+              note: { type: 'string' },
+            },
+          },
+        },
+      },
+    };
+
+    const text = '{% for relationship in relationships %}\n{{ relationship.type }}\n{% endfor %}';
+    const diagnostics = collectDiagnostics(text, { schema: schema as object });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.undefinedVariable')).toBe(false);
+  });
+
+  it('does not flag loop alias property paths used inside statements', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        relationships: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              type: { type: 'string' },
+              target: { type: 'string' },
+              note: { type: 'string' },
+            },
+          },
+        },
+      },
+    };
+
+    const text =
+      '{% for relationship in relationships %}\n{% if relationship.note %}{{ relationship.note }}{% endif %}\n{% endfor %}';
+    const diagnostics = collectDiagnostics(text, { schema: schema as object });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.undefinedVariable')).toBe(false);
   });
 
   it('flags invalid filters', () => {
@@ -222,6 +295,22 @@ describe('DiagnosticProvider', () => {
     expect(diagnostics.length).toBe(0);
   });
 
+  it('allows valid filters in statement expressions', () => {
+    const diagnostics = collectDiagnostics('{% if notes | length > 0 %}', {
+      schema: {
+        type: 'object',
+        properties: {
+          notes: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+        },
+      },
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidFilter')).toBe(false);
+  });
+
   it('detects missing closing for expression delimiters', () => {
     const diagnostics = collectDiagnostics('Value: {{ user.name');
     expect(diagnostics.some((diag) => diag.code === 'templjs.unclosedExpressionDelimiter')).toBe(
@@ -246,11 +335,75 @@ describe('DiagnosticProvider', () => {
     expect(diagnostics.some((diag) => diag.code === 'templjs.invalidFilter')).toBe(true);
   });
 
+  it('flags invalid alias property access for primitive array items', () => {
+    const diagnostics = collectDiagnostics(
+      '{% for condition in completionDefinition %}\n{{ condition.foo }}\n{% endfor %}',
+      {
+        schema: {
+          type: 'object',
+          properties: {
+            completionDefinition: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+          },
+        },
+      }
+    );
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.undefinedVariable')).toBe(true);
+  });
+
   it('reports errors with suggestions for for-in variables', () => {
     const diagnostics = collectDiagnostics('{% for item in usr %}', {
       schema: sampleSchema,
     });
     expect(diagnostics[0]?.suggestion).toBeDefined();
+  });
+
+  it('highlights only the offending variable token in expression diagnostics', () => {
+    const text = '- {{ unknownVar }}';
+    const diagnostics = collectDiagnostics(text, { schema: sampleSchema });
+    const diag = diagnostics.find((item) => item.code === 'templjs.undefinedVariable');
+
+    expect(diag).toBeDefined();
+    expect(diag?.range.start.line).toBe(0);
+    expect(diag?.range.start.character).toBe(text.indexOf('unknownVar'));
+    expect(diag?.range.end.character).toBe(text.indexOf('unknownVar') + 'unknownVar'.length);
+  });
+
+  it('highlights only the iterable path token in for-in diagnostics', () => {
+    const text = '{% for item in unknowns %}';
+    const diagnostics = collectDiagnostics(text, { schema: sampleSchema });
+    const diag = diagnostics.find((item) => item.code === 'templjs.undefinedVariable');
+
+    expect(diag).toBeDefined();
+    expect(diag?.range.start.character).toBe(text.indexOf('unknowns'));
+    expect(diag?.range.end.character).toBe(text.indexOf('unknowns') + 'unknowns'.length);
+  });
+
+  it('highlights only the invalid filter token', () => {
+    const text = '{{ user.name | unknownFilter }}';
+    const diagnostics = collectDiagnostics(text, { schema: sampleSchema });
+    const diag = diagnostics.find((item) => item.code === 'templjs.invalidFilter');
+
+    expect(diag).toBeDefined();
+    expect(diag?.range.start.character).toBe(text.indexOf('unknownFilter'));
+    expect(diag?.range.end.character).toBe(text.indexOf('unknownFilter') + 'unknownFilter'.length);
+  });
+
+  it('does not treat string literals as variables in ternary expressions', () => {
+    const diagnostics = collectDiagnostics('{{ condition.length > 0 ? "x" : " " }}', {
+      schema: {
+        type: 'object',
+        properties: {
+          condition: { type: 'string' },
+        },
+      },
+    });
+
+    const undefinedVars = diagnostics.filter((diag) => diag.code === 'templjs.undefinedVariable');
+    expect(undefinedVars).toHaveLength(0);
   });
 
   it('handles repeated variable validation in expressions', () => {
@@ -294,4 +447,97 @@ describe('DiagnosticProvider', () => {
 
     expect(diagnostics.some((diag) => diag.message === 'Base markdown error')).toBe(true);
   });
+
+  it('uses frontmatter schema for frontmatter expressions and content schema for body expressions', () => {
+    const text = '---\ntitle: "{{ front.title }}"\n---\n# Heading\n{{ content.heading }}';
+
+    const diagnostics = collectDiagnostics(text, {
+      schema: frontmatterSchema,
+      contentSchema,
+    });
+
+    expect(diagnostics.length).toBe(0);
+  });
+
+  it('falls back to frontmatter schema when content schema is not configured', () => {
+    const text = '---\ntitle: "{{ front.title }}"\n---\n# Heading\n{{ content.heading }}';
+
+    const diagnostics = collectDiagnostics(text, {
+      schema: frontmatterSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.undefinedVariable')).toBe(true);
+  });
+
+  // ── Draft 2020-12 schema compatibility ────────────────────────────────────
+  // Regression: SchemaValidator used plain Ajv (draft-07) which threw on
+  // "no schema with key or ref https://json-schema.org/draft/2020-12/schema".
+  // These tests ensure the server never crashes with real-world schemas.
+
+  it('does not throw when schema declares $schema: draft 2020-12 with unevaluatedProperties', () => {
+    const draft2020Schema = {
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      $id: '/test/milestone',
+      type: 'object',
+      unevaluatedProperties: false,
+      properties: {
+        title: { type: 'string' },
+        summary: { type: 'string' },
+      },
+    };
+
+    expect(() =>
+      collectDiagnostics('{{ title }}', { schema: draft2020Schema as object })
+    ).not.toThrow();
+  });
+
+  it('returns empty diagnostics (not an error) when schema has an unresolvable remote $ref', () => {
+    const schemaWithRemoteRef = {
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      $id: '/test/remote-ref',
+      type: 'object',
+      allOf: [{ $ref: 'https://does-not-exist.example.com/schemas/base.json#/$defs/core' }],
+      properties: {
+        title: { type: 'string' },
+      },
+    };
+
+    expect(() =>
+      collectDiagnostics('{{ title }}', { schema: schemaWithRemoteRef as object })
+    ).not.toThrow();
+  });
+
+  it('does not throw when draft 2020-12 content schema has unevaluatedProperties', () => {
+    const draft2020Content = {
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      unevaluatedProperties: false,
+      properties: {
+        narrative: { type: 'string' },
+        objectives: { type: 'array', items: { type: 'string' } },
+      },
+    };
+    const text = '---\ntype: project\n---\n{{ narrative }}';
+
+    expect(() =>
+      collectDiagnostics(text, { schema: sampleSchema, contentSchema: draft2020Content as object })
+    ).not.toThrow();
+  });
+});
+it('flags loop alias property accesses when array items are not enumerated in schema', () => {
+  // Real-world case: schema defines the array but omits items.properties
+  const schema = {
+    type: 'object',
+    properties: {
+      relationships: { type: 'array' },
+    },
+  };
+
+  const text =
+    '{% for relationship in relationships %}\n{{ relationship.type }}\n{{ relationship.target }}\n{% if relationship.note %}{{ relationship.note }}{% endif %}\n{% endfor %}';
+  const diagnostics = collectDiagnostics(text, { schema: schema as object });
+
+  expect(diagnostics.filter((d) => d.code === 'templjs.undefinedVariable').length).toBeGreaterThan(
+    0
+  );
 });

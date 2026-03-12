@@ -71,4 +71,5 @@ export interface JSONSchema {
   default?: unknown;
   examples?: unknown[];
   definitions?: { [key: string]: JSONSchema };
+  $defs?: { [key: string]: JSONSchema };
 }

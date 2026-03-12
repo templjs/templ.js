@@ -23,6 +23,30 @@ const sampleSchema = {
   },
 };
 
+const frontmatterSchema = {
+  type: 'object',
+  properties: {
+    frontData: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+      },
+    },
+  },
+};
+
+const bodySchema = {
+  type: 'object',
+  properties: {
+    contentData: {
+      type: 'object',
+      properties: {
+        heading: { type: 'string' },
+      },
+    },
+  },
+};
+
 describe('IntellisenseProvider', () => {
   const provider = new IntellisenseProvider();
 
@@ -270,5 +294,59 @@ describe('IntellisenseProvider', () => {
       schemaUri: 'file:///schema.json',
     });
     expect(def).toBeNull();
+  });
+
+  it('returns definition from statement expression context', () => {
+    const text = '{% if user.email %}ok{% endif %}';
+    const offset = text.indexOf('user.email') + 2;
+
+    const def = provider.getDefinition(text, offset, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+    });
+
+    expect(def?.uri).toBe('file:///schema.json');
+    expect(def?.path).toBe('user.email');
+  });
+
+  it('uses frontmatter schema completions in frontmatter zone', () => {
+    const text = '---\ntitle: "{{ frontD }}"\n---\n{{ contentD }}';
+    const offset = text.indexOf('frontD') + 'frontD'.length;
+
+    const items = provider.getCompletions(text, offset, {
+      schema: frontmatterSchema,
+      contentSchema: bodySchema,
+    });
+
+    expect(items.some((item) => item.label === 'frontData')).toBe(true);
+    expect(items.some((item) => item.label === 'contentData')).toBe(false);
+  });
+
+  it('uses content schema completions in markdown body zone', () => {
+    const text = '---\ntitle: "{{ frontData.title }}"\n---\n{{ contentD }}';
+    const offset = text.indexOf('contentD') + 'contentD'.length;
+
+    const items = provider.getCompletions(text, offset, {
+      schema: frontmatterSchema,
+      contentSchema: bodySchema,
+    });
+
+    expect(items.some((item) => item.label === 'contentData')).toBe(true);
+    expect(items.some((item) => item.label === 'frontData')).toBe(false);
+  });
+
+  it('uses content schema URI for definitions in markdown body', () => {
+    const text = '---\ntitle: "{{ frontData.title }}"\n---\n{{ contentData.heading }}';
+    const offset = text.lastIndexOf('contentData') + 2;
+
+    const def = provider.getDefinition(text, offset, {
+      schema: frontmatterSchema,
+      schemaUri: 'file:///frontmatter-schema.json',
+      contentSchema: bodySchema,
+      contentSchemaUri: 'file:///content-schema.json',
+    });
+
+    expect(def?.uri).toBe('file:///content-schema.json');
+    expect(def?.path).toBe('contentData.heading');
   });
 });
