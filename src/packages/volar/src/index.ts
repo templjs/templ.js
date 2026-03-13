@@ -46,7 +46,7 @@ const EXTENSION_TO_BASE_FORMAT: Record<string, BaseFormat> = {
   '.htm': 'html',
 };
 
-const TEMPLATE_MARKERS = ['.templ.', '.tmpl.'] as const;
+const TEMPLATE_MARKERS = ['.templ.', '.tmpl.', '.tpl.'] as const;
 
 interface CompiledDelimiterPatterns {
   delimiters: TemplateDelimiterConfig;
@@ -132,8 +132,8 @@ function detectBaseFormat(fileUriString: string): BaseFormat {
       if (format) return format;
     }
 
-    if (filePath.endsWith('.tmpl') || filePath.endsWith('.templ')) {
-      const suffixLength = filePath.endsWith('.tmpl') ? 5 : 6;
+    if (filePath.endsWith('.tmpl') || filePath.endsWith('.templ') || filePath.endsWith('.tpl')) {
+      const suffixLength = filePath.endsWith('.tmpl') ? 5 : filePath.endsWith('.templ') ? 6 : 4;
       const baseName = filePath.slice(0, -suffixLength);
       const lastDot = baseName.lastIndexOf('.');
       if (lastDot > -1) {

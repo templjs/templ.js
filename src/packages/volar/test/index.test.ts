@@ -1119,6 +1119,22 @@ describe('LanguagePlugin', () => {
       expect(virtualCode?.languageId).toBe('markdown');
     });
 
+    it('should detect markdown from .md.tpl extension', () => {
+      const mockSnapshot = {
+        getText: () => '# Title',
+        getLength: () => 7,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///doc.md.tpl',
+        'templjs-markdown',
+        mockSnapshot
+      );
+
+      expect(virtualCode?.languageId).toBe('markdown');
+    });
+
     it('should detect markdown from .templ.md extension', () => {
       const mockSnapshot = {
         getText: () => '# Templated',
@@ -1231,6 +1247,22 @@ describe('LanguagePlugin', () => {
       expect(virtualCode?.languageId).toBe('json');
     });
 
+    it('should detect json from .json.tpl extension', () => {
+      const mockSnapshot = {
+        getText: () => '{}',
+        getLength: () => 2,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///data.json.tpl',
+        'templjs-json',
+        mockSnapshot
+      );
+
+      expect(virtualCode?.languageId).toBe('json');
+    });
+
     it('should detect yaml from .yaml/.yml extension', () => {
       const mockSnapshot = {
         getText: () => 'key: value',
@@ -1252,6 +1284,38 @@ describe('LanguagePlugin', () => {
 
       expect(vcodeYaml?.languageId).toBe('yaml');
       expect(vcodeYml?.languageId).toBe('yaml');
+    });
+
+    it('should detect yaml from .yaml.tpl extension', () => {
+      const mockSnapshot = {
+        getText: () => 'key: value',
+        getLength: () => 10,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///config.yaml.tpl',
+        'templjs-yaml',
+        mockSnapshot
+      );
+
+      expect(virtualCode?.languageId).toBe('yaml');
+    });
+
+    it('should detect html from .html.tpl extension', () => {
+      const mockSnapshot = {
+        getText: () => '<div>templ</div>',
+        getLength: () => 17,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///page.html.tpl',
+        'templjs-html',
+        mockSnapshot
+      );
+
+      expect(virtualCode?.languageId).toBe('html');
     });
 
     it('should detect html from .html extension', () => {
