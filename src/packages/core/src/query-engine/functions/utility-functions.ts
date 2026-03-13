@@ -23,4 +23,26 @@ export const defaultValue: FilterFunction = (value: unknown, fallback: unknown):
   return value;
 };
 
-export const utilityFunctions = [{ signature: defaultSignature, handler: defaultValue }];
+export const typeofSignature: FunctionSignature = {
+  name: 'typeof',
+  category: 'utility',
+  description: 'Return type of the value as a string',
+  parameters: [],
+  returnType: 'string',
+  examples: ['typeof(123) → "number"', 'typeof("hello") → "string"', 'typeof(null) → "null"'],
+};
+
+export const typeofFunction: FilterFunction = (value: unknown): string => {
+  if (value === null) {
+    return 'null';
+  }
+  if (Array.isArray(value)) {
+    return 'array';
+  }
+  return typeof value;
+};
+
+export const utilityFunctions = [
+  { signature: defaultSignature, handler: defaultValue },
+  { signature: typeofSignature, handler: typeofFunction },
+];

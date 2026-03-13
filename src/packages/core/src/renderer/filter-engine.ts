@@ -78,6 +78,19 @@ const BUILTIN_FILTERS: Record<string, FilterFunction> = {
   },
 
   /**
+   * Alias for length (array/object size)
+   */
+  size: (value: AnyValue): number => {
+    if (Array.isArray(value)) {
+      return value.length;
+    }
+    if (typeof value === 'object' && value !== null) {
+      return Object.keys(value).length;
+    }
+    return 0;
+  },
+
+  /**
    * Join array elements
    */
   join: (value: AnyValue, separator = ','): AnyValue => {
@@ -246,7 +259,26 @@ const BUILTIN_FILTERS: Record<string, FilterFunction> = {
   json: (value: AnyValue): string => {
     return JSON.stringify(value);
   },
+
+  /**
+   * JavaScript-like type inspection with null/array handling
+   */
+  typeof: (value: AnyValue): string => {
+    if (value === null) {
+      return 'null';
+    }
+    if (Array.isArray(value)) {
+      return 'array';
+    }
+    return typeof value;
+  },
 };
+
+export function getBuiltinFilterNames(): string[] {
+  return Object.keys(BUILTIN_FILTERS);
+}
+
+export const BUILTIN_FILTER_NAMES = getBuiltinFilterNames();
 
 /**
  * Filter application engine

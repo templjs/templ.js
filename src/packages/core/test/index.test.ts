@@ -3,6 +3,7 @@ import { version as packageVersion } from '../package.json';
 import core, {
   createLexer,
   createParser,
+  extractTemplateScopeBindings,
   createRenderer,
   createQueryEngine,
   renderTemplate,
@@ -93,6 +94,7 @@ describe('core entrypoint', () => {
     expect(core.createParser).toBe(createParser);
     expect(core.createRenderer).toBe(createRenderer);
     expect(core.createQueryEngine).toBe(createQueryEngine);
+    expect(core.extractTemplateScopeBindings).toBe(extractTemplateScopeBindings);
     expect(core.renderTemplate).toBe(renderTemplate);
     expect(core.validateTemplate).toBe(validateTemplate);
   });
