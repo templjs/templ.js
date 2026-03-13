@@ -1,5 +1,5 @@
 /**
- * Array Functions (15 functions)
+ * Array Functions (19 functions)
  *
  * Functions for array manipulation including filtering, mapping,
  * sorting, and other array operations.
@@ -530,7 +530,7 @@ export const where: FilterFunction = (value: unknown, key: unknown): unknown[] =
     throw new Error('where expects an array');
   }
   if (typeof key !== 'string') {
-    return value;
+    throw new Error('where expects a string key');
   }
 
   return value.filter((item) => {

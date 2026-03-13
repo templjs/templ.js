@@ -99,7 +99,11 @@ export const numberFunction: FilterFunction = (value: unknown): number | null =>
   }
 
   if (typeof value === 'string') {
-    const num = Number.parseFloat(value);
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const num = Number(trimmed);
     return Number.isNaN(num) ? null : num;
   }
 
@@ -111,7 +115,23 @@ export const numberFunction: FilterFunction = (value: unknown): number | null =>
 };
 
 export const jsonFunction: FilterFunction = (value: unknown): string => {
-  return JSON.stringify(value);
+  try {
+    const seen = new WeakSet<object>();
+    return JSON.stringify(value, (_key, candidate: unknown) => {
+      if (typeof candidate === 'bigint') {
+        return candidate.toString();
+      }
+      if (candidate && typeof candidate === 'object') {
+        if (seen.has(candidate as object)) {
+          return '[Circular]';
+        }
+        seen.add(candidate as object);
+      }
+      return candidate;
+    });
+  } catch {
+    return '"[unserializable]"';
+  }
 };
 
 export const utilityFunctions = [

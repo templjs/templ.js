@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   detectFrontmatterRange,
+  getFrontmatterSchemaReferenceAtOffset,
   getFrontmatterSchemaAliases,
   getSemanticProfileId,
   resolveSemanticHostLanguage,
@@ -63,6 +64,20 @@ describe('semantic-context core helpers', () => {
     expect(range?.end ?? 0).toBeGreaterThan(0);
     expect(aliases.templSchema).toBe('./frontmatter-crlf.json');
     expect(aliases.contentSchema).toBe('./content-crlf.json');
+  });
+
+  it('resolves schema key/value references at offsets with CRLF line endings', () => {
+    const text = ['---', '$schema: ./frontmatter-crlf.json', '---', 'body'].join('\r\n');
+
+    const keyOffset = text.indexOf('$schema') + 2;
+    const valueOffset = text.indexOf('./frontmatter-crlf.json') + 5;
+
+    expect(getFrontmatterSchemaReferenceAtOffset(text, keyOffset)).toEqual({
+      value: './frontmatter-crlf.json',
+    });
+    expect(getFrontmatterSchemaReferenceAtOffset(text, valueOffset)).toEqual({
+      value: './frontmatter-crlf.json',
+    });
   });
 
   it('keeps semantic request/response contracts serializable for all operations', () => {

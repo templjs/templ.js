@@ -19,6 +19,7 @@ import {
   sort as sortArrayHandler,
   size as sizeArrayHandler,
   unique as uniqueArrayHandler,
+  where as whereArrayHandler,
 } from '../../src/query-engine/functions/array-functions.js';
 
 const engine = new QueryEngine();
@@ -158,5 +159,11 @@ describe('QueryEngine array functions', () => {
     expect(() => findArrayHandler([1, 2, 3], 123 as unknown as string)).toThrow(
       'find expects condition to be a function or string'
     );
+  });
+
+  it('throws for invalid where key types and filters truthy object fields', () => {
+    const records = [{ active: true }, { active: false }, { name: 'x' }, null];
+    expect(whereArrayHandler(records, 'active')).toEqual([{ active: true }]);
+    expect(() => whereArrayHandler(records, 42)).toThrow('where expects a string key');
   });
 });

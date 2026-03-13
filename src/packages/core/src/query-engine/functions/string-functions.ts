@@ -229,13 +229,18 @@ export const escapeSignature: FunctionSignature = {
 export const truncateSignature: FunctionSignature = {
   name: 'truncate',
   category: 'string',
-  description: 'Truncate a string to a maximum length.',
+  description:
+    'Truncate a string to a maximum of N characters, then append the optional suffix (suffix is added after truncation and may cause the result to exceed N).',
   parameters: [
     { name: 'length', type: 'number', required: true, description: 'Maximum string length' },
     { name: 'suffix', type: 'string', required: false, description: 'Optional suffix' },
   ],
   returnType: 'string',
-  examples: ['truncate("hello world", 5) → "hello..."', 'truncate("hello", 10) → "hello"'],
+  examples: [
+    'truncate("hello world", 5) → "hello..."',
+    'truncate("hello world", 5, "!") → "hello!"',
+    'truncate("hello", 10) → "hello"',
+  ],
 };
 
 // String function handlers

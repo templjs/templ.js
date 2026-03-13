@@ -215,10 +215,16 @@ export function getFrontmatterSchemaReferenceAtOffset(
   }
 
   const frontmatterText = text.slice(range.start, range.end);
-  const lines = frontmatterText.split('\n');
   let lineStart = 0;
+  const lineRegex = /[^\r\n]*(?:\r?\n|$)/g;
+  let lineMatch: RegExpExecArray | null;
 
-  for (const line of lines) {
+  while ((lineMatch = lineRegex.exec(frontmatterText)) !== null) {
+    const rawLine = lineMatch[0];
+    if (rawLine.length === 0) {
+      break;
+    }
+    const line = rawLine.replace(/\r?\n$/, '');
     const match = line.match(
       /^(\s*["']?)(\$schema|\$templ-schema|\$content-schema|\$content_schema)(["']?\s*:\s*["']?)([^"'\n#]+)(.*)$/
     );
@@ -238,7 +244,7 @@ export function getFrontmatterSchemaReferenceAtOffset(
       }
     }
 
-    lineStart += line.length + 1;
+    lineStart += rawLine.length;
   }
 
   return null;
