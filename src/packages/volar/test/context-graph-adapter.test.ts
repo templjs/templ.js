@@ -32,37 +32,23 @@ const contentSchema = {
 describe('ContextGraphSemanticReadAdapter', () => {
   it('memoizes snapshots across repeated queries for identical schemas', () => {
     const adapter = createContextGraphSemanticReadAdapter();
-    const instrumentedAdapter = adapter as unknown as {
-      buildSnapshot: (options: { schema?: object; contentSchema?: object }) => unknown;
-    };
-
-    const originalBuildSnapshot = instrumentedAdapter.buildSnapshot.bind(adapter);
-    let buildSnapshotCalls = 0;
-    instrumentedAdapter.buildSnapshot = (options) => {
-      buildSnapshotCalls += 1;
-      return originalBuildSnapshot(options);
-    };
 
     const options = { schema: frontmatterSchema, contentSchema };
     const request = {
       version: 'v1' as const,
       nodes: {
         kind: 'schema-path' as const,
-        attributeEquals: {
-          contextBlock: 'frontmatter' as const,
-          operation: 'completion' as const,
-        },
       },
     };
-    const context = {
-      operation: 'completion' as const,
-      contextBlock: 'frontmatter' as const,
-    };
+    const first = adapter.query(options, request);
+    const second = adapter.query(options, request);
 
-    adapter.query(options, request, context);
-    adapter.query(options, request, context);
-
-    expect(buildSnapshotCalls).toBe(1);
+    expect(first.revision).toBe(second.revision);
+    expect(first.nodes).toEqual(second.nodes);
+    expect(first.nodes.length).toBeGreaterThan(0);
+    // Public memoization signal: repeated queries return references to the same
+    // underlying context node objects from the cached snapshot.
+    expect(first.nodes[0]).toBe(second.nodes[0]);
   });
 
   it('separates completion candidates by schema source', () => {

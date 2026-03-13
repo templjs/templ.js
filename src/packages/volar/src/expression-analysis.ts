@@ -28,11 +28,6 @@ function pathSegmentToString(segment: PathSegment): string {
     return `[${String(segment.value.value)}]`;
   }
 
-  console.debug('[templjs/volar] dynamic path index segment', {
-    segmentValue: segment.value,
-    segmentType,
-  });
-
   const serializedValue =
     typeof segment.value === 'object' && segment.value !== null
       ? JSON.stringify(segment.value)
