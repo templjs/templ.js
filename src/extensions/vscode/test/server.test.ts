@@ -1,4 +1,5 @@
 import * as path from 'path';
+import { pathToFileURL } from 'url';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const onInitialize = vi.fn();
@@ -47,7 +48,7 @@ function resolveMockFrontmatterDefinition(
   const schemaMatch = line.match(/\$schema"?\s*:\s*([^\s]+)/);
   if (schemaMatch && options?.workspaceRoot) {
     return {
-      uri: `file://${path.join(options.workspaceRoot, schemaMatch[1])}`.replace(/ /g, '%20'),
+      uri: pathToFileURL(path.join(options.workspaceRoot, schemaMatch[1])).href,
       range: {
         start: { line: 0, character: 0 },
         end: { line: 0, character: 0 },
@@ -58,7 +59,7 @@ function resolveMockFrontmatterDefinition(
   const pathMatch = line.match(/schema_path\s*:\s*([^\s]+)/);
   if (pathMatch && options?.workspaceRoot) {
     return {
-      uri: `file://${path.join(options.workspaceRoot, pathMatch[1])}`.replace(/ /g, '%20'),
+      uri: pathToFileURL(path.join(options.workspaceRoot, pathMatch[1])).href,
       range: {
         start: { line: 0, character: 0 },
         end: { line: 0, character: 0 },
