@@ -9,6 +9,10 @@ priority: high
 estimated: 30
 actual: 13
 assignee: ''
+commits:
+  ad4e642: 'docs(context-graph): add ADR and update WI status'
+  82c8de1: 'feat(context-graph): add package and core semantic scope API'
+  91d942c: 'feat(volar): integrate context graph into semantic reads'
 links:
   depends_on:
     - '[[054_bug_no_schema_aware_authoring]]'
@@ -17,6 +21,11 @@ links:
 ## Goal
 
 Establish `@templjs/context-graph` as a reusable semantic foundation for N independent providers and migrate editor/runtime semantic resolution to graph-backed contracts.
+
+## PR Handoff Notes
+
+- No active PR currently tracks this epic.
+- Include commits `ad4e642`, `82c8de1`, `91d942c`, and `b49ae91` in the next PR.
 
 ## Scope
 

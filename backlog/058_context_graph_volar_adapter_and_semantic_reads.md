@@ -9,6 +9,8 @@ priority: high
 estimated: 10
 actual: 6
 assignee: ''
+commits:
+  91d942c: 'feat(volar): integrate context graph into semantic reads'
 test_results:
   - timestamp: 2026-03-13T00:00:00Z
     note: |
@@ -30,6 +32,11 @@ links:
 ## Goal
 
 Introduce a Volar-facing adapter that consumes context graph contracts and migrate semantic read paths (hover/definition/completion) from feature-local resolution logic to graph queries.
+
+## PR Handoff Notes
+
+- No active PR currently tracks this work item.
+- Include commit `91d942c` (and backlog traceability commit `b49ae91`) in the next PR.
 
 ## Tasks
 

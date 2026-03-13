@@ -9,6 +9,8 @@ priority: high
 estimated: 10
 actual: 3
 assignee: ''
+commits:
+  82c8de1: 'feat(context-graph): add package and core semantic scope API'
 test_results:
   - timestamp: 2026-03-13T00:00:00Z
     note: |
@@ -30,6 +32,11 @@ links:
 ## Goal
 
 Guarantee that `@templjs/context-graph` public APIs remain implementation-agnostic, dependency-leak-free, and ready for future Rust engine replacement.
+
+## PR Handoff Notes
+
+- No active PR currently tracks this work item.
+- Include commit `82c8de1` (and backlog traceability commit `b49ae91`) in the next PR.
 
 ## Tasks
 

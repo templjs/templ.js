@@ -9,6 +9,8 @@ priority: high
 estimated: 10
 actual: 4
 assignee: ''
+commits:
+  82c8de1: 'feat(context-graph): add package and core semantic scope API'
 test_results:
   - timestamp: 2026-03-13T00:00:00Z
     note: |
@@ -25,6 +27,11 @@ links:
 ## Goal
 
 Implement the initial `@templjs/context-graph` package with a minimal graph kernel, provider lifecycle hooks, deterministic query API, and versioned contract types.
+
+## PR Handoff Notes
+
+- No active PR currently tracks this work item.
+- Include commit `82c8de1` (and backlog traceability commit `b49ae91`) in the next PR.
 
 ## Tasks
 
