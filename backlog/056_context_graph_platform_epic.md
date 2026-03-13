@@ -16,6 +16,9 @@ commits:
   cb3f6a0: 'feat(context-graph): complete graph-backed semantic resolution'
   91b879c: 'fix(volar): add .tpl template marker and suffix file extension detection'
   f276da3: 'feat(vscode): add .tmpl language associations and YAML scalar tokenization'
+  74ec91a: 'fix(core): harden query helpers and add regressions'
+  3eef8cb: 'test(vscode): use pathToFileURL for mock definition URIs'
+  1b9ff47: 'test(volar): remove debug logging and de-instrument memoization test'
 test_results:
   - timestamp: 2026-03-13T00:00:00Z
     note: |

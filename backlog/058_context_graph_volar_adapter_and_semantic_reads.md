@@ -12,6 +12,7 @@ assignee: ''
 commits:
   91d942c: 'feat(volar): integrate context graph into semantic reads'
   cb3f6a0: 'feat(context-graph): complete graph-backed semantic resolution'
+  1b9ff47: 'test(volar): remove debug logging and de-instrument memoization test'
 test_results:
   - timestamp: 2026-03-13T00:00:00Z
     note: |
@@ -40,6 +41,14 @@ test_results:
       - Token-aware hover for for-iterable statement paths (cursor-segment resolution)
       - Focused tests: 124 passed, 0 failed
       - All package builds confirmed clean
+  - timestamp: 2026-03-13T00:00:00Z
+    note: |
+      Test hardening follow-up (1b9ff47):
+      - Removed temporary console.debug noise from expression-analysis dynamic segments
+      - Reworked memoization coverage to assert public adapter.query() behavior
+      - Eliminated private method casting/overrides in adapter tests
+      - Focused Volar test: `pnpm --filter @templjs/volar test -- test/context-graph-adapter.test.ts` (8 passed)
+      - Full Volar suite: 298 passed, 0 failed
 links:
   implements:
     - '[[056_context_graph_platform_epic]]'

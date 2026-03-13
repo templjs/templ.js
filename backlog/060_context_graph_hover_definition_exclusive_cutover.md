@@ -7,10 +7,13 @@ title: '060: Enforce exclusive context-graph hover/definition resolution'
 status: in-progress
 priority: high
 estimated: 8
-actual: 4
+actual: 6
 assignee: ''
 commits:
   cb3f6a0: 'feat(context-graph): complete graph-backed semantic resolution'
+  74ec91a: 'fix(core): harden query helpers and add regressions'
+  3eef8cb: 'test(vscode): use pathToFileURL for mock definition URIs'
+  1b9ff47: 'test(volar): remove debug logging and de-instrument memoization test'
 test_results:
   - timestamp: 2026-03-13T00:00:00Z
     note: |
@@ -22,6 +25,16 @@ test_results:
       - Remaining: full extension-server cutover and Volar-only LSP forwarding
       - Focused tests: 124 passed, 0 failed
       - Package builds: @templjs/volar, vscode-templjs confirmed clean
+  - timestamp: 2026-03-13T00:00:00Z
+    note: |
+      Regression stabilization follow-up (74ec91a, 3eef8cb, 1b9ff47):
+      - Core: strict where() key validation coverage, safe JSON serialization edge cases, CRLF schema-reference offsets
+      - VSCode tests: switched schema-definition mock URIs to pathToFileURL().href for robust encoding
+      - Volar tests: removed temporary debug logging and replaced private-method instrumentation with public query assertions
+      - Focused verification:
+        - `pnpm --filter @templjs/core test -- test/query-engine/array-functions.test.ts test/query-engine/query-engine.functions.array.test.ts test/query-engine/query-engine.functions.utility.test.ts test/semantic/semantic-context.test.ts` (30 passed)
+        - `pnpm --filter @templjs/volar test -- test/context-graph-adapter.test.ts` (8 passed)
+        - `pnpm --filter vscode-templjs test -- test/server.test.ts` (32 passed)
 links:
   implements:
     - '[[056_context_graph_platform_epic]]'
