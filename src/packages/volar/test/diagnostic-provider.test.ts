@@ -160,6 +160,14 @@ describe('DiagnosticProvider', () => {
     expect(diagnostics[0]?.code).toBe('templjs.invalidFilter');
   });
 
+  it('accepts built-in size and typeof filters', () => {
+    const sizeDiagnostics = collectDiagnostics('{{ users | size }}');
+    const typeofDiagnostics = collectDiagnostics('{{ user | typeof }}');
+
+    expect(sizeDiagnostics.some((diag) => diag.code === 'templjs.invalidFilter')).toBe(false);
+    expect(typeofDiagnostics.some((diag) => diag.code === 'templjs.invalidFilter')).toBe(false);
+  });
+
   it('accepts custom filters', () => {
     const diagnostics = collectDiagnostics('{{ user.name | custom }}', {
       customFilters: ['custom'],

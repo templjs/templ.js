@@ -55,6 +55,7 @@ export function activate(context: vscode.ExtensionContext): void {
  */
 function initializeLanguageServer(context: vscode.ExtensionContext): void {
   const serverModule = context.asAbsolutePath(path.join('dist', 'server.js'));
+  outputChannel?.appendLine(`[templjs] Server module path: ${serverModule}`);
 
   const serverOptions: ServerOptions = {
     run: { module: serverModule, transport: TransportKind.ipc },
@@ -72,11 +73,65 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
   const documentContext = getActiveDocumentContext();
 
   const clientOptions: LanguageClientOptions = {
+    middleware: {
+      provideCompletionItem: (document, position, context, token, next) => {
+        outputChannel?.appendLine(
+          `[templjs-client] completion requested: ${document.uri.toString()} @ ${position.line}:${position.character}`
+        );
+        return Promise.resolve(next(document, position, context, token)).then((result) => {
+          const count = Array.isArray(result)
+            ? result.length
+            : Array.isArray(result?.items)
+              ? result.items.length
+              : result
+                ? 1
+                : 0;
+          outputChannel?.appendLine(`[templjs-client] completion result count: ${count}`);
+          return result;
+        });
+      },
+      provideHover: (document, position, token, next) => {
+        outputChannel?.appendLine(
+          `[templjs-client] hover requested: ${document.uri.toString()} @ ${position.line}:${position.character}`
+        );
+        return Promise.resolve(next(document, position, token)).then((result) => {
+          outputChannel?.appendLine(
+            `[templjs-client] hover result: ${result ? 'present' : 'none'}`
+          );
+          return result;
+        });
+      },
+      provideDefinition: (document, position, token, next) => {
+        outputChannel?.appendLine(
+          `[templjs-client] definition requested: ${document.uri.toString()} @ ${position.line}:${position.character}`
+        );
+        return Promise.resolve(next(document, position, token)).then((result) => {
+          const count = Array.isArray(result) ? result.length : result ? 1 : 0;
+          outputChannel?.appendLine(`[templjs-client] definition result count: ${count}`);
+          return result;
+        });
+      },
+    },
     documentSelector: [
       { scheme: 'file', language: 'templjs-yaml' },
       { scheme: 'file', language: 'templjs-json' },
       { scheme: 'file', language: 'templjs-markdown' },
       { scheme: 'file', language: 'templjs-html' },
+      { scheme: 'file', pattern: '**/*.md.templ' },
+      { scheme: 'file', pattern: '**/*.md.tmpl' },
+      { scheme: 'file', pattern: '**/*.md.tpl' },
+      { scheme: 'file', pattern: '**/*.json.templ' },
+      { scheme: 'file', pattern: '**/*.json.tmpl' },
+      { scheme: 'file', pattern: '**/*.json.tpl' },
+      { scheme: 'file', pattern: '**/*.yaml.templ' },
+      { scheme: 'file', pattern: '**/*.yaml.tmpl' },
+      { scheme: 'file', pattern: '**/*.yaml.tpl' },
+      { scheme: 'file', pattern: '**/*.yml.templ' },
+      { scheme: 'file', pattern: '**/*.yml.tmpl' },
+      { scheme: 'file', pattern: '**/*.yml.tpl' },
+      { scheme: 'file', pattern: '**/*.html.templ' },
+      { scheme: 'file', pattern: '**/*.html.tmpl' },
+      { scheme: 'file', pattern: '**/*.html.tpl' },
     ],
     synchronize: {
       fileEvents: vscode.workspace.createFileSystemWatcher(
@@ -102,7 +157,30 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(languageClient);
-  void languageClient.start();
+  outputChannel?.appendLine('[templjs] Language client created');
+
+  const openDocSubscription = vscode.workspace.onDidOpenTextDocument((document) => {
+    outputChannel?.appendLine(
+      `[templjs-client] opened: ${document.uri.toString()} (${document.languageId})`
+    );
+  });
+  context.subscriptions.push(openDocSubscription);
+
+  const activeEditorSubscription = vscode.window.onDidChangeActiveTextEditor((editor) => {
+    if (!editor) {
+      return;
+    }
+    outputChannel?.appendLine(
+      `[templjs-client] active editor: ${editor.document.uri.toString()} (${editor.document.languageId})`
+    );
+  });
+  context.subscriptions.push(activeEditorSubscription);
+
+  outputChannel?.appendLine('[templjs] Starting language client...');
+  void languageClient.start().catch((error) => {
+    outputChannel?.appendLine(`[templjs] Language client start failed: ${String(error)}`);
+    console.error('[templjs] Language client start failed:', error);
+  });
 }
 
 interface ActiveDocumentContext {

@@ -18,15 +18,44 @@ const initialized = vi.fn();
 const shutdown = vi.fn();
 
 const createTempljsLanguagePlugin = vi.fn(() => ({ name: 'templjs-plugin' }));
-const getCompletions = vi.fn(() => [{ label: 'user', kind: 'variable' }]);
-const getHover = vi.fn(() => ({ contents: 'user: object' }));
+const getCompletions = vi.fn(() => [{ label: 'user', kind: 6 }]);
+const getHover = vi.fn(() => ({ contents: { kind: 'markdown', value: 'user: object' } }));
 const getDefinition = vi.fn(() => null);
+const collectDiagnosticsFunc = vi.fn(() => []);
 const resolveScopedPathInText = vi.fn((_: string, path: string) => path);
-const collectDiagnostics = vi.fn(() => []);
+const collectDiagnostics = collectDiagnosticsFunc;
+
 class IntellisenseProviderMock {
   getCompletions = getCompletions;
   getHover = getHover;
   getDefinition = getDefinition;
+}
+
+class TempljsServicePluginMock {
+  getCompletions = getCompletions;
+  getHover = getHover;
+  getDefinition = getDefinition;
+  getDefinitionWithRangeResolver = vi.fn(
+    (
+      _text: string,
+      _offset: number,
+      options?: { schemaUri?: string; contentSchemaUri?: string }
+    ) => {
+      const uri = options?.schemaUri ?? options?.contentSchemaUri;
+      if (!uri) {
+        return null;
+      }
+
+      return {
+        uri,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 0, character: 0 },
+        },
+      };
+    }
+  );
+  collectDiagnostics = collectDiagnosticsFunc;
 }
 const readFileSync = vi.fn(() => '{"type":"object","properties":{"user":{"type":"object"}}}');
 const existsSync = vi.fn(() => true);
@@ -67,6 +96,7 @@ vi.mock('@volar/language-server/node', () => ({
 vi.mock('@templjs/volar', () => ({
   createTempljsLanguagePlugin,
   IntellisenseProvider: IntellisenseProviderMock,
+  TempljsServicePlugin: TempljsServicePluginMock,
   resolveScopedPathInText,
   collectDiagnostics,
 }));
@@ -104,14 +134,24 @@ describe('language-server-bootstrap', () => {
   it('wires connection lifecycle handlers and starts listening', async () => {
     await import('../src/server');
 
+    // Module-level handlers registered immediately on import
     expect(onInitialize).toHaveBeenCalledWith(expect.any(Function));
     expect(onInitialized).toHaveBeenCalledWith(initialized);
     expect(onShutdown).toHaveBeenCalledWith(shutdown);
     expect(onDidOpenTextDocument).toHaveBeenCalledWith(expect.any(Function));
     expect(onDidChangeTextDocument).toHaveBeenCalledWith(expect.any(Function));
+    expect(listen).toHaveBeenCalled();
+
+    // completion/hover/definition handlers are registered inside onInitialize,
+    // after server.initialize() runs so they overwrite Volar's registrations
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({ rootUri: 'file:///workspace' });
+
     expect(onCompletion).toHaveBeenCalledWith(expect.any(Function));
     expect(onHover).toHaveBeenCalledWith(expect.any(Function));
-    expect(listen).toHaveBeenCalled();
+    expect(onDefinition).toHaveBeenCalledWith(expect.any(Function));
   });
 
   it('registers templjs language plugin provider', async () => {
@@ -534,6 +574,116 @@ describe('language-server-bootstrap', () => {
     );
   });
 
+  it('resolves schema path definition when cursor is inside the schema value token', async () => {
+    await import('../src/server');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    const documentText = [
+      '---',
+      '$schema: schemas/work-management/frontmatter/project.json',
+      '---',
+      '{{ value }}',
+    ].join('\n');
+
+    await initializeHandler({
+      rootUri: 'file:///workspace',
+      initializationOptions: {
+        documentContext: {
+          uri: 'file:///workspace/templates/project.md.tpl',
+          content: documentText,
+        },
+      },
+    });
+
+    const definitionHandler = onDefinition.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      position: { line: number; character: number };
+    }) => { uri: string } | null;
+
+    const result = definitionHandler({
+      textDocument: { uri: 'file:///workspace/templates/project.md.tpl' },
+      position: { line: 1, character: 30 },
+    });
+
+    expect(result?.uri).toBe('file:///workspace/schemas/work-management/frontmatter/project.json');
+  });
+
+  it('returns frontmatter schema definition for plain YAML field values', async () => {
+    await import('../src/server');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    const documentText = [
+      '---',
+      '$schema: schemas/work-management/frontmatter/project.json',
+      'type: project',
+      '---',
+      '{{ value }}',
+    ].join('\n');
+
+    await initializeHandler({
+      rootUri: 'file:///workspace',
+      initializationOptions: {
+        documentContext: {
+          uri: 'file:///workspace/templates/project.md.tpl',
+          content: documentText,
+        },
+      },
+    });
+
+    const definitionHandler = onDefinition.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      position: { line: number; character: number };
+    }) => { uri: string } | null;
+
+    const result = definitionHandler({
+      textDocument: { uri: 'file:///workspace/templates/project.md.tpl' },
+      position: { line: 2, character: 9 },
+    });
+
+    expect(result?.uri).toBe('file:///workspace/schemas/work-management/frontmatter/project.json');
+  });
+
+  it('resolves path-like frontmatter values to referenced file definitions', async () => {
+    await import('../src/server');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    const documentText = [
+      '---',
+      '$schema: schemas/work-management/frontmatter/project.json',
+      'schema_path: schemas/work-management/content/project.json',
+      '---',
+      '{{ value }}',
+    ].join('\n');
+
+    await initializeHandler({
+      rootUri: 'file:///workspace',
+      initializationOptions: {
+        documentContext: {
+          uri: 'file:///workspace/templates/project.md.tpl',
+          content: documentText,
+        },
+      },
+    });
+
+    const definitionHandler = onDefinition.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      position: { line: number; character: number };
+    }) => { uri: string } | null;
+
+    const result = definitionHandler({
+      textDocument: { uri: 'file:///workspace/templates/project.md.tpl' },
+      position: { line: 2, character: 30 },
+    });
+
+    expect(result?.uri).toBe('file:///workspace/schemas/work-management/content/project.json');
+  });
+
   // ── $schema / $content_schema alias recognition ──────────────────────────
 
   it('recognises $schema as an alias for $templ-schema in YAML frontmatter', async () => {
@@ -589,6 +739,51 @@ describe('language-server-bootstrap', () => {
     expect(createTempljsLanguagePlugin).toHaveBeenCalledWith(
       expect.objectContaining({
         contentSchemaUri: 'file:///workspace/schemas/page/content.json',
+      })
+    );
+  });
+
+  it('resolves ./ schema paths relative to the current document directory', async () => {
+    await import('../src/server');
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({
+      rootUri: 'file:///workspace',
+      initializationOptions: {
+        documentContext: {
+          uri: 'file:///workspace/templates/reference/work-management/project.md.tpl',
+          content: [
+            '---',
+            'type: project',
+            '"$schema": ./schemas/work-management/frontmatter/project.json',
+            '"$content_schema": ./schemas/work-management/content/project.json',
+            '---',
+            '{{ narrative }}',
+          ].join('\n'),
+        },
+      },
+    });
+
+    const initializeCalls = initialize.mock.calls as unknown as Array<
+      [unknown, unknown, { getLanguagePlugins: () => unknown[] }]
+    >;
+    initializeCalls[0][2].getLanguagePlugins();
+
+    expect(readFileSync).toHaveBeenCalledWith(
+      '/workspace/templates/reference/work-management/schemas/work-management/frontmatter/project.json',
+      'utf-8'
+    );
+    expect(readFileSync).toHaveBeenCalledWith(
+      '/workspace/templates/reference/work-management/schemas/work-management/content/project.json',
+      'utf-8'
+    );
+    expect(createTempljsLanguagePlugin).toHaveBeenCalledWith(
+      expect.objectContaining({
+        schemaUri:
+          'file:///workspace/templates/reference/work-management/schemas/work-management/frontmatter/project.json',
+        contentSchemaUri:
+          'file:///workspace/templates/reference/work-management/schemas/work-management/content/project.json',
       })
     );
   });

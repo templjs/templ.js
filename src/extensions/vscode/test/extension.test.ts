@@ -25,6 +25,8 @@ const activeTextEditor = {
   },
 };
 const createFileSystemWatcher = vi.fn(() => ({ dispose: vi.fn() }));
+const onDidOpenTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
+const onDidChangeActiveTextEditor = vi.fn(() => ({ dispose: vi.fn() }));
 const getConfiguration = vi.fn(() => ({
   get: vi.fn((key: string): unknown => {
     if (key === 'schemaPath') {
@@ -63,9 +65,11 @@ vi.mock('vscode', () => ({
     showErrorMessage,
     createOutputChannel,
     activeTextEditor,
+    onDidChangeActiveTextEditor,
   },
   workspace: {
     createFileSystemWatcher,
+    onDidOpenTextDocument,
     getConfiguration,
   },
 }));
@@ -153,7 +157,12 @@ describe('extension-activation', () => {
     module.activate(context as never);
 
     const clientOptions = languageClientConstructor.mock.calls[0][3] as {
-      documentSelector: Array<{ scheme: string; language: string }>;
+      documentSelector: Array<{ scheme: string; language?: string; pattern?: string }>;
+      middleware?: {
+        provideCompletionItem?: (...args: unknown[]) => unknown;
+        provideHover?: (...args: unknown[]) => unknown;
+        provideDefinition?: (...args: unknown[]) => unknown;
+      };
     };
     expect(clientOptions.documentSelector).toEqual(
       expect.arrayContaining([
@@ -161,8 +170,12 @@ describe('extension-activation', () => {
         { scheme: 'file', language: 'templjs-json' },
         { scheme: 'file', language: 'templjs-markdown' },
         { scheme: 'file', language: 'templjs-html' },
+        { scheme: 'file', pattern: '**/*.md.tpl' },
       ])
     );
+    expect(clientOptions.middleware?.provideCompletionItem).toBeTypeOf('function');
+    expect(clientOptions.middleware?.provideHover).toBeTypeOf('function');
+    expect(clientOptions.middleware?.provideDefinition).toBeTypeOf('function');
   });
 
   it('creates watcher with templated file glob', async () => {

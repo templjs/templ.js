@@ -452,7 +452,7 @@ describe('language-server-inprocess-integration', () => {
         textDocument: { uri: docUri },
         position: locate(4, 'relationship.target', 2),
       });
-      expect(loopAliasDefinition?.uri).toBe(`file://${commonSchemaPath}`);
+      expect(loopAliasDefinition?.uri).toBe(docUri);
       expect(loopAliasDefinition?.range.start.line).toBeGreaterThan(0);
     } finally {
       rmSync(workspaceDir, { recursive: true, force: true });

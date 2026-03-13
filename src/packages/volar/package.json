@@ -39,6 +39,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@templjs/core": "workspace:*",
+    "@templjs/context-graph": "workspace:*",
     "@volar/language-core": "~2.0.0",
     "gray-matter": "^4.0.3"
   },

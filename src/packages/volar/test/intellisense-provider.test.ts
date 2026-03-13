@@ -47,6 +47,30 @@ const bodySchema = {
   },
 };
 
+const nestedScopeSchema = {
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Outer item name' },
+          children: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string', description: 'Inner child name' },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
 describe('IntellisenseProvider', () => {
   const provider = new IntellisenseProvider();
 
@@ -163,6 +187,28 @@ describe('IntellisenseProvider', () => {
     expect(items.some((item) => item.kind === 'keyword')).toBe(true);
   });
 
+  it('provides filter completions in statement expressions', () => {
+    const text = '{% if notes | ca == "array" %}';
+    const offset = text.indexOf('ca') + 'ca'.length;
+    const items = provider.getCompletions(text, offset, { schema: sampleSchema });
+    expect(items.some((item) => item.label === 'capitalize')).toBe(true);
+  });
+
+  it('resolves for-loop alias to schema properties in expressions', () => {
+    const text = '{% for item in users %}{{ item. }}{% endfor %}';
+    // cursor after the dot in `item.`
+    const offset = text.indexOf('item.') + 'item.'.length;
+    const items = provider.getCompletions(text, offset, { schema: sampleSchema });
+    expect(items.some((item) => item.label === 'id')).toBe(true);
+  });
+
+  it('resolves for-loop alias to schema properties in statement expressions', () => {
+    const text = '{% for item in users %}{% if item. %}{% endif %}{% endfor %}';
+    const offset = text.indexOf('item.') + 'item.'.length;
+    const items = provider.getCompletions(text, offset, { schema: sampleSchema });
+    expect(items.some((item) => item.label === 'id')).toBe(true);
+  });
+
   it('returns empty completions when schema missing', () => {
     const items = provider.getCompletions('{{ user }}', 5);
     expect(items.length).toBe(0);
@@ -178,6 +224,14 @@ describe('IntellisenseProvider', () => {
       schema: sampleSchema,
     });
     expect(items.some((item) => item.label === 'upper')).toBe(true);
+  });
+
+  it('includes size and typeof in built-in filter completions', () => {
+    const items = provider.getCompletions('{{ user.name |  }}', 16, {
+      schema: sampleSchema,
+    });
+    expect(items.some((item) => item.label === 'size')).toBe(true);
+    expect(items.some((item) => item.label === 'typeof')).toBe(true);
   });
 
   it('filters top-level variable completions by prefix', () => {
@@ -199,7 +253,8 @@ describe('IntellisenseProvider', () => {
     const items = provider.getCompletions('{{ user.name | lo }}', 19, {
       schema: sampleSchema,
     });
-    expect(items.map((item) => item.label)).toEqual(['lower']);
+    expect(items[0]?.label).toBe('lower');
+    expect(items.some((item) => item.label === 'lower')).toBe(true);
   });
 
   it('sorts keyword completions by relevance and label', () => {
@@ -348,5 +403,328 @@ describe('IntellisenseProvider', () => {
 
     expect(def?.uri).toBe('file:///content-schema.json');
     expect(def?.path).toBe('contentData.heading');
+  });
+
+  it('provides completions in later expression after earlier closed expression', () => {
+    const text = '{{ user.name }}\n{{ user.e }}';
+    const offset = text.lastIndexOf('user.e') + 'user.e'.length;
+
+    const items = provider.getCompletions(text, offset, {
+      schema: sampleSchema,
+    });
+
+    expect(items.some((item) => item.label === 'email')).toBe(true);
+  });
+
+  it('returns definition in later expression after earlier closed expression', () => {
+    const text = '{{ user.name }}\n{{ user.email }}';
+    const offset = text.lastIndexOf('user.email') + 2;
+
+    const def = provider.getDefinition(text, offset, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+    });
+
+    expect(def?.uri).toBe('file:///schema.json');
+    expect(def?.path).toBe('user.email');
+  });
+
+  it('returns definition for the variable under cursor in multi-variable expressions', () => {
+    const text = '{{ user.name }} {{ users[0].id }}';
+    const offset = text.indexOf('users[0].id') + 2;
+
+    const def = provider.getDefinition(text, offset, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+    });
+
+    expect(def?.uri).toBe('file:///schema.json');
+    expect(def?.path).toBe('users[0].id');
+  });
+
+  it('provides completions when cursor is at expression end boundary', () => {
+    const text = '{{ user.e }}';
+    const offset = text.indexOf('}}');
+
+    const items = provider.getCompletions(text, offset, {
+      schema: sampleSchema,
+    });
+
+    expect(items.some((item) => item.label === 'email')).toBe(true);
+  });
+
+  it('returns definition when cursor is at expression end boundary', () => {
+    const text = '{{ user.email }}';
+    const offset = text.indexOf('}}');
+
+    const def = provider.getDefinition(text, offset, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+    });
+
+    expect(def?.uri).toBe('file:///schema.json');
+    expect(def?.path).toBe('user.email');
+  });
+
+  it('provides top-level key completions in plain frontmatter YAML', () => {
+    const text = ['---', 't', '---', 'body'].join('\n');
+    const offset = text.indexOf('t') + 't'.length;
+
+    const items = provider.getCompletions(text, offset, {
+      schema: {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          type: { type: 'string' },
+        },
+      },
+    });
+
+    expect(items.some((item) => item.label === 'title')).toBe(true);
+    expect(items.some((item) => item.label === 'type')).toBe(true);
+  });
+
+  it('provides enum value completions in plain frontmatter YAML values', () => {
+    const text = ['---', 'type: pr', '---', 'body'].join('\n');
+    const offset = text.indexOf('pr') + 'pr'.length;
+
+    const items = provider.getCompletions(text, offset, {
+      schema: {
+        type: 'object',
+        properties: {
+          type: {
+            type: 'string',
+            enum: ['project', 'milestone'],
+          },
+        },
+      },
+    });
+
+    expect(items.some((item) => item.label === 'project')).toBe(true);
+    expect(items.some((item) => item.label === 'milestone')).toBe(false);
+  });
+
+  it('returns hover info for frontmatter keys', () => {
+    const text = ['---', 'type: project', '---', 'body'].join('\n');
+    const offset = text.indexOf('type') + 1;
+
+    const hover = provider.getHover(text, offset, {
+      schema: {
+        type: 'object',
+        properties: {
+          type: { type: 'string' },
+        },
+      },
+    });
+
+    expect(hover?.contents).toContain('type: string');
+  });
+
+  it('returns frontmatter definition for key/value tokens outside template expressions', () => {
+    const text = ['---', 'type: project', '---', 'body'].join('\n');
+    const offset = text.indexOf('project') + 2;
+
+    const def = provider.getDefinition(text, offset, {
+      schema: {
+        type: 'object',
+        properties: {
+          type: { type: 'string' },
+        },
+      },
+      schemaUri: 'file:///frontmatter-schema.json',
+    });
+
+    expect(def?.uri).toBe('file:///frontmatter-schema.json');
+    expect(def?.path).toBe('type');
+  });
+
+  it('resolves definition to source variable when cursor is on filter', () => {
+    const text = '{{ user.name | upper }}';
+    const offset = text.indexOf('upper') + 1;
+
+    const def = provider.getDefinition(text, offset, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+    });
+
+    expect(def?.uri).toBe('file:///schema.json');
+    expect(def?.path).toBe('user.name');
+  });
+
+  it('returns local declaration definition for loop alias variables', () => {
+    const text = '{% for relationship in relationships %}{{ relationship.name }}{% endfor %}';
+    const offset = text.indexOf('relationship.name') + 2;
+
+    const def = provider.getDefinition(text, offset, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(def?.uri).toBe('file:///workspace/project.md.tpl');
+    expect(def?.range).toBeTruthy();
+  });
+
+  it('returns property definition kind for frontmatter keys', () => {
+    const text = ['---', 'type: project', '---', 'body'].join('\n');
+    const offset = text.indexOf('type') + 1;
+
+    const def = provider.getDefinition(text, offset, {
+      schema: frontmatterSchema,
+      schemaUri: 'file:///frontmatter-schema.json',
+    });
+
+    expect(def?.pathKind).toBe('property');
+    expect(def?.path).toBe('type');
+  });
+
+  it('returns value definition kind and token for frontmatter values', () => {
+    const text = ['---', 'type: project', '---', 'body'].join('\n');
+    const offset = text.indexOf('project') + 2;
+
+    const def = provider.getDefinition(text, offset, {
+      schema: {
+        type: 'object',
+        properties: {
+          type: {
+            type: 'string',
+            enum: ['project', 'milestone'],
+          },
+        },
+      },
+      schemaUri: 'file:///frontmatter-schema.json',
+    });
+
+    expect(def?.pathKind).toBe('value');
+    expect(def?.valueToken).toBe('project');
+  });
+
+  it('uses core signature metadata for filter hover descriptions', () => {
+    const hover = provider.getHover('{{ user.name | upper }}', 20, {
+      schema: sampleSchema,
+    });
+
+    expect(hover?.contents).toContain('Convert string to uppercase');
+  });
+
+  it('resolves nested frontmatter key paths (scope.type) for hover and definition', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        scope: {
+          type: 'object',
+          properties: {
+            type: {
+              type: 'string',
+              description: 'Scope type selector',
+              enum: ['global', 'project'],
+            },
+          },
+        },
+      },
+    };
+
+    const text = ['---', 'scope:', '  type: project', '---', 'body'].join('\n');
+    const keyOffset = text.indexOf('type:') + 1;
+    const valueOffset = text.indexOf('project') + 2;
+
+    const hover = provider.getHover(text, keyOffset, {
+      schema,
+      schemaUri: 'file:///frontmatter-schema.json',
+    });
+    expect(hover?.contents).toContain('scope.type: string');
+    expect(hover?.contents).toContain('Scope type selector');
+
+    const keyDef = provider.getDefinition(text, keyOffset, {
+      schema,
+      schemaUri: 'file:///frontmatter-schema.json',
+    });
+    expect(keyDef?.path).toBe('scope.type');
+    expect(keyDef?.pathKind).toBe('property');
+
+    const valueDef = provider.getDefinition(text, valueOffset, {
+      schema,
+      schemaUri: 'file:///frontmatter-schema.json',
+    });
+    expect(valueDef?.path).toBe('scope.type');
+    expect(valueDef?.pathKind).toBe('value');
+    expect(valueDef?.valueToken).toBe('project');
+  });
+
+  it('provides nested frontmatter enum completions for scope.type values', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        scope: {
+          type: 'object',
+          properties: {
+            type: {
+              type: 'string',
+              enum: ['global', 'project'],
+            },
+          },
+        },
+      },
+    };
+
+    const text = ['---', 'scope:', '  type: pr', '---', 'body'].join('\n');
+    const offset = text.indexOf('pr') + 2;
+
+    const items = provider.getCompletions(text, offset, {
+      schema,
+      schemaUri: 'file:///frontmatter-schema.json',
+    });
+
+    expect(items.some((item) => item.label === 'project')).toBe(true);
+    expect(items.some((item) => item.label === 'global')).toBe(false);
+  });
+
+  it('resolves shadowed nested loop aliases to the innermost iterable path', () => {
+    const text = [
+      '{% for item in items %}',
+      '  {% for item in item.children %}',
+      '    {{ item.na }}',
+      '  {% endfor %}',
+      '  {{ item.name }}',
+      '{% endfor %}',
+    ].join('\n');
+
+    const innerOffset = text.indexOf('item.na') + 'item.na'.length;
+    const outerOffset = text.lastIndexOf('item.name') + 2;
+
+    const innerItems = provider.getCompletions(text, innerOffset, {
+      schema: nestedScopeSchema,
+    });
+    const outerHover = provider.getHover(text, outerOffset, {
+      schema: nestedScopeSchema,
+    });
+
+    expect(innerItems.some((item) => item.label === 'name')).toBe(true);
+    expect(outerHover?.contents).toContain('items[0].name');
+  });
+
+  it('uses primary and secondary schema sources for hover in the same document', () => {
+    const text = ['---', 'frontData:', '  title: hello', '---', '{{ contentData.heading }}'].join(
+      '\n'
+    );
+
+    const frontmatterOffset = text.indexOf('title:') + 1;
+    const contentOffset = text.indexOf('contentData') + 2;
+
+    const frontmatterHover = provider.getHover(text, frontmatterOffset, {
+      schema: frontmatterSchema,
+      schemaUri: 'file:///frontmatter-schema.json',
+      contentSchema: bodySchema,
+      contentSchemaUri: 'file:///content-schema.json',
+    });
+    const contentHover = provider.getHover(text, contentOffset, {
+      schema: frontmatterSchema,
+      schemaUri: 'file:///frontmatter-schema.json',
+      contentSchema: bodySchema,
+      contentSchemaUri: 'file:///content-schema.json',
+    });
+
+    expect(frontmatterHover?.contents).toContain('frontData.title');
+    expect(contentHover?.contents).toContain('contentData.heading');
   });
 });

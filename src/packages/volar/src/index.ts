@@ -650,4 +650,6 @@ export default {
 };
 
 export * from './diagnostic-provider.js';
+export * from './context-graph-adapter.js';
 export * from './intellisense-provider.js';
+export * from './service-plugin.js';

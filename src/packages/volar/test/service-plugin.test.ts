@@ -1,0 +1,360 @@
+import { describe, it, expect } from 'vitest';
+import { TempljsServicePlugin } from '../src/service-plugin.js';
+
+const sampleSchema = {
+  type: 'object',
+  properties: {
+    user: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        email: { type: 'string' },
+      },
+    },
+    relationships: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          type: { type: 'string' },
+          target: { type: 'string' },
+        },
+      },
+    },
+  },
+};
+
+const frontmatterSchema = {
+  type: 'object',
+  properties: {
+    frontData: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+      },
+    },
+  },
+};
+
+const bodySchema = {
+  type: 'object',
+  properties: {
+    contentData: {
+      type: 'object',
+      properties: {
+        heading: { type: 'string' },
+      },
+    },
+  },
+};
+
+describe('TempljsServicePlugin', () => {
+  describe('getCompletions', () => {
+    it('returns LSP-ready completion items with numeric kind', () => {
+      const plugin = new TempljsServicePlugin();
+      const text = '{{ user. }}';
+      const offset = text.indexOf('. }') + 1; // After the dot
+
+      const completions = plugin.getCompletions(text, offset, {
+        schema: sampleSchema,
+      });
+
+      expect(Array.isArray(completions)).toBe(true);
+      expect(completions.length).toBeGreaterThan(0);
+
+      // Check LSP format
+      const item = completions[0];
+      expect(item).toHaveProperty('label');
+      expect(item).toHaveProperty('kind');
+      expect(typeof item.kind).toBe('number');
+    });
+
+    it('handles empty schema gracefully', () => {
+      const plugin = new TempljsServicePlugin();
+      const text = '{{ foo. }}';
+      const offset = text.indexOf('. }') + 1;
+
+      const completions = plugin.getCompletions(text, offset, {});
+
+      expect(Array.isArray(completions)).toBe(true);
+    });
+
+    it('provides completions in statement context', () => {
+      const plugin = new TempljsServicePlugin();
+      const text = '{% if user. %}ok{% endif %}';
+      const offset = text.indexOf('user.') + 'user.'.length;
+
+      const completions = plugin.getCompletions(text, offset, {
+        schema: sampleSchema,
+      });
+
+      expect(completions.length).toBeGreaterThan(0);
+      expect(completions.some((c) => c.label === 'name')).toBe(true);
+    });
+
+    it('handles for-loop alias scope', () => {
+      const plugin = new TempljsServicePlugin();
+      const text = '{% for relationship in relationships %}\n{{ relationship. }}\n{% endfor %}';
+      const offset = text.indexOf('relationship. }') + 'relationship. '.length;
+
+      const completions = plugin.getCompletions(text, offset, {
+        schema: sampleSchema,
+      });
+
+      expect(completions.length).toBeGreaterThan(0);
+      expect(completions.some((c) => c.label === 'type' || c.label === 'target')).toBe(true);
+    });
+  });
+
+  describe('getHover', () => {
+    it('returns LSP-ready hover info', () => {
+      const plugin = new TempljsServicePlugin();
+      const text = '{{ user.name }}';
+      const offset = text.indexOf('user');
+
+      const hover = plugin.getHover(text, offset, {
+        schema: sampleSchema,
+      });
+
+      if (hover) {
+        expect(hover).toHaveProperty('contents');
+        expect(hover.contents).toHaveProperty('kind');
+        expect(hover.contents).toHaveProperty('value');
+        expect(typeof hover.contents.value).toBe('string');
+      }
+    });
+
+    it('returns null when not in expression', () => {
+      const plugin = new TempljsServicePlugin();
+      const text = 'plain text here';
+      const offset = 5;
+
+      const hover = plugin.getHover(text, offset, {
+        schema: sampleSchema,
+      });
+
+      expect(hover).toBeNull();
+    });
+  });
+
+  describe('getDefinition', () => {
+    it('returns LSP-ready definition location', () => {
+      const plugin = new TempljsServicePlugin();
+      const text = '{{ user.name }}';
+      const offset = text.indexOf('user');
+
+      const definition = plugin.getDefinition(text, offset, {
+        schema: sampleSchema,
+        schemaUri: 'file:///schema.json',
+      });
+
+      if (definition) {
+        expect(definition).toHaveProperty('uri');
+        expect(definition).toHaveProperty('range');
+        expect(definition.uri).toBe('file:///schema.json');
+        expect(definition.range).toHaveProperty('start');
+        expect(definition.range).toHaveProperty('end');
+      }
+    });
+
+    it('returns null without schemaUri', () => {
+      const plugin = new TempljsServicePlugin();
+      const text = '{{ user.name }}';
+      const offset = text.indexOf('user');
+
+      const definition = plugin.getDefinition(text, offset, {
+        schema: sampleSchema,
+      });
+
+      expect(definition).toBeNull();
+    });
+
+    it('uses range resolver for proper location', () => {
+      const plugin = new TempljsServicePlugin();
+      const text = '{{ user.name }}';
+      const offset = text.indexOf('user');
+
+      const mockRangeResolver = (_uri: string, _path: string) => ({
+        start: { line: 5, character: 10 },
+        end: { line: 5, character: 20 },
+      });
+
+      const definition = plugin.getDefinitionWithRangeResolver(
+        text,
+        offset,
+        {
+          schema: sampleSchema,
+          schemaUri: 'file:///schema.json',
+        },
+        mockRangeResolver
+      );
+
+      if (definition) {
+        expect(definition.range.start.line).toBe(5);
+        expect(definition.range.start.character).toBe(10);
+      }
+    });
+
+    it('handles for-loop alias scope in definition', () => {
+      const plugin = new TempljsServicePlugin();
+      const text =
+        '{% for relationship in relationships %}\n{{ relationship.target }}\n{% endfor %}';
+      const offset = text.indexOf('relationship.target');
+
+      const mockRangeResolver = (uri: string, path: string) => {
+        // Path should be resolved from `relationship.target` to `relationships[0].target`
+        expect(path).toBe('relationships[0].target');
+        return {
+          start: { line: 10, character: 0 },
+          end: { line: 10, character: 30 },
+        };
+      };
+
+      const definition = plugin.getDefinitionWithRangeResolver(
+        text,
+        offset,
+        {
+          schema: sampleSchema,
+          schemaUri: 'file:///schema.json',
+        },
+        mockRangeResolver
+      );
+
+      expect(definition).not.toBeNull();
+    });
+
+    it('routes frontmatter and body definitions to the correct schema URI', () => {
+      const plugin = new TempljsServicePlugin();
+      const text = ['---', 'frontData:', '  title: hello', '---', '{{ contentData.heading }}'].join(
+        '\n'
+      );
+
+      const frontmatterOffset = text.indexOf('title:') + 1;
+      const contentOffset = text.indexOf('contentData') + 2;
+
+      const frontmatterDefinition = plugin.getDefinitionWithRangeResolver(
+        text,
+        frontmatterOffset,
+        {
+          schema: frontmatterSchema,
+          schemaUri: 'file:///frontmatter-schema.json',
+          contentSchema: bodySchema,
+          contentSchemaUri: 'file:///content-schema.json',
+        },
+        (uri: string, path: string) => {
+          expect(uri).toBe('file:///frontmatter-schema.json');
+          expect(path).toBe('frontData.title');
+          return {
+            start: { line: 1, character: 0 },
+            end: { line: 1, character: 10 },
+          };
+        }
+      );
+
+      const contentDefinition = plugin.getDefinitionWithRangeResolver(
+        text,
+        contentOffset,
+        {
+          schema: frontmatterSchema,
+          schemaUri: 'file:///frontmatter-schema.json',
+          contentSchema: bodySchema,
+          contentSchemaUri: 'file:///content-schema.json',
+        },
+        (uri: string, path: string) => {
+          expect(uri).toBe('file:///content-schema.json');
+          expect(path).toBe('contentData.heading');
+          return {
+            start: { line: 4, character: 3 },
+            end: { line: 4, character: 20 },
+          };
+        }
+      );
+
+      expect(frontmatterDefinition).not.toBeNull();
+      expect(contentDefinition).not.toBeNull();
+    });
+
+    it('passes canonical nested statement alias paths to the range resolver', () => {
+      const plugin = new TempljsServicePlugin();
+      const text = [
+        '{% for relationship in relationships %}',
+        '  {% if relationship.target %}ok{% endif %}',
+        '{% endfor %}',
+      ].join('\n');
+      const offset = text.indexOf('relationship.target') + 2;
+
+      const definition = plugin.getDefinitionWithRangeResolver(
+        text,
+        offset,
+        {
+          schema: sampleSchema,
+          schemaUri: 'file:///schema.json',
+        },
+        (_uri: string, path: string) => {
+          expect(path).toBe('relationships[0].target');
+          return {
+            start: { line: 1, character: 0 },
+            end: { line: 1, character: 20 },
+          };
+        }
+      );
+
+      expect(definition).not.toBeNull();
+    });
+  });
+
+  describe('collectDiagnostics', () => {
+    it('returns LSP-ready diagnostic items', () => {
+      const plugin = new TempljsServicePlugin();
+      const text = '{{ unknownVar }}';
+
+      const diagnostics = plugin.collectDiagnostics(text, {
+        schema: sampleSchema,
+      });
+
+      expect(Array.isArray(diagnostics)).toBe(true);
+
+      if (diagnostics.length > 0) {
+        const diag = diagnostics[0];
+        expect(diag).toHaveProperty('message');
+        expect(diag).toHaveProperty('severity');
+        expect(diag).toHaveProperty('range');
+        expect(diag).toHaveProperty('code');
+        expect(typeof diag.severity).toBe('number');
+      }
+    });
+
+    it('detects undefined variables', () => {
+      const plugin = new TempljsServicePlugin();
+      const text = '{{ notInSchema }}';
+
+      const diagnostics = plugin.collectDiagnostics(text, {
+        schema: sampleSchema,
+      });
+
+      expect(diagnostics.some((d) => d.code === 'templjs.undefinedVariable')).toBe(true);
+    });
+
+    it('accepts undefined variables in valid scope', () => {
+      const plugin = new TempljsServicePlugin();
+      const text = '{% for rel in relationships %}{{ rel.type }}{% endfor %}';
+
+      const diagnostics = plugin.collectDiagnostics(text, {
+        schema: sampleSchema,
+      });
+
+      expect(diagnostics.some((d) => d.code === 'templjs.undefinedVariable')).toBe(false);
+    });
+
+    it('detects invalid filters', () => {
+      const plugin = new TempljsServicePlugin();
+      const text = '{{ user.name | unknownFilter }}';
+
+      const diagnostics = plugin.collectDiagnostics(text, {
+        schema: sampleSchema,
+      });
+
+      expect(diagnostics.some((d) => d.code === 'templjs.invalidFilter')).toBe(true);
+    });
+  });
+});

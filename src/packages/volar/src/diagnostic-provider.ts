@@ -1,8 +1,17 @@
-import { SchemaValidator, type JSONSchema } from '@templjs/core';
+import { getBuiltinFilterNames, SchemaValidator, type JSONSchema } from '@templjs/core';
 import type { IntellisenseDelimiters } from './intellisense-provider.js';
 import { LineColumnMapper, RangeMapper, generatePositionMappings } from './position-mapping.js';
 import { buildBlockPattern, resolveDelimiters, DEFAULT_DELIMITERS } from './template-delimiters.js';
 import { isOffsetInFrontmatter, type FrontmatterRange } from './frontmatter-zone.js';
+import {
+  buildForScopesInText,
+  resolveScopedPath,
+  resolveScopedPathInText as resolveScopedPathInTemplate,
+} from './scope-resolution.js';
+import {
+  extractExpressionFilterReferences,
+  extractExpressionVariableReferences,
+} from './expression-analysis.js';
 
 export enum DiagnosticSeverity {
   Error = 1,
@@ -40,30 +49,9 @@ export interface DiagnosticOptions {
   baseDiagnostics?: DiagnosticItem[];
 }
 
-const DEFAULT_FILTERS = new Set([
-  'upper',
-  'lower',
-  'capitalize',
-  'title',
-  'trim',
-  'length',
-  'slice',
-  'first',
-  'last',
-  'reverse',
-  'sort',
-  'default',
-  'escape',
-  'safe',
-  'json',
-  'join',
-  'split',
-  'replace',
-  'round',
-  'abs',
-  'int',
-  'float',
-]);
+function getDefaultFilters(): Set<string> {
+  return new Set(getBuiltinFilterNames());
+}
 
 interface BlockMatch {
   start: number;
@@ -80,13 +68,6 @@ interface VariableReference {
   path: string;
   start: number;
   end: number;
-}
-
-interface ForScope {
-  alias: string;
-  iterablePath: string;
-  bodyStart: number;
-  bodyEnd: number;
 }
 
 function getDelimiters(options?: DiagnosticOptions): TemplateDelimiters {
@@ -133,152 +114,16 @@ function parseStatementTag(content: string, delimiters: TemplateDelimiters): str
   return inner.split(/\s+/)[0] ?? '';
 }
 
-function maskQuotedStrings(content: string): string {
-  let result = '';
-  let quote: '"' | "'" | null = null;
-  let escaped = false;
-
-  for (let index = 0; index < content.length; index += 1) {
-    const char = content[index];
-
-    if (quote) {
-      result += ' ';
-      if (escaped) {
-        escaped = false;
-        continue;
-      }
-      if (char === '\\') {
-        escaped = true;
-        continue;
-      }
-      if (char === quote) {
-        quote = null;
-      }
-      continue;
-    }
-
-    if (char === '"' || char === "'") {
-      quote = char;
-      result += ' ';
-      continue;
-    }
-
-    result += char;
-  }
-
-  return result;
-}
-
 function extractVariableReferences(content: string): VariableReference[] {
-  const refs: VariableReference[] = [];
-  const maskedContent = maskQuotedStrings(content);
-  const regex = /[A-Za-z_][\w]*(?:\[[^\]]+\])*(?:\.[A-Za-z_][\w]*(?:\[[^\]]+\])*)*/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = regex.exec(maskedContent)) !== null) {
-    const path = match[0];
-    if (['true', 'false', 'null', 'undefined', 'in', 'and', 'or', 'not'].includes(path)) {
-      continue;
-    }
-
-    refs.push({
-      path,
-      start: match.index,
-      end: match.index + path.length,
-    });
-  }
-
-  return refs;
+  return extractExpressionVariableReferences(content).map((ref) => ({
+    path: ref.path,
+    start: ref.start,
+    end: ref.end,
+  }));
 }
 
 function extractFilters(content: string): string[] {
-  const filters: string[] = [];
-  const regex = /\|\s*([A-Za-z_][\w]*)/g;
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(content)) !== null) {
-    filters.push(match[1]);
-  }
-  return filters;
-}
-
-function buildForScopes(
-  statementBlocks: BlockMatch[],
-  commentBlocks: BlockMatch[],
-  delimiters: TemplateDelimiters
-): ForScope[] {
-  const scopes: ForScope[] = [];
-  const activeScopes: Array<Omit<ForScope, 'bodyEnd'>> = [];
-
-  for (const block of statementBlocks) {
-    if (isInsideBlocks(block.start, commentBlocks)) {
-      continue;
-    }
-
-    const rawInner = block.content.slice(
-      delimiters.statementStart.length,
-      block.content.length - delimiters.statementEnd.length
-    );
-    const trimmed = rawInner.trim();
-    const tag = trimmed.split(/\s+/)[0] ?? '';
-
-    if (tag === 'for') {
-      const match = trimmed.match(/^for\s+([A-Za-z_][\w]*)\s+in\s+([^\s%}]+)/);
-      if (match) {
-        activeScopes.push({
-          alias: match[1],
-          iterablePath: match[2],
-          bodyStart: block.end,
-        });
-      }
-      continue;
-    }
-
-    if (tag === 'endfor') {
-      const scope = activeScopes.pop();
-      if (scope) {
-        scopes.push({
-          ...scope,
-          bodyEnd: block.start,
-        });
-      }
-    }
-  }
-
-  for (const scope of activeScopes) {
-    scopes.push({
-      ...scope,
-      bodyEnd: Number.POSITIVE_INFINITY,
-    });
-  }
-
-  return scopes;
-}
-
-function resolveScopedPath(path: string, offset: number, scopes: ForScope[]): string {
-  const matchingScopes = scopes.filter(
-    (scope) => offset >= scope.bodyStart && offset < scope.bodyEnd
-  );
-  if (matchingScopes.length === 0) {
-    return path;
-  }
-
-  // Prefer innermost scope.
-  matchingScopes.sort((left, right) => right.bodyStart - left.bodyStart);
-
-  for (const scope of matchingScopes) {
-    if (
-      path === scope.alias ||
-      path.startsWith(`${scope.alias}.`) ||
-      path.startsWith(`${scope.alias}[`)
-    ) {
-      const iterableBase = scope.iterablePath.endsWith(']')
-        ? scope.iterablePath
-        : `${scope.iterablePath}[0]`;
-      return `${iterableBase}${path.slice(scope.alias.length)}`;
-    }
-  }
-
-  return path;
+  return extractExpressionFilterReferences(content).map((ref) => ref.name);
 }
 
 function isPathValidInContext(resolvedPath: string, validator: SchemaValidator): boolean {
@@ -307,11 +152,7 @@ export function resolveScopedPathInText(
   offset: number,
   options?: Pick<DiagnosticOptions, 'delimiters'>
 ): string {
-  const delimiters = getDelimiters(options);
-  const commentBlocks = extractBlocks(text, delimiters.commentStart, delimiters.commentEnd);
-  const statementBlocks = extractBlocks(text, delimiters.statementStart, delimiters.statementEnd);
-  const forScopes = buildForScopes(statementBlocks, commentBlocks, delimiters);
-  return resolveScopedPath(path, offset, forScopes);
+  return resolveScopedPathInTemplate(text, path, offset, options?.delimiters);
 }
 
 function findUnclosedDelimiters(
@@ -352,7 +193,7 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
   const contentValidator = options?.contentSchema
     ? new SchemaValidator(options.contentSchema)
     : null;
-  const filters = new Set([...DEFAULT_FILTERS, ...(options?.customFilters ?? [])]);
+  const filters = new Set([...getDefaultFilters(), ...(options?.customFilters ?? [])]);
 
   const getValidatorForOffset = (offset: number): SchemaValidator | null => {
     const isFrontmatter = isOffsetInFrontmatter(text, offset, options?.frontmatterRange);
@@ -369,7 +210,7 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
     delimiters.expressionStart,
     delimiters.expressionEnd
   );
-  const forScopes = buildForScopes(statementBlocks, commentBlocks, delimiters);
+  const forScopes = buildForScopesInText(text, delimiters);
 
   const statementStack: BlockStackEntry[] = [];
 
@@ -442,8 +283,7 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
       if (validator && statementContent.length > 0) {
         const expressionPart = statementContent.replace(/^[A-Za-z_][\w]*\b\s*/, '');
         const expressionPartStart = statementContent.length - expressionPart.length;
-        const variableSegment = expressionPart.split('|')[0] ?? expressionPart;
-        for (const ref of extractVariableReferences(variableSegment)) {
+        for (const ref of extractVariableReferences(expressionPart)) {
           const scopedPath = resolveScopedPath(ref.path, block.start, forScopes);
           if (!isPathValidInContext(scopedPath, validator)) {
             const result = validator.validateQueryPath(scopedPath);
@@ -551,8 +391,7 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
 
     const validator = getValidatorForOffset(block.start);
     if (validator) {
-      const variableSegment = content.split('|')[0] ?? content;
-      for (const ref of extractVariableReferences(variableSegment)) {
+      for (const ref of extractVariableReferences(content)) {
         const scopedPath = resolveScopedPath(ref.path, block.start, forScopes);
         if (!isPathValidInContext(scopedPath, validator)) {
           const result = validator.validateQueryPath(scopedPath);
