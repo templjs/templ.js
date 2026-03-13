@@ -565,6 +565,214 @@ describe('IntellisenseProvider', () => {
     expect(def?.range).toBeTruthy();
   });
 
+  it('returns schema definition for iterable token in for statements', () => {
+    const text = '{% for objective in objectives %}{{ objective.id }}{% endfor %}';
+    const offset = text.indexOf('objectives') + 2;
+
+    const def = provider.getDefinition(text, offset, {
+      schema: {
+        type: 'object',
+        properties: {
+          objectives: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+      schemaUri: 'file:///schema.json',
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(def?.uri).toBe('file:///schema.json');
+    expect(def?.path).toBe('objectives');
+  });
+
+  it('returns local alias declaration when cursor is on for-statement alias token', () => {
+    const text = '{% for objective in objectives %}{{ objective.id }}{% endfor %}';
+    const offset = text.indexOf('objective in') + 2;
+
+    const def = provider.getDefinition(text, offset, {
+      schema: {
+        type: 'object',
+        properties: {
+          objectives: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+      schemaUri: 'file:///schema.json',
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(def?.uri).toBe('file:///workspace/project.md.tpl');
+    expect(def?.range).toBeTruthy();
+  });
+
+  it('resolves nested for iterable paths through outer aliases', () => {
+    const text = [
+      '{% for scope in scopes %}',
+      '  {% for relationship in scope.included %}',
+      '    {{ relationship.type }}',
+      '  {% endfor %}',
+      '{% endfor %}',
+    ].join('\n');
+    const offset = text.indexOf('scope.included') + 'scope.'.length + 1;
+
+    const def = provider.getDefinition(text, offset, {
+      schema: {
+        type: 'object',
+        properties: {
+          scopes: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                included: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      type: { type: 'string' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      schemaUri: 'file:///schema.json',
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(def?.uri).toBe('file:///schema.json');
+    expect(def?.path).toBe('scopes[0].included');
+  });
+
+  it('returns hover info for nested for iterable paths through outer aliases', () => {
+    const text = [
+      '{% for scope in scopes %}',
+      '  {% for relationship in scope.included %}',
+      '    {{ relationship.type }}',
+      '  {% endfor %}',
+      '{% endfor %}',
+    ].join('\n');
+    const offset = text.indexOf('scope.included') + 'scope.'.length + 1;
+
+    const hover = provider.getHover(text, offset, {
+      schema: {
+        type: 'object',
+        properties: {
+          scopes: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                included: {
+                  type: 'array',
+                  description: 'Included scope relationships',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      type: { type: 'string' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(hover?.contents).toContain('scopes[0].included');
+    expect(hover?.contents).toContain('Included scope relationships');
+  });
+
+  it('resolves statement iterable definition by token segment for top-level scope paths', () => {
+    const text = '{% for item in scope.included %}{{ item }}{% endfor %}';
+    const scopeOffset = text.indexOf('scope.included') + 1;
+    const includedOffset = text.indexOf('scope.included') + 'scope.in'.length;
+
+    const schema = {
+      type: 'object',
+      properties: {
+        scope: {
+          type: 'object',
+          properties: {
+            included: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+          },
+        },
+      },
+    };
+
+    const scopeDef = provider.getDefinition(text, scopeOffset, {
+      schema,
+      schemaUri: 'file:///schema.json',
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+    const includedDef = provider.getDefinition(text, includedOffset, {
+      schema,
+      schemaUri: 'file:///schema.json',
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(scopeDef?.path).toBe('scope');
+    expect(includedDef?.path).toBe('scope.included');
+  });
+
+  it('resolves statement iterable hover by token segment for top-level scope paths', () => {
+    const text = '{% for item in scope.included %}{{ item }}{% endfor %}';
+    const scopeOffset = text.indexOf('scope.included') + 1;
+    const includedOffset = text.indexOf('scope.included') + 'scope.in'.length;
+
+    const schema = {
+      type: 'object',
+      properties: {
+        scope: {
+          type: 'object',
+          description: 'Scope container',
+          properties: {
+            included: {
+              type: 'array',
+              description: 'Included items',
+              items: { type: 'string' },
+            },
+          },
+        },
+      },
+    };
+
+    const scopeHover = provider.getHover(text, scopeOffset, {
+      schema,
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+    const includedHover = provider.getHover(text, includedOffset, {
+      schema,
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(scopeHover?.contents).toContain('scope: object');
+    expect(scopeHover?.contents).toContain('Scope container');
+    expect(includedHover?.contents).toContain('scope.included: array');
+    expect(includedHover?.contents).toContain('Included items');
+  });
+
   it('returns property definition kind for frontmatter keys', () => {
     const text = ['---', 'type: project', '---', 'body'].join('\n');
     const offset = text.indexOf('type') + 1;
@@ -703,7 +911,7 @@ describe('IntellisenseProvider', () => {
     expect(outerHover?.contents).toContain('items[0].name');
   });
 
-  it('uses primary and secondary schema sources for hover in the same document', () => {
+  it('uses frontmatter and content schema sources for hover in the same document', () => {
     const text = ['---', 'frontData:', '  title: hello', '---', '{{ contentData.heading }}'].join(
       '\n'
     );

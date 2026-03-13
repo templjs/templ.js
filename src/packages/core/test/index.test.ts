@@ -6,6 +6,7 @@ import core, {
   extractTemplateScopeBindings,
   createRenderer,
   createQueryEngine,
+  getBuiltinFilterSignatures,
   renderTemplate,
   validateTemplate,
   version,
@@ -52,6 +53,19 @@ describe('core entrypoint', () => {
   it('creates query engine instance', () => {
     const engine = createQueryEngine();
     expect(engine).toBeInstanceOf(QueryEngine);
+  });
+
+  it('exposes canonical built-in filter metadata from core', () => {
+    const signatures = getBuiltinFilterSignatures();
+    const engineMetadata = createQueryEngine().getMetadata();
+    const upperSignature = engineMetadata.functions.get('upper')?.[0];
+    const truncateSignature = engineMetadata.functions.get('truncate')?.[0];
+
+    expect(signatures.upper).toBeDefined();
+    expect(signatures.truncate).toBeDefined();
+    expect(signatures.upper?.description).toBe(upperSignature?.description);
+    expect(signatures.truncate?.description).toBe(truncateSignature?.description);
+    expect(signatures.truncate?.parameters).toEqual(truncateSignature?.parameters);
   });
 
   it('renders a simple template', () => {

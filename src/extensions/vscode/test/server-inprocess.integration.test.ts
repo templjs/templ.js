@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -454,6 +454,92 @@ describe('language-server-inprocess-integration', () => {
       });
       expect(loopAliasDefinition?.uri).toBe(docUri);
       expect(loopAliasDefinition?.range.start.line).toBeGreaterThan(0);
+    } finally {
+      rmSync(workspaceDir, { recursive: true, force: true });
+    }
+  });
+
+  it('resolves definition range for array item properties without substring collisions', async () => {
+    const workspaceDir = mkdtempSync(path.join(tmpdir(), 'templjs-server-def-range-'));
+
+    try {
+      const contentSchemaPath = path.join(workspaceDir, 'content.schema.json');
+      const contentSchema = {
+        type: 'object',
+        properties: {
+          relationships: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                type: { type: 'string' },
+                target: { type: 'string' },
+              },
+            },
+          },
+        },
+      };
+
+      writeFileSync(contentSchemaPath, JSON.stringify(contentSchema, null, 2));
+
+      await import('../src/server');
+
+      const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => Promise<{
+        capabilities: {
+          definitionProvider?: boolean;
+        };
+      }>;
+
+      const docUri = `file://${path.join(workspaceDir, 'sample.md.templ')}`;
+      const text = [
+        '---',
+        `"$content_schema": ${path.basename(contentSchemaPath)}`,
+        '---',
+        '{{ relationships[0].type }}',
+      ].join('\n');
+      const lines = text.split('\n');
+
+      const locate = (line: number, token: string, offsetInToken = 0) => {
+        const character = lines[line].indexOf(token);
+        if (character === -1) {
+          throw new Error(`Token '${token}' not found on line ${line}`);
+        }
+        return { line, character: character + offsetInToken };
+      };
+
+      await initializeHandler({
+        rootUri: `file://${workspaceDir}`,
+        initializationOptions: {
+          documentContext: {
+            uri: docUri,
+            content: text,
+          },
+        },
+      });
+
+      const didOpenHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
+        textDocument: { uri: string; text: string };
+      }) => void;
+      didOpenHandler({
+        textDocument: { uri: docUri, text },
+      });
+
+      const definitionHandler = onDefinition.mock.calls[0][0] as (params: {
+        textDocument: { uri: string };
+        position: { line: number; character: number };
+      }) => { uri: string; range: { start: { line: number; character: number } } } | null;
+
+      const schemaLines = readFileSync(contentSchemaPath, 'utf-8').split('\n');
+      const expectedItemTypeLine = schemaLines.findIndex((line) => /"type"\s*:\s*\{/.test(line));
+      expect(expectedItemTypeLine).toBeGreaterThan(-1);
+
+      const definition = definitionHandler({
+        textDocument: { uri: docUri },
+        position: locate(3, 'relationships[0].type', 'relationships[0].type'.length - 2),
+      });
+
+      expect(definition?.uri).toBe(`file://${contentSchemaPath}`);
+      expect(definition?.range.start.line).toBe(expectedItemTypeLine);
     } finally {
       rmSync(workspaceDir, { recursive: true, force: true });
     }

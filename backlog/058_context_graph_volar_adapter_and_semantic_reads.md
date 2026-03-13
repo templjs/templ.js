@@ -22,6 +22,13 @@ test_results:
       - Focused tests: 90 passed, 0 failed
       - Package builds: `pnpm --filter @templjs/core build`, `pnpm --filter @templjs/context-graph build`, `pnpm --filter @templjs/volar build` passed
       - Workspace build: `pnpm build` passed (5 projects)
+  - timestamp: 2026-03-13T00:00:00Z
+    note: |
+      Architecture boundary correction follow-up:
+      - Repointed Volar semantic-context usage to `@templjs/core` (`resolveSemanticContextBlock` + frontmatter alias helpers)
+      - Kept `@templjs/context-graph` usage in Volar limited to generic graph contracts
+      - Focused verification after correction: 129 passed, 0 failed
+      - Builds reconfirmed: `pnpm --filter @templjs/core build`, `pnpm --filter @templjs/context-graph build`, `pnpm --filter @templjs/volar build`
 links:
   implements:
     - '[[056_context_graph_platform_epic]]'

@@ -22,11 +22,23 @@ function pathSegmentToString(segment: PathSegment): string {
     return `[${segment.value}]`;
   }
 
-  if (segment.value.type === 'literal') {
+  const segmentType = segment.value.type;
+
+  if (segmentType === 'literal') {
     return `[${String(segment.value.value)}]`;
   }
 
-  return '[0]';
+  console.debug('[templjs/volar] dynamic path index segment', {
+    segmentValue: segment.value,
+    segmentType,
+  });
+
+  const serializedValue =
+    typeof segment.value === 'object' && segment.value !== null
+      ? JSON.stringify(segment.value)
+      : String(segment.value);
+
+  return `[${segmentType}:${serializedValue}]`;
 }
 
 function variableNodeToPath(node: ExpressionNode): string | null {

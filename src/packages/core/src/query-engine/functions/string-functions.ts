@@ -1,5 +1,5 @@
 /**
- * String Functions (19 functions)
+ * String Functions (20 functions)
  *
  * Functions for string manipulation including case transformations,
  * trimming, searching, and pattern matching.
@@ -29,7 +29,7 @@ export const lowerSignature: FunctionSignature = {
 export const capitalizeSignature: FunctionSignature = {
   name: 'capitalize',
   category: 'string',
-  description: 'Capitalize first letter of string',
+  description: 'Capitalize the first character of a string.',
   parameters: [],
   returnType: 'string',
   examples: ['capitalize("hello") → "Hello"'],
@@ -38,7 +38,7 @@ export const capitalizeSignature: FunctionSignature = {
 export const trimSignature: FunctionSignature = {
   name: 'trim',
   category: 'string',
-  description: 'Remove whitespace from both ends',
+  description: 'Trim whitespace from both ends of a string.',
   parameters: [],
   returnType: 'string',
   examples: ['trim("  hello  ") → "hello"'],
@@ -65,7 +65,7 @@ export const rtrimSignature: FunctionSignature = {
 export const replaceSignature: FunctionSignature = {
   name: 'replace',
   category: 'string',
-  description: 'Replace all occurrences of search string with replacement',
+  description: 'Replace all occurrences of a substring in a string.',
   parameters: [
     { name: 'search', type: 'string', required: true, description: 'String to search for' },
     {
@@ -94,7 +94,7 @@ export const sliceSignature: FunctionSignature = {
 export const splitSignature: FunctionSignature = {
   name: 'split',
   category: 'string',
-  description: 'Split string by delimiter',
+  description: 'Split a string into a list using a delimiter.',
   parameters: [
     {
       name: 'delimiter',
@@ -110,7 +110,7 @@ export const splitSignature: FunctionSignature = {
 export const joinSignature: FunctionSignature = {
   name: 'join',
   category: 'string',
-  description: 'Join array elements with separator',
+  description: 'Join a list of values into a string.',
   parameters: [
     {
       name: 'separator',
@@ -211,7 +211,7 @@ export const repeatSignature: FunctionSignature = {
 export const reverseSignature: FunctionSignature = {
   name: 'reverse',
   category: 'string',
-  description: 'Reverse string',
+  description: 'Reverse the characters in a string.',
   parameters: [],
   returnType: 'string',
   examples: ['reverse("hello") → "olleh"'],
@@ -224,6 +224,18 @@ export const escapeSignature: FunctionSignature = {
   parameters: [],
   returnType: 'string',
   examples: ['escape("<script>") → "&lt;script&gt;"'],
+};
+
+export const truncateSignature: FunctionSignature = {
+  name: 'truncate',
+  category: 'string',
+  description: 'Truncate a string to a maximum length.',
+  parameters: [
+    { name: 'length', type: 'number', required: true, description: 'Maximum string length' },
+    { name: 'suffix', type: 'string', required: false, description: 'Optional suffix' },
+  ],
+  returnType: 'string',
+  examples: ['truncate("hello world", 5) → "hello..."', 'truncate("hello", 10) → "hello"'],
 };
 
 // String function handlers
@@ -333,6 +345,22 @@ export const escape: FilterFunction = (value: unknown): string => {
   return str.replace(/[&<>"']/g, (char) => escapeMap[char]);
 };
 
+export const truncate: FilterFunction = (
+  value: unknown,
+  length: unknown,
+  suffix?: unknown
+): string => {
+  const str = String(value);
+  const maxLength = Number(length);
+  const suffixValue = suffix !== undefined ? String(suffix) : '...';
+
+  if (!Number.isFinite(maxLength) || maxLength < 0) {
+    return str;
+  }
+
+  return str.length > maxLength ? `${str.slice(0, maxLength)}${suffixValue}` : str;
+};
+
 /**
  * Export all string function registrations
  */
@@ -356,4 +384,5 @@ export const stringFunctions = [
   { signature: repeatSignature, handler: repeat },
   { signature: reverseSignature, handler: reverse },
   { signature: escapeSignature, handler: escape },
+  { signature: truncateSignature, handler: truncate },
 ];

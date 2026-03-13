@@ -1,16 +1,16 @@
 import {
   getBuiltinFilterNames,
   getBuiltinFilterSignatures,
-  SchemaValidator,
-  extractTemplateScopeBindings,
-  type FunctionSignature,
-  type SchemaMetadata,
+  resolveSemanticHostLanguage,
+  resolveSemanticZoneByHostLanguage,
+  resolveSemanticZone,
+  toSemanticZone,
 } from '@templjs/core';
 import {
   resolveDelimiters,
   type DelimiterConfig as IntellisenseDelimiters,
 } from './template-delimiters.js';
-import { isOffsetInFrontmatter, type FrontmatterRange } from './frontmatter-zone.js';
+import { type FrontmatterRange } from './frontmatter-zone.js';
 import {
   extractExpressionFilterReferences,
   extractExpressionVariableReferences,
@@ -59,6 +59,8 @@ export interface IntellisenseOptions {
   contentSchema?: object;
   contentSchemaUri?: string;
   documentUri?: string;
+  workspaceRoot?: string;
+  debugLog?: (message: string, level?: 'messages' | 'verbose') => void;
   frontmatterRange?: FrontmatterRange;
   customFilters?: FilterSignature[];
   customKeywords?: string[];
@@ -88,101 +90,11 @@ const DEFAULT_KEYWORDS = [
   'in',
 ];
 
-const FILTER_SIGNATURE_OVERRIDES: Readonly<
-  Record<
-    string,
-    {
-      description: string;
-      returnType: string;
-      parameters: Array<{ name: string; type: string; description?: string }>;
-    }
-  >
-> = {
-  abs: {
-    description: 'Return the absolute value of a number.',
-    returnType: 'number',
-    parameters: [],
-  },
-  capitalize: {
-    description: 'Capitalize the first character of a string.',
-    returnType: 'string',
-    parameters: [],
-  },
-  default: {
-    description: 'Provide a default value if undefined or falsy.',
-    returnType: 'any',
-    parameters: [{ name: 'value', type: 'any' }],
-  },
-  first: {
-    description: 'Return the first item from a collection.',
-    returnType: 'any',
-    parameters: [],
-  },
-  join: {
-    description: 'Join a list into a string.',
-    returnType: 'string',
-    parameters: [{ name: 'separator', type: 'string' }],
-  },
-  json: { description: 'Serialize a value as JSON.', returnType: 'string', parameters: [] },
-  last: {
-    description: 'Return the last item from a collection.',
-    returnType: 'any',
-    parameters: [],
-  },
-  length: { description: 'Return the length of a value.', returnType: 'number', parameters: [] },
-  lower: { description: 'Lowercase a string.', returnType: 'string', parameters: [] },
-  number: {
-    description: 'Convert value to number when possible.',
-    returnType: 'number',
-    parameters: [],
-  },
-  replace: {
-    description: 'Replace a substring.',
-    returnType: 'string',
-    parameters: [
-      { name: 'search', type: 'string' },
-      { name: 'replacement', type: 'string' },
-    ],
-  },
-  reverse: { description: 'Reverse a string or collection.', returnType: 'any', parameters: [] },
-  round: {
-    description: 'Round a numeric value.',
-    returnType: 'number',
-    parameters: [{ name: 'precision', type: 'number', description: 'Optional decimal places.' }],
-  },
-  split: {
-    description: 'Split a string into a list.',
-    returnType: 'array',
-    parameters: [{ name: 'separator', type: 'string' }],
-  },
-  string: { description: 'Convert value to string.', returnType: 'string', parameters: [] },
-  trim: {
-    description: 'Trim whitespace from both ends of a string.',
-    returnType: 'string',
-    parameters: [],
-  },
-  truncate: {
-    description: 'Truncate a string to a maximum length.',
-    returnType: 'string',
-    parameters: [
-      { name: 'length', type: 'number' },
-      { name: 'suffix', type: 'string', description: 'Optional suffix.' },
-    ],
-  },
-  upper: { description: 'Uppercase a string.', returnType: 'string', parameters: [] },
-  where: {
-    description: 'Filter array items by truthy key.',
-    returnType: 'array',
-    parameters: [{ name: 'key', type: 'string' }],
-  },
-};
-
 const BUILTIN_FILTER_SIGNATURES = getBuiltinFilterSignatures();
 
 function getDefaultFilters(): FilterSignature[] {
   return getBuiltinFilterNames().map((name) => {
-    const signature = BUILTIN_FILTER_SIGNATURES[name] as FunctionSignature | undefined;
-    const metadata = FILTER_SIGNATURE_OVERRIDES[name];
+    const signature = BUILTIN_FILTER_SIGNATURES[name];
 
     if (signature) {
       return {
@@ -199,9 +111,9 @@ function getDefaultFilters(): FilterSignature[] {
 
     return {
       name,
-      description: metadata?.description ?? `Apply ${name} filter.`,
-      returnType: metadata?.returnType ?? 'any',
-      parameters: metadata?.parameters ?? [],
+      description: `Apply ${name} filter.`,
+      returnType: 'any',
+      parameters: [],
     };
   });
 }
@@ -248,25 +160,38 @@ function findEnclosingRangeNearOffset(
 
   return null;
 }
-function getMetadata(schema?: object): SchemaMetadata {
-  if (!schema) return {};
-  const validator = new SchemaValidator(schema);
-  return validator.getMetadata();
-}
 
 const semanticReadAdapter = createContextGraphSemanticReadAdapter();
+
+function createScopedPathResolver(
+  text: string,
+  offset: number,
+  delimiters: IntellisenseDelimiters
+): (basePath: string) => string {
+  const forScopes = buildForScopesInText(text, delimiters);
+
+  return (basePath: string): string => {
+    const graphResolved = semanticReadAdapter.resolveScopedPath(text, basePath, offset);
+    if (graphResolved !== basePath) {
+      return graphResolved;
+    }
+
+    return resolveScopedPath(basePath, offset, forScopes);
+  };
+}
 
 function buildSemanticQueryContext(
   text: string,
   offset: number,
   operation: SemanticQueryContext['operation'],
-  usePrimarySchema: boolean,
+  semanticZone: NonNullable<SemanticQueryContext['semanticZone']>,
   documentUri?: string
 ): SemanticQueryContext {
   const position = getPositionForOffset(text, offset);
   return {
     operation,
-    schemaSource: usePrimarySchema ? 'primary' : 'secondary',
+    contextBlock: semanticZone.legacyContextBlock,
+    semanticZone,
     documentUri,
     offset,
     line: position.line,
@@ -274,26 +199,22 @@ function buildSemanticQueryContext(
   };
 }
 
-function getPathCompletions(metadata: SchemaMetadata, pathPrefix: string): CompletionItem[] {
-  const path = pathPrefix.replace(/\.$/, '');
-  const entry = metadata[path];
-  const properties = entry?.properties ?? [];
+function resolveSemanticQueryZone(
+  text: string,
+  offset: number,
+  documentUri?: string,
+  range?: FrontmatterRange
+): NonNullable<SemanticQueryContext['semanticZone']> {
+  if (range && offset >= range.start && offset < range.end) {
+    return toSemanticZone('frontmatter');
+  }
 
-  return properties.map((prop: string) => ({
-    label: prop,
-    kind: 'property',
-    detail: entry?.itemType ? `type: ${entry.itemType}` : entry?.type,
-  }));
-}
+  const hostLanguage = resolveSemanticHostLanguage(documentUri);
+  if (hostLanguage === 'unknown') {
+    return resolveSemanticZone(text, offset);
+  }
 
-function getTopLevelCompletions(metadata: SchemaMetadata): CompletionItem[] {
-  return Object.keys(metadata)
-    .filter((key) => !key.includes('.') && !key.includes('['))
-    .map((key) => ({
-      label: key,
-      kind: 'variable',
-      detail: metadata[key]?.type,
-    }));
+  return resolveSemanticZoneByHostLanguage(text, offset, hostLanguage);
 }
 
 function getFilterCompletions(filters: FilterSignature[]): CompletionItem[] {
@@ -344,15 +265,46 @@ function filterAndSortCompletions(items: CompletionItem[], rawPrefix: string): C
   return withScore.map((entry) => entry.item);
 }
 
-function resolveFilterSignature(filters: FilterSignature[], name: string): FilterSignature | null {
-  return filters.find((filter) => filter.name === name) ?? null;
+function summarizeDuplicateLabels(items: CompletionItem[]): string[] {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    const key = item.label.toLowerCase();
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .filter(([, total]) => total > 1)
+    .map(([label, total]) => `${label}×${total}`)
+    .sort((left, right) => left.localeCompare(right));
 }
 
-function resolveVariableMetadata(metadata: SchemaMetadata, path: string): string | undefined {
-  const entry = metadata[path];
-  if (!entry) return undefined;
-  const description = typeof entry.description === 'string' ? entry.description.trim() : '';
-  return description ? `${path}: ${entry.type}\n\n${description}` : `${path}: ${entry.type}`;
+function logCompletionSummary(
+  options: IntellisenseOptions | undefined,
+  branch: string,
+  items: CompletionItem[]
+): void {
+  options?.debugLog?.(`[intellisense] completion branch=${branch} count=${items.length}`);
+  const duplicates = summarizeDuplicateLabels(items);
+  if (duplicates.length > 0) {
+    options?.debugLog?.(
+      `[intellisense] completion duplicate labels: ${duplicates.slice(0, 12).join(', ')}`,
+      'messages'
+    );
+  }
+
+  if (items.length > 0) {
+    options?.debugLog?.(
+      `[intellisense] completion top labels: ${items
+        .slice(0, 8)
+        .map((item) => JSON.stringify(item.label))
+        .join(', ')}`,
+      'verbose'
+    );
+  }
+}
+
+function resolveFilterSignature(filters: FilterSignature[], name: string): FilterSignature | null {
+  return filters.find((filter) => filter.name === name) ?? null;
 }
 
 function normalizeExpression(text: string, delimiters: IntellisenseDelimiters): string {
@@ -382,6 +334,76 @@ function getVariablePathAtOffset(content: string, offsetInContent: number): stri
   return null;
 }
 
+function splitPathSegments(path: string): string[] {
+  if (!path) {
+    return [];
+  }
+
+  const segments: string[] = [];
+  let start = 0;
+  let bracketDepth = 0;
+
+  for (let index = 0; index < path.length; index += 1) {
+    const char = path[index];
+    if (char === '[') {
+      bracketDepth += 1;
+      continue;
+    }
+
+    if (char === ']') {
+      bracketDepth = Math.max(0, bracketDepth - 1);
+      continue;
+    }
+
+    if (char === '.' && bracketDepth === 0) {
+      segments.push(path.slice(start, index));
+      start = index + 1;
+    }
+  }
+
+  if (start <= path.length) {
+    segments.push(path.slice(start));
+  }
+
+  return segments.filter((segment) => segment.length > 0);
+}
+
+function getVariablePathPrefixAtOffset(content: string, offsetInContent: number): string | null {
+  const refs = extractExpressionVariableReferences(content);
+  const activeRef = refs.find((ref) => offsetInContent >= ref.start && offsetInContent <= ref.end);
+  const targetRef = activeRef ?? (refs.length === 1 ? refs[0] : null);
+  if (!targetRef) {
+    return null;
+  }
+
+  const segments = splitPathSegments(targetRef.path);
+  if (segments.length === 0) {
+    return null;
+  }
+
+  let relativeOffset = Math.max(
+    0,
+    Math.min(offsetInContent - targetRef.start, targetRef.path.length - 1)
+  );
+  if (targetRef.path[relativeOffset] === '.' && relativeOffset > 0) {
+    relativeOffset -= 1;
+  }
+
+  let cursor = 0;
+  for (let index = 0; index < segments.length; index += 1) {
+    const segmentLength = segments[index].length;
+    const segmentStart = cursor;
+    const segmentEnd = segmentStart + segmentLength - 1;
+    if (relativeOffset >= segmentStart && relativeOffset <= segmentEnd) {
+      return segments.slice(0, index + 1).join('.');
+    }
+
+    cursor = segmentEnd + 2;
+  }
+
+  return targetRef.path;
+}
+
 function getFilterNameAtOffset(content: string, offsetInContent: number): string | null {
   const refs = extractExpressionFilterReferences(content);
   const activeRef = refs.find((ref) => offsetInContent >= ref.start && offsetInContent <= ref.end);
@@ -408,39 +430,6 @@ function getLineAtOffset(
     lineEnd,
     line: text.slice(lineStart, lineEnd),
   };
-}
-
-function getSchemaNodeForPath(schema: unknown, path: string): Record<string, unknown> | null {
-  if (!schema || typeof schema !== 'object' || Array.isArray(schema)) {
-    return null;
-  }
-
-  const segments = path
-    .split('.')
-    .map((segment) => segment.replace(/\[[^\]]+\]/g, ''))
-    .filter((segment) => segment.length > 0);
-
-  if (segments.length === 0) {
-    return null;
-  }
-
-  let current = schema as Record<string, unknown>;
-
-  for (const segment of segments) {
-    const properties = current.properties;
-    if (!properties || typeof properties !== 'object' || Array.isArray(properties)) {
-      return null;
-    }
-
-    const node = (properties as Record<string, unknown>)[segment];
-    if (!node || typeof node !== 'object' || Array.isArray(node)) {
-      return null;
-    }
-
-    current = node as Record<string, unknown>;
-  }
-
-  return current;
 }
 
 type FrontmatterContext = {
@@ -578,10 +567,14 @@ function getCompletionPrefix(text: string): string {
 function getExpressionCompletionsAtOffset(
   content: string,
   offsetInContent: number,
-  metadata: SchemaMetadata,
   filters: FilterSignature[],
   semanticContext: SemanticQueryContext,
-  semanticOptions: { schema?: object; contentSchema?: object },
+  semanticOptions: {
+    schema?: object;
+    contentSchema?: object;
+    schemaUri?: string;
+    contentSchemaUri?: string;
+  },
   /** Optional resolver to translate for-loop alias paths to their schema equivalents. */
   pathResolver?: (basePath: string) => string
 ): CompletionItem[] {
@@ -611,9 +604,7 @@ function getExpressionCompletionsAtOffset(
         resolvedBase,
         semanticOptions
       );
-      const items =
-        graphItems.length > 0 ? graphItems : getPathCompletions(metadata, resolvedBase + '.');
-      return filterAndSortCompletions(items, propertyPrefix);
+      return filterAndSortCompletions(graphItems, propertyPrefix);
     }
 
     const graphItems = semanticReadAdapter.getChildCompletions(
@@ -621,8 +612,7 @@ function getExpressionCompletionsAtOffset(
       '',
       semanticOptions
     );
-    const items = graphItems.length > 0 ? graphItems : getTopLevelCompletions(metadata);
-    return filterAndSortCompletions(items, typedPath);
+    return filterAndSortCompletions(graphItems, typedPath);
   }
 
   const lastDot = prefix.lastIndexOf('.');
@@ -634,14 +624,11 @@ function getExpressionCompletionsAtOffset(
       resolvedBase,
       semanticOptions
     );
-    const items =
-      graphItems.length > 0 ? graphItems : getPathCompletions(metadata, resolvedBase + '.');
-    return filterAndSortCompletions(items, propertyPrefix);
+    return filterAndSortCompletions(graphItems, propertyPrefix);
   }
 
   const graphItems = semanticReadAdapter.getChildCompletions(semanticContext, '', semanticOptions);
-  const items = graphItems.length > 0 ? graphItems : getTopLevelCompletions(metadata);
-  return filterAndSortCompletions(items, prefix);
+  return filterAndSortCompletions(graphItems, prefix);
 }
 
 function getStatementExpressionFragment(
@@ -709,36 +696,30 @@ export class IntellisenseProvider {
       delimiters.statementEnd,
       true
     );
-    const useFrontmatterSchema = isOffsetInFrontmatter(text, offset, options?.frontmatterRange);
-    const activeSchema = useFrontmatterSchema
-      ? options?.schema
-      : (options?.contentSchema ?? options?.schema);
+    const semanticZone = resolveSemanticQueryZone(
+      text,
+      offset,
+      options?.documentUri,
+      options?.frontmatterRange
+    );
+    const contextBlock = semanticZone.legacyContextBlock;
     const completionContext = buildSemanticQueryContext(
       text,
       offset,
       'completion',
-      useFrontmatterSchema,
+      semanticZone,
       options?.documentUri
     );
     const semanticOptions = {
       schema: options?.schema,
       contentSchema: options?.contentSchema,
+      schemaUri: options?.schemaUri,
+      contentSchemaUri: options?.contentSchemaUri,
     };
-    const metadata = getMetadata(activeSchema);
     const filters = [...getDefaultFilters(), ...(options?.customFilters ?? [])];
     const keywords = [...DEFAULT_KEYWORDS, ...(options?.customKeywords ?? [])];
 
-    // Build for-scope mappings to resolve aliases like `relationship` → `relationships[0]`.
-    const forScopes = buildForScopesInText(text, delimiters);
-    const scopeBindings = extractTemplateScopeBindings(text);
-    const scopeResolver = (basePath: string): string => {
-      const graphResolved = semanticReadAdapter.resolveScopedPath(text, basePath, offset);
-      if (graphResolved !== basePath || scopeBindings.length === 0) {
-        return graphResolved;
-      }
-
-      return resolveScopedPath(basePath, offset, forScopes);
-    };
+    const scopeResolver = createScopedPathResolver(text, offset, delimiters);
 
     if (expression) {
       const expressionText = text.slice(expression.start, expression.end);
@@ -752,15 +733,17 @@ export class IntellisenseProvider {
 
       const contentOffset = offset - expression.start - delimiters.expressionStart.length;
 
-      return getExpressionCompletionsAtOffset(
+      const expressionCompletions = getExpressionCompletionsAtOffset(
         content,
         Math.max(0, contentOffset),
-        metadata,
         filters,
         completionContext,
         semanticOptions,
         scopeResolver
       );
+
+      logCompletionSummary(options, 'expression', expressionCompletions);
+      return expressionCompletions;
     }
 
     if (statement) {
@@ -770,54 +753,50 @@ export class IntellisenseProvider {
 
       const keywordMatch = trimmed.match(/^([A-Za-z_][\w]*)\b/);
       if (!keywordMatch || !trimmed.includes(' ')) {
-        return filterAndSortCompletions(getKeywordCompletions(keywords), trimmed);
+        const statementKeywords = filterAndSortCompletions(
+          getKeywordCompletions(keywords),
+          trimmed
+        );
+        logCompletionSummary(options, 'statement-keyword', statementKeywords);
+        return statementKeywords;
       }
 
       const expressionFragment = getStatementExpressionFragment(statementPrefix);
       if (!expressionFragment) {
-        return filterAndSortCompletions(getKeywordCompletions(keywords), trimmed);
+        const fallbackKeywords = filterAndSortCompletions(getKeywordCompletions(keywords), trimmed);
+        logCompletionSummary(options, 'statement-keyword-fallback', fallbackKeywords);
+        return fallbackKeywords;
       }
 
-      return getExpressionCompletionsAtOffset(
+      const statementExpressionCompletions = getExpressionCompletionsAtOffset(
         expressionFragment.expression,
         expressionFragment.offsetInExpression,
-        metadata,
         filters,
         completionContext,
         semanticOptions,
         scopeResolver
       );
+
+      logCompletionSummary(options, 'statement-expression', statementExpressionCompletions);
+      return statementExpressionCompletions;
     }
 
-    if (useFrontmatterSchema) {
+    if (contextBlock === 'frontmatter') {
       const context = getFrontmatterContext(text, offset);
 
       if (context.inValue && context.path) {
-        const keyNode = getSchemaNodeForPath(activeSchema, context.path);
-        const enumValues = Array.isArray(keyNode?.enum)
-          ? keyNode.enum.filter((value): value is string => typeof value === 'string')
-          : [];
-
-        if (enumValues.length > 0) {
-          const graphEnumValues = semanticReadAdapter.getEnumValueCompletions(
-            completionContext,
-            context.path,
-            semanticOptions
-          );
-          const normalizedPrefix = context.valuePrefix.replace(/^['"]/, '').toLowerCase();
-          const graphItems =
-            graphEnumValues.length > 0
-              ? graphEnumValues
-              : enumValues
-                  .sort((left, right) => left.localeCompare(right))
-                  .map((value) => ({
-                    label: value,
-                    kind: 'keyword' as const,
-                    detail: `${context.key} enum`,
-                  }));
-          return graphItems.filter((value) =>
+        const graphEnumValues = semanticReadAdapter.getEnumValueCompletions(
+          completionContext,
+          context.path,
+          semanticOptions
+        );
+        if (graphEnumValues.length > 0) {
+          const normalizedPrefix = context.valuePrefix.replace(/^["']/, '').toLowerCase();
+          const enumItems = graphEnumValues.filter((value) =>
             value.label.toLowerCase().startsWith(normalizedPrefix)
           );
+          logCompletionSummary(options, 'frontmatter-enum-graph', enumItems);
+          return enumItems;
         }
       }
 
@@ -826,16 +805,12 @@ export class IntellisenseProvider {
         context.parentPath ?? '',
         semanticOptions
       );
-      const keyItems =
-        graphItems.length > 0
-          ? graphItems
-          : context.parentPath
-            ? getPathCompletions(metadata, `${context.parentPath}.`)
-            : getTopLevelCompletions(metadata);
-
-      return filterAndSortCompletions(keyItems, context.keyPrefix);
+      const sortedFrontmatter = filterAndSortCompletions(graphItems, context.keyPrefix);
+      logCompletionSummary(options, 'frontmatter-graph-children', sortedFrontmatter);
+      return sortedFrontmatter;
     }
 
+    options?.debugLog?.('[intellisense] completion branch=none count=0', 'verbose');
     return [];
   }
 
@@ -848,31 +823,68 @@ export class IntellisenseProvider {
       delimiters.expressionEnd,
       false
     );
-    const useFrontmatterSchema = isOffsetInFrontmatter(text, offset, options?.frontmatterRange);
-    const activeSchema = useFrontmatterSchema
-      ? options?.schema
-      : (options?.contentSchema ?? options?.schema);
+    const statement = expression
+      ? null
+      : findEnclosingRangeNearOffset(
+          text,
+          offset,
+          delimiters.statementStart,
+          delimiters.statementEnd,
+          false
+        );
+    const semanticZone = resolveSemanticQueryZone(
+      text,
+      offset,
+      options?.documentUri,
+      options?.frontmatterRange
+    );
+    const contextBlock = semanticZone.legacyContextBlock;
     const hoverContext = buildSemanticQueryContext(
       text,
       offset,
       'hover',
-      useFrontmatterSchema,
+      semanticZone,
       options?.documentUri
     );
     const semanticOptions = {
       schema: options?.schema,
       contentSchema: options?.contentSchema,
+      schemaUri: options?.schemaUri,
+      contentSchemaUri: options?.contentSchemaUri,
     };
-    const metadata = getMetadata(activeSchema);
+    const resolveHoverPath = createScopedPathResolver(text, offset, delimiters);
     const filters = [...getDefaultFilters(), ...(options?.customFilters ?? [])];
 
-    if (!expression) {
-      if (!useFrontmatterSchema) {
+    const getHoverDetailsForPath = (rawPath: string): HoverInfo | null => {
+      const resolvedPath = resolveHoverPath(rawPath);
+      const graphDetails = semanticReadAdapter.getPathDetails(
+        hoverContext,
+        resolvedPath,
+        semanticOptions
+      );
+      const details = graphDetails
+        ? graphDetails.description
+          ? `${graphDetails.path}: ${graphDetails.type ?? 'unknown'}\n\n${graphDetails.description}`
+          : `${graphDetails.path}: ${graphDetails.type ?? 'unknown'}`
+        : undefined;
+      options?.debugLog?.(
+        `[intellisense] hover variable=${rawPath} resolved=${resolvedPath} source=graph result=${details ? 'present' : 'none'}`
+      );
+      return details ? { contents: details } : null;
+    };
+
+    if (!expression && !statement) {
+      if (contextBlock !== 'frontmatter') {
+        options?.debugLog?.(
+          '[intellisense] hover miss: outside expression and frontmatter',
+          'messages'
+        );
         return null;
       }
 
       const context = getFrontmatterContext(text, offset);
       if (!context.path) {
+        options?.debugLog?.('[intellisense] hover miss: frontmatter path unresolved', 'messages');
         return null;
       }
 
@@ -885,8 +897,83 @@ export class IntellisenseProvider {
         ? graphDetails.description
           ? `${graphDetails.path}: ${graphDetails.type ?? 'unknown'}\n\n${graphDetails.description}`
           : `${graphDetails.path}: ${graphDetails.type ?? 'unknown'}`
-        : resolveVariableMetadata(metadata, context.path);
+        : undefined;
+      options?.debugLog?.(
+        `[intellisense] hover frontmatter path=${context.path} source=graph result=${keyDetails ? 'present' : 'none'}`
+      );
       return keyDetails ? { contents: keyDetails } : null;
+    }
+
+    if (!expression && statement) {
+      const rawInner = text
+        .slice(statement.start, statement.end)
+        .slice(delimiters.statementStart.length, -delimiters.statementEnd.length);
+      const statementContent = rawInner.trim();
+      if (!statementContent) {
+        return null;
+      }
+
+      const statementOffset =
+        statement.start +
+        delimiters.statementStart.length +
+        (rawInner.indexOf(statementContent) >= 0 ? rawInner.indexOf(statementContent) : 0);
+      const cursorInStatement = offset - statementOffset;
+
+      const forHeaderMatch = statementContent.match(/^for\s+([A-Za-z_][\w]*)\s+in\s*(.*)$/);
+      if (forHeaderMatch) {
+        const aliasName = forHeaderMatch[1];
+        const headerPrefix = statementContent.match(/^for\s+([A-Za-z_][\w]*)\s+in\s*/)?.[0] ?? '';
+        const aliasStart = headerPrefix.indexOf(aliasName);
+        const aliasEnd = aliasStart + aliasName.length;
+
+        if (cursorInStatement >= aliasStart && cursorInStatement <= aliasEnd) {
+          options?.debugLog?.(
+            `[intellisense] hover alias=${aliasName} source=statement-local result=present`
+          );
+          return { contents: `${aliasName}: local loop alias` };
+        }
+
+        const iterableExpression = statementContent.slice(headerPrefix.length);
+        const cursorInIterable = cursorInStatement - headerPrefix.length;
+        if (cursorInIterable >= 0) {
+          const iterablePath = getVariablePathPrefixAtOffset(
+            iterableExpression,
+            Math.max(0, cursorInIterable)
+          );
+          if (iterablePath) {
+            return getHoverDetailsForPath(iterablePath);
+          }
+        }
+      }
+
+      const expressionPart = statementContent.replace(/^[A-Za-z_][\w]*\b\s*/, '');
+      if (!expressionPart) {
+        return null;
+      }
+
+      const expressionPartStart = statementContent.length - expressionPart.length;
+      const relativeOffset = offset - statementOffset - expressionPartStart;
+
+      const filterName = getFilterNameAtOffset(expressionPart, Math.max(0, relativeOffset));
+      if (filterName) {
+        const signature = resolveFilterSignature(filters, filterName);
+        options?.debugLog?.(
+          `[intellisense] hover filter=${filterName} result=${signature ? 'present' : 'none'}`
+        );
+        return signature ? { contents: `${signature.name}: ${signature.description}` } : null;
+      }
+
+      const variablePath = getVariablePathAtOffset(expressionPart, Math.max(0, relativeOffset));
+      if (variablePath) {
+        return getHoverDetailsForPath(variablePath);
+      }
+
+      options?.debugLog?.('[intellisense] hover miss: no statement variable/filter metadata');
+      return null;
+    }
+
+    if (!expression) {
+      return null;
     }
 
     const expressionText = text.slice(expression.start, expression.end);
@@ -900,27 +987,21 @@ export class IntellisenseProvider {
     const filterName = getFilterNameAtOffset(content, Math.max(0, relativeOffset));
     if (filterName) {
       const signature = resolveFilterSignature(filters, filterName);
+      options?.debugLog?.(
+        `[intellisense] hover filter=${filterName} result=${signature ? 'present' : 'none'}`
+      );
       return signature ? { contents: `${signature.name}: ${signature.description}` } : null;
     }
 
     const variablePath = getVariablePathAtOffset(content, Math.max(0, relativeOffset));
     if (variablePath) {
-      const resolvedPath = semanticReadAdapter.resolveScopedPath(text, variablePath, offset);
-      const graphDetails = semanticReadAdapter.getPathDetails(
-        hoverContext,
-        resolvedPath,
-        semanticOptions
-      );
-      const details = graphDetails
-        ? graphDetails.description
-          ? `${graphDetails.path}: ${graphDetails.type ?? 'unknown'}\n\n${graphDetails.description}`
-          : `${graphDetails.path}: ${graphDetails.type ?? 'unknown'}`
-        : resolveVariableMetadata(metadata, variablePath);
-      if (details) {
-        return { contents: details };
-      }
+      return getHoverDetailsForPath(variablePath);
     }
 
+    options?.debugLog?.(
+      '[intellisense] hover miss: no active filter or variable metadata',
+      'messages'
+    );
     return null;
   }
 
@@ -947,28 +1028,97 @@ export class IntellisenseProvider {
           false
         );
 
-    const useFrontmatterSchema = isOffsetInFrontmatter(text, offset, options?.frontmatterRange);
-    const schemaUri = useFrontmatterSchema
-      ? options?.schemaUri
-      : (options?.contentSchemaUri ?? options?.schemaUri);
-    if (!schemaUri) return null;
+    const semanticZone = resolveSemanticQueryZone(
+      text,
+      offset,
+      options?.documentUri,
+      options?.frontmatterRange
+    );
+    const contextBlock = semanticZone.legacyContextBlock;
+
+    const definitionContext = buildSemanticQueryContext(
+      text,
+      offset,
+      'definition',
+      semanticZone,
+      options?.documentUri
+    );
+
+    const resolveDefinitionPath = createScopedPathResolver(text, offset, delimiters);
+
+    const resolveSchemaDefinition = (
+      path: string,
+      pathKind: 'property' | 'value' = 'property',
+      valueToken?: string
+    ): DefinitionLocation | null => {
+      const resolved = semanticReadAdapter.resolvePathDefinition(
+        definitionContext,
+        path,
+        {
+          schemaUri: options?.schemaUri,
+          contentSchemaUri: options?.contentSchemaUri,
+        },
+        pathKind,
+        valueToken
+      );
+      if (!resolved) {
+        return null;
+      }
+
+      return {
+        uri: resolved.uri,
+        path,
+        pathKind,
+        valueToken,
+        range: resolved.range,
+      };
+    };
 
     if (!expression && !statement) {
-      if (!useFrontmatterSchema) {
+      const documentDefinition = semanticReadAdapter.resolveDocumentDefinition(
+        definitionContext,
+        text,
+        offset,
+        {
+          schema: options?.schema,
+          contentSchema: options?.contentSchema,
+          documentUri: options?.documentUri,
+          workspaceRoot: options?.workspaceRoot,
+        }
+      );
+      if (documentDefinition) {
+        options?.debugLog?.(
+          `[intellisense] definition source=document-reference uri=${documentDefinition.uri}`
+        );
+        return documentDefinition;
+      }
+
+      if (contextBlock !== 'frontmatter') {
+        options?.debugLog?.(
+          '[intellisense] definition miss: outside expression/statement/frontmatter',
+          'messages'
+        );
         return null;
       }
 
       const context = getFrontmatterContext(text, offset);
       if (!context.path) {
+        options?.debugLog?.(
+          '[intellisense] definition miss: frontmatter path unresolved',
+          'messages'
+        );
         return null;
       }
 
-      return {
-        uri: schemaUri,
-        path: context.path,
-        pathKind: context.inValue ? 'value' : 'property',
-        valueToken: context.inValue ? context.valueToken : undefined,
-      };
+      options?.debugLog?.(
+        `[intellisense] definition source=frontmatter path=${context.path} kind=${context.inValue ? 'value' : 'property'}`
+      );
+
+      return resolveSchemaDefinition(
+        context.path,
+        context.inValue ? 'value' : 'property',
+        context.inValue ? context.valueToken : undefined
+      );
     }
 
     if (expression) {
@@ -985,13 +1135,19 @@ export class IntellisenseProvider {
           Math.max(0, Math.min(relativeOffset, Math.max(0, variableSegment.length - 1)))
         );
         if (!sourcePath) {
+          options?.debugLog?.(
+            '[intellisense] definition miss: filter-source variable path unresolved',
+            'messages'
+          );
           return null;
         }
 
-        return {
-          uri: schemaUri,
-          path: sourcePath,
-        };
+        options?.debugLog?.(
+          `[intellisense] definition source=expression-filter path=${sourcePath}`,
+          'verbose'
+        );
+
+        return resolveSchemaDefinition(sourcePath);
       }
       const variablePath = getVariablePathAtOffset(variableSegment, Math.max(0, relativeOffset));
       if (!variablePath) return null;
@@ -1003,6 +1159,9 @@ export class IntellisenseProvider {
         options?.delimiters
       );
       if (aliasDefinition && options?.documentUri) {
+        options?.debugLog?.(
+          `[intellisense] definition source=local-alias variable=${variablePath} uri=${options.documentUri}`
+        );
         return {
           uri: options.documentUri,
           range: {
@@ -1012,12 +1171,11 @@ export class IntellisenseProvider {
         };
       }
 
-      const canonicalPath = semanticReadAdapter.resolveScopedPath(text, variablePath, offset);
-      return {
-        uri: schemaUri,
-        path: canonicalPath,
-        pathKind: 'property',
-      };
+      const canonicalPath = resolveDefinitionPath(variablePath);
+      options?.debugLog?.(
+        `[intellisense] definition source=expression-schema variable=${variablePath} canonical=${canonicalPath}`
+      );
+      return resolveSchemaDefinition(canonicalPath, 'property');
     }
 
     const statementRange = statement!;
@@ -1027,14 +1185,66 @@ export class IntellisenseProvider {
     const statementContent = rawInner.trim();
     if (!statementContent) return null;
 
-    const expressionPart = statementContent.replace(/^[A-Za-z_][\w]*\b\s*/, '');
-    if (!expressionPart) return null;
-
-    const expressionPartStart = statementContent.length - expressionPart.length;
     const statementOffset =
       statementRange.start +
       delimiters.statementStart.length +
       (rawInner.indexOf(statementContent) >= 0 ? rawInner.indexOf(statementContent) : 0);
+    const cursorInStatement = offset - statementOffset;
+
+    const forHeaderMatch = statementContent.match(/^for\s+([A-Za-z_][\w]*)\s+in\s*/);
+    if (forHeaderMatch) {
+      const aliasName = forHeaderMatch[1];
+      const header = forHeaderMatch[0];
+      const aliasStart = header.indexOf(aliasName);
+      const aliasEnd = aliasStart + aliasName.length;
+      const iterableExpression = statementContent.slice(header.length);
+      const cursorInIterable = cursorInStatement - header.length;
+
+      if (cursorInStatement >= aliasStart && cursorInStatement <= aliasEnd) {
+        if (options?.documentUri) {
+          const declarationStart = statementOffset + aliasStart;
+          const declarationEnd = declarationStart + aliasName.length;
+          options?.debugLog?.(
+            `[intellisense] definition source=statement-local-alias variable=${aliasName} uri=${options.documentUri}`
+          );
+          return {
+            uri: options.documentUri,
+            range: {
+              start: getPositionForOffset(text, declarationStart),
+              end: getPositionForOffset(text, declarationEnd),
+            },
+          };
+        }
+
+        return null;
+      }
+
+      if (cursorInIterable >= 0) {
+        if (
+          iterableExpression.indexOf('|') >= 0 &&
+          cursorInIterable >= iterableExpression.indexOf('|')
+        ) {
+          return null;
+        }
+
+        const iterablePath = getVariablePathPrefixAtOffset(
+          iterableExpression,
+          Math.max(0, cursorInIterable)
+        );
+        if (iterablePath) {
+          const canonicalPath = resolveDefinitionPath(iterablePath);
+          options?.debugLog?.(
+            `[intellisense] definition source=statement-for-iterable variable=${iterablePath} canonical=${canonicalPath}`
+          );
+          return resolveSchemaDefinition(canonicalPath, 'property');
+        }
+      }
+    }
+
+    const expressionPart = statementContent.replace(/^[A-Za-z_][\w]*\b\s*/, '');
+    if (!expressionPart) return null;
+
+    const expressionPartStart = statementContent.length - expressionPart.length;
     const relativeOffset = offset - statementOffset - expressionPartStart;
     const variableSegment = expressionPart.split('|')[0] ?? expressionPart;
     if (expressionPart.indexOf('|') >= 0 && relativeOffset >= expressionPart.indexOf('|')) {
@@ -1050,6 +1260,9 @@ export class IntellisenseProvider {
       options?.delimiters
     );
     if (aliasDefinition && options?.documentUri) {
+      options?.debugLog?.(
+        `[intellisense] definition source=statement-local-alias variable=${variablePath} uri=${options.documentUri}`
+      );
       return {
         uri: options.documentUri,
         range: {
@@ -1059,12 +1272,11 @@ export class IntellisenseProvider {
       };
     }
 
-    const canonicalPath = semanticReadAdapter.resolveScopedPath(text, variablePath, offset);
-    return {
-      uri: schemaUri,
-      path: canonicalPath,
-      pathKind: 'property',
-    };
+    const canonicalPath = resolveDefinitionPath(variablePath);
+    options?.debugLog?.(
+      `[intellisense] definition source=statement-schema variable=${variablePath} canonical=${canonicalPath}`
+    );
+    return resolveSchemaDefinition(canonicalPath, 'property');
   }
 
   getSignatureHelp(

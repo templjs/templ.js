@@ -1,6 +1,6 @@
 # @templjs/context-graph
 
-`@templjs/context-graph` provides dependency-agnostic contracts and a minimal in-process engine for semantic context publication and querying.
+`@templjs/context-graph` provides dependency-agnostic contracts and a minimal in-process engine for context publication and querying.
 
 ## Design constraints
 

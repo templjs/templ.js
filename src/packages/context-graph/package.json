@@ -1,7 +1,7 @@
 {
   "name": "@templjs/context-graph",
   "version": "0.1.0",
-  "description": "Dependency-agnostic context graph contracts and engine for templjs semantic resolution",
+  "description": "Dependency-agnostic context graph contracts and engine for context publication/querying",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "type": "module",
@@ -25,9 +25,8 @@
     "clean": "node --input-type=module -e \"import { rmSync } from 'node:fs'; rmSync('dist', { recursive: true, force: true }); rmSync('tsconfig.tsbuildinfo', { force: true });\""
   },
   "keywords": [
-    "templjs",
     "context-graph",
-    "semantic",
+    "context",
     "graph",
     "lsp"
   ],

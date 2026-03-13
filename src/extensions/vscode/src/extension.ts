@@ -20,6 +20,28 @@ import {
 let languageClient: LanguageClient | undefined;
 let outputChannel: vscode.OutputChannel | undefined;
 
+type TraceMode = 'off' | 'messages' | 'verbose';
+
+function getTraceMode(): TraceMode {
+  const configured = vscode.workspace
+    .getConfiguration('templjs')
+    .get<string>('trace.server', 'off');
+
+  if (configured === 'messages' || configured === 'verbose') {
+    return configured;
+  }
+
+  return 'off';
+}
+
+function shouldTrace(traceMode: TraceMode, level: 'messages' | 'verbose' = 'messages'): boolean {
+  if (traceMode === 'off') {
+    return false;
+  }
+
+  return level === 'messages' || traceMode === 'verbose';
+}
+
 /**
  * Activate the templjs extension
  */
@@ -56,6 +78,12 @@ export function activate(context: vscode.ExtensionContext): void {
 function initializeLanguageServer(context: vscode.ExtensionContext): void {
   const serverModule = context.asAbsolutePath(path.join('dist', 'server.js'));
   outputChannel?.appendLine(`[templjs] Server module path: ${serverModule}`);
+  const traceMode = getTraceMode();
+  const trace = (message: string, level: 'messages' | 'verbose' = 'messages') => {
+    if (shouldTrace(traceMode, level)) {
+      outputChannel?.appendLine(`[templjs-trace] ${message}`);
+    }
+  };
 
   const serverOptions: ServerOptions = {
     run: { module: serverModule, transport: TransportKind.ipc },
@@ -75,8 +103,9 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
   const clientOptions: LanguageClientOptions = {
     middleware: {
       provideCompletionItem: (document, position, context, token, next) => {
-        outputChannel?.appendLine(
-          `[templjs-client] completion requested: ${document.uri.toString()} @ ${position.line}:${position.character}`
+        const startedAt = Date.now();
+        trace(
+          `completion requested: ${document.uri.toString()} @ ${position.line}:${position.character}`
         );
         return Promise.resolve(next(document, position, context, token)).then((result) => {
           const count = Array.isArray(result)
@@ -86,28 +115,88 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
               : result
                 ? 1
                 : 0;
-          outputChannel?.appendLine(`[templjs-client] completion result count: ${count}`);
+          const durationMs = Date.now() - startedAt;
+          trace(`completion result count=${count} durationMs=${durationMs}`);
+
+          const labels = Array.isArray(result)
+            ? result.map((item) => item?.label).filter((label): label is string => !!label)
+            : Array.isArray(result?.items)
+              ? result.items.map((item) => item?.label).filter((label): label is string => !!label)
+              : [];
+
+          if (labels.length > 0) {
+            const seen = new Map<string, number>();
+            for (const label of labels) {
+              const key = label.toLowerCase();
+              seen.set(key, (seen.get(key) ?? 0) + 1);
+            }
+            const duplicates = [...seen.entries()]
+              .filter(([, total]) => total > 1)
+              .map(([label, total]) => `${label}×${total}`)
+              .slice(0, 8);
+
+            if (duplicates.length > 0) {
+              trace(`completion duplicate labels: ${duplicates.join(', ')}`, 'verbose');
+            }
+
+            trace(
+              `completion top labels: ${labels
+                .slice(0, 8)
+                .map((label) => JSON.stringify(label))
+                .join(', ')}`,
+              'verbose'
+            );
+          }
+
           return result;
         });
       },
       provideHover: (document, position, token, next) => {
-        outputChannel?.appendLine(
-          `[templjs-client] hover requested: ${document.uri.toString()} @ ${position.line}:${position.character}`
+        const startedAt = Date.now();
+        trace(
+          `hover requested: ${document.uri.toString()} @ ${position.line}:${position.character}`
         );
         return Promise.resolve(next(document, position, token)).then((result) => {
-          outputChannel?.appendLine(
-            `[templjs-client] hover result: ${result ? 'present' : 'none'}`
-          );
+          const durationMs = Date.now() - startedAt;
+          trace(`hover result=${result ? 'present' : 'none'} durationMs=${durationMs}`);
+
+          if (result) {
+            const value = Array.isArray((result as vscode.Hover).contents)
+              ? (result as vscode.Hover).contents
+                  .map((entry) =>
+                    typeof entry === 'string'
+                      ? entry
+                      : 'value' in entry
+                        ? String(entry.value)
+                        : String(entry)
+                  )
+                  .join(' | ')
+              : '';
+            trace(`hover content length=${value.length}`, 'verbose');
+          }
+
           return result;
         });
       },
       provideDefinition: (document, position, token, next) => {
-        outputChannel?.appendLine(
-          `[templjs-client] definition requested: ${document.uri.toString()} @ ${position.line}:${position.character}`
+        const startedAt = Date.now();
+        trace(
+          `definition requested: ${document.uri.toString()} @ ${position.line}:${position.character}`
         );
         return Promise.resolve(next(document, position, token)).then((result) => {
           const count = Array.isArray(result) ? result.length : result ? 1 : 0;
-          outputChannel?.appendLine(`[templjs-client] definition result count: ${count}`);
+          const durationMs = Date.now() - startedAt;
+          trace(`definition result count=${count} durationMs=${durationMs}`);
+
+          if (count > 0) {
+            const first = Array.isArray(result) ? result[0] : result;
+            const firstUri =
+              first && 'uri' in first && typeof first.uri?.toString === 'function'
+                ? first.uri.toString()
+                : 'unknown';
+            trace(`definition first target=${firstUri}`, 'verbose');
+          }
+
           return result;
         });
       },
@@ -146,6 +235,7 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
       contentSchemaPath,
       schemaPatterns,
       documentContext,
+      traceMode,
     },
   };
 
@@ -160,9 +250,7 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
   outputChannel?.appendLine('[templjs] Language client created');
 
   const openDocSubscription = vscode.workspace.onDidOpenTextDocument((document) => {
-    outputChannel?.appendLine(
-      `[templjs-client] opened: ${document.uri.toString()} (${document.languageId})`
-    );
+    trace(`opened: ${document.uri.toString()} (${document.languageId})`, 'verbose');
   });
   context.subscriptions.push(openDocSubscription);
 
@@ -170,8 +258,9 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
     if (!editor) {
       return;
     }
-    outputChannel?.appendLine(
-      `[templjs-client] active editor: ${editor.document.uri.toString()} (${editor.document.languageId})`
+    trace(
+      `active editor: ${editor.document.uri.toString()} (${editor.document.languageId})`,
+      'verbose'
     );
   });
   context.subscriptions.push(activeEditorSubscription);

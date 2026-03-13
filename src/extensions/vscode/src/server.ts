@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { minimatch } from 'minimatch';
-import matter from 'gray-matter';
+import { getFrontmatterSchemaAliases } from '@templjs/core';
 import {
   createConnection,
   createServer,
@@ -38,8 +38,40 @@ type SchemaRuntimeOptions = {
   contentSchemaUri?: string;
 };
 
+type TraceMode = 'off' | 'messages' | 'verbose';
+
 const runtimeSchemaOptions: SchemaRuntimeOptions = {};
 const schemaOptionsByUri = new Map<string, SchemaRuntimeOptions>();
+let serverTraceMode: TraceMode = 'off';
+
+function shouldTrace(level: 'messages' | 'verbose' = 'messages'): boolean {
+  if (serverTraceMode === 'off') {
+    return false;
+  }
+
+  return level === 'messages' || serverTraceMode === 'verbose';
+}
+
+function trace(message: string, level: 'messages' | 'verbose' = 'messages'): void {
+  if (!shouldTrace(level)) {
+    return;
+  }
+
+  connection.console.log(`[templjs-trace] ${message}`);
+}
+
+function summarizeDuplicateLabels(labels: string[]): string[] {
+  const counts = new Map<string, number>();
+  for (const label of labels) {
+    const key = label.toLowerCase();
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .filter(([, total]) => total > 1)
+    .map(([label, total]) => `${label}×${total}`)
+    .sort((left, right) => left.localeCompare(right));
+}
 
 function refreshRuntimeSchemaOptions(nextOptions: SchemaRuntimeOptions): void {
   delete runtimeSchemaOptions.schema;
@@ -62,6 +94,7 @@ interface ServerInitializationOptions {
   schemaPath?: string;
   contentSchemaPath?: string;
   schemaPatterns?: Record<string, SchemaPatternConfig>;
+  traceMode?: TraceMode;
   documentContext?: {
     uri?: string;
     content?: string;
@@ -87,6 +120,30 @@ interface RangeLike {
 interface TextDocumentContentChangeLike {
   text: string;
   range?: RangeLike;
+}
+
+type InternalCompletionKind = 'variable' | 'property' | 'keyword' | 'filter';
+type LspCompletionKind = 2 | 3 | 6 | 10 | 14;
+
+function mapInternalKindToLsp(kind: InternalCompletionKind | number): LspCompletionKind {
+  if (typeof kind === 'number') {
+    if (kind === 2 || kind === 3 || kind === 6 || kind === 10 || kind === 14) {
+      return kind;
+    }
+
+    return 6;
+  }
+
+  switch (kind) {
+    case 'variable':
+      return 6;
+    case 'property':
+      return 10;
+    case 'keyword':
+      return 14;
+    case 'filter':
+      return 3;
+  }
 }
 
 function resolveWorkspaceRoot(params: InitializeParamsLike): string | undefined {
@@ -563,7 +620,6 @@ function parseRootObject(content: string): Record<string, unknown> | undefined {
     }
   } catch {
     // Best-effort JSON parsing only for root objects.
-    // YAML frontmatter is parsed separately via gray-matter.
   }
 
   return undefined;
@@ -580,33 +636,7 @@ function extractFrontmatterSchemas(content: string): {
   templSchema?: string;
   contentSchema?: string;
 } {
-  if (!matter.test(content)) {
-    return {};
-  }
-
-  try {
-    const parsed = matter(content);
-    const data = (parsed.data ?? {}) as Record<string, unknown>;
-
-    const templSchemaValue = data['$templ-schema'] ?? data.$schema;
-    const contentSchemaValue = data['$content-schema'] ?? data.$content_schema;
-
-    return {
-      templSchema:
-        typeof templSchemaValue === 'string' && templSchemaValue.trim().length > 0
-          ? templSchemaValue.trim()
-          : undefined,
-      contentSchema:
-        typeof contentSchemaValue === 'string' && contentSchemaValue.trim().length > 0
-          ? contentSchemaValue.trim()
-          : undefined,
-    };
-  } catch (error) {
-    connection.console.log(
-      `[templjs] Failed to parse frontmatter: ${error instanceof Error ? error.message : String(error)}`
-    );
-    return {};
-  }
+  return getFrontmatterSchemaAliases(content);
 }
 
 function extractRootPropertySchemas(content: string): {
@@ -694,477 +724,6 @@ function getOffsetForPosition(text: string, position: { line: number; character:
   return Math.min(offset + position.character, text.length);
 }
 
-function isSchemaPathCharacter(character: string): boolean {
-  return /[A-Za-z0-9_./:#$~+-]/.test(character);
-}
-
-function getTokenAtOffset(
-  text: string,
-  offset: number
-): { token: string; start: number; end: number } | undefined {
-  if (offset < 0 || offset > text.length) {
-    return undefined;
-  }
-
-  let start = offset;
-  let end = offset;
-
-  if (start > 0 && !isSchemaPathCharacter(text[start]) && isSchemaPathCharacter(text[start - 1])) {
-    start -= 1;
-    end -= 1;
-  }
-
-  while (start > 0 && isSchemaPathCharacter(text[start - 1])) {
-    start -= 1;
-  }
-  while (end < text.length && isSchemaPathCharacter(text[end])) {
-    end += 1;
-  }
-
-  if (end <= start) {
-    return undefined;
-  }
-
-  const token = text.slice(start, end).trim();
-  if (!token) {
-    return undefined;
-  }
-
-  return { token, start, end };
-}
-
-function isOffsetWithinFrontmatter(text: string, offset: number): boolean {
-  if (!matter.test(text)) {
-    return false;
-  }
-
-  try {
-    const parsed = matter(text);
-    const frontmatterLength = text.length - parsed.content.length;
-    return frontmatterLength > 0 && offset >= 0 && offset < frontmatterLength;
-  } catch {
-    return false;
-  }
-}
-
-function getFrontmatterSchemaReferenceAtOffset(
-  text: string,
-  offset: number
-): { value: string } | null {
-  if (!isOffsetWithinFrontmatter(text, offset)) {
-    return null;
-  }
-
-  const frontmatterEnd = text.indexOf('\n---', 3);
-  if (frontmatterEnd === -1) {
-    return null;
-  }
-
-  const frontmatterText = text.slice(0, frontmatterEnd);
-  const lines = frontmatterText.split('\n');
-  let lineStart = 0;
-
-  for (const line of lines) {
-    const match = line.match(
-      /^(\s*["']?)(\$schema|\$templ-schema|\$content-schema|\$content_schema)(["']?\s*:\s*["']?)([^"'\n#]+)(.*)$/
-    );
-    if (match) {
-      const [, prefix, key, separator, rawValue] = match;
-      const value = rawValue.trim();
-      const keyStart = lineStart + prefix.length;
-      const keyEnd = keyStart + key.length;
-      const valueStart = keyEnd + separator.length;
-      const valueEnd = valueStart + value.length;
-
-      if (
-        (offset >= keyStart && offset <= keyEnd) ||
-        (offset >= valueStart && offset <= valueEnd)
-      ) {
-        return { value };
-      }
-    }
-
-    lineStart += line.length + 1;
-  }
-
-  return null;
-}
-
-function getFrontmatterKeyValueAtOffset(
-  text: string,
-  offset: number
-): { key: string; valueToken: string } | null {
-  if (!isOffsetWithinFrontmatter(text, offset)) {
-    return null;
-  }
-
-  const lineStart = text.lastIndexOf('\n', Math.max(0, offset - 1)) + 1;
-  const nextNewline = text.indexOf('\n', offset);
-  const lineEnd = nextNewline === -1 ? text.length : nextNewline;
-  const line = text.slice(lineStart, lineEnd);
-
-  const match = line.match(/^(\s*["']?)([A-Za-z_$][\w$-]*)(["']?\s*:\s*)(.+)$/);
-  if (!match) {
-    return null;
-  }
-
-  const [, prefix, key, separator, rawValue] = match;
-  const keyStart = lineStart + prefix.length;
-  const keyEnd = keyStart + key.length;
-  const valueStart = keyEnd + separator.length;
-  if (offset < valueStart) {
-    return null;
-  }
-
-  const valueText = rawValue.trim().replace(/^['"]|['"]$/g, '');
-  if (!valueText) {
-    return null;
-  }
-
-  return { key, valueToken: valueText };
-}
-
-function getPathRegistryKeysFromSchema(schema: unknown): Set<string> {
-  if (!schema || typeof schema !== 'object' || Array.isArray(schema)) {
-    return new Set();
-  }
-
-  const properties = (schema as Record<string, unknown>).properties;
-  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) {
-    return new Set();
-  }
-
-  const keys = new Set<string>();
-  for (const [key, value] of Object.entries(properties as Record<string, unknown>)) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      continue;
-    }
-
-    const property = value as Record<string, unknown>;
-    const format = typeof property.format === 'string' ? property.format.toLowerCase() : '';
-    const description =
-      typeof property.description === 'string' ? property.description.toLowerCase() : '';
-
-    if (
-      format === 'uri' ||
-      format === 'uri-reference' ||
-      key.toLowerCase().includes('path') ||
-      key.toLowerCase().includes('schema') ||
-      key.toLowerCase().includes('file') ||
-      description.includes('path') ||
-      description.includes('file')
-    ) {
-      keys.add(key);
-    }
-  }
-
-  return keys;
-}
-
-function isLikelyPathValue(token: string): boolean {
-  if (!token) {
-    return false;
-  }
-
-  if (token.startsWith('http://') || token.startsWith('https://') || token.startsWith('file://')) {
-    return true;
-  }
-
-  return /\//.test(token) || /\.[A-Za-z0-9]+($|[#?])/.test(token);
-}
-
-function getPathValueDefinition(uri: string, text: string, offset: number): { uri: string } | null {
-  const keyValue = getFrontmatterKeyValueAtOffset(text, offset);
-  if (!keyValue) {
-    return null;
-  }
-
-  const schemaOptions = getSchemaOptionsForUri(uri);
-  const registryKeys = new Set<string>([
-    '$schema',
-    '$templ-schema',
-    '$content-schema',
-    '$content_schema',
-    ...getPathRegistryKeysFromSchema(schemaOptions.schema),
-    ...getPathRegistryKeysFromSchema(schemaOptions.contentSchema),
-  ]);
-
-  if (!registryKeys.has(keyValue.key)) {
-    return null;
-  }
-
-  if (!isLikelyPathValue(keyValue.valueToken)) {
-    return null;
-  }
-
-  const { source } = splitSchemaSourceReference(keyValue.valueToken);
-  const resolved = resolveSchemaFilePath(source, storedWorkspaceRoot, uri);
-  if (!resolved) {
-    return null;
-  }
-
-  if (resolved.startsWith('http://') || resolved.startsWith('https://')) {
-    return { uri: resolved };
-  }
-
-  if (!existsSync(resolved)) {
-    return null;
-  }
-
-  return { uri: pathToFileURL(resolved).toString() };
-}
-
-function getSchemaPathDefinition(text: string, offset: number): { uri: string } | null {
-  if (!isOffsetWithinFrontmatter(text, offset)) {
-    return null;
-  }
-
-  const schemaRef = getFrontmatterSchemaReferenceAtOffset(text, offset);
-  let token = schemaRef?.value;
-
-  if (!token) {
-    const tokenRef = getTokenAtOffset(text, offset);
-    if (!tokenRef) {
-      return null;
-    }
-
-    token = tokenRef.token;
-  }
-
-  const keyToSchemaValue = (key: string): string | undefined => {
-    const trimmedKey = key.replace(/^"|"$/g, '');
-    if (
-      trimmedKey === '$schema' ||
-      trimmedKey === '$templ-schema' ||
-      trimmedKey === '$content_schema' ||
-      trimmedKey === '$content-schema'
-    ) {
-      const extracted = extractFrontmatterSchemas(text);
-      if (trimmedKey === '$schema' || trimmedKey === '$templ-schema') {
-        return extracted.templSchema;
-      }
-      return extracted.contentSchema;
-    }
-    return undefined;
-  };
-
-  token = keyToSchemaValue(token) ?? token;
-  if (!token.includes('.json') && !token.startsWith('http://') && !token.startsWith('https://')) {
-    return null;
-  }
-
-  const { source: tokenSource } = splitSchemaSourceReference(token);
-  const resolved = resolveSchemaFilePath(tokenSource, storedWorkspaceRoot);
-  if (!resolved) {
-    return null;
-  }
-
-  if (resolved.startsWith('http://') || resolved.startsWith('https://')) {
-    return { uri: resolved };
-  }
-
-  if (!existsSync(resolved)) {
-    return null;
-  }
-
-  return { uri: pathToFileURL(resolved).toString() };
-}
-
-function getPositionForOffset(text: string, offset: number): PositionLike {
-  const safeOffset = Math.max(0, Math.min(offset, text.length));
-  let line = 0;
-  let lineStart = 0;
-
-  for (let index = 0; index < safeOffset; index += 1) {
-    if (text[index] === '\n') {
-      line += 1;
-      lineStart = index + 1;
-    }
-  }
-
-  return {
-    line,
-    character: safeOffset - lineStart,
-  };
-}
-
-function findMatchingBracket(text: string, start: number, open: string, close: string): number {
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
-
-  for (let index = start; index < text.length; index += 1) {
-    const char = text[index];
-
-    if (inString) {
-      if (escaped) {
-        escaped = false;
-      } else if (char === '\\') {
-        escaped = true;
-      } else if (char === '"') {
-        inString = false;
-      }
-      continue;
-    }
-
-    if (char === '"') {
-      inString = true;
-      continue;
-    }
-
-    if (char === open) {
-      depth += 1;
-      continue;
-    }
-
-    if (char === close) {
-      depth -= 1;
-      if (depth === 0) {
-        return index;
-      }
-    }
-  }
-
-  return -1;
-}
-
-function skipWhitespace(text: string, index: number): number {
-  let cursor = index;
-  while (cursor < text.length && /\s/.test(text[cursor])) {
-    cursor += 1;
-  }
-  return cursor;
-}
-
-function findPropertyInRange(
-  text: string,
-  key: string,
-  rangeStart: number,
-  rangeEnd: number
-): { keyOffset: number; valueStart: number; valueEnd: number } | null {
-  const quotedKey = `"${key}"`;
-  let cursor = Math.max(0, rangeStart);
-
-  while (cursor < rangeEnd) {
-    const keyOffset = text.indexOf(quotedKey, cursor);
-    if (keyOffset === -1 || keyOffset >= rangeEnd) {
-      return null;
-    }
-
-    const colonIndex = skipWhitespace(text, keyOffset + quotedKey.length);
-    if (text[colonIndex] !== ':') {
-      cursor = keyOffset + quotedKey.length;
-      continue;
-    }
-
-    const valueStart = skipWhitespace(text, colonIndex + 1);
-    if (valueStart >= rangeEnd) {
-      return null;
-    }
-
-    const valueStartChar = text[valueStart];
-    if (valueStartChar === '{') {
-      const end = findMatchingBracket(text, valueStart, '{', '}');
-      if (end !== -1) {
-        return { keyOffset, valueStart, valueEnd: end + 1 };
-      }
-    }
-
-    if (valueStartChar === '[') {
-      const end = findMatchingBracket(text, valueStart, '[', ']');
-      if (end !== -1) {
-        return { keyOffset, valueStart, valueEnd: end + 1 };
-      }
-    }
-
-    let valueEnd = valueStart;
-    while (valueEnd < rangeEnd && !/[\n,}]/.test(text[valueEnd])) {
-      valueEnd += 1;
-    }
-
-    return { keyOffset, valueStart, valueEnd };
-  }
-
-  return null;
-}
-
-function findBestPropertyOffset(
-  schemaText: string,
-  path: string,
-  pathKind: 'property' | 'value' = 'property',
-  valueToken?: string
-): number {
-  const segments = path
-    .split('.')
-    .map((segment) => segment.replace(/\[[^\]]+\]/g, ''))
-    .filter((segment) => segment.length > 0);
-
-  if (segments.length === 0) {
-    return 0;
-  }
-
-  let rangeStart = 0;
-  let rangeEnd = schemaText.length;
-  let matched: { keyOffset: number; valueStart: number; valueEnd: number } | null = null;
-
-  for (const segment of segments) {
-    matched = findPropertyInRange(schemaText, segment, rangeStart, rangeEnd);
-    if (!matched) {
-      break;
-    }
-    rangeStart = matched.valueStart;
-    rangeEnd = matched.valueEnd;
-  }
-
-  if (!matched) {
-    return 0;
-  }
-
-  if (pathKind === 'value' && valueToken) {
-    const quotedValue = `"${valueToken}"`;
-    const valueIndex = schemaText.indexOf(quotedValue, matched.valueStart);
-    if (valueIndex !== -1 && valueIndex < matched.valueEnd) {
-      return valueIndex;
-    }
-  }
-
-  return matched.keyOffset;
-}
-
-function getDefinitionRangeForSchemaUri(
-  definitionUri: string,
-  variablePath: string,
-  pathKind: 'property' | 'value' = 'property',
-  valueToken?: string
-): { start: PositionLike; end: PositionLike } {
-  if (!definitionUri.startsWith('file://')) {
-    return {
-      start: { line: 0, character: 0 },
-      end: { line: 0, character: 0 },
-    };
-  }
-
-  try {
-    const schemaFilePath = fileURLToPath(definitionUri);
-    const schemaText = readFileSync(schemaFilePath, 'utf-8');
-    const startOffset = findBestPropertyOffset(schemaText, variablePath, pathKind, valueToken);
-    const endOffset = Math.min(
-      schemaText.length,
-      startOffset + Math.max((valueToken ?? variablePath.split('.').pop() ?? '').length + 2, 3)
-    );
-
-    return {
-      start: getPositionForOffset(schemaText, startOffset),
-      end: getPositionForOffset(schemaText, endOffset),
-    };
-  } catch {
-    return {
-      start: { line: 0, character: 0 },
-      end: { line: 0, character: 0 },
-    };
-  }
-}
-
 function applyContentChanges(
   existingText: string,
   changes: TextDocumentContentChangeLike[]
@@ -1234,16 +793,21 @@ function toIntellisenseOptions(uri: string): IntellisenseOptions {
   const schemaOptions = getSchemaOptionsForUri(uri);
   return {
     documentUri: uri,
+    workspaceRoot: storedWorkspaceRoot,
     schema: schemaOptions.schema,
     schemaUri: schemaOptions.schemaUri,
     contentSchema: schemaOptions.contentSchema,
     contentSchemaUri: schemaOptions.contentSchemaUri,
+    debugLog: (message: string, level: 'messages' | 'verbose' = 'messages') => {
+      trace(`${uri} ${message}`, level);
+    },
   };
 }
 
 function toDiagnosticOptions(uri: string): DiagnosticOptions {
   const schemaOptions = getSchemaOptionsForUri(uri);
   return {
+    documentUri: uri,
     schema: schemaOptions.schema,
     contentSchema: schemaOptions.contentSchema,
   };
@@ -1335,6 +899,7 @@ connection.onInitialize(async (params) => {
 
   storedWorkspaceRoot = resolveWorkspaceRoot(typedParams);
   storedInitializationOptions = typedParams.initializationOptions;
+  serverTraceMode = typedParams.initializationOptions?.traceMode ?? 'off';
 
   const activeDocumentUri = typedParams.initializationOptions?.documentContext?.uri;
   const activeDocumentContent = typedParams.initializationOptions?.documentContext?.content;
@@ -1363,12 +928,13 @@ connection.onInitialize(async (params) => {
   // Re-register our handlers AFTER server.initialize() so they overwrite
   // Volar's registerLanguageFeatures() registrations made during initialize().
   connection.onCompletion((completionParams) => {
-    connection.console.log(
-      `[templjs] Completion requested: ${completionParams.textDocument.uri} @ ${completionParams.position.line}:${completionParams.position.character}`
+    const startedAt = Date.now();
+    trace(
+      `completion requested: ${completionParams.textDocument.uri} @ ${completionParams.position.line}:${completionParams.position.character}`
     );
     const completionText = documentTextByUri.get(completionParams.textDocument.uri);
     if (!completionText) {
-      connection.console.log('[templjs] Completion skipped: document text not found in cache');
+      trace('completion skipped: document text not found in cache');
       return [];
     }
 
@@ -1381,23 +947,43 @@ connection.onInitialize(async (params) => {
       toIntellisenseOptions(completionParams.textDocument.uri)
     );
 
-    connection.console.log(`[templjs] Completion result count: ${completions.length}`);
+    const durationMs = Date.now() - startedAt;
+    trace(`completion result count=${completions.length} durationMs=${durationMs}`);
+
+    const labels = completions
+      .map((item) => item.label)
+      .filter((label) => typeof label === 'string');
+    const duplicateLabels = summarizeDuplicateLabels(labels);
+    if (duplicateLabels.length > 0) {
+      trace(`completion duplicate labels: ${duplicateLabels.slice(0, 10).join(', ')}`, 'messages');
+    }
+
+    if (labels.length > 0) {
+      trace(
+        `completion top labels: ${labels
+          .slice(0, 8)
+          .map((label) => JSON.stringify(label))
+          .join(', ')}`,
+        'verbose'
+      );
+    }
 
     return completions.map((item) => ({
       label: item.label,
       detail: item.detail,
       documentation: item.documentation,
-      kind: item.kind as any,
+      kind: mapInternalKindToLsp(item.kind),
     }));
   });
 
   connection.onHover((hoverParams) => {
-    connection.console.log(
-      `[templjs] Hover requested: ${hoverParams.textDocument.uri} @ ${hoverParams.position.line}:${hoverParams.position.character}`
+    const startedAt = Date.now();
+    trace(
+      `hover requested: ${hoverParams.textDocument.uri} @ ${hoverParams.position.line}:${hoverParams.position.character}`
     );
     const hoverText = documentTextByUri.get(hoverParams.textDocument.uri);
     if (!hoverText) {
-      connection.console.log('[templjs] Hover skipped: document text not found in cache');
+      trace('hover skipped: document text not found in cache');
       return null;
     }
 
@@ -1410,17 +996,23 @@ connection.onInitialize(async (params) => {
       toIntellisenseOptions(hoverParams.textDocument.uri)
     );
 
-    connection.console.log(`[templjs] Hover result: ${hover ? 'present' : 'none'}`);
-    return hover as any;
+    const durationMs = Date.now() - startedAt;
+    trace(`hover result=${hover ? 'present' : 'none'} durationMs=${durationMs}`);
+    if (hover?.contents?.value) {
+      trace(`hover markdown length=${hover.contents.value.length}`, 'verbose');
+    }
+
+    return hover;
   });
 
   connection.onDefinition((definitionParams) => {
-    connection.console.log(
-      `[templjs] Definition requested: ${definitionParams.textDocument.uri} @ ${definitionParams.position.line}:${definitionParams.position.character}`
+    const startedAt = Date.now();
+    trace(
+      `definition requested: ${definitionParams.textDocument.uri} @ ${definitionParams.position.line}:${definitionParams.position.character}`
     );
     const definitionText = documentTextByUri.get(definitionParams.textDocument.uri);
     if (!definitionText) {
-      connection.console.log('[templjs] Definition skipped: document text not found in cache');
+      trace('definition skipped: document text not found in cache');
       return null;
     }
 
@@ -1428,49 +1020,23 @@ connection.onInitialize(async (params) => {
 
     const definitionOffset = getOffsetForPosition(definitionText, definitionParams.position);
 
-    const pathValueDefinition = getPathValueDefinition(
-      definitionParams.textDocument.uri,
-      definitionText,
-      definitionOffset
-    );
-    if (pathValueDefinition) {
-      return {
-        uri: pathValueDefinition.uri,
-        range: {
-          start: { line: 0, character: 0 },
-          end: { line: 0, character: 0 },
-        },
-      };
-    }
-
-    const schemaPathDefinition = getSchemaPathDefinition(definitionText, definitionOffset);
-    if (schemaPathDefinition) {
-      return {
-        uri: schemaPathDefinition.uri,
-        range: {
-          start: { line: 0, character: 0 },
-          end: { line: 0, character: 0 },
-        },
-      };
-    }
-
-    const definition = servicePlugin.getDefinitionWithRangeResolver(
+    const definition = servicePlugin.getDefinition(
       definitionText,
       definitionOffset,
-      toIntellisenseOptions(definitionParams.textDocument.uri),
-      (uri: string, path: string, pathKind?: 'property' | 'value', valueToken?: string) =>
-        getDefinitionRangeForSchemaUri(uri, path, pathKind, valueToken)
+      toIntellisenseOptions(definitionParams.textDocument.uri)
     );
 
     if (definition) {
-      connection.console.log(
-        `[templjs] Definition: uri=${definition.uri} range=[${definition.range.start.line}:${definition.range.start.character}]`
+      const durationMs = Date.now() - startedAt;
+      trace(
+        `definition resolved via provider: uri=${definition.uri} range=[${definition.range.start.line}:${definition.range.start.character}] durationMs=${durationMs}`
       );
     } else {
-      connection.console.log('[templjs] Definition result: none');
+      const durationMs = Date.now() - startedAt;
+      trace(`definition result=none durationMs=${durationMs}`);
     }
 
-    return definition as any;
+    return definition;
   });
 
   return {

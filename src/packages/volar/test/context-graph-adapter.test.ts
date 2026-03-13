@@ -1,7 +1,11 @@
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import * as path from 'path';
+import { pathToFileURL } from 'url';
 import { describe, expect, it } from 'vitest';
 import { createContextGraphSemanticReadAdapter } from '../src/context-graph-adapter.js';
 
-const primarySchema = {
+const frontmatterSchema = {
   type: 'object',
   properties: {
     frontData: {
@@ -13,7 +17,7 @@ const primarySchema = {
   },
 };
 
-const secondarySchema = {
+const contentSchema = {
   type: 'object',
   properties: {
     contentData: {
@@ -26,46 +30,81 @@ const secondarySchema = {
 };
 
 describe('ContextGraphSemanticReadAdapter', () => {
+  it('memoizes snapshots across repeated queries for identical schemas', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const instrumentedAdapter = adapter as unknown as {
+      buildSnapshot: (options: { schema?: object; contentSchema?: object }) => unknown;
+    };
+
+    const originalBuildSnapshot = instrumentedAdapter.buildSnapshot.bind(adapter);
+    let buildSnapshotCalls = 0;
+    instrumentedAdapter.buildSnapshot = (options) => {
+      buildSnapshotCalls += 1;
+      return originalBuildSnapshot(options);
+    };
+
+    const options = { schema: frontmatterSchema, contentSchema };
+    const request = {
+      version: 'v1' as const,
+      nodes: {
+        kind: 'schema-path' as const,
+        attributeEquals: {
+          contextBlock: 'frontmatter' as const,
+          operation: 'completion' as const,
+        },
+      },
+    };
+    const context = {
+      operation: 'completion' as const,
+      contextBlock: 'frontmatter' as const,
+    };
+
+    adapter.query(options, request, context);
+    adapter.query(options, request, context);
+
+    expect(buildSnapshotCalls).toBe(1);
+  });
+
   it('separates completion candidates by schema source', () => {
     const adapter = createContextGraphSemanticReadAdapter();
 
-    const primary = adapter.getChildCompletions(
+    const frontmatter = adapter.getChildCompletions(
       {
         operation: 'completion',
-        schemaSource: 'primary',
+        contextBlock: 'frontmatter',
         documentUri: 'file:///workspace/doc.md.tpl',
         line: 0,
         character: 0,
       },
       '',
       {
-        schema: primarySchema,
-        contentSchema: secondarySchema,
+        schema: frontmatterSchema,
+        contentSchema,
       }
     );
 
-    const secondary = adapter.getChildCompletions(
+    const content = adapter.getChildCompletions(
       {
         operation: 'completion',
-        schemaSource: 'secondary',
+        contextBlock: 'content',
         documentUri: 'file:///workspace/doc.md.tpl',
         line: 10,
         character: 2,
       },
       '',
       {
-        schema: primarySchema,
-        contentSchema: secondarySchema,
+        schema: frontmatterSchema,
+        contentSchema,
       }
     );
 
-    expect(primary.map((item) => item.label)).toEqual(['frontData']);
-    expect(secondary.map((item) => item.label)).toEqual(['contentData']);
+    expect(frontmatter.map((item) => item.label)).toEqual(['frontData']);
+    expect(content.map((item) => item.label)).toEqual(['contentData']);
   });
 
   it('filters query results by operation from location context', () => {
     const adapter = createContextGraphSemanticReadAdapter();
-    const options = { schema: primarySchema, contentSchema: secondarySchema };
+    const options = { schema: frontmatterSchema, contentSchema };
 
     const completionResponse = adapter.query(
       options,
@@ -75,13 +114,13 @@ describe('ContextGraphSemanticReadAdapter', () => {
           kind: 'schema-path',
           attributeEquals: {
             operation: 'completion',
-            schemaSource: 'primary',
+            contextBlock: 'frontmatter',
           },
         },
       },
       {
         operation: 'completion',
-        schemaSource: 'primary',
+        contextBlock: 'frontmatter',
         documentUri: 'file:///workspace/doc.md.tpl',
         offset: 12,
         line: 1,
@@ -97,13 +136,13 @@ describe('ContextGraphSemanticReadAdapter', () => {
           kind: 'schema-path',
           attributeEquals: {
             operation: 'hover',
-            schemaSource: 'primary',
+            contextBlock: 'frontmatter',
           },
         },
       },
       {
         operation: 'completion',
-        schemaSource: 'primary',
+        contextBlock: 'frontmatter',
         documentUri: 'file:///workspace/doc.md.tpl',
         offset: 12,
         line: 1,
@@ -129,5 +168,191 @@ describe('ContextGraphSemanticReadAdapter', () => {
     const resolved = adapter.resolveScopedPath(text, 'item.name', offset);
 
     expect(resolved).toBe('items[0].children[0].name');
+  });
+
+  it('resolves schema definition locations with concrete file ranges', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const tempDir = mkdtempSync(path.join(tmpdir(), 'templjs-volar-'));
+    const schemaPath = path.join(tempDir, 'schema.json');
+
+    writeFileSync(
+      schemaPath,
+      JSON.stringify(
+        {
+          type: 'object',
+          properties: {
+            relationships: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  type: {
+                    type: 'string',
+                    enum: ['project'],
+                  },
+                },
+              },
+            },
+          },
+        },
+        null,
+        2
+      )
+    );
+
+    const target = adapter.resolveDefinitionLocation(
+      {
+        operation: 'definition',
+        contextBlock: 'frontmatter',
+      },
+      {
+        uri: pathToFileURL(schemaPath).toString(),
+        path: 'relationships[0].type',
+        pathKind: 'property',
+      }
+    );
+
+    expect(target.uri).toBe(pathToFileURL(schemaPath).toString());
+    expect(target.range.start.line).toBeGreaterThan(0);
+    expect(target.range.end.line).toBeGreaterThanOrEqual(target.range.start.line);
+  });
+
+  it('resolves allOf-wrapped property definitions without broad key fallback', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const tempDir = mkdtempSync(path.join(tmpdir(), 'templjs-volar-'));
+    const schemaPath = path.join(tempDir, 'schema-allof.json');
+
+    const schemaText = JSON.stringify(
+      {
+        type: 'object',
+        allOf: [
+          {
+            type: 'object',
+            properties: {
+              type: {
+                const: 'project',
+              },
+            },
+          },
+        ],
+      },
+      null,
+      2
+    );
+    writeFileSync(schemaPath, schemaText);
+
+    const schemaLines = schemaText.split('\n');
+    const expectedPropertyLine = schemaLines.findIndex((line) => /^\s*"type":\s*\{\s*$/.test(line));
+    expect(expectedPropertyLine).toBeGreaterThan(-1);
+
+    const target = adapter.resolveDefinitionLocation(
+      {
+        operation: 'definition',
+        contextBlock: 'frontmatter',
+      },
+      {
+        uri: pathToFileURL(schemaPath).toString(),
+        path: 'type',
+        pathKind: 'property',
+      }
+    );
+
+    expect(target.uri).toBe(pathToFileURL(schemaPath).toString());
+    expect(target.range.start.line).toBe(expectedPropertyLine);
+  });
+
+  it('resolves document path references without server-side helpers', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const tempDir = mkdtempSync(path.join(tmpdir(), 'templjs-volar-'));
+    const schemaPath = path.join(tempDir, 'frontmatter.json');
+    const documentPath = path.join(tempDir, 'template.md.tpl');
+
+    writeFileSync(schemaPath, '{}');
+
+    const text = ['---', '$schema: ./frontmatter.json', '---', 'body'].join('\n');
+    const offset = text.indexOf('frontmatter.json') + 2;
+
+    const target = adapter.resolveDocumentDefinition(
+      {
+        operation: 'definition',
+        contextBlock: 'frontmatter',
+        documentUri: pathToFileURL(documentPath).toString(),
+      },
+      text,
+      offset,
+      {
+        documentUri: pathToFileURL(documentPath).toString(),
+        workspaceRoot: tempDir,
+      }
+    );
+
+    expect(target?.uri).toBe(pathToFileURL(schemaPath).toString());
+    expect(target?.range.start.line).toBe(0);
+  });
+
+  it('resolves definition locations across external refs for nested scope paths', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const tempDir = mkdtempSync(path.join(tmpdir(), 'templjs-volar-'));
+    const supportDir = path.join(tempDir, 'support');
+    const contentDir = path.join(tempDir, 'content');
+    const commonSchemaPath = path.join(supportDir, 'common.json');
+    const contentSchemaPath = path.join(contentDir, 'project.json');
+
+    mkdirSync(supportDir, { recursive: true });
+    mkdirSync(contentDir, { recursive: true });
+
+    writeFileSync(
+      commonSchemaPath,
+      JSON.stringify(
+        {
+          $defs: {
+            scopeBlock: {
+              type: 'object',
+              properties: {
+                included: { type: 'array', items: { type: 'string' } },
+                excluded: { type: 'array', items: { type: 'string' } },
+              },
+            },
+          },
+        },
+        null,
+        2
+      )
+    );
+
+    writeFileSync(
+      contentSchemaPath,
+      JSON.stringify(
+        {
+          type: 'object',
+          properties: {
+            scope: {
+              $ref: '../support/common.json#/$defs/scopeBlock',
+            },
+          },
+        },
+        null,
+        2
+      )
+    );
+
+    const commonLines = readFileSync(commonSchemaPath, 'utf-8').split('\n');
+    const includedLine = commonLines.findIndex((line) => /"included"\s*:\s*\{/.test(line));
+    expect(includedLine).toBeGreaterThan(-1);
+
+    const target = adapter.resolveDefinitionLocation(
+      {
+        operation: 'definition',
+        contextBlock: 'content',
+      },
+      {
+        uri: pathToFileURL(contentSchemaPath).toString(),
+        path: 'scope.included',
+        pathKind: 'property',
+      }
+    );
+
+    expect(target.uri).toBe(pathToFileURL(commonSchemaPath).toString());
+    expect(target.range.start.line).toBe(includedLine);
   });
 });

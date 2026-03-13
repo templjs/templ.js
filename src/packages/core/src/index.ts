@@ -14,6 +14,7 @@ export type * from './parser/types.js';
 export type * from './schema/types.js';
 export type * from './query-engine/types.js';
 export type * from './semantic/template-scopes.js';
+export type * from './semantic/semantic-context.js';
 // Explicitly re-export FilterFunction to resolve ambiguity
 export type { FilterFunction } from './query-engine/types.js';
 export type * from './renderer/types.js';
@@ -32,6 +33,20 @@ export { SchemaValidator } from './schema/SchemaValidator.js';
 export { extractPaths, isValidPath } from './schema/queryPathValidator.js';
 export { inferSchemaFromValue, mergeSchemas } from './schema/schemaInference.js';
 export { extractTemplateScopeBindings } from './semantic/template-scopes.js';
+export {
+  detectFrontmatterRange,
+  getSemanticProfileId,
+  getFrontmatterKeyValueAtOffset,
+  getFrontmatterSchemaAliases,
+  getFrontmatterSchemaReferenceAtOffset,
+  getTokenAtOffset,
+  isOffsetInFrontmatter,
+  resolveSemanticContextBlock,
+  resolveSemanticHostLanguage,
+  resolveSemanticZone,
+  resolveSemanticZoneByHostLanguage,
+  toSemanticZone,
+} from './semantic/semantic-context.js';
 export type {
   ValidationResult,
   ValidationError,

@@ -22,6 +22,12 @@ test_results:
       - Added deterministic ordering assertions across `getNodes`, `getEdges`, and `query`
       - Targeted tests: 10 passed, 0 failed
       - Package build: `pnpm --filter @templjs/context-graph build` passed
+  - timestamp: 2026-03-13T00:00:00Z
+    note: |
+      Architecture boundary correction follow-up:
+      - Removed semantic/location-specific helper exports and contracts from `@templjs/context-graph`
+      - Confirmed package API remains generic context publication/querying only
+      - API boundary and package tests revalidated after correction
 links:
   implements:
     - '[[056_context_graph_platform_epic]]'

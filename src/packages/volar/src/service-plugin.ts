@@ -35,7 +35,7 @@ export interface LSPCompletionItem {
 
 export interface LSPHoverInfo {
   contents: {
-    kind: string;
+    kind: 'markdown' | 'plaintext';
     value: string;
   };
 }
@@ -102,7 +102,6 @@ export class TempljsServicePlugin {
 
   /**
    * Get definition location at the given offset
-   * Handles scope resolution internally to map aliases to canonical schema paths
    * Returns LSP-ready definition location
    */
   getDefinition(
@@ -122,58 +121,12 @@ export class TempljsServicePlugin {
       };
     }
 
-    // For simple case without range resolution, return basic location
-    // Note: Scope resolution happens in getDefinitionWithRangeResolver below
     return {
       uri: definition.uri,
       range: {
         start: { line: 0, character: 0 },
         end: { line: 0, character: 0 },
       },
-    };
-  }
-
-  /**
-   * Get definition location, resolving schema path if needed
-   * Caller must provide schema path resolution function
-   */
-  getDefinitionWithRangeResolver(
-    text: string,
-    offset: number,
-    options: IntellisenseOptions | undefined,
-    getRangeForUri: (
-      uri: string,
-      path: string,
-      pathKind?: 'property' | 'value',
-      valueToken?: string
-    ) => { start: { line: number; character: number }; end: { line: number; character: number } }
-  ): LSPDefinitionLocation | null {
-    const definition = this.intellisenseProvider.getDefinition(text, offset, options);
-    if (!definition) {
-      return null;
-    }
-
-    if (definition.range) {
-      return {
-        uri: definition.uri,
-        range: definition.range,
-      };
-    }
-
-    if (!definition.path) {
-      return null;
-    }
-
-    const range = getRangeForUri(
-      definition.uri,
-      definition.path,
-      definition.pathKind,
-      definition.valueToken
-    );
-
-    return {
-      uri: definition.uri,
-      range,
     };
   }
 

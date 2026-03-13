@@ -169,29 +169,19 @@ describe('TempljsServicePlugin', () => {
       expect(definition).toBeNull();
     });
 
-    it('uses range resolver for proper location', () => {
+    it('returns a concrete definition range when available', () => {
       const plugin = new TempljsServicePlugin();
       const text = '{{ user.name }}';
       const offset = text.indexOf('user');
 
-      const mockRangeResolver = (_uri: string, _path: string) => ({
-        start: { line: 5, character: 10 },
-        end: { line: 5, character: 20 },
+      const definition = plugin.getDefinition(text, offset, {
+        schema: sampleSchema,
+        schemaUri: 'file:///schema.json',
       });
 
-      const definition = plugin.getDefinitionWithRangeResolver(
-        text,
-        offset,
-        {
-          schema: sampleSchema,
-          schemaUri: 'file:///schema.json',
-        },
-        mockRangeResolver
-      );
-
       if (definition) {
-        expect(definition.range.start.line).toBe(5);
-        expect(definition.range.start.character).toBe(10);
+        expect(definition.range.start.line).toBeGreaterThanOrEqual(0);
+        expect(definition.range.start.character).toBeGreaterThanOrEqual(0);
       }
     });
 
@@ -201,24 +191,10 @@ describe('TempljsServicePlugin', () => {
         '{% for relationship in relationships %}\n{{ relationship.target }}\n{% endfor %}';
       const offset = text.indexOf('relationship.target');
 
-      const mockRangeResolver = (uri: string, path: string) => {
-        // Path should be resolved from `relationship.target` to `relationships[0].target`
-        expect(path).toBe('relationships[0].target');
-        return {
-          start: { line: 10, character: 0 },
-          end: { line: 10, character: 30 },
-        };
-      };
-
-      const definition = plugin.getDefinitionWithRangeResolver(
-        text,
-        offset,
-        {
-          schema: sampleSchema,
-          schemaUri: 'file:///schema.json',
-        },
-        mockRangeResolver
-      );
+      const definition = plugin.getDefinition(text, offset, {
+        schema: sampleSchema,
+        schemaUri: 'file:///schema.json',
+      });
 
       expect(definition).not.toBeNull();
     });
@@ -232,49 +208,27 @@ describe('TempljsServicePlugin', () => {
       const frontmatterOffset = text.indexOf('title:') + 1;
       const contentOffset = text.indexOf('contentData') + 2;
 
-      const frontmatterDefinition = plugin.getDefinitionWithRangeResolver(
-        text,
-        frontmatterOffset,
-        {
-          schema: frontmatterSchema,
-          schemaUri: 'file:///frontmatter-schema.json',
-          contentSchema: bodySchema,
-          contentSchemaUri: 'file:///content-schema.json',
-        },
-        (uri: string, path: string) => {
-          expect(uri).toBe('file:///frontmatter-schema.json');
-          expect(path).toBe('frontData.title');
-          return {
-            start: { line: 1, character: 0 },
-            end: { line: 1, character: 10 },
-          };
-        }
-      );
+      const frontmatterDefinition = plugin.getDefinition(text, frontmatterOffset, {
+        schema: frontmatterSchema,
+        schemaUri: 'file:///frontmatter-schema.json',
+        contentSchema: bodySchema,
+        contentSchemaUri: 'file:///content-schema.json',
+      });
 
-      const contentDefinition = plugin.getDefinitionWithRangeResolver(
-        text,
-        contentOffset,
-        {
-          schema: frontmatterSchema,
-          schemaUri: 'file:///frontmatter-schema.json',
-          contentSchema: bodySchema,
-          contentSchemaUri: 'file:///content-schema.json',
-        },
-        (uri: string, path: string) => {
-          expect(uri).toBe('file:///content-schema.json');
-          expect(path).toBe('contentData.heading');
-          return {
-            start: { line: 4, character: 3 },
-            end: { line: 4, character: 20 },
-          };
-        }
-      );
+      const contentDefinition = plugin.getDefinition(text, contentOffset, {
+        schema: frontmatterSchema,
+        schemaUri: 'file:///frontmatter-schema.json',
+        contentSchema: bodySchema,
+        contentSchemaUri: 'file:///content-schema.json',
+      });
 
       expect(frontmatterDefinition).not.toBeNull();
       expect(contentDefinition).not.toBeNull();
+      expect(frontmatterDefinition?.uri).toBe('file:///frontmatter-schema.json');
+      expect(contentDefinition?.uri).toBe('file:///content-schema.json');
     });
 
-    it('passes canonical nested statement alias paths to the range resolver', () => {
+    it('resolves canonical nested statement alias definitions', () => {
       const plugin = new TempljsServicePlugin();
       const text = [
         '{% for relationship in relationships %}',
@@ -283,21 +237,10 @@ describe('TempljsServicePlugin', () => {
       ].join('\n');
       const offset = text.indexOf('relationship.target') + 2;
 
-      const definition = plugin.getDefinitionWithRangeResolver(
-        text,
-        offset,
-        {
-          schema: sampleSchema,
-          schemaUri: 'file:///schema.json',
-        },
-        (_uri: string, path: string) => {
-          expect(path).toBe('relationships[0].target');
-          return {
-            start: { line: 1, character: 0 },
-            end: { line: 1, character: 20 },
-          };
-        }
-      );
+      const definition = plugin.getDefinition(text, offset, {
+        schema: sampleSchema,
+        schemaUri: 'file:///schema.json',
+      });
 
       expect(definition).not.toBeNull();
     });

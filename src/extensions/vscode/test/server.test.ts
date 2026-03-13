@@ -1,3 +1,4 @@
+import * as path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const onInitialize = vi.fn();
@@ -25,6 +26,59 @@ const collectDiagnosticsFunc = vi.fn(() => []);
 const resolveScopedPathInText = vi.fn((_: string, path: string) => path);
 const collectDiagnostics = collectDiagnosticsFunc;
 
+function getLineDetails(text: string, offset: number): { line: string; lineStart: number } {
+  const lineStart = text.lastIndexOf('\n', Math.max(0, offset - 1)) + 1;
+  const lineEnd = text.indexOf('\n', offset);
+  return {
+    line: text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd),
+    lineStart,
+  };
+}
+
+function resolveMockFrontmatterDefinition(
+  text: string,
+  offset: number,
+  options?: { schemaUri?: string; documentUri?: string; workspaceRoot?: string }
+): {
+  uri: string;
+  range: { start: { line: number; character: number }; end: { line: number; character: number } };
+} | null {
+  const { line } = getLineDetails(text, offset);
+  const schemaMatch = line.match(/\$schema"?\s*:\s*([^\s]+)/);
+  if (schemaMatch && options?.workspaceRoot) {
+    return {
+      uri: `file://${path.join(options.workspaceRoot, schemaMatch[1])}`.replace(/ /g, '%20'),
+      range: {
+        start: { line: 0, character: 0 },
+        end: { line: 0, character: 0 },
+      },
+    };
+  }
+
+  const pathMatch = line.match(/schema_path\s*:\s*([^\s]+)/);
+  if (pathMatch && options?.workspaceRoot) {
+    return {
+      uri: `file://${path.join(options.workspaceRoot, pathMatch[1])}`.replace(/ /g, '%20'),
+      range: {
+        start: { line: 0, character: 0 },
+        end: { line: 0, character: 0 },
+      },
+    };
+  }
+
+  if (line.includes('type:') && options?.schemaUri) {
+    return {
+      uri: options.schemaUri,
+      range: {
+        start: { line: 0, character: 0 },
+        end: { line: 0, character: 0 },
+      },
+    };
+  }
+
+  return null;
+}
+
 class IntellisenseProviderMock {
   getCompletions = getCompletions;
   getHover = getHover;
@@ -34,13 +88,17 @@ class IntellisenseProviderMock {
 class TempljsServicePluginMock {
   getCompletions = getCompletions;
   getHover = getHover;
-  getDefinition = getDefinition;
-  getDefinitionWithRangeResolver = vi.fn(
+  getDefinition = vi.fn(
     (
-      _text: string,
-      _offset: number,
-      options?: { schemaUri?: string; contentSchemaUri?: string }
+      text: string,
+      offset: number,
+      options?: { schemaUri?: string; contentSchemaUri?: string; workspaceRoot?: string }
     ) => {
+      const resolved = resolveMockFrontmatterDefinition(text, offset, options);
+      if (resolved) {
+        return resolved;
+      }
+
       const uri = options?.schemaUri ?? options?.contentSchemaUri;
       if (!uri) {
         return null;

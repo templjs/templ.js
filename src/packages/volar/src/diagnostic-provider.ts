@@ -1,8 +1,16 @@
-import { getBuiltinFilterNames, SchemaValidator, type JSONSchema } from '@templjs/core';
+import {
+  getBuiltinFilterNames,
+  resolveSemanticHostLanguage,
+  resolveSemanticZoneByHostLanguage,
+  resolveSemanticZone,
+  toSemanticZone,
+  SchemaValidator,
+  type JSONSchema,
+} from '@templjs/core';
 import type { IntellisenseDelimiters } from './intellisense-provider.js';
 import { LineColumnMapper, RangeMapper, generatePositionMappings } from './position-mapping.js';
 import { buildBlockPattern, resolveDelimiters, DEFAULT_DELIMITERS } from './template-delimiters.js';
-import { isOffsetInFrontmatter, type FrontmatterRange } from './frontmatter-zone.js';
+import { type FrontmatterRange } from './frontmatter-zone.js';
 import {
   buildForScopesInText,
   resolveScopedPath,
@@ -41,6 +49,7 @@ export interface DiagnosticItem {
 export type TemplateDelimiters = IntellisenseDelimiters;
 
 export interface DiagnosticOptions {
+  documentUri?: string;
   schema?: JSONSchema;
   contentSchema?: JSONSchema;
   frontmatterRange?: FrontmatterRange;
@@ -196,8 +205,16 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
   const filters = new Set([...getDefaultFilters(), ...(options?.customFilters ?? [])]);
 
   const getValidatorForOffset = (offset: number): SchemaValidator | null => {
-    const isFrontmatter = isOffsetInFrontmatter(text, offset, options?.frontmatterRange);
-    if (isFrontmatter) {
+    const hostLanguage = resolveSemanticHostLanguage(options?.documentUri);
+    const semanticZone =
+      options?.frontmatterRange &&
+      offset >= options.frontmatterRange.start &&
+      offset < options.frontmatterRange.end
+        ? toSemanticZone('frontmatter')
+        : hostLanguage === 'unknown'
+          ? resolveSemanticZone(text, offset)
+          : resolveSemanticZoneByHostLanguage(text, offset, hostLanguage);
+    if (semanticZone.kind === 'metadata') {
       return frontmatterValidator;
     }
     return contentValidator ?? frontmatterValidator;

@@ -92,6 +92,9 @@ importers:
 
   src/extensions/vscode:
     dependencies:
+      '@templjs/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@templjs/volar':
         specifier: workspace:*
         version: link:../../packages/volar

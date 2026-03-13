@@ -13,6 +13,14 @@ commits:
   ad4e642: 'docs(context-graph): add ADR and update WI status'
   82c8de1: 'feat(context-graph): add package and core semantic scope API'
   91d942c: 'feat(volar): integrate context graph into semantic reads'
+test_results:
+  - timestamp: 2026-03-13T00:00:00Z
+    note: |
+      Epic-level architecture correction:
+      - Semantic markdown/frontmatter alias translation and operation contracts are now owned by `@templjs/core`
+      - `@templjs/context-graph` reasserted as generic contracts/engine only
+      - Volar consumes core semantic helpers while retaining context-graph generic query contracts
+      - Package builds and focused tests re-run successfully after correction
 links:
   depends_on:
     - '[[054_bug_no_schema_aware_authoring]]'
@@ -52,3 +60,4 @@ Establish `@templjs/context-graph` as a reusable semantic foundation for N indep
 - [x] [[057_context_graph_kernel_and_api]]
 - [x] [[058_context_graph_volar_adapter_and_semantic_reads]]
 - [x] [[059_context_graph_api_boundary_and_rust_ready_contracts]]
+- [ ] [[060_context_graph_hover_definition_exclusive_cutover]]
