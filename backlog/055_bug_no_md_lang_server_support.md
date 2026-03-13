@@ -49,6 +49,8 @@ The Volar language plugin only recognises `.templ.` and `.tmpl.` as template mar
 - [ ] Verify `text.templjs.markdown` grammar activates for `.md.tpl` in the extension dev host
 - [ ] Add a regression test asserting virtual document creation for `.md.tpl` input
 - [ ] Confirm `pnpm run lint:frontmatter` passes
+- [ ] Add unit test coverage for each template extension marker in `isTemplateFile` logic
+- [ ] Verify string scalars in frontmatter with `.md.tpl` extension are handled as a single token (previously failed due to missing template marker)
 
 ## Acceptance Criteria
 
@@ -56,3 +58,9 @@ The Volar language plugin only recognises `.templ.` and `.tmpl.` as template mar
 - [ ] Markdown linting diagnostics are produced for `.md.tpl` files
 - [ ] Existing `.md.templ` and `.md.tmpl` behaviour is unaffected
 - [ ] New regression test passes in CI
+- [ ] Unit tests cover all template markers in `isTemplateFile` logic
+- [ ] String scalars in frontmatter with `.md.tpl` extension are tokenized as a single string token, not split by word boundaries
+
+## Follow-up Note
+
+- Revisit host-language activation: as of 2026-03-13, VS Code still does not reliably recognize markdown host-language behavior for templ markdown files in local validation, even after `.tpl`/`.tmpl` marker and extension association fixes.
