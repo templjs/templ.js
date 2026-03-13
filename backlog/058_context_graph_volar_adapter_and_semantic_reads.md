@@ -7,10 +7,11 @@ title: '058: Add Volar adapter and migrate semantic reads'
 status: ready-for-review
 priority: high
 estimated: 10
-actual: 6
+actual: 10
 assignee: ''
 commits:
   91d942c: 'feat(volar): integrate context graph into semantic reads'
+  cb3f6a0: 'feat(context-graph): complete graph-backed semantic resolution'
 test_results:
   - timestamp: 2026-03-13T00:00:00Z
     note: |
@@ -29,6 +30,16 @@ test_results:
       - Kept `@templjs/context-graph` usage in Volar limited to generic graph contracts
       - Focused verification after correction: 129 passed, 0 failed
       - Builds reconfirmed: `pnpm --filter @templjs/core build`, `pnpm --filter @templjs/context-graph build`, `pnpm --filter @templjs/volar build`
+  - timestamp: 2026-03-13T00:00:00Z
+    note: |
+      DRY refactor and $ref-aware hover follow-up (cb3f6a0):
+      - Extracted createScopedPathResolver() shared helper used by completion, hover, and definition
+      - Added resolveSchemaUriForContext() to eliminate duplicate zone-kind logic across operations
+      - Added resolvePathDefinitionAcrossRefs() fallback to hover path details  (parity with definition)
+      - Added SemanticSchemaReadOptions / ResolvedSchemaPathTarget interfaces
+      - Token-aware hover for for-iterable statement paths (cursor-segment resolution)
+      - Focused tests: 124 passed, 0 failed
+      - All package builds confirmed clean
 links:
   implements:
     - '[[056_context_graph_platform_epic]]'

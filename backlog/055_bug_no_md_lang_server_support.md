@@ -9,6 +9,10 @@ priority: medium
 estimated: 2
 actual: 0
 assignee: ''
+commits:
+  91b879c: 'fix(volar): add .tpl template marker and suffix file extension detection'
+  f276da3: 'feat(vscode): add .tmpl language associations and YAML scalar tokenization'
+  7389b0f: 'docs(backlog): update wi-055 with .tpl fix progress and follow-up note'
 links:
   depends_on:
     - '[[054_bug_no_schema_aware_authoring]]'
@@ -45,12 +49,12 @@ The Volar language plugin only recognises `.templ.` and `.tmpl.` as template mar
 
 ## Tasks
 
-- [ ] Add `.tpl.` to `TEMPLATE_MARKERS` in `src/packages/volar/src/index.ts`
+- [x] Add `.tpl.` to `TEMPLATE_MARKERS` in `src/packages/volar/src/index.ts`
 - [ ] Verify `text.templjs.markdown` grammar activates for `.md.tpl` in the extension dev host
-- [ ] Add a regression test asserting virtual document creation for `.md.tpl` input
-- [ ] Confirm `pnpm run lint:frontmatter` passes
-- [ ] Add unit test coverage for each template extension marker in `isTemplateFile` logic
-- [ ] Verify string scalars in frontmatter with `.md.tpl` extension are handled as a single token (previously failed due to missing template marker)
+- [x] Add a regression test asserting virtual document creation for `.md.tpl` input
+- [x] Confirm `pnpm run lint:frontmatter` passes
+- [x] Add unit test coverage for each template extension marker in `isTemplateFile` logic
+- [x] Verify string scalars in frontmatter with `.md.tpl` extension are handled as a single token (previously failed due to missing template marker)
 
 ## Acceptance Criteria
 

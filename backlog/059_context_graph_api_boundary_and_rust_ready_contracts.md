@@ -7,10 +7,11 @@ title: '059: Enforce API boundary and Rust-ready contracts'
 status: ready-for-review
 priority: high
 estimated: 10
-actual: 3
+actual: 5
 assignee: ''
 commits:
   82c8de1: 'feat(context-graph): add package and core semantic scope API'
+  cb3f6a0: 'feat(context-graph): complete graph-backed semantic resolution'
 test_results:
   - timestamp: 2026-03-13T00:00:00Z
     note: |

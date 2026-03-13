@@ -13,6 +13,9 @@ commits:
   ad4e642: 'docs(context-graph): add ADR and update WI status'
   82c8de1: 'feat(context-graph): add package and core semantic scope API'
   91d942c: 'feat(volar): integrate context graph into semantic reads'
+  cb3f6a0: 'feat(context-graph): complete graph-backed semantic resolution'
+  91b879c: 'fix(volar): add .tpl template marker and suffix file extension detection'
+  f276da3: 'feat(vscode): add .tmpl language associations and YAML scalar tokenization'
 test_results:
   - timestamp: 2026-03-13T00:00:00Z
     note: |

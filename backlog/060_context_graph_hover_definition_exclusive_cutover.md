@@ -7,8 +7,21 @@ title: '060: Enforce exclusive context-graph hover/definition resolution'
 status: in-progress
 priority: high
 estimated: 8
-actual: 0
+actual: 4
 assignee: ''
+commits:
+  cb3f6a0: 'feat(context-graph): complete graph-backed semantic resolution'
+test_results:
+  - timestamp: 2026-03-13T00:00:00Z
+    note: |
+      Initial DRY pass and $ref-aware resolution (cb3f6a0):
+      - createScopedPathResolver() DRY helper shared across completion, hover, definition
+      - resolveSchemaUriForContext() eliminates duplicate zone-kind logic in adapter
+      - resolvePathDefinitionAcrossRefs() fallback added to hover path details for $ref parity with definition
+      - Token-aware hover for for-iterable statement paths (cursor-segment only)
+      - Remaining: full extension-server cutover and Volar-only LSP forwarding
+      - Focused tests: 124 passed, 0 failed
+      - Package builds: @templjs/volar, vscode-templjs confirmed clean
 links:
   implements:
     - '[[056_context_graph_platform_epic]]'
