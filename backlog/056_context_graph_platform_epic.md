@@ -1,0 +1,45 @@
+---
+id: wi-056
+type: work-item
+subtype: epic
+lifecycle: active
+title: '056: Context Graph Platform (N-provider semantic foundation)'
+status: in-progress
+priority: high
+estimated: 30
+actual: 13
+assignee: ''
+links:
+  depends_on:
+    - '[[054_bug_no_schema_aware_authoring]]'
+---
+
+## Goal
+
+Establish `@templjs/context-graph` as a reusable semantic foundation for N independent providers and migrate editor/runtime semantic resolution to graph-backed contracts.
+
+## Scope
+
+- New package scaffold and public API boundary
+- First-class profile model in graph facts/edges
+- Versioned query request/response contract
+- Provider lifecycle and graph query core
+- Volar integration for hover/definition/completion
+- Diagnostics and schema integration
+- Rust-ready contract hardening and dependency-leak checks
+
+## Acceptance Criteria
+
+- [x] `@templjs/context-graph` package exists with stable public API
+- [x] Profile-aware graph facts and queries are supported
+- [x] Versioned query contract (`request` / `response`) is defined and tested
+- [x] Public API exposes no third-party dependency symbols
+- [x] At least one Volar feature path reads through context graph contracts
+- [x] Regression tests prove deterministic query results
+- [x] API boundary checks enforce no dependency leakage
+
+## Child Tasks
+
+- [x] [[057_context_graph_kernel_and_api]]
+- [x] [[058_context_graph_volar_adapter_and_semantic_reads]]
+- [x] [[059_context_graph_api_boundary_and_rust_ready_contracts]]
