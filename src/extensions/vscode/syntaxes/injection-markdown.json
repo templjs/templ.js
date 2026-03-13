@@ -2,7 +2,36 @@
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
   "name": "TemplJS Markdown",
   "scopeName": "text.templjs.markdown",
+  "repository": {
+    "frontmatter": {
+      "begin": "^---\\s*$",
+      "end": "^---\\s*$",
+      "name": "meta.frontmatter.templjs",
+      "patterns": [
+        {
+          "include": "#yamlScalarValue"
+        },
+        {
+          "include": "source.yaml"
+        }
+      ]
+    },
+    "yamlScalarValue": {
+      "match": "^(\\s*[^:#\\n][^:\\n]*:\\s*)(?!\\[)(?!\\{)(?!(?:~|null|Null|NULL|true|True|TRUE|false|False|FALSE)\\s*(?:#.*)?$)(?![+-]?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\s*(?:#.*)?$)([^#\\n]+)",
+      "captures": {
+        "1": {
+          "name": "meta.mapping.key.yaml"
+        },
+        "2": {
+          "name": "string.unquoted.yaml"
+        }
+      }
+    }
+  },
   "patterns": [
+    {
+      "include": "#frontmatter"
+    },
     {
       "include": "source.gfm"
     },
