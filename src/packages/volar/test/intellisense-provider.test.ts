@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { IntellisenseProvider } from '../src/intellisense-provider.js';
+import { IntellisenseProvider, type SemanticReadAdapter } from '../src/intellisense-provider.js';
 
 const sampleSchema = {
   type: 'object',
@@ -77,6 +77,27 @@ describe('IntellisenseProvider', () => {
   it('provides top-level variable completions', () => {
     const items = provider.getCompletions('{{ us', 4, { schema: sampleSchema });
     expect(items.some((item) => item.label === 'user')).toBe(true);
+  });
+
+  it('allows injecting a semantic read adapter for isolation', () => {
+    const mockAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [
+        {
+          label: 'injected',
+          kind: 'variable',
+        },
+      ],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+    };
+
+    const isolatedProvider = new IntellisenseProvider(mockAdapter);
+    const items = isolatedProvider.getCompletions('{{ inj }}', 7, { schema: sampleSchema });
+
+    expect(items.map((item) => item.label)).toEqual(['injected']);
   });
 
   it('provides property completions after dot', () => {
@@ -254,7 +275,6 @@ describe('IntellisenseProvider', () => {
       schema: sampleSchema,
     });
     expect(items[0]?.label).toBe('lower');
-    expect(items.some((item) => item.label === 'lower')).toBe(true);
   });
 
   it('sorts keyword completions by relevance and label', () => {

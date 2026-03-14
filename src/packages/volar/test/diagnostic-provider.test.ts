@@ -531,21 +531,21 @@ describe('DiagnosticProvider', () => {
       collectDiagnostics(text, { schema: sampleSchema, contentSchema: draft2020Content as object })
     ).not.toThrow();
   });
-});
-it('flags loop alias property accesses when array items are not enumerated in schema', () => {
-  // Real-world case: schema defines the array but omits items.properties
-  const schema = {
-    type: 'object',
-    properties: {
-      relationships: { type: 'array' },
-    },
-  };
+  it('flags loop alias property accesses when array items are not enumerated in schema', () => {
+    // Real-world case: schema defines the array but omits items.properties
+    const schema = {
+      type: 'object',
+      properties: {
+        relationships: { type: 'array' },
+      },
+    };
 
-  const text =
-    '{% for relationship in relationships %}\n{{ relationship.type }}\n{{ relationship.target }}\n{% if relationship.note %}{{ relationship.note }}{% endif %}\n{% endfor %}';
-  const diagnostics = collectDiagnostics(text, { schema: schema as object });
+    const text =
+      '{% for relationship in relationships %}\n{{ relationship.type }}\n{{ relationship.target }}\n{% if relationship.note %}{{ relationship.note }}{% endif %}\n{% endfor %}';
+    const diagnostics = collectDiagnostics(text, { schema: schema as object });
 
-  expect(diagnostics.filter((d) => d.code === 'templjs.undefinedVariable').length).toBeGreaterThan(
-    0
-  );
+    expect(
+      diagnostics.filter((d) => d.code === 'templjs.undefinedVariable').length
+    ).toBeGreaterThan(0);
+  });
 });

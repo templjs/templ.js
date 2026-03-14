@@ -22,6 +22,7 @@ import {
 } from './scope-resolution.js';
 import {
   createContextGraphSemanticReadAdapter,
+  type ContextGraphSemanticReadAdapter,
   type SemanticQueryContext,
 } from './context-graph-adapter.js';
 
@@ -75,6 +76,16 @@ export interface FilterSignature {
   returnType: string;
   parameters: Array<{ name: string; type: string; description?: string }>;
 }
+
+export type SemanticReadAdapter = Pick<
+  ContextGraphSemanticReadAdapter,
+  | 'resolveScopedPath'
+  | 'getChildCompletions'
+  | 'getEnumValueCompletions'
+  | 'getPathDetails'
+  | 'resolvePathDefinition'
+  | 'resolveDocumentDefinition'
+>;
 
 const DEFAULT_KEYWORDS = [
   'if',
@@ -161,9 +172,8 @@ function findEnclosingRangeNearOffset(
   return null;
 }
 
-const semanticReadAdapter = createContextGraphSemanticReadAdapter();
-
 function createScopedPathResolver(
+  semanticReadAdapter: SemanticReadAdapter,
   text: string,
   offset: number,
   delimiters: IntellisenseDelimiters
@@ -565,6 +575,7 @@ function getCompletionPrefix(text: string): string {
 }
 
 function getExpressionCompletionsAtOffset(
+  semanticReadAdapter: SemanticReadAdapter,
   content: string,
   offsetInContent: number,
   filters: FilterSignature[],
@@ -680,6 +691,10 @@ function getStatementExpressionFragment(
 }
 
 export class IntellisenseProvider {
+  constructor(
+    private readonly semanticReadAdapter: SemanticReadAdapter = createContextGraphSemanticReadAdapter()
+  ) {}
+
   getCompletions(text: string, offset: number, options?: IntellisenseOptions): CompletionItem[] {
     const delimiters = getDelimiters(options);
     const expression = findEnclosingRangeNearOffset(
@@ -719,7 +734,12 @@ export class IntellisenseProvider {
     const filters = [...getDefaultFilters(), ...(options?.customFilters ?? [])];
     const keywords = [...DEFAULT_KEYWORDS, ...(options?.customKeywords ?? [])];
 
-    const scopeResolver = createScopedPathResolver(text, offset, delimiters);
+    const scopeResolver = createScopedPathResolver(
+      this.semanticReadAdapter,
+      text,
+      offset,
+      delimiters
+    );
 
     if (expression) {
       const expressionText = text.slice(expression.start, expression.end);
@@ -734,6 +754,7 @@ export class IntellisenseProvider {
       const contentOffset = offset - expression.start - delimiters.expressionStart.length;
 
       const expressionCompletions = getExpressionCompletionsAtOffset(
+        this.semanticReadAdapter,
         content,
         Math.max(0, contentOffset),
         filters,
@@ -769,6 +790,7 @@ export class IntellisenseProvider {
       }
 
       const statementExpressionCompletions = getExpressionCompletionsAtOffset(
+        this.semanticReadAdapter,
         expressionFragment.expression,
         expressionFragment.offsetInExpression,
         filters,
@@ -785,7 +807,7 @@ export class IntellisenseProvider {
       const context = getFrontmatterContext(text, offset);
 
       if (context.inValue && context.path) {
-        const graphEnumValues = semanticReadAdapter.getEnumValueCompletions(
+        const graphEnumValues = this.semanticReadAdapter.getEnumValueCompletions(
           completionContext,
           context.path,
           semanticOptions
@@ -800,7 +822,7 @@ export class IntellisenseProvider {
         }
       }
 
-      const graphItems = semanticReadAdapter.getChildCompletions(
+      const graphItems = this.semanticReadAdapter.getChildCompletions(
         completionContext,
         context.parentPath ?? '',
         semanticOptions
@@ -852,12 +874,17 @@ export class IntellisenseProvider {
       schemaUri: options?.schemaUri,
       contentSchemaUri: options?.contentSchemaUri,
     };
-    const resolveHoverPath = createScopedPathResolver(text, offset, delimiters);
+    const resolveHoverPath = createScopedPathResolver(
+      this.semanticReadAdapter,
+      text,
+      offset,
+      delimiters
+    );
     const filters = [...getDefaultFilters(), ...(options?.customFilters ?? [])];
 
     const getHoverDetailsForPath = (rawPath: string): HoverInfo | null => {
       const resolvedPath = resolveHoverPath(rawPath);
-      const graphDetails = semanticReadAdapter.getPathDetails(
+      const graphDetails = this.semanticReadAdapter.getPathDetails(
         hoverContext,
         resolvedPath,
         semanticOptions
@@ -888,7 +915,7 @@ export class IntellisenseProvider {
         return null;
       }
 
-      const graphDetails = semanticReadAdapter.getPathDetails(
+      const graphDetails = this.semanticReadAdapter.getPathDetails(
         hoverContext,
         context.path,
         semanticOptions
@@ -1044,14 +1071,19 @@ export class IntellisenseProvider {
       options?.documentUri
     );
 
-    const resolveDefinitionPath = createScopedPathResolver(text, offset, delimiters);
+    const resolveDefinitionPath = createScopedPathResolver(
+      this.semanticReadAdapter,
+      text,
+      offset,
+      delimiters
+    );
 
     const resolveSchemaDefinition = (
       path: string,
       pathKind: 'property' | 'value' = 'property',
       valueToken?: string
     ): DefinitionLocation | null => {
-      const resolved = semanticReadAdapter.resolvePathDefinition(
+      const resolved = this.semanticReadAdapter.resolvePathDefinition(
         definitionContext,
         path,
         {
@@ -1075,7 +1107,7 @@ export class IntellisenseProvider {
     };
 
     if (!expression && !statement) {
-      const documentDefinition = semanticReadAdapter.resolveDocumentDefinition(
+      const documentDefinition = this.semanticReadAdapter.resolveDocumentDefinition(
         definitionContext,
         text,
         offset,
@@ -1178,6 +1210,9 @@ export class IntellisenseProvider {
       return resolveSchemaDefinition(canonicalPath, 'property');
     }
 
+    // expression is falsy in this branch, and earlier control flow already returned
+    // when both expression and statement were falsy, so statement! is guaranteed
+    // here before computing statementRange/rawInner with delimiters and statementContent.
     const statementRange = statement!;
     const rawInner = text
       .slice(statementRange.start, statementRange.end)
@@ -1314,6 +1349,8 @@ export class IntellisenseProvider {
   }
 }
 
-export function createIntellisenseProvider(): IntellisenseProvider {
-  return new IntellisenseProvider();
+export function createIntellisenseProvider(
+  semanticReadAdapter?: SemanticReadAdapter
+): IntellisenseProvider {
+  return new IntellisenseProvider(semanticReadAdapter);
 }

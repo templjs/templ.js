@@ -217,7 +217,18 @@ function assignVariableReferences(
     });
   }
 
-  return refs;
+  const seen = new Set<string>();
+  const uniqueRefs: ExpressionVariableReference[] = [];
+  for (const ref of refs) {
+    const key = `${ref.path}:${ref.start}:${ref.end}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    uniqueRefs.push(ref);
+  }
+
+  return uniqueRefs;
 }
 
 function assignFilterReferences(
