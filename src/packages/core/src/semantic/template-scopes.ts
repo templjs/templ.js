@@ -38,7 +38,7 @@ function positionToOffset(text: string, line: number, column: number): number {
   return Math.min(text.length, currentOffset + Math.max(0, column));
 }
 
-function pathSegmentToString(segment: PathSegment): string {
+export function pathSegmentToString(segment: PathSegment): string {
   if (segment.type === 'property') {
     return `.${String(segment.value)}`;
   }

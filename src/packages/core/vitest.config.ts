@@ -5,6 +5,7 @@ export default mergeConfig(
   baseConfig,
   defineConfig({
     test: {
+      include: ['**/test/**/*.test.ts', '**/src/**/*.test.ts'],
       coverage: {
         thresholds: {
           // Core package thresholds baselined to measured coverage during WI-031.
