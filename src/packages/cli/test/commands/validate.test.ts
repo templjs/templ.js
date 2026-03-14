@@ -94,11 +94,6 @@ describe('validateCommand', () => {
   it('gracefully handles invalid schema parsing', async () => {
     vi.mocked(readFileSync).mockImplementation((path) => {
       if (path === 'schema.json') return 'invalid schema';
-      if (path === 'input.json') return '{}';
-      return 'Hello {{ name }}!';
-    });
-    vi.mocked(readFileSync).mockImplementation((path) => {
-      if (path === 'schema.json') return 'invalid schema';
       return 'Hello {{ name }}';
     });
     await expect(validateCommand('template.templ', 'schema.json')).rejects.toThrow(

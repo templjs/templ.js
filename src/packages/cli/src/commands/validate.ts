@@ -46,7 +46,7 @@ export async function validateCommand(
     }
 
     return {
-      valid: errors.length === 0 && templateValidation.valid,
+      valid: errors.length === 0,
       errors,
     };
   } catch (error) {
