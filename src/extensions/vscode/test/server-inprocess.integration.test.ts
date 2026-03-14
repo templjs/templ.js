@@ -679,7 +679,9 @@ describe('language-server-inprocess-integration', () => {
       }) => void;
       didOpenHandler({ textDocument: { uri: docUri, text } });
 
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await vi.waitFor(() => {
+        expect(sendDiagnostics).toHaveBeenCalled();
+      });
 
       const diagnosticsCall = sendDiagnostics.mock.calls[
         sendDiagnostics.mock.calls.length - 1
