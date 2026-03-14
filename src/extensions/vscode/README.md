@@ -11,10 +11,11 @@ VS Code extension for templjs meta-template language support.
 
 ## Supported File Extensions
 
-- `.templ.yaml` / `.templ.yml` - YAML templates
-- `.templ.json` - JSON templates
-- `.templ.md` - Markdown templates
-- `.templ.html` - HTML templates
+- `.yaml.templ` / `.yml.templ` / `.yaml.tpl` / `.yml.tpl` - YAML templates
+- `.json.templ` / `.json.tpl` - JSON templates
+- `.md.templ` / `.md.tpl` - Markdown templates
+- `.html.templ` / `.html.tpl` - HTML templates
+- `.xml.templ` / `.xml.tpl` - XML templates
 
 ## Architecture
 
