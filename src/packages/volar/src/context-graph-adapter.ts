@@ -22,7 +22,7 @@ import type {
   QueryResponse,
 } from '@templjs/context-graph';
 import { fileURLToPath, pathToFileURL } from 'url';
-import { splitSchemaSourceReference, resolveSchemaFilePath } from './schema-utils.js';
+import { splitSchemaSourceReference, resolveSchemaFilePathSync } from './schema-utils.js';
 
 export interface SemanticQueryContext {
   operation: SemanticOperation;
@@ -176,7 +176,7 @@ function getPathValueDefinition(
   }
 
   const { source } = splitSchemaSourceReference(keyValue.valueToken);
-  const resolved = resolveSchemaFilePath(source, options.workspaceRoot, options.documentUri);
+  const resolved = resolveSchemaFilePathSync(source, options.workspaceRoot, options.documentUri);
   if (!resolved) {
     return null;
   }
@@ -236,7 +236,11 @@ function getSchemaPathDefinition(
   }
 
   const { source: tokenSource } = splitSchemaSourceReference(token);
-  const resolved = resolveSchemaFilePath(tokenSource, options.workspaceRoot, options.documentUri);
+  const resolved = resolveSchemaFilePathSync(
+    tokenSource,
+    options.workspaceRoot,
+    options.documentUri
+  );
   if (!resolved) {
     return null;
   }
@@ -1022,15 +1026,51 @@ function stableSerialize(value: unknown): string {
     return result;
   };
 
-  return JSON.stringify(normalize(value));
+  const serialized = JSON.stringify(normalize(value));
+  return serialized ?? 'undefined';
+}
+
+let nextSnapshotSchemaId = 1;
+const snapshotSchemaIdMap = new WeakMap<object, number>();
+const snapshotSchemaHashBySerialized = new Map<string, string>();
+
+function hashStringFNV1a(input: string): string {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+function getSnapshotSchemaToken(schema: unknown): string {
+  if (schema && typeof schema === 'object') {
+    const existingId = snapshotSchemaIdMap.get(schema);
+    if (existingId !== undefined) {
+      return `id:${existingId}`;
+    }
+
+    const assignedId = nextSnapshotSchemaId;
+    nextSnapshotSchemaId += 1;
+    snapshotSchemaIdMap.set(schema, assignedId);
+    return `id:${assignedId}`;
+  }
+
+  const serialized = stableSerialize(schema);
+  const existingHash = snapshotSchemaHashBySerialized.get(serialized);
+  if (existingHash !== undefined) {
+    return `hash:${existingHash}`;
+  }
+
+  const computedHash = hashStringFNV1a(serialized);
+  snapshotSchemaHashBySerialized.set(serialized, computedHash);
+  return `hash:${computedHash}`;
 }
 
 function buildSnapshotCacheKey(options: { schema?: object; contentSchema?: object }): string {
-  const frontmatterHash = options.schema ? stableSerialize(options.schema) : 'undefined';
+  const frontmatterHash = getSnapshotSchemaToken(options.schema);
   const contentOrFallbackSchema = options.contentSchema ?? options.schema;
-  const contentHash = contentOrFallbackSchema
-    ? stableSerialize(contentOrFallbackSchema)
-    : 'undefined';
+  const contentHash = getSnapshotSchemaToken(contentOrFallbackSchema);
   return `${frontmatterHash}::${contentHash}`;
 }
 

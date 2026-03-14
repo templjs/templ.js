@@ -1,4 +1,4 @@
-import { existsSync } from 'fs';
+import { constants, existsSync, promises as fsPromises } from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -22,7 +22,45 @@ export function splitSchemaSourceReference(rawSource: string): SchemaSourceRefer
   };
 }
 
-export function resolveSchemaFilePath(
+export async function resolveSchemaFilePath(
+  schemaPath: string,
+  workspaceRoot: string | undefined,
+  documentUri?: string
+): Promise<string | undefined> {
+  const { source } = splitSchemaSourceReference(schemaPath);
+
+  if (source.startsWith('http://') || source.startsWith('https://')) {
+    return source;
+  }
+
+  if (path.isAbsolute(source)) {
+    return source;
+  }
+
+  if (
+    (source.startsWith('./') || source.startsWith('../')) &&
+    documentUri &&
+    documentUri.startsWith('file://')
+  ) {
+    try {
+      const documentFilePath = fileURLToPath(documentUri);
+      const documentDirectory = path.dirname(documentFilePath);
+      const documentRelativePath = path.resolve(documentDirectory, source);
+      await fsPromises.access(documentRelativePath, constants.F_OK);
+      return documentRelativePath;
+    } catch {
+      // Fall through to workspace-based resolution.
+    }
+  }
+
+  if (!workspaceRoot) {
+    return undefined;
+  }
+
+  return path.resolve(workspaceRoot, source);
+}
+
+export function resolveSchemaFilePathSync(
   schemaPath: string,
   workspaceRoot: string | undefined,
   documentUri?: string

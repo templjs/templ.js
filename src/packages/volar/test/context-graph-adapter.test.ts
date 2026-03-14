@@ -164,7 +164,9 @@ describe('ContextGraphSemanticReadAdapter', () => {
       '{% endfor %}',
     ].join('\n');
 
-    const offset = text.indexOf('item.name') + 2;
+    const itemIdentifierStart = text.indexOf('item.name');
+    // Move the cursor inside the alias identifier (`it` in `item.name`) for scope resolution.
+    const offset = itemIdentifierStart + 'it'.length;
     const resolved = adapter.resolveScopedPath(text, 'item.name', offset);
 
     expect(resolved).toBe('items[0].children[0].name');

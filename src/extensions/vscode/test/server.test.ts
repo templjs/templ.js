@@ -118,13 +118,20 @@ class TempljsServicePluginMock {
 }
 const readFileSync = vi.fn(() => '{"type":"object","properties":{"user":{"type":"object"}}}');
 const existsSync = vi.fn(() => true);
+const access = vi.fn(async () => undefined);
 const fetchMock = vi.fn();
 
 vi.stubGlobal('fetch', fetchMock);
 
 vi.mock('fs', () => ({
+  constants: {
+    F_OK: 0,
+  },
   existsSync,
   readFileSync,
+  promises: {
+    access,
+  },
 }));
 
 vi.mock('@volar/language-server/node', () => ({
@@ -191,6 +198,8 @@ describe('language-server-bootstrap', () => {
     readFileSync.mockClear();
     existsSync.mockClear();
     existsSync.mockReturnValue(true);
+    access.mockClear();
+    access.mockResolvedValue(undefined);
     fetchMock.mockClear();
   });
 
@@ -1073,6 +1082,7 @@ describe('language-server-bootstrap', () => {
       textDocument: { uri: string; text: string; languageId: string; version: number };
     }) => void;
 
+    vi.useFakeTimers();
     openHandler({
       textDocument: {
         uri: 'file:///workspace/templates/project.md.tpl',
@@ -1082,8 +1092,8 @@ describe('language-server-bootstrap', () => {
       },
     });
 
-    // Allow the async reload to settle
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    await vi.runAllTimersAsync();
+    vi.useRealTimers();
 
     expect(readFileSync).toHaveBeenCalledWith('/workspace/schemas/project.json', 'utf-8');
   });
@@ -1105,6 +1115,7 @@ describe('language-server-bootstrap', () => {
       textDocument: { uri: string; text: string; languageId: string; version: number };
     }) => void;
 
+    vi.useFakeTimers();
     openHandler({
       textDocument: {
         uri: 'file:///workspace/templates/record.md.tpl',
@@ -1120,7 +1131,8 @@ describe('language-server-bootstrap', () => {
       },
     });
 
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    await vi.runAllTimersAsync();
+    vi.useRealTimers();
 
     expect(readFileSync).toHaveBeenCalledWith('/workspace/schemas/fm/record.json', 'utf-8');
     expect(readFileSync).toHaveBeenCalledWith('/workspace/schemas/content/record.json', 'utf-8');

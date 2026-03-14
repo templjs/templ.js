@@ -14,6 +14,7 @@ import {
   TempljsServicePlugin,
   type DiagnosticOptions,
   type IntellisenseOptions,
+  resolveSchemaFilePathSync,
   splitSchemaSourceReference,
   resolveSchemaFilePath,
 } from '@templjs/volar';
@@ -388,12 +389,10 @@ async function loadSchemaSource(
 
   // Check if it's a URL (http:// or https://)
   if (sourcePath.startsWith('http://') || sourcePath.startsWith('https://')) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), URL_TIMEOUT_MS);
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), URL_TIMEOUT_MS);
-
       const response = await fetch(sourcePath, { signal: controller.signal });
-      clearTimeout(timeoutId);
 
       if (!response.ok) {
         connection.console.log(
@@ -429,17 +428,32 @@ async function loadSchemaSource(
         schemaUri: sourcePath,
       };
     } catch (urlError) {
+      if (
+        (urlError instanceof Error && urlError.name === 'AbortError') ||
+        (typeof urlError === 'object' &&
+          urlError !== null &&
+          'name' in urlError &&
+          (urlError as { name?: unknown }).name === 'AbortError')
+      ) {
+        connection.console.log(
+          `[templjs] Timeout loading schema from URL '${sourcePath}' after ${URL_TIMEOUT_MS}ms`
+        );
+        return {};
+      }
+
       connection.console.log(
         `[templjs] Error loading schema from URL '${sourcePath}': ${
           urlError instanceof Error ? urlError.message : String(urlError)
         }`
       );
       return {};
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
   // Otherwise treat as filesystem path
-  const resolvedPath = resolveSchemaFilePath(sourcePath, workspaceRoot, documentUri);
+  const resolvedPath = await resolveSchemaFilePath(sourcePath, workspaceRoot, documentUri);
   if (!resolvedPath) {
     connection.console.log(
       `[templjs] Could not resolve schema path '${sourcePath}' (no workspace root?)`
@@ -499,7 +513,7 @@ function loadSchemaSourceSync(
     return {};
   }
 
-  const resolvedPath = resolveSchemaFilePath(sourcePath, workspaceRoot, documentUri);
+  const resolvedPath = resolveSchemaFilePathSync(sourcePath, workspaceRoot, documentUri);
   if (!resolvedPath) {
     return {};
   }

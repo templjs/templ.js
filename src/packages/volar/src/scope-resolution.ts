@@ -110,15 +110,17 @@ export function buildForScopesInText(
   return scopes;
 }
 
+function getMatchingScopesAtOffset(offset: number, scopes: ForScope[]): ForScope[] {
+  return scopes
+    .filter((scope) => offset >= scope.bodyStart && offset < scope.bodyEnd)
+    .sort((left, right) => right.bodyStart - left.bodyStart);
+}
+
 export function resolveScopedPath(path: string, offset: number, scopes: ForScope[]): string {
-  const matchingScopes = scopes.filter(
-    (scope) => offset >= scope.bodyStart && offset < scope.bodyEnd
-  );
+  const matchingScopes = getMatchingScopesAtOffset(offset, scopes);
   if (matchingScopes.length === 0) {
     return path;
   }
-
-  matchingScopes.sort((left, right) => right.bodyStart - left.bodyStart);
 
   for (const scope of matchingScopes) {
     if (
@@ -153,9 +155,7 @@ export function findLocalAliasDefinitionInText(
   delimiters?: Partial<DelimiterConfig>
 ): { start: number; end: number } | null {
   const scopes = buildForScopesInText(text, delimiters);
-  const matchingScopes = scopes
-    .filter((scope) => offset >= scope.bodyStart && offset < scope.bodyEnd)
-    .sort((left, right) => right.bodyStart - left.bodyStart);
+  const matchingScopes = getMatchingScopesAtOffset(offset, scopes);
 
   for (const scope of matchingScopes) {
     if (

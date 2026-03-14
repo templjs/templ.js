@@ -58,8 +58,14 @@ export interface DiagnosticOptions {
   baseDiagnostics?: DiagnosticItem[];
 }
 
-function getDefaultFilters(): Set<string> {
-  return new Set(getBuiltinFilterNames());
+let cachedDefaultFilters: ReadonlySet<string> | undefined;
+
+function getDefaultFilters(): ReadonlySet<string> {
+  if (!cachedDefaultFilters) {
+    cachedDefaultFilters = new Set(getBuiltinFilterNames());
+  }
+
+  return cachedDefaultFilters;
 }
 
 interface BlockMatch {
