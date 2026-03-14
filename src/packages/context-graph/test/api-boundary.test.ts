@@ -1,5 +1,4 @@
-import { execSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -11,8 +10,10 @@ const packageRoot = path.resolve(__dirname, '..');
 
 describe('API boundary and contract compatibility', () => {
   it('public .d.ts does not leak external dependency imports', () => {
-    execSync('pnpm build', { cwd: packageRoot, stdio: 'pipe' });
     const dtsPath = path.join(packageRoot, 'dist', 'index.d.ts');
+    expect(existsSync(dtsPath), 'build artifacts missing, run pnpm build or run CI build job').toBe(
+      true
+    );
     const dts = readFileSync(dtsPath, 'utf-8');
 
     // assumes that each import/export statement in the public .d.ts is on a single line, which is currently true and can be enforced via linting if needed

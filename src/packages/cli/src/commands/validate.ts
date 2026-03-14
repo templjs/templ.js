@@ -31,7 +31,11 @@ export async function validateCommand(
       const parsedSchema = await parseDataAsync(schemaContent, schemaPath);
       const validator = new SchemaValidator(parsedSchema as JSONSchema);
 
-      if (inputPath) {
+      if (!validator.isCompiled) {
+        const compilationDetail =
+          validator.compilationError ?? `unknown compilation error for schema '${schemaPath}'`;
+        errors.push(`Schema compilation failed - ${compilationDetail}`);
+      } else if (inputPath) {
         const inputContent = readFileSync(inputPath, 'utf-8');
         const parsedInput = await parseDataAsync(inputContent, inputPath);
         const schemaValidation = validator.validate(parsedInput);

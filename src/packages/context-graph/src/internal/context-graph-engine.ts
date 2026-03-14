@@ -194,7 +194,7 @@ export class ContextGraphEngine implements ContextGraph {
       throw new ContextGraphError(
         createOperationError(
           'invalid-payload',
-          `Unsupported query version: ${String((request as { version?: unknown }).version)}`
+          `Unsupported query version: received ${String((request as { version?: unknown }).version)}, expected ${CONTRACT_VERSION}`
         )
       );
     }
