@@ -108,6 +108,10 @@ export function createQueryEngine() {
   return new QueryEngine();
 }
 
+let cachedBuiltinFilterSignatures:
+  | Record<string, import('./query-engine/types.js').FunctionSignature>
+  | undefined;
+
 /**
  * Get built-in filter signatures registered by the query engine.
  */
@@ -115,6 +119,10 @@ export function getBuiltinFilterSignatures(): Record<
   string,
   import('./query-engine/types.js').FunctionSignature
 > {
+  if (cachedBuiltinFilterSignatures) {
+    return cachedBuiltinFilterSignatures;
+  }
+
   const engine = createQueryEngine();
   const metadata = engine.getMetadata();
   const result: Record<string, import('./query-engine/types.js').FunctionSignature> = {};
@@ -125,7 +133,8 @@ export function getBuiltinFilterSignatures(): Record<
     }
   }
 
-  return result;
+  cachedBuiltinFilterSignatures = result;
+  return cachedBuiltinFilterSignatures;
 }
 
 /**

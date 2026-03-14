@@ -72,7 +72,7 @@ describe('SchemaValidator', () => {
           title: { type: 'string' },
           count: { type: 'integer' },
         },
-      } as unknown as JSONSchema;
+      };
 
       expect(() => new SchemaValidator(schema)).not.toThrow();
     });
@@ -83,7 +83,7 @@ describe('SchemaValidator', () => {
         type: 'object',
         unevaluatedProperties: false,
         properties: { title: { type: 'string' } },
-      } as unknown as JSONSchema;
+      };
 
       const validator = new SchemaValidator(schema);
       expect(validator.isCompiled).toBe(true);
@@ -99,7 +99,7 @@ describe('SchemaValidator', () => {
           title: { type: 'string' },
           count: { type: 'integer' },
         },
-      } as unknown as JSONSchema;
+      };
 
       const validator = new SchemaValidator(schema);
       expect(validator.validate({ title: 'hello', count: 1 }).valid).toBe(true);
@@ -130,7 +130,7 @@ describe('SchemaValidator', () => {
       expect(validator.compilationError).toBeTruthy();
     });
 
-    it('validate() returns valid:true when compilation failed (graceful degradation)', () => {
+    it('validate() returns valid:true with skipped=true when compilation failed', () => {
       const schema: JSONSchema = {
         $schema: 'https://json-schema.org/draft/2020-12/schema',
         type: 'object',
@@ -138,8 +138,10 @@ describe('SchemaValidator', () => {
       } as unknown as JSONSchema;
 
       const validator = new SchemaValidator(schema);
-      expect(() => validator.validate({ anything: true })).not.toThrow();
-      expect(validator.validate({ anything: true }).valid).toBe(true);
+      const result = validator.validate({ anything: true });
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+      expect(result.skipped).toBe(true);
     });
 
     it('getMetadata() still returns property info even when compilation failed', () => {
@@ -173,6 +175,7 @@ describe('SchemaValidator', () => {
 
       expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
+      expect(result.skipped).toBeUndefined();
     });
 
     it('should detect missing required fields', () => {

@@ -69,7 +69,9 @@ function extractPathsInternal(
     const nextActiveRefs = new Set(activeRefs);
     nextActiveRefs.add(schema.$ref);
     const referencedPaths = extractPathsInternal(resolved, prefix, rootSchema, nextActiveRefs);
-    referencedPaths.forEach((path) => paths.add(path));
+    for (const path of referencedPaths) {
+      paths.add(path);
+    }
     return paths;
   }
 
@@ -77,7 +79,9 @@ function extractPathsInternal(
     for (const [key, subSchema] of Object.entries(schema.properties)) {
       const newPrefix = prefix ? `${prefix}.${key}` : key;
       const subPaths = extractPathsInternal(subSchema, newPrefix, rootSchema, activeRefs);
-      subPaths.forEach((path) => paths.add(path));
+      for (const path of subPaths) {
+        paths.add(path);
+      }
     }
   }
 
@@ -87,7 +91,9 @@ function extractPathsInternal(
       const arrayPrefix = prefix ? `${prefix}[0]` : '[0]';
       paths.add(arrayPrefix);
       const subPaths = extractPathsInternal(itemsSchema, arrayPrefix, rootSchema, activeRefs);
-      subPaths.forEach((path) => paths.add(path));
+      for (const path of subPaths) {
+        paths.add(path);
+      }
     }
   }
 
@@ -96,7 +102,9 @@ function extractPathsInternal(
     if (Array.isArray(combinator)) {
       for (const subSchema of combinator) {
         const subPaths = extractPathsInternal(subSchema, prefix, rootSchema, activeRefs);
-        subPaths.forEach((path) => paths.add(path));
+        for (const path of subPaths) {
+          paths.add(path);
+        }
       }
     }
   }

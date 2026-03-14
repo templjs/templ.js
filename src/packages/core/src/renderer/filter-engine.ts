@@ -78,10 +78,10 @@ const BUILTIN_FILTERS: Record<string, FilterFunction> = {
   },
 
   /**
-   * Alias for length (array/object size)
+   * Alias for length (string/array/object size)
    */
   size: (value: AnyValue): number => {
-    if (Array.isArray(value)) {
+    if (typeof value === 'string' || Array.isArray(value)) {
       return value.length;
     }
     if (typeof value === 'object' && value !== null) {

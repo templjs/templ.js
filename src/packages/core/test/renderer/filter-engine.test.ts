@@ -45,10 +45,10 @@ describe('FilterEngine', () => {
       expect(engine.applyFilter('length', null)).toBe(0);
     });
 
-    it('supports size alias for arrays and objects', () => {
+    it('supports size alias for strings, arrays, and objects', () => {
       expect(engine.applyFilter('size', [1, 2, 3])).toBe(3);
       expect(engine.applyFilter('size', { a: 1, b: 2 })).toBe(2);
-      expect(engine.applyFilter('size', 'abc')).toBe(0);
+      expect(engine.applyFilter('size', 'abc')).toBe(3);
     });
 
     it('joins arrays and leaves non-arrays unchanged', () => {

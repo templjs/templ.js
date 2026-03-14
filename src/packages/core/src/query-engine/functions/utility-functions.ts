@@ -116,17 +116,33 @@ export const numberFunction: FilterFunction = (value: unknown): number | null =>
 
 export const jsonFunction: FilterFunction = (value: unknown): string => {
   try {
-    const seen = new WeakSet<object>();
-    return JSON.stringify(value, (_key, candidate: unknown) => {
+    const ancestry: object[] = [];
+    const onPath = new WeakSet<object>();
+
+    return JSON.stringify(value, function (this: unknown, _key, candidate: unknown) {
       if (typeof candidate === 'bigint') {
         return candidate.toString();
       }
+
       if (candidate && typeof candidate === 'object') {
-        if (seen.has(candidate as object)) {
+        const parent = this && typeof this === 'object' ? (this as object) : undefined;
+
+        while (ancestry.length > 0 && ancestry[ancestry.length - 1] !== parent) {
+          const popped = ancestry.pop();
+          if (popped) {
+            onPath.delete(popped);
+          }
+        }
+
+        const current = candidate as object;
+        if (onPath.has(current)) {
           return '[Circular]';
         }
-        seen.add(candidate as object);
+
+        ancestry.push(current);
+        onPath.add(current);
       }
+
       return candidate;
     });
   } catch {

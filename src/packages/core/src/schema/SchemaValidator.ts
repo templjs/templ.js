@@ -90,7 +90,7 @@ export class SchemaValidator {
     }
     // Schema loaded but compile failed (e.g. remote $ref, unknown meta-schema).
     if (!this.validateFunction) {
-      return { valid: true, errors: [] };
+      return { valid: true, errors: [], skipped: true };
     }
 
     const valid = this.validateFunction(data);

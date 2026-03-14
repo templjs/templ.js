@@ -2,6 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { extractTemplateScopeBindings } from '../../src/index.js';
 
 describe('extractTemplateScopeBindings', () => {
+  it('returns an empty array for an empty template', () => {
+    expect(extractTemplateScopeBindings('')).toEqual([]);
+  });
+
+  it('returns an empty array when no for-loops are present', () => {
+    expect(extractTemplateScopeBindings('{{ name }}')).toEqual([]);
+  });
+
   it('extracts for-loop aliases with iterable paths', () => {
     const template = '{% for relationship in relationships %}{{ relationship.target }}{% endfor %}';
 
@@ -34,5 +42,22 @@ describe('extractTemplateScopeBindings', () => {
 
   it('returns an empty array for invalid templates', () => {
     expect(extractTemplateScopeBindings('{% for item in %}')).toEqual([]);
+  });
+
+  it('extracts bindings from multiple independent non-nested for-loops', () => {
+    const template = [
+      '{% for user in users %}',
+      '  {{ user.name }}',
+      '{% endfor %}',
+      '{% for project in projects %}',
+      '  {{ project.title }}',
+      '{% endfor %}',
+    ].join('\n');
+
+    const bindings = extractTemplateScopeBindings(template);
+
+    expect(bindings).toHaveLength(2);
+    expect(bindings[0]).toMatchObject({ alias: 'user', iterablePath: 'users' });
+    expect(bindings[1]).toMatchObject({ alias: 'project', iterablePath: 'projects' });
   });
 });

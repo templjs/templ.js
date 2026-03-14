@@ -68,6 +68,13 @@ describe('core entrypoint', () => {
     expect(signatures.truncate?.parameters).toEqual(truncateSignature?.parameters);
   });
 
+  it('reuses cached built-in filter metadata across calls', () => {
+    const first = getBuiltinFilterSignatures();
+    const second = getBuiltinFilterSignatures();
+
+    expect(second).toBe(first);
+  });
+
   it('renders a simple template', () => {
     const result = renderTemplate('Hello {{name}}!', { name: 'World' });
     expect(result).toBe('Hello World!');

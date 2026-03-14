@@ -8,6 +8,7 @@
 export interface ValidationResult {
   valid: boolean;
   errors: ValidationError[];
+  skipped?: boolean;
 }
 
 /**
@@ -64,6 +65,7 @@ export interface JSONSchema {
   minProperties?: number;
   maxProperties?: number;
   additionalProperties?: boolean | JSONSchema;
+  unevaluatedProperties?: boolean | JSONSchema;
   patternProperties?: { [key: string]: JSONSchema };
   dependencies?: { [key: string]: JSONSchema | string[] };
   title?: string;

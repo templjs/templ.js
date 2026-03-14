@@ -56,6 +56,11 @@ describe('QueryEngine utility functions', () => {
     expect(jsonFunction({ a: 1 })).toBe('{"a":1}');
     expect(jsonFunction({ id: 123n })).toBe('{"id":"123"}');
 
+    const shared = { id: 1 };
+    expect(jsonFunction({ left: shared, right: shared })).toBe(
+      '{"left":{"id":1},"right":{"id":1}}'
+    );
+
     const circular: { self?: unknown; a: number } = { a: 1 };
     circular.self = circular;
     expect(jsonFunction(circular)).toContain('"[Circular]"');
