@@ -1,4 +1,9 @@
-# @templjs/context-graph
+---
+type: document
+subtype: readme
+lifecycle: active
+title: '@templjs/context-graph README'
+---
 
 `@templjs/context-graph` provides dependency-agnostic contracts and a minimal in-process engine for context publication and querying.
 
