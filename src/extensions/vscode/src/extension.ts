@@ -42,6 +42,83 @@ function shouldTrace(traceMode: TraceMode, level: 'messages' | 'verbose' = 'mess
   return level === 'messages' || traceMode === 'verbose';
 }
 
+function getResultCount(result: unknown): number {
+  if (Array.isArray(result)) {
+    return result.length;
+  }
+
+  if (
+    result &&
+    typeof result === 'object' &&
+    'items' in result &&
+    Array.isArray((result as { items?: unknown }).items)
+  ) {
+    return (result as { items: unknown[] }).items.length;
+  }
+
+  return result ? 1 : 0;
+}
+
+function extractLabels(result: unknown): string[] {
+  if (Array.isArray(result)) {
+    return result
+      .map((item) =>
+        item && typeof item === 'object' ? (item as { label?: unknown }).label : null
+      )
+      .filter((label): label is string => typeof label === 'string' && label.length > 0);
+  }
+
+  if (
+    result &&
+    typeof result === 'object' &&
+    'items' in result &&
+    Array.isArray((result as { items?: unknown }).items)
+  ) {
+    return (result as { items: unknown[] }).items
+      .map((item) =>
+        item && typeof item === 'object' ? (item as { label?: unknown }).label : null
+      )
+      .filter((label): label is string => typeof label === 'string' && label.length > 0);
+  }
+
+  return [];
+}
+
+function hoverContentToString(hover: vscode.Hover): string {
+  if (!Array.isArray(hover.contents)) {
+    return '';
+  }
+
+  return hover.contents
+    .map((entry) =>
+      typeof entry === 'string' ? entry : 'value' in entry ? String(entry.value) : String(entry)
+    )
+    .join(' | ');
+}
+
+function getFirstTargetUri(defResult: unknown): string {
+  const first = Array.isArray(defResult) ? defResult[0] : defResult;
+  if (!first || typeof first !== 'object') {
+    return 'unknown';
+  }
+
+  if (
+    'uri' in first &&
+    typeof (first as { uri?: { toString?: () => string } }).uri?.toString === 'function'
+  ) {
+    return (first as { uri: { toString: () => string } }).uri.toString();
+  }
+
+  if (
+    'targetUri' in first &&
+    typeof (first as { targetUri?: { toString?: () => string } }).targetUri?.toString === 'function'
+  ) {
+    return (first as { targetUri: { toString: () => string } }).targetUri.toString();
+  }
+
+  return 'unknown';
+}
+
 /**
  * Activate the templjs extension
  */
@@ -108,21 +185,11 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
           `completion requested: ${document.uri.toString()} @ ${position.line}:${position.character}`
         );
         return Promise.resolve(next(document, position, context, token)).then((result) => {
-          const count = Array.isArray(result)
-            ? result.length
-            : Array.isArray(result?.items)
-              ? result.items.length
-              : result
-                ? 1
-                : 0;
+          const count = getResultCount(result);
           const durationMs = Date.now() - startedAt;
           trace(`completion result count=${count} durationMs=${durationMs}`);
 
-          const labels = Array.isArray(result)
-            ? result.map((item) => item?.label).filter((label): label is string => !!label)
-            : Array.isArray(result?.items)
-              ? result.items.map((item) => item?.label).filter((label): label is string => !!label)
-              : [];
+          const labels = extractLabels(result);
 
           if (labels.length > 0) {
             const seen = new Map<string, number>();
@@ -161,17 +228,7 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
           trace(`hover result=${result ? 'present' : 'none'} durationMs=${durationMs}`);
 
           if (result) {
-            const value = Array.isArray((result as vscode.Hover).contents)
-              ? (result as vscode.Hover).contents
-                  .map((entry) =>
-                    typeof entry === 'string'
-                      ? entry
-                      : 'value' in entry
-                        ? String(entry.value)
-                        : String(entry)
-                  )
-                  .join(' | ')
-              : '';
+            const value = hoverContentToString(result as vscode.Hover);
             trace(`hover content length=${value.length}`, 'verbose');
           }
 
@@ -184,16 +241,12 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
           `definition requested: ${document.uri.toString()} @ ${position.line}:${position.character}`
         );
         return Promise.resolve(next(document, position, token)).then((result) => {
-          const count = Array.isArray(result) ? result.length : result ? 1 : 0;
+          const count = getResultCount(result);
           const durationMs = Date.now() - startedAt;
           trace(`definition result count=${count} durationMs=${durationMs}`);
 
           if (count > 0) {
-            const first = Array.isArray(result) ? result[0] : result;
-            const firstUri =
-              first && 'uri' in first && typeof first.uri?.toString === 'function'
-                ? first.uri.toString()
-                : 'unknown';
+            const firstUri = getFirstTargetUri(result);
             trace(`definition first target=${firstUri}`, 'verbose');
           }
 
@@ -340,10 +393,10 @@ export function deactivate(): Thenable<void> | undefined {
   if (languageClient) {
     console.log('[templjs] Extension deactivating...');
     outputChannel?.appendLine('[templjs] Extension deactivating...');
-    const stopPromise = languageClient.stop();
-    outputChannel?.dispose();
-    outputChannel = undefined;
-    return stopPromise;
+    return languageClient.stop().finally(() => {
+      outputChannel?.dispose();
+      outputChannel = undefined;
+    });
   }
   outputChannel?.dispose();
   outputChannel = undefined;
