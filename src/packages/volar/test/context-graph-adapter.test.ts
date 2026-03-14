@@ -1,9 +1,23 @@
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { createContextGraphSemanticReadAdapter } from '../src/context-graph-adapter.js';
+
+const createdTempDirs: string[] = [];
+
+function createTempDir(): string {
+  const tempDir = mkdtempSync(path.join(tmpdir(), 'templjs-volar-'));
+  createdTempDirs.push(tempDir);
+  return tempDir;
+}
+
+afterEach(() => {
+  for (const tempDir of createdTempDirs.splice(0)) {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
 
 const frontmatterSchema = {
   type: 'object',
@@ -158,7 +172,7 @@ describe('ContextGraphSemanticReadAdapter', () => {
 
   it('resolves schema definition locations with concrete file ranges', () => {
     const adapter = createContextGraphSemanticReadAdapter();
-    const tempDir = mkdtempSync(path.join(tmpdir(), 'templjs-volar-'));
+    const tempDir = createTempDir();
     const schemaPath = path.join(tempDir, 'schema.json');
 
     writeFileSync(
@@ -205,7 +219,7 @@ describe('ContextGraphSemanticReadAdapter', () => {
 
   it('resolves allOf-wrapped property definitions without broad key fallback', () => {
     const adapter = createContextGraphSemanticReadAdapter();
-    const tempDir = mkdtempSync(path.join(tmpdir(), 'templjs-volar-'));
+    const tempDir = createTempDir();
     const schemaPath = path.join(tempDir, 'schema-allof.json');
 
     const schemaText = JSON.stringify(
@@ -249,7 +263,7 @@ describe('ContextGraphSemanticReadAdapter', () => {
 
   it('resolves document path references without server-side helpers', () => {
     const adapter = createContextGraphSemanticReadAdapter();
-    const tempDir = mkdtempSync(path.join(tmpdir(), 'templjs-volar-'));
+    const tempDir = createTempDir();
     const schemaPath = path.join(tempDir, 'frontmatter.json');
     const documentPath = path.join(tempDir, 'template.md.tpl');
 
@@ -278,7 +292,7 @@ describe('ContextGraphSemanticReadAdapter', () => {
 
   it('resolves definition locations across external refs for nested scope paths', () => {
     const adapter = createContextGraphSemanticReadAdapter();
-    const tempDir = mkdtempSync(path.join(tmpdir(), 'templjs-volar-'));
+    const tempDir = createTempDir();
     const supportDir = path.join(tempDir, 'support');
     const contentDir = path.join(tempDir, 'content');
     const commonSchemaPath = path.join(supportDir, 'common.json');
