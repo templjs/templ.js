@@ -152,13 +152,17 @@ vi.mock('@volar/language-server/node', () => ({
   createSimpleProjectProvider: { name: 'simple-project-provider' },
 }));
 
-vi.mock('@templjs/volar', () => ({
-  createTempljsLanguagePlugin,
-  IntellisenseProvider: IntellisenseProviderMock,
-  TempljsServicePlugin: TempljsServicePluginMock,
-  resolveScopedPathInText,
-  collectDiagnostics,
-}));
+vi.mock('@templjs/volar', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@templjs/volar')>();
+  return {
+    ...real,
+    createTempljsLanguagePlugin,
+    IntellisenseProvider: IntellisenseProviderMock,
+    TempljsServicePlugin: TempljsServicePluginMock,
+    resolveScopedPathInText,
+    collectDiagnostics,
+  };
+});
 
 describe('language-server-bootstrap', () => {
   beforeEach(() => {

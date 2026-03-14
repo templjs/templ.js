@@ -14,6 +14,8 @@ import {
   TempljsServicePlugin,
   type DiagnosticOptions,
   type IntellisenseOptions,
+  splitSchemaSourceReference,
+  resolveSchemaFilePath,
 } from '@templjs/volar';
 
 const URL_TIMEOUT_MS = 5000; // 5 second timeout for HTTPS schema downloads
@@ -36,14 +38,23 @@ type SchemaRuntimeOptions = {
   schemaUri?: string;
   contentSchema?: object;
   contentSchemaUri?: string;
+  contentHash?: string;
 };
 
 type TraceMode = 'off' | 'messages' | 'verbose';
 
 const runtimeSchemaOptions: SchemaRuntimeOptions = {};
 const schemaOptionsByUri = new Map<string, SchemaRuntimeOptions>();
+/** Last extracted schema-key per URI — used to skip reloads when schema refs are unchanged. */
+const schemaKeyByUri = new Map<string, string>();
+/** Monotonic generation per URI — incremented on each new load to discard stale in-flight results. */
+const schemaLoadGenerationByUri = new Map<string, number>();
 let serverTraceMode: TraceMode = 'off';
 
+// Trace semantics used by trace(message, level):
+// - Default level is 'messages', so trace(...) emits when trace mode is not 'off'.
+// - 'messages' level always emits unless serverTraceMode is 'off'.
+// - 'verbose' level emits only when serverTraceMode is exactly 'verbose'.
 function shouldTrace(level: 'messages' | 'verbose' = 'messages'): boolean {
   if (serverTraceMode === 'off') {
     return false;
@@ -78,7 +89,18 @@ function refreshRuntimeSchemaOptions(nextOptions: SchemaRuntimeOptions): void {
   delete runtimeSchemaOptions.schemaUri;
   delete runtimeSchemaOptions.contentSchema;
   delete runtimeSchemaOptions.contentSchemaUri;
+  delete runtimeSchemaOptions.contentHash;
   Object.assign(runtimeSchemaOptions, nextOptions);
+}
+
+function hashTextContent(text: string): string {
+  // Lightweight non-cryptographic hash for schema-option cache invalidation.
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `h${(hash >>> 0).toString(16)}`;
 }
 
 interface WorkspaceFolderLike {
@@ -159,27 +181,7 @@ function resolveWorkspaceRoot(params: InitializeParamsLike): string | undefined 
   return workspaceUri;
 }
 
-interface SchemaSourceReference {
-  source: string;
-  fragment?: string;
-}
-
 type JsonRecord = Record<string, unknown>;
-
-function splitSchemaSourceReference(rawSource: string): SchemaSourceReference {
-  const trimmed = rawSource.trim();
-  const hashIndex = trimmed.indexOf('#');
-  if (hashIndex === -1) {
-    return { source: trimmed };
-  }
-
-  const source = trimmed.slice(0, hashIndex).trim();
-  const fragment = trimmed.slice(hashIndex);
-  return {
-    source,
-    fragment: fragment.length > 0 ? fragment : undefined,
-  };
-}
 
 function decodeJsonPointerSegment(segment: string): string {
   return segment.replace(/~1/g, '/').replace(/~0/g, '~');
@@ -219,45 +221,6 @@ function resolveFragmentSchema(
   return current && typeof current === 'object' && !Array.isArray(current)
     ? (current as object)
     : undefined;
-}
-
-function resolveSchemaFilePath(
-  schemaPath: string,
-  workspaceRoot: string | undefined,
-  documentUri?: string
-): string | undefined {
-  const { source } = splitSchemaSourceReference(schemaPath);
-
-  if (source.startsWith('http://') || source.startsWith('https://')) {
-    return source;
-  }
-
-  if (path.isAbsolute(source)) {
-    return source;
-  }
-
-  if (
-    (source.startsWith('./') || source.startsWith('../')) &&
-    documentUri &&
-    documentUri.startsWith('file://')
-  ) {
-    try {
-      const documentFilePath = fileURLToPath(documentUri);
-      const documentDirectory = path.dirname(documentFilePath);
-      const documentRelativePath = path.resolve(documentDirectory, source);
-      if (existsSync(documentRelativePath)) {
-        return documentRelativePath;
-      }
-    } catch {
-      // Fall through to workspace-based resolution.
-    }
-  }
-
-  if (!workspaceRoot) {
-    return undefined;
-  }
-
-  return path.resolve(workspaceRoot, source);
 }
 
 function isJsonRecord(value: unknown): value is JsonRecord {
@@ -407,6 +370,9 @@ const serverOptions = {
   },
 };
 
+/** Shared across all loadSchemaSource/loadSchemaSourceSync calls to avoid re-parsing files. */
+const schemaFileCache = new Map<string, unknown>();
+
 /**
  * Load schema from path or HTTPS URL with timeout and error handling
  */
@@ -482,7 +448,7 @@ async function loadSchemaSource(
   }
 
   try {
-    const cache = new Map<string, unknown>();
+    const cache = schemaFileCache;
     const rootSchema = loadJsonFromFile(resolvedPath, cache);
     const schema = resolveFragmentSchema(rootSchema, fragment);
     if (!schema) {
@@ -539,7 +505,7 @@ function loadSchemaSourceSync(
   }
 
   try {
-    const cache = new Map<string, unknown>();
+    const cache = schemaFileCache;
     const rootSchema = loadJsonFromFile(resolvedPath, cache);
     const schema = resolveFragmentSchema(rootSchema, fragment);
     if (!schema) {
@@ -574,7 +540,14 @@ function parseSchemaDirective(
   content: string,
   directiveType: 'schema' | 'content-schema' = 'schema'
 ): string | undefined {
-  const pattern = new RegExp(`{{#\\s*${directiveType}:\\s*([^\\s}]+)\\s*}}`, 'i');
+  if (directiveType !== 'schema' && directiveType !== 'content-schema') {
+    return undefined;
+  }
+
+  const pattern =
+    directiveType === 'schema'
+      ? /{{#\s*schema:\s*([^\s}]+)\s*}}/i
+      : /{{#\s*content-schema:\s*([^\s}]+)\s*}}/i;
   const match = content.match(pattern);
   return match ? match[1] : undefined;
 }
@@ -654,6 +627,19 @@ function extractRootPropertySchemas(content: string): {
     getSchemaValueFromRecord(parsedRootObject, ['$content-schema', '$content_schema']);
 
   return { templSchema, contentSchema };
+}
+
+/**
+ * Returns a stable string key representing the schema references embedded in a document.
+ * Two documents with identical keys will resolve the same schema paths, so reloading is unnecessary.
+ */
+function extractDocumentSchemaKey(content: string): string {
+  const inline = parseInlineSchemaDirectives(content);
+  const root = extractRootPropertySchemas(content);
+  return [
+    inline.schemaPath ?? root.templSchema ?? '',
+    inline.contentSchemaPath ?? root.contentSchema ?? '',
+  ].join('\0');
 }
 
 function resolveDocumentPath(
@@ -750,8 +736,13 @@ function getSchemaOptionsForUri(uri: string): SchemaRuntimeOptions {
 }
 
 function ensureSchemaOptionsForUri(uri: string, text: string): SchemaRuntimeOptions {
+  const contentHash = hashTextContent(text);
   const existing = schemaOptionsByUri.get(uri);
-  if (existing && (existing.schema || existing.contentSchema)) {
+  if (
+    existing &&
+    (existing.schema || existing.contentSchema) &&
+    existing.contentHash === contentHash
+  ) {
     return existing;
   }
 
@@ -782,6 +773,7 @@ function ensureSchemaOptionsForUri(uri: string, text: string): SchemaRuntimeOpti
           contentSchemaUri: loadedContentResult.schemaUri,
         }
       : {}),
+    contentHash,
   };
 
   schemaOptionsByUri.set(uri, schemaOptions);
@@ -876,6 +868,9 @@ async function loadSchemasForDocumentContext(
           contentSchema: loadedContentResult.schema,
           contentSchemaUri: loadedContentResult.schemaUri,
         }
+      : {}),
+    ...(typeof documentContent === 'string'
+      ? { contentHash: hashTextContent(documentContent) }
       : {}),
   };
 
@@ -1077,12 +1072,26 @@ connection.onDidChangeTextDocument((event) => {
   const uri = event.textDocument.uri;
   documentTextByUri.set(uri, updated);
 
+  const newSchemaKey = extractDocumentSchemaKey(updated);
+  if (newSchemaKey === schemaKeyByUri.get(uri)) {
+    // Schema references unchanged — skip the expensive reload, just re-run diagnostics.
+    publishDiagnosticsForDocument(uri);
+    return;
+  }
+
+  schemaKeyByUri.set(uri, newSchemaKey);
+  const generation = (schemaLoadGenerationByUri.get(uri) ?? 0) + 1;
+  schemaLoadGenerationByUri.set(uri, generation);
+
   void loadSchemasForDocumentContext(
     uri,
     updated,
     storedWorkspaceRoot,
     storedInitializationOptions
   ).then(() => {
+    if (schemaLoadGenerationByUri.get(uri) !== generation) {
+      return; // A newer load was scheduled while this one was in-flight; discard its result.
+    }
     publishDiagnosticsForDocument(uri);
   });
 });
