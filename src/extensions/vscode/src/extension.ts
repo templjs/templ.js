@@ -326,7 +326,6 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
     void vscode.window.showErrorMessage(
       `Templjs: Language client failed to start: ${String(error)}`
     );
-    throw error;
   });
 }
 
