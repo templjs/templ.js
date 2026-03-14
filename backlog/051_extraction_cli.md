@@ -7,6 +7,7 @@ title: '051: Implement Extraction CLI Command'
 status: proposed
 priority: medium
 estimated: 6
+actual: 0
 assignee: ''
 links:
   depends_on:
@@ -20,7 +21,7 @@ links:
 
 ## Goal
 
-Add `templjs extract` CLI command that extracts structured data from rendered output using a template and schema.
+Add `templjs extract` CLI command that extracts structured data from a source rendered document using a template and schema.
 
 ## Background
 
@@ -28,7 +29,7 @@ With the extraction engine (WI-049) and validation (WI-050) complete, we need a 
 
 The CLI should:
 
-1. Accept rendered output (file or stdin)
+1. Accept source rendered document input (file or stdin)
 2. Accept template file
 3. Accept schema file
 4. Output extracted data in specified format (JSON/YAML/TOML)
@@ -38,11 +39,11 @@ The CLI should:
 ## Tasks
 
 - [ ] Add `extract` subcommand to CLI
-- [ ] Implement `--output-file` / `--output` flag for rendered input
+- [ ] Implement `--rendered` / `-i` flag for source rendered document input
 - [ ] Implement `--template` flag for template file
 - [ ] Implement `--schema` flag for schema file
 - [ ] Implement `--format` output format (json/yaml/toml)
-- [ ] Support stdin for output input (pipe rendered docs)
+- [ ] Support stdin for rendered document input (pipe rendered docs)
 - [ ] Add `--strict-whitespace` flag
 - [ ] Add extraction error formatting
 - [ ] Add progress indicator for large files
@@ -59,7 +60,7 @@ The CLI should:
 
 ## Acceptance Criteria
 
-- [ ] `templjs extract --output out.md --template tmpl.md --schema schema.json` works
+- [ ] `templjs extract --rendered out.md --template tmpl.md --schema schema.json` works
 - [ ] Output format can be JSON, YAML, or TOML
 - [ ] Stdin input works: `cat output.md | templjs extract --template tmpl.md --schema schema.json`
 - [ ] Extraction errors are clearly formatted with positions
@@ -75,7 +76,7 @@ The CLI should:
 
 ```bash
 templjs extract \
-  --output rendered-output.md \
+  --rendered rendered-output.md \
   --template template.md.tmpl \
   --schema schema.json \
   --format json
@@ -96,7 +97,7 @@ Output:
 
 ```bash
 templjs extract \
-  --output rendered.md \
+  --rendered rendered.md \
   --template template.md.tmpl \
   --schema schema.json \
   --format yaml > data.yaml
@@ -114,7 +115,7 @@ cat rendered-document.md | templjs extract \
 
 ```bash
 templjs extract \
-  --output out.md \
+  --rendered out.md \
   --template tmpl.md \
   --schema schema.json \
   --verbose
@@ -125,7 +126,7 @@ Output:
 ```text
 [DEBUG] Parsing template...
 [DEBUG] Generating extraction rules...
-[DEBUG] Matching output against template...
+[DEBUG] Matching rendered document against template...
 [DEBUG] Extracted 3 expressions, 1 loop, 0 conditionals
 [DEBUG] Applying schema validation...
 [SUCCESS] Extraction complete
@@ -136,7 +137,7 @@ Output:
 ### Error Example
 
 ```bash
-templjs extract --output bad.md --template tmpl.md --schema schema.json
+templjs extract --rendered bad.md --template tmpl.md --schema schema.json
 ```
 
 Output:
@@ -150,12 +151,12 @@ Extraction failed with 2 errors:
   Error:
     Missing required field 'email'
 
-Failed to extract data from output.
+Failed to extract data from rendered document.
 ```
 
 ## CLI Flags
 
-- `--output`, `-o`: Path to rendered output file (or `-` for stdin)
+- `--rendered`, `-i`: Source rendered document path (or `-` for stdin)
 - `--template`, `-t`: Path to template file (required)
 - `--schema`, `-s`: Path to schema file (required)
 - `--format`, `-f`: Output format (json|yaml|toml, default: json)

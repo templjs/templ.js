@@ -40,17 +40,17 @@ PR 23 unresolved comment: The `readPayload()` large-file branch contains a `stre
 
 ## Tasks
 
-- [ ] Verify the streaming JSON path in `readPayload()` is truly unreachable
-- [ ] Remove dead code or wire it consistently with `validateInput` handling
-- [ ] Add integration test confirming streaming JSON path works correctly
-- [ ] Update comments to clarify which path handles streaming JSON
+- [x] Verify the streaming JSON path in `readPayload()` is truly unreachable
+- [x] Remove dead code or wire it consistently with `validateInput` handling
+- [x] Add integration test confirming streaming JSON path works correctly
+- [x] Update comments to clarify which path handles streaming JSON
 
 ## Acceptance Criteria
 
-- [ ] Dead code removed OR properly wired and tested
-- [ ] No unreachable streaming JSON parsing code remains
-- [ ] All render command tests pass
-- [ ] Code coverage maintained or improved
+- [x] Dead code removed OR properly wired and tested
+- [x] No unreachable streaming JSON parsing code remains
+- [x] All render command tests pass
+- [x] Code coverage maintained or improved
 
 ## Notes
 

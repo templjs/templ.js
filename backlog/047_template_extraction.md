@@ -7,6 +7,7 @@ title: '047: Template Extraction Framework (Reverse Rendering)'
 status: proposed
 priority: medium
 estimated: 40
+actual: 0
 assignee: ''
 links:
   depends_on:
@@ -95,11 +96,11 @@ The extraction system works through several components:
 
 This epic breaks down into the following work items:
 
-- **WI-044**: Design extraction algorithm and API surface
-- **WI-045**: Implement core extraction engine with pattern matching
-- **WI-046**: Add schema-guided extraction and validation
-- **WI-047**: Implement extraction CLI command (`templjs extract`)
-- **WI-048**: Write comprehensive tests and documentation
+- **WI-048**: Design extraction algorithm and API surface
+- **WI-049**: Implement core extraction engine with pattern matching
+- **WI-050**: Add schema-guided extraction and validation
+- **WI-051**: Implement extraction CLI command (`templjs extract`)
+- **WI-052**: Write comprehensive tests and documentation
 
 ## Success Criteria
 

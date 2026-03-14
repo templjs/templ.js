@@ -7,6 +7,7 @@ title: '049: Implement Core Template Extraction Engine'
 status: proposed
 priority: medium
 estimated: 16
+actual: 0
 assignee: ''
 links:
   depends_on:

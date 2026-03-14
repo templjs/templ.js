@@ -8,7 +8,7 @@ status: closed
 status_reason: obsolete
 priority: medium
 estimated: 3
-actual: 0
+actual: 3
 assignee: ''
 start_date: 2026-03-08
 end_date: 2026-03-08
@@ -42,18 +42,18 @@ Current behavior makes docstrings claiming "reprocesses only that region" inaccu
 
 ## Tasks
 
-- [ ] Audit `updateFromChange()` to identify why full rebuild always occurs
-- [ ] Either optimize incremental paths to skip full rebuild when edit succeeds, OR
-- [ ] Remove/simplify bounded-edit path and update comments to reflect actual behavior
-- [ ] Add performance benchmarks for incremental vs full rebuild
-- [ ] Update docstrings to accurately reflect implementation
+- [x] Audit `updateFromChange()` to identify why full rebuild always occurs
+- [x] Either optimize incremental paths to skip full rebuild when edit succeeds, OR
+- [x] Remove/simplify bounded-edit path and update comments to reflect actual behavior
+- [x] Add performance benchmarks for incremental vs full rebuild
+- [x] Update docstrings to accurately reflect implementation
 
 ## Acceptance Criteria
 
-- [ ] Incremental edit paths either skip full rebuild OR code is simplified with accurate docs
-- [ ] Performance characteristics documented and validated with benchmarks
-- [ ] Existing Volar tests remain passing
-- [ ] No regressions in diagnostic accuracy or position mapping
+- [x] Incremental edit paths either skip full rebuild OR code is simplified with accurate docs
+- [x] Performance characteristics documented and validated with benchmarks
+- [x] Existing Volar tests remain passing
+- [x] No regressions in diagnostic accuracy or position mapping
 
 ## Notes
 

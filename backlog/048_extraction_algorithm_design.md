@@ -7,6 +7,7 @@ title: '048: Design Template Extraction Algorithm and API'
 status: proposed
 priority: medium
 estimated: 4
+actual: 0
 assignee: ''
 links:
   depends_on:
@@ -97,6 +98,6 @@ function extract(options: ExtractionOptions): ExtractionResult;
 
 ## Non-Goals
 
-- Full implementation (deferred to WI-045)
-- CLI integration (deferred to WI-047)
+- Full implementation (deferred to WI-049)
+- CLI integration (deferred to WI-051)
 - Complex optimization strategies

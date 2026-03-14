@@ -24,7 +24,7 @@ Ensure that `.md.tpl` files receive full markdown syntax highlighting and lintin
 
 ## Bug Summary
 
-The Volar language plugin only recognises `.templ.` and `.tmpl.` as template markers. The `.tpl.` marker is absent, so `.md.tpl` files are never processed by the plugin. This silently disables both the embedded markdown TextMate grammar and delegation to the markdown language server.
+The Volar language plugin only recognizes `.templ.` and `.tmpl.` as template markers. The `.tpl.` marker is absent, so `.md.tpl` files are never processed by the plugin. This silently disables both the embedded markdown TextMate grammar and delegation to the markdown language server.
 
 ## Reproduction Steps
 
