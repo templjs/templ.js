@@ -34,7 +34,7 @@ export interface SchemaMetadata {
 }
 
 /**
- * JSON Schema format (subset of JSON Schema v7)
+ * JSON Schema format (subset of JSON Schema 2019-09/2020-12, with v7 compatibility)
  */
 export interface JSONSchema {
   $id?: string;

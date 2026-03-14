@@ -51,6 +51,8 @@ function pathSegmentToString(segment: PathSegment): string {
     return `[${String(segment.value.value)}]`;
   }
 
+  // For non-literal index expressions (segment.value.type !== 'literal'), normalize to [0]
+  // for scope resolution; the original expression (segment.value.value) is intentionally not preserved.
   return '[0]';
 }
 

@@ -114,6 +114,13 @@ let cachedBuiltinFilterSignatures:
 
 /**
  * Get built-in filter signatures registered by the query engine.
+ *
+ * Note: if a function has multiple overload signatures in `metadata.functions`,
+ * this API exposes only the first signature (`signatures[0]`) for that function
+ * in `cachedBuiltinFilterSignatures`.
+ *
+ * Callers that need all overloads should query engine metadata directly via
+ * `createQueryEngine().getMetadata().functions`.
  */
 export function getBuiltinFilterSignatures(): Record<
   string,
