@@ -34,6 +34,7 @@ function getTraceMode(): TraceMode {
   return 'off';
 }
 
+// 'verbose' enables all logging, while 'messages' enables only message-level logging.
 function shouldTrace(traceMode: TraceMode, level: 'messages' | 'verbose' = 'messages'): boolean {
   if (traceMode === 'off') {
     return false;
@@ -319,9 +320,13 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
   context.subscriptions.push(activeEditorSubscription);
 
   outputChannel?.appendLine('[templjs] Starting language client...');
-  void languageClient.start().catch((error) => {
+  void languageClient.start().catch((error: unknown) => {
     outputChannel?.appendLine(`[templjs] Language client start failed: ${String(error)}`);
     console.error('[templjs] Language client start failed:', error);
+    void vscode.window.showErrorMessage(
+      `Templjs: Language client failed to start: ${String(error)}`
+    );
+    throw error;
   });
 }
 
