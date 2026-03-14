@@ -61,7 +61,11 @@ const COMPLETION_KIND = {
  * Internally manages provider instances and handles all protocol mapping.
  */
 export class TempljsServicePlugin {
-  private intellisenseProvider = new IntellisenseProvider();
+  private readonly intellisenseProvider: IntellisenseProvider;
+
+  constructor(intellisenseProvider: IntellisenseProvider = new IntellisenseProvider()) {
+    this.intellisenseProvider = intellisenseProvider;
+  }
 
   /**
    * Get completions at the given offset in text
@@ -110,23 +114,13 @@ export class TempljsServicePlugin {
     options?: IntellisenseOptions
   ): LSPDefinitionLocation | null {
     const definition = this.intellisenseProvider.getDefinition(text, offset, options);
-    if (!definition) {
+    if (!definition || !definition.range) {
       return null;
-    }
-
-    if (definition.range) {
-      return {
-        uri: definition.uri,
-        range: definition.range,
-      };
     }
 
     return {
       uri: definition.uri,
-      range: {
-        start: { line: 0, character: 0 },
-        end: { line: 0, character: 0 },
-      },
+      range: definition.range,
     };
   }
 

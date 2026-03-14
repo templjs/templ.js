@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import type { IntellisenseProvider } from '../src/index.js';
 import { TempljsServicePlugin } from '../src/service-plugin.js';
 
 const sampleSchema = {
@@ -79,6 +80,34 @@ describe('TempljsServicePlugin', () => {
       expect(Array.isArray(completions)).toBe(true);
     });
 
+    it('supports injecting an intellisense provider', () => {
+      const stubProvider = {
+        getCompletions: vi.fn().mockReturnValue([
+          {
+            label: 'stubbed',
+            kind: 'property',
+          },
+        ]),
+        getHover: vi.fn().mockReturnValue(null),
+        getDefinition: vi.fn().mockReturnValue(null),
+      } as unknown as IntellisenseProvider;
+      const plugin = new TempljsServicePlugin(stubProvider);
+
+      const completions = plugin.getCompletions('{{ anything }}', 5, {
+        schema: sampleSchema,
+      });
+
+      expect(stubProvider.getCompletions).toHaveBeenCalled();
+      expect(completions).toEqual([
+        {
+          label: 'stubbed',
+          detail: undefined,
+          documentation: undefined,
+          kind: 6,
+        },
+      ]);
+    });
+
     it('provides completions in statement context', () => {
       const plugin = new TempljsServicePlugin();
       const text = '{% if user. %}ok{% endif %}';
@@ -95,7 +124,7 @@ describe('TempljsServicePlugin', () => {
     it('handles for-loop alias scope', () => {
       const plugin = new TempljsServicePlugin();
       const text = '{% for relationship in relationships %}\n{{ relationship. }}\n{% endfor %}';
-      const offset = text.indexOf('relationship. }') + 'relationship. '.length;
+      const offset = text.indexOf('relationship.') + 'relationship.'.length;
 
       const completions = plugin.getCompletions(text, offset, {
         schema: sampleSchema,
@@ -164,6 +193,25 @@ describe('TempljsServicePlugin', () => {
 
       const definition = plugin.getDefinition(text, offset, {
         schema: sampleSchema,
+      });
+
+      expect(definition).toBeNull();
+    });
+
+    it('returns null when provider definition has no range', () => {
+      const stubProvider = {
+        getCompletions: vi.fn().mockReturnValue([]),
+        getHover: vi.fn().mockReturnValue(null),
+        getDefinition: vi.fn().mockReturnValue({
+          uri: 'file:///schema.json',
+          range: undefined,
+        }),
+      } as unknown as IntellisenseProvider;
+      const plugin = new TempljsServicePlugin(stubProvider);
+
+      const definition = plugin.getDefinition('{{ user.name }}', 4, {
+        schema: sampleSchema,
+        schemaUri: 'file:///schema.json',
       });
 
       expect(definition).toBeNull();
