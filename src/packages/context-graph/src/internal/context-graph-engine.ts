@@ -121,7 +121,9 @@ export class ContextGraphEngine implements ContextGraph {
     const deltas: GraphDelta[] = [];
 
     for (const provider of this.providers.values()) {
-      const state = this.providerStates.get(provider.id)!;
+      const state = this.getOrCreateProviderState(provider.id);
+      // Invalidate performs a full provider-owned rebuild: clear previous
+      // contributions before onInvalidate repopulates via the write context.
       this.clearProviderState(state);
       const writeContext = this.createWriteContext(state);
       try {
@@ -130,6 +132,8 @@ export class ContextGraphEngine implements ContextGraph {
         const message = error instanceof Error ? error.message : String(error);
         throw new ContextGraphError(createOperationError('provider-failed', message, provider.id));
       }
+      // Revision advances per provider lifecycle event so each emitted delta
+      // has a unique monotonic revision.
       this.revision += 1;
       deltas.push(this.createDelta(provider.id, 'provider-invalidated', state));
     }
@@ -141,7 +145,10 @@ export class ContextGraphEngine implements ContextGraph {
     const deltas: GraphDelta[] = [];
 
     for (const provider of this.providers.values()) {
-      const state = this.providerStates.get(provider.id)!;
+      const state = this.getOrCreateProviderState(provider.id);
+      // Mirror invalidate semantics: clear provider-owned graph entities first,
+      // then let onClose observe/mutate a fresh write context if needed.
+      this.clearProviderState(state);
 
       if (provider.onClose) {
         try {
@@ -154,7 +161,8 @@ export class ContextGraphEngine implements ContextGraph {
         }
       }
 
-      this.clearProviderState(state);
+      // Revision advances per provider lifecycle event so each emitted delta
+      // has a unique monotonic revision.
       this.revision += 1;
       deltas.push(this.createDelta(provider.id, 'provider-closed', state));
     }
@@ -218,6 +226,20 @@ export class ContextGraphEngine implements ContextGraph {
         state.edgeIds.delete(edgeId);
       },
     };
+  }
+
+  private getOrCreateProviderState(providerId: string): ProviderState {
+    const existing = this.providerStates.get(providerId);
+    if (existing) {
+      return existing;
+    }
+
+    const created: ProviderState = {
+      nodeIds: new Set(),
+      edgeIds: new Set(),
+    };
+    this.providerStates.set(providerId, created);
+    return created;
   }
 
   private clearProviderState(state: ProviderState): void {
