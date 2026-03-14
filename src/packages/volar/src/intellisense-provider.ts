@@ -514,7 +514,17 @@ function getFrontmatterContext(text: string, offset: number): FrontmatterContext
 
     const parentPath = scopeStack.length > 0 ? scopeStack[scopeStack.length - 1].path : undefined;
     const priorPath = parentPath ? `${parentPath}.${priorKey}` : priorKey;
-    const opensScope = priorRawValue.trim().length === 0;
+    const trimmedPriorRawValue = priorRawValue.trim();
+    const opensScope =
+      trimmedPriorRawValue.length === 0 &&
+      !trimmedPriorRawValue.startsWith('|') &&
+      !trimmedPriorRawValue.endsWith('|') &&
+      !trimmedPriorRawValue.startsWith('>') &&
+      !trimmedPriorRawValue.endsWith('>') &&
+      !trimmedPriorRawValue.startsWith('[') &&
+      !trimmedPriorRawValue.startsWith('{') &&
+      !trimmedPriorRawValue.startsWith('&') &&
+      !trimmedPriorRawValue.startsWith('*');
 
     if (opensScope) {
       scopeStack.push({ indent: priorIndent, path: priorPath });
