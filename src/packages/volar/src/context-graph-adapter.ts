@@ -22,6 +22,7 @@ import type {
   QueryResponse,
 } from '@templjs/context-graph';
 import { fileURLToPath, pathToFileURL } from 'url';
+import { splitSchemaSourceReference, resolveSchemaFilePath } from './schema-utils.js';
 
 export interface SemanticQueryContext {
   operation: SemanticOperation;
@@ -83,11 +84,6 @@ interface SchemaPathDetails {
 
 type QueryAttributes = Readonly<Record<string, JsonPrimitive>>;
 
-interface SchemaSourceReference {
-  source: string;
-  fragment?: string;
-}
-
 interface ResolvedSchemaPathTarget {
   uri: string;
   startOffset: number;
@@ -98,60 +94,6 @@ const ZERO_RANGE: DefinitionTarget['range'] = {
   start: { line: 0, character: 0 },
   end: { line: 0, character: 0 },
 };
-
-function splitSchemaSourceReference(rawSource: string): SchemaSourceReference {
-  const trimmed = rawSource.trim();
-  const hashIndex = trimmed.indexOf('#');
-  if (hashIndex === -1) {
-    return { source: trimmed };
-  }
-
-  const source = trimmed.slice(0, hashIndex).trim();
-  const fragment = trimmed.slice(hashIndex);
-  return {
-    source,
-    fragment: fragment.length > 0 ? fragment : undefined,
-  };
-}
-
-function resolveSchemaFilePath(
-  schemaPath: string,
-  workspaceRoot: string | undefined,
-  documentUri?: string
-): string | undefined {
-  const { source } = splitSchemaSourceReference(schemaPath);
-
-  if (source.startsWith('http://') || source.startsWith('https://')) {
-    return source;
-  }
-
-  if (path.isAbsolute(source)) {
-    return source;
-  }
-
-  if (
-    (source.startsWith('./') || source.startsWith('../')) &&
-    documentUri &&
-    documentUri.startsWith('file://')
-  ) {
-    try {
-      const documentFilePath = fileURLToPath(documentUri);
-      const documentDirectory = path.dirname(documentFilePath);
-      const documentRelativePath = path.resolve(documentDirectory, source);
-      if (existsSync(documentRelativePath)) {
-        return documentRelativePath;
-      }
-    } catch {
-      // Fall through to workspace-based resolution.
-    }
-  }
-
-  if (!workspaceRoot) {
-    return undefined;
-  }
-
-  return path.resolve(workspaceRoot, source);
-}
 
 function getPathRegistryKeysFromSchema(schema: unknown): Set<string> {
   if (!schema || typeof schema !== 'object' || Array.isArray(schema)) {
@@ -675,6 +617,7 @@ function findPropertyViaSchemaStructure(
     if (!matched) {
       let candidateObjectStart = currentObjectStart;
       let candidateObjectEnd = currentObjectEnd;
+      const visitedItemRanges = new Set<string>();
 
       while (true) {
         const itemsEntry = findTopLevelPropertyInObjectRange(
@@ -686,6 +629,12 @@ function findPropertyViaSchemaStructure(
         if (!itemsEntry || schemaText[itemsEntry.valueStart] !== '{') {
           break;
         }
+
+        const itemRangeKey = `${itemsEntry.valueStart}:${itemsEntry.valueEnd}`;
+        if (visitedItemRanges.has(itemRangeKey)) {
+          break;
+        }
+        visitedItemRanges.add(itemRangeKey);
 
         const nestedProperties = findTopLevelPropertyInObjectRange(
           schemaText,
@@ -804,6 +753,7 @@ function findPropertyMatchInObjectRange(
 
   let candidateObjectStart = objectStart;
   let candidateObjectEnd = objectEndExclusive;
+  const visitedItemRanges = new Set<string>();
   while (true) {
     const itemsEntry = findTopLevelPropertyInObjectRange(
       schemaText,
@@ -814,6 +764,12 @@ function findPropertyMatchInObjectRange(
     if (!itemsEntry || schemaText[itemsEntry.valueStart] !== '{') {
       break;
     }
+
+    const itemRangeKey = `${itemsEntry.valueStart}:${itemsEntry.valueEnd}`;
+    if (visitedItemRanges.has(itemRangeKey)) {
+      break;
+    }
+    visitedItemRanges.add(itemRangeKey);
 
     const nestedProperties = findTopLevelPropertyInObjectRange(
       schemaText,

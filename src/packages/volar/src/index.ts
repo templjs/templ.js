@@ -649,6 +649,7 @@ export default {
   createTempljsLanguagePlugin,
 };
 
+export * from './schema-utils.js';
 export * from './diagnostic-provider.js';
 export * from './context-graph-adapter.js';
 export * from './intellisense-provider.js';
