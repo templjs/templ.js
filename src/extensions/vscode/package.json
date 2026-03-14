@@ -151,6 +151,7 @@
           "type": "object",
           "default": {},
           "description": "Glob-pattern-based schema configuration. Keys are glob patterns (e.g. 'backlog/**', 'docs/**'); values are objects with schemaPath and contentSchemaPath.",
+          "markdownDescription": "Glob-pattern-based schema configuration. Keys are glob patterns (e.g. 'backlog/**', 'docs/**'); values are objects with schemaPath and contentSchemaPath. Example: `{ \"backlog/**\": { \"schemaPath\": \"https://schemas.example.com/work-item-frontmatter.json\", \"contentSchemaPath\": \"https://schemas.example.com/work-item-content.json\" } }`.",
           "patternProperties": {
             ".*": {
               "type": "object",
@@ -165,16 +166,6 @@
                 }
               },
               "additionalProperties": false
-            }
-          },
-          "examples": {
-            "backlog/**": {
-              "schemaPath": "https://schemas.example.com/work-item-frontmatter.json",
-              "contentSchemaPath": "https://schemas.example.com/work-item-content.json"
-            },
-            "docs/**": {
-              "schemaPath": "schemas/doc-schema.json",
-              "contentSchemaPath": "schemas/doc-content-schema.json"
             }
           }
         }
