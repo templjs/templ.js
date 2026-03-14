@@ -9,6 +9,10 @@ priority: high
 estimated: 8
 actual: 3
 assignee: ''
+commits:
+  8ab845c: 'perf(ide): optimize schema resolution and semantic caches'
+  db623c1: 'fix(vscode): surface language client startup failures'
+  8ddf67c: 'fix(vscode): avoid rethrow in startup catch'
 test_results:
   - timestamp: 2026-03-11T00:00:00Z
     note: |
@@ -29,6 +33,15 @@ test_results:
       - Extended plugin options with `contentSchema` and `contentSchemaUri`
       - Added tests for precedence and glob-pattern resolution
       - Targeted tests: 23 passed, 0 failed
+  - timestamp: 2026-03-13T00:00:00Z
+    note: |
+      Schema-loading hardening follow-up (8ab845c, db623c1, 8ddf67c):
+      - Switched document-relative schema file existence checks to async access in shared schema utils
+      - Added timeout-specific URL schema logging and deterministic reload timer flushing in server tests
+      - Surfaced language client startup failures through the VS Code UI without rethrowing from a void-discarded promise chain
+      - Focused verification:
+        - `pnpm --filter vscode-templjs test -- test/server.test.ts` (32 passed)
+        - `pnpm --filter @templjs/volar test -- test/context-graph-adapter.test.ts` (8 passed)
 links:
   depends_on:
     - '[[031_language_feature_tests]]'
@@ -37,11 +50,11 @@ links:
 
 ## Goal
 
-Enable schema-aware autocomplete, variable-path diagnostics, and markdown content validation in VS Code authoring by loading and wiring input schemas (templ-schema and content-schema) in the extension/server runtime. Support multiple schema sources with explicit precedence rules and glob-pattern-based configuration for multi-schema workspaces.
+Enable schema-aware autocomplete, variable-path diagnostics, and Markdown content validation in VS Code authoring by loading and wiring input schemas (templ-schema and content-schema) in the extension/server runtime. Support multiple schema sources with explicit precedence rules and glob-pattern-based configuration for multi-schema workspaces.
 
 ## Bug Summary
 
-Schema-aware logic exists in core and Volar providers, but the VS Code extension path does not currently discover/load schema files and pass them into language feature options. This leaves schema-backed completions and validation inactive in the editor. Additionally, markdown documents with separate frontmatter and content schemas cannot be validated independently.
+Schema-aware logic exists in core and Volar providers, but the VS Code extension path does not currently discover/load schema files and pass them into language feature options. This leaves schema-backed completions and validation inactive in the editor. Additionally, Markdown documents with separate frontmatter and content schemas cannot be validated independently.
 
 ## Reproduction Steps
 
@@ -49,7 +62,7 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 2. Open a templjs file such as `sample.md.templ` with a schema defined in workspace settings or frontmatter.
 3. Add expressions like `{{ user.name }}` and typoed paths like `{{ usr.name }}`.
 4. Observe missing schema-driven completions/suggestions and path diagnostics.
-5. For markdown files: observe content-schema not applied to markdown body separately from templ-schema.
+5. For Markdown files: observe content-schema not applied to Markdown body separately from templ-schema.
 
 ## Expected Behavior
 
@@ -65,7 +78,7 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 
 - No schema is loaded or propagated in extension/server initialization (Phase 1 partially fixes this).
 - Schema-aware language features are effectively disabled in normal VS Code authoring flow.
-- No support for content-schema or markdown body validation.
+- No support for content-schema or Markdown body validation.
 - Settings only support single filesystem path.
 - Multi-schema workspaces require per-file configuration.
 
@@ -86,7 +99,7 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 - Multiple inline `{{# schema: }}` and `{{# content-schema: }}` directives per document
 - Root property extraction (`$templ-schema` and `$content-schema` from frontmatter/document)
 - Per-document schema resolution with three-way independent precedence (inline > root > setting)
-- Frontmatter zone-aware validation (templ-schema for frontmatter, content-schema for markdown body)
+- Frontmatter zone-aware validation (templ-schema for frontmatter, content-schema for Markdown body)
 - Volar feature wiring for completion/diagnostics with schema context
 - Schema file watcher for hot reload without server restart
 - Comprehensive tests and documentation
@@ -134,7 +147,7 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 - [ ] Multiple inline directives per document are parsed and first match takes precedence
 - [ ] Root properties (`$templ-schema` and `$content-schema`) are extracted from YAML/JSON frontmatter
 - [ ] Three-way precedence (inline > root > setting) is applied independently to each schema type
-- [ ] Markdown files with content-schema have markdown body validated against content-schema (frontmatter against templ-schema)
+- [ ] Markdown files with content-schema have Markdown body validated against content-schema (frontmatter against templ-schema)
 - [ ] Schema changes on disk update editor behavior without requiring extension restart
 - [ ] Network failures, missing files, and parse errors yield clear, non-crashing diagnostics/logging
 - [ ] Backward compatibility: existing `templjs.schemaPath` setting continues to work

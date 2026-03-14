@@ -13,6 +13,8 @@ commits:
   91d942c: 'feat(volar): integrate context graph into semantic reads'
   cb3f6a0: 'feat(context-graph): complete graph-backed semantic resolution'
   1b9ff47: 'test(volar): remove debug logging and de-instrument memoization test'
+  8ab845c: 'perf(ide): optimize schema resolution and semantic caches'
+  e87096e: 'fix(volar): avoid false YAML frontmatter scopes'
 test_results:
   - timestamp: 2026-03-13T00:00:00Z
     note: |
@@ -49,6 +51,15 @@ test_results:
       - Eliminated private method casting/overrides in adapter tests
       - Focused Volar test: `pnpm --filter @templjs/volar test -- test/context-graph-adapter.test.ts` (8 passed)
       - Full Volar suite: 298 passed, 0 failed
+  - timestamp: 2026-03-13T00:00:00Z
+    note: |
+      Performance and YAML-frontmatter follow-up (8ab845c, e87096e):
+      - Snapshot cache keys now prefer object-identity tokens over full schema serialization
+      - Shared scope matching and default-filter caching reduce repeated semantic helper allocations
+      - Frontmatter context detection now avoids false nested scopes for YAML block scalars, flow collections, anchors, and aliases
+      - Focused verification:
+        - `pnpm --filter @templjs/volar test -- test/intellisense-provider.test.ts` (67 passed)
+        - `pnpm --filter @templjs/volar test -- test/context-graph-adapter.test.ts` (8 passed)
 links:
   implements:
     - '[[056_context_graph_platform_epic]]'

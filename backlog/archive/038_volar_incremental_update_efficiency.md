@@ -5,11 +5,12 @@ subtype: task
 lifecycle: active
 title: '38: Optimize Volar Incremental Update to Avoid Full Rebuild'
 status: closed
-status_reason: obsolete
+status_reason: completed
 priority: medium
 estimated: 3
-actual: 3
+actual: 0
 assignee: ''
+completed_date: 2026-03-08
 start_date: 2026-03-08
 end_date: 2026-03-08
 commits:
@@ -19,6 +20,12 @@ links:
     - '[[029_cli_signal_handling]]'
   pull_requests:
     - https://github.com/templjs/templ.js/pull/23
+test_results:
+  - timestamp: 2026-03-08T00:00:00Z
+    note: |
+      Archived WI-038 verification:
+      - src/packages/volar/test/index.test.ts (45 passed)
+      - Implemented in PR #23 commit ce96fda
 notes:
   - timestamp: 2026-03-08T00:00:00Z
     note: |

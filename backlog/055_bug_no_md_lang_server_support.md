@@ -13,6 +13,7 @@ commits:
   91b879c: 'fix(volar): add .tpl template marker and suffix file extension detection'
   f276da3: 'feat(vscode): add .tmpl language associations and YAML scalar tokenization'
   7389b0f: 'docs(backlog): update wi-055 with .tpl fix progress and follow-up note'
+  b1a8438: 'docs(vscode): refresh supported template extensions'
 links:
   depends_on:
     - '[[054_bug_no_schema_aware_authoring]]'
@@ -20,28 +21,28 @@ links:
 
 ## Goal
 
-Ensure that `.md.tpl` files receive full markdown syntax highlighting and linting in VS Code, matching the behaviour already working for `.md.templ` files.
+Ensure that `.md.tpl` files receive full Markdown syntax highlighting and linting in VS Code, matching the behaviour already working for `.md.templ` files.
 
 ## Bug Summary
 
-The Volar language plugin only recognizes `.templ.` and `.tmpl.` as template markers. The `.tpl.` marker is absent, so `.md.tpl` files are never processed by the plugin. This silently disables both the embedded markdown TextMate grammar and delegation to the markdown language server.
+The Volar language plugin only recognizes `.templ.` and `.tmpl.` as template markers. The `.tpl.` marker is absent, so `.md.tpl` files are never processed by the plugin. This silently disables both the embedded Markdown TextMate grammar and delegation to the Markdown language server.
 
 ## Reproduction Steps
 
 1. Open a file named `sample.md.tpl` in the VS Code extension development host.
-2. Write standard markdown content (headings, lists, code fences).
-3. Observe no syntax highlighting for markdown constructs.
-4. Observe no markdownlint or markdown language server diagnostics.
+2. Write standard Markdown content (headings, lists, code fences).
+3. Observe no syntax highlighting for Markdown constructs.
+4. Observe no Markdownlint or Markdown language server diagnostics.
 
 ## Expected Behavior
 
-- `.md.tpl` files receive markdown syntax highlighting via the `text.templjs.markdown` TextMate grammar.
-- The markdown language server provides diagnostics and linting, matching `.md.templ` behaviour.
+- `.md.tpl` files receive Markdown syntax highlighting via the `text.templjs.Markdown` TextMate grammar.
+- The Markdown language server provides diagnostics and linting, matching `.md.templ` behaviour.
 
 ## Actual Behavior
 
-- `.md.tpl` files open as plain text with no embedded markdown grammar activated.
-- No markdown diagnostics are produced.
+- `.md.tpl` files open as plain text with no embedded Markdown grammar activated.
+- No Markdown diagnostics are produced.
 
 ## Root Cause
 
@@ -50,7 +51,7 @@ The Volar language plugin only recognizes `.templ.` and `.tmpl.` as template mar
 ## Tasks
 
 - [x] Add `.tpl.` to `TEMPLATE_MARKERS` in `src/packages/volar/src/index.ts`
-- [ ] Verify `text.templjs.markdown` grammar activates for `.md.tpl` in the extension dev host
+- [ ] Verify `text.templjs.Markdown` grammar activates for `.md.tpl` in the extension dev host
 - [x] Add a regression test asserting virtual document creation for `.md.tpl` input
 - [x] Confirm `pnpm run lint:frontmatter` passes
 - [x] Add unit test coverage for each template extension marker in `isTemplateFile` logic
@@ -58,7 +59,7 @@ The Volar language plugin only recognizes `.templ.` and `.tmpl.` as template mar
 
 ## Acceptance Criteria
 
-- [ ] `.md.tpl` files show markdown syntax highlighting in VS Code
+- [ ] `.md.tpl` files show Markdown syntax highlighting in VS Code
 - [ ] Markdown linting diagnostics are produced for `.md.tpl` files
 - [ ] Existing `.md.templ` and `.md.tmpl` behaviour is unaffected
 - [ ] New regression test passes in CI
@@ -67,4 +68,4 @@ The Volar language plugin only recognizes `.templ.` and `.tmpl.` as template mar
 
 ## Follow-up Note
 
-- Revisit host-language activation: as of 2026-03-13, VS Code still does not reliably recognize markdown host-language behavior for templ markdown files in local validation, even after `.tpl`/`.tmpl` marker and extension association fixes.
+- Revisit host-language activation: as of 2026-03-13, VS Code still does not reliably recognize Markdown host-language behavior for templ Markdown files in local validation, even after `.tpl`/`.tmpl` marker and extension association fixes.

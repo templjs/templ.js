@@ -113,3 +113,7 @@ docs/
 ## Dependencies
 
 - Requires: [[11 Renderer Tests]] (core complete), [[16 Extension Tests]] (extension complete), [[19 CLI Tests]] (CLI complete)
+
+## Related Items
+
+- [[061_multiple_filter_signatures]]: follow-up API/docs work for overload-aware built-in filter signature metadata

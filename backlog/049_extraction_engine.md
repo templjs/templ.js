@@ -69,7 +69,7 @@ This is the core engine - schema validation (WI-050) and CLI (WI-051) build on t
 - [ ] Whitespace normalization configurable
 - [ ] Error messages include line/column positions
 - [ ] 80%+ code coverage for extraction module
-- [ ] All examples from WI-044 pass
+- [ ] All examples from WI-048 pass
 
 ## Implementation Notes
 

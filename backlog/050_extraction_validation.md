@@ -7,6 +7,7 @@ title: '050: Add Schema-Guided Extraction and Validation'
 status: proposed
 priority: medium
 estimated: 8
+actual: 0
 assignee: ''
 links:
   depends_on:

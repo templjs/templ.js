@@ -14,6 +14,7 @@ commits:
   74ec91a: 'fix(core): harden query helpers and add regressions'
   3eef8cb: 'test(vscode): use pathToFileURL for mock definition URIs'
   1b9ff47: 'test(volar): remove debug logging and de-instrument memoization test'
+  8ab845c: 'perf(ide): optimize schema resolution and semantic caches'
 test_results:
   - timestamp: 2026-03-13T00:00:00Z
     note: |
@@ -33,6 +34,15 @@ test_results:
       - Volar tests: removed temporary debug logging and replaced private-method instrumentation with public query assertions
       - Focused verification:
         - `pnpm --filter @templjs/core test -- test/query-engine/array-functions.test.ts test/query-engine/query-engine.functions.array.test.ts test/query-engine/query-engine.functions.utility.test.ts test/semantic/semantic-context.test.ts` (30 passed)
+        - `pnpm --filter @templjs/volar test -- test/context-graph-adapter.test.ts` (8 passed)
+        - `pnpm --filter vscode-templjs test -- test/server.test.ts` (32 passed)
+  - timestamp: 2026-03-13T00:00:00Z
+    note: |
+      Schema-resolution and cache follow-up (8ab845c):
+      - Server-side schema loading now uses async file existence checks while sync definition lookups keep a dedicated sync resolver
+      - Snapshot cache keys now prefer object-identity tokens over full schema serialization
+      - Shared scope matching and default-filter caching reduce repeated semantic helper work during hover/definition reads
+      - Focused verification:
         - `pnpm --filter @templjs/volar test -- test/context-graph-adapter.test.ts` (8 passed)
         - `pnpm --filter vscode-templjs test -- test/server.test.ts` (32 passed)
 links:

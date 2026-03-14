@@ -12,6 +12,7 @@ assignee: ''
 commits:
   82c8de1: 'feat(context-graph): add package and core semantic scope API'
   cb3f6a0: 'feat(context-graph): complete graph-backed semantic resolution'
+  4c524c2: 'fix(context-graph): improve contract diagnostics and boundary checks'
 test_results:
   - timestamp: 2026-03-13T00:00:00Z
     note: |
@@ -29,6 +30,14 @@ test_results:
       - Removed semantic/location-specific helper exports and contracts from `@templjs/context-graph`
       - Confirmed package API remains generic context publication/querying only
       - API boundary and package tests revalidated after correction
+  - timestamp: 2026-03-13T00:00:00Z
+    note: |
+      Contract diagnostics follow-up (4c524c2):
+      - Version mismatch errors now report both received and expected contract versions
+      - API boundary tests now assert the built `.d.ts` exists instead of invoking `pnpm build` inline
+      - Focused verification:
+        - `pnpm --filter @templjs/context-graph test -- test/context-graph.test.ts` (7 passed)
+        - `pnpm --filter @templjs/context-graph test -- test/api-boundary.test.ts` (3 passed)
 links:
   implements:
     - '[[056_context_graph_platform_epic]]'
