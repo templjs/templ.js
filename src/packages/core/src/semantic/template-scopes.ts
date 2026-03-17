@@ -26,8 +26,12 @@ interface NormalizedTemplate {
 
 function getResolvedDelimiters(options?: LexerOptions): Required<DelimiterConfig> {
   return {
-    ...DEFAULT_DELIMITERS,
-    ...options?.delimiters,
+    statement_start: options?.delimiters?.statement_start ?? DEFAULT_DELIMITERS.statement_start,
+    statement_end: options?.delimiters?.statement_end ?? DEFAULT_DELIMITERS.statement_end,
+    expression_start: options?.delimiters?.expression_start ?? DEFAULT_DELIMITERS.expression_start,
+    expression_end: options?.delimiters?.expression_end ?? DEFAULT_DELIMITERS.expression_end,
+    comment_start: options?.delimiters?.comment_start ?? DEFAULT_DELIMITERS.comment_start,
+    comment_end: options?.delimiters?.comment_end ?? DEFAULT_DELIMITERS.comment_end,
   };
 }
 
@@ -217,10 +221,14 @@ function collectBindings(
       const iterablePath = expressionToPath(node.iterable);
       if (iterablePath) {
         const declaration = getDeclarationOffsets(template, node, statementEnd);
+        const nodeStart = positionToOffset(template, node.start.line, node.start.column);
+        const openingTagEnd = template.indexOf(statementEnd, nodeStart);
+        const openingTagEndOffset =
+          openingTagEnd === -1 ? nodeStart : openingTagEnd + statementEnd.length;
         const scopeStartOffset =
           node.body.length > 0
             ? positionToOffset(template, node.body[0].start.line, node.body[0].start.column)
-            : (declaration?.end ?? positionToOffset(template, node.start.line, node.start.column));
+            : openingTagEndOffset;
 
         bindings.push({
           alias: node.iterator,

@@ -10,9 +10,20 @@ import { collectDiagnostics, IntellisenseProvider } from './index.js';
 import type { IntellisenseOptions } from './index.js';
 
 export interface ServicePluginDiagnosticOptions {
+  documentUri?: string;
   schema?: object;
   contentSchema?: object;
   frontmatterRange?: { start: number; end: number };
+  customFilters?: string[];
+  delimiters?: {
+    statementStart?: string;
+    statementEnd?: string;
+    expressionStart?: string;
+    expressionEnd?: string;
+    commentStart?: string;
+    commentEnd?: string;
+  };
+  baseDiagnostics?: LSPDiagnostic[];
 }
 
 export interface LSPDiagnostic {
@@ -130,9 +141,13 @@ export class TempljsServicePlugin {
    */
   collectDiagnostics(text: string, options?: ServicePluginDiagnosticOptions): LSPDiagnostic[] {
     const diagnostics = collectDiagnostics(text, {
+      documentUri: options?.documentUri,
       schema: options?.schema,
       contentSchema: options?.contentSchema,
       frontmatterRange: options?.frontmatterRange,
+      customFilters: options?.customFilters,
+      delimiters: options?.delimiters,
+      baseDiagnostics: options?.baseDiagnostics,
     });
 
     return diagnostics.map((diagnostic) => ({

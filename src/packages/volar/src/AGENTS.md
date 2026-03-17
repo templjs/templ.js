@@ -5,7 +5,7 @@ subtype: prompt
 lifecycle: active
 status: ready
 title: Volar Source Guardrails
-description: Guardrails for syntax-aware source changes inside @templjs/volar/src
+summary: Guardrails for syntax-aware source changes inside @templjs/volar/src
 ---
 
 You are editing source files under `src/packages/volar/src/`.
