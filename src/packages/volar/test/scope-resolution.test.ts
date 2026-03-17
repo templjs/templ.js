@@ -79,6 +79,60 @@ describe('scope-resolution', () => {
     const scopes = buildForScopesInText(text);
 
     expect(scopes).toHaveLength(1);
-    expect(scopes[0].iterablePath).toBe('items | reverse');
+    expect(scopes[0].iterablePath).toBe('items');
+  });
+
+  it('resolves alias paths from filtered iterable expressions', () => {
+    const text = '{% for item in items | reverse %}\n{{ item.name }}\n{% endfor %}';
+    const offset = text.indexOf('item.name') + 2;
+
+    expect(resolveScopedPathInText(text, 'item.name', offset)).toBe('items[0].name');
+  });
+
+  it('ignores for-loops that appear inside comment blocks', () => {
+    const text = [
+      '{# {% for ignored in ignoredItems %} #}',
+      '{% for item in items %}',
+      '  {{ item.name }}',
+      '{% endfor %}',
+    ].join('\n');
+    const scopes = buildForScopesInText(text);
+
+    expect(scopes).toHaveLength(1);
+    expect(scopes[0].alias).toBe('item');
+    expect(scopes[0].iterablePath).toBe('items');
+  });
+
+  it('normalizes computed bracket index to [0] in scope iterable paths', () => {
+    // Regression: {% for item in users[activeIndex + 1] %} must not truncate at space
+    const text = '{% for item in users[activeIndex + 1] %}\n{{ item.name }}\n{% endfor %}';
+    const scopes = buildForScopesInText(text);
+
+    expect(scopes).toHaveLength(1);
+    expect(scopes[0].iterablePath).toBe('users[0]');
+  });
+
+  it('preserves quoted string bracket segment in scope iterable paths', () => {
+    // Regression: {% for item in users["full name"] %} must not truncate at space inside quotes
+    const text = '{% for item in users["full name"] %}\n{{ item.name }}\n{% endfor %}';
+    const scopes = buildForScopesInText(text);
+
+    expect(scopes).toHaveLength(1);
+    expect(scopes[0].iterablePath).toBe('users[full name]');
+  });
+
+  it('resolves iterable alias scopes with custom delimiters', () => {
+    const text = '<< for item in items >>\n{{ item.name }}\n<< endfor >>';
+    const delimiters = {
+      statementStart: '<<',
+      statementEnd: '>>',
+      expressionStart: '{{',
+      expressionEnd: '}}',
+      commentStart: '<#',
+      commentEnd: '#>',
+    };
+    const offset = text.indexOf('item.name') + 2;
+
+    expect(resolveScopedPathInText(text, 'item.name', offset, delimiters)).toBe('items[0].name');
   });
 });

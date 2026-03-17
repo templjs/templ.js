@@ -137,8 +137,12 @@ function extractVariableReferences(content: string): VariableReference[] {
   }));
 }
 
-function extractFilters(content: string): string[] {
-  return extractExpressionFilterReferences(content).map((ref) => ref.name);
+function extractFilters(content: string): Array<{ name: string; start: number; end: number }> {
+  return extractExpressionFilterReferences(content).map((ref) => ({
+    name: ref.name,
+    start: ref.start,
+    end: ref.end,
+  }));
 }
 
 function isPathValidInContext(resolvedPath: string, validator: SchemaValidator): boolean {
@@ -233,7 +237,7 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
     delimiters.expressionStart,
     delimiters.expressionEnd
   );
-  const forScopes = buildForScopesInText(text, delimiters, commentBlocks, statementBlocks);
+  const forScopes = buildForScopesInText(text, delimiters);
 
   const statementStack: BlockStackEntry[] = [];
 
@@ -274,22 +278,32 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
       const trimOffset = rawInner.indexOf(statementContent);
       const contentStartOffset =
         block.start + delimiters.statementStart.length + (trimOffset >= 0 ? trimOffset : 0);
-      const match = statementContent.match(/\s+in\s+([^\s]+)/);
+      const match = statementContent.match(/^for\s+[A-Za-z_][\w]*\s+in\s+([\s\S]+)$/);
       const validator = getValidatorForOffset(block.start);
       if (match && validator) {
-        const path = match[1].trim();
-        const result = validator.validateQueryPath(path);
-        if (!result.valid) {
-          const inIndex = statementContent.indexOf(path);
-          const pathStart = inIndex >= 0 ? contentStartOffset + inIndex : block.start;
-          const pathEnd = inIndex >= 0 ? pathStart + path.length : block.end;
-          diagnostics.push({
-            message: `Variable "${path}" not found in schema`,
-            range: createRangeFromOffsets(mapper, pathStart, pathEnd),
-            severity: DiagnosticSeverity.Error,
-            code: 'templjs.undefinedVariable',
-            suggestion: result.errors[0]?.suggestion,
-          });
+        const iterableExpression = match[1].trim();
+        const iterableStart = statementContent.indexOf(iterableExpression);
+        const filterRefs = extractFilters(iterableExpression);
+        for (const ref of extractVariableReferences(iterableExpression)) {
+          const overlapsFilter = filterRefs.some(
+            (filterRef) => ref.start >= filterRef.start && ref.end <= filterRef.end
+          );
+          if (overlapsFilter) {
+            continue;
+          }
+
+          const scopedPath = resolveScopedPath(ref.path, block.start, forScopes);
+          const result = validator.validateQueryPath(scopedPath);
+          if (!result.valid) {
+            const offsetBase = contentStartOffset + (iterableStart >= 0 ? iterableStart : 0);
+            diagnostics.push({
+              message: `Variable "${ref.path}" not found in schema`,
+              range: createRangeFromOffsets(mapper, offsetBase + ref.start, offsetBase + ref.end),
+              severity: DiagnosticSeverity.Error,
+              code: 'templjs.undefinedVariable',
+              suggestion: result.errors[0]?.suggestion,
+            });
+          }
         }
       }
     } else {
@@ -324,17 +338,15 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
           }
         }
 
-        for (const filter of extractFilters(expressionPart)) {
-          if (!filters.has(filter)) {
-            const filterIndex = expressionPart.indexOf(filter);
-            const filterStart =
-              filterIndex >= 0
-                ? contentStartOffset + expressionPartStart + filterIndex
-                : block.start;
-            const filterEnd = filterIndex >= 0 ? filterStart + filter.length : block.end;
+        for (const ref of extractFilters(expressionPart)) {
+          if (!filters.has(ref.name)) {
             diagnostics.push({
-              message: `Filter "${filter}" not recognized`,
-              range: createRangeFromOffsets(mapper, filterStart, filterEnd),
+              message: `Filter "${ref.name}" not recognized`,
+              range: createRangeFromOffsets(
+                mapper,
+                contentStartOffset + expressionPartStart + ref.start,
+                contentStartOffset + expressionPartStart + ref.end
+              ),
               severity: DiagnosticSeverity.Error,
               code: 'templjs.invalidFilter',
               suggestion: 'Check available filters in documentation',
@@ -433,14 +445,15 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
       }
     }
 
-    for (const filter of extractFilters(content)) {
-      if (!filters.has(filter)) {
-        const filterIndex = content.indexOf(filter);
-        const filterStart = filterIndex >= 0 ? contentStartOffset + filterIndex : block.start;
-        const filterEnd = filterIndex >= 0 ? filterStart + filter.length : block.end;
+    for (const ref of extractFilters(content)) {
+      if (!filters.has(ref.name)) {
         diagnostics.push({
-          message: `Filter "${filter}" not recognized`,
-          range: createRangeFromOffsets(mapper, filterStart, filterEnd),
+          message: `Filter "${ref.name}" not recognized`,
+          range: createRangeFromOffsets(
+            mapper,
+            contentStartOffset + ref.start,
+            contentStartOffset + ref.end
+          ),
           severity: DiagnosticSeverity.Error,
           code: 'templjs.invalidFilter',
           suggestion: 'Check available filters in documentation',

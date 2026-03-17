@@ -1,8 +1,7 @@
-import {
-  buildBlockPattern,
-  resolveDelimiters,
-  type DelimiterConfig,
-} from './template-delimiters.js';
+import { resolveDelimiters, type DelimiterConfig } from './template-delimiters.js';
+import { extractExpressionVariableReferences } from './expression-analysis.js';
+import { extractTemplateScopeBindings } from '@templjs/core';
+import type { LexerOptions } from '@templjs/core';
 
 export interface ForScope {
   alias: string;
@@ -13,116 +12,47 @@ export interface ForScope {
   bodyEnd: number;
 }
 
-interface BlockMatch {
-  start: number;
-  end: number;
-  content: string;
-}
-
-function extractBlocks(text: string, start: string, end: string): BlockMatch[] {
-  const blocks: BlockMatch[] = [];
-  const regex = buildBlockPattern(start, end);
-  let match: RegExpExecArray | null;
-
-  while ((match = regex.exec(text)) !== null) {
-    blocks.push({
-      start: match.index,
-      end: match.index + match[0].length,
-      content: match[0],
-    });
-  }
-
-  return blocks;
+function volarDelimitersToLexerOptions(
+  delimiters?: Partial<DelimiterConfig>
+): LexerOptions | undefined {
+  if (!delimiters) return undefined;
+  const resolved = resolveDelimiters(delimiters);
+  return {
+    delimiters: {
+      statement_start: resolved.statementStart,
+      statement_end: resolved.statementEnd,
+      expression_start: resolved.expressionStart,
+      expression_end: resolved.expressionEnd,
+      comment_start: resolved.commentStart,
+      comment_end: resolved.commentEnd,
+    },
+  };
 }
 
 export function buildForScopesInText(
   text: string,
-  delimiters?: Partial<DelimiterConfig>,
-  commentBlocks?: BlockMatch[],
-  statementBlocks?: BlockMatch[]
+  delimiters?: Partial<DelimiterConfig>
 ): ForScope[] {
-  const resolvedDelimiters = resolveDelimiters(delimiters);
-  statementBlocks =
-    statementBlocks ??
-    extractBlocks(text, resolvedDelimiters.statementStart, resolvedDelimiters.statementEnd);
-  commentBlocks =
-    commentBlocks ??
-    extractBlocks(text, resolvedDelimiters.commentStart, resolvedDelimiters.commentEnd);
-
-  const scopes: ForScope[] = [];
-  const activeScopes: Array<Omit<ForScope, 'bodyEnd'>> = [];
-  let commentIndex = 0;
-
-  for (const block of statementBlocks) {
-    while (commentIndex < commentBlocks.length && commentBlocks[commentIndex].end <= block.start) {
-      commentIndex += 1;
-    }
-
-    if (
-      commentIndex < commentBlocks.length &&
-      block.start >= commentBlocks[commentIndex].start &&
-      block.start < commentBlocks[commentIndex].end
-    ) {
-      continue;
-    }
-
-    const rawInner = block.content.slice(
-      resolvedDelimiters.statementStart.length,
-      block.content.length - resolvedDelimiters.statementEnd.length
-    );
-    const trimmed = rawInner.trim();
-    const tag = trimmed.split(/\s+/)[0] ?? '';
-
-    if (tag === 'for') {
-      const match = rawInner.match(/^\s*for\s+([A-Za-z_][\w]*)\s+in\s+([\s\S]+)$/);
-      if (match) {
-        const alias = match[1];
-        const iterablePath = match[2].trim();
-
-        if (!iterablePath) {
-          continue;
-        }
-
-        const aliasIndexInInner = rawInner.indexOf(alias, match.index ?? 0);
-        const aliasStart =
-          block.start + resolvedDelimiters.statementStart.length + Math.max(0, aliasIndexInInner);
-
-        activeScopes.push({
-          alias,
-          iterablePath,
-          aliasStart,
-          aliasEnd: aliasStart + alias.length,
-          bodyStart: block.end,
-        });
-      }
-      continue;
-    }
-
-    if (tag === 'endfor') {
-      const scope = activeScopes.pop();
-      if (scope) {
-        scopes.push({
-          ...scope,
-          bodyEnd: block.start,
-        });
-      }
-    }
-  }
-
-  for (const scope of activeScopes) {
-    scopes.push({
-      ...scope,
-      bodyEnd: Number.POSITIVE_INFINITY,
-    });
-  }
-
-  return scopes;
+  const lexerOptions = volarDelimitersToLexerOptions(delimiters);
+  return extractTemplateScopeBindings(text, lexerOptions).map((binding) => ({
+    alias: binding.alias,
+    iterablePath: binding.iterablePath,
+    aliasStart: binding.declarationStartOffset ?? 0,
+    aliasEnd: binding.declarationEndOffset ?? 0,
+    bodyStart: binding.scopeStartOffset,
+    bodyEnd: binding.scopeEndOffset,
+  }));
 }
 
 function getMatchingScopesAtOffset(offset: number, scopes: ForScope[]): ForScope[] {
   return scopes
     .filter((scope) => offset >= scope.bodyStart && offset < scope.bodyEnd)
     .sort((left, right) => right.bodyStart - left.bodyStart);
+}
+
+function getIterableBasePath(iterableExpression: string): string {
+  const refs = extractExpressionVariableReferences(iterableExpression);
+  return refs[0]?.path ?? iterableExpression;
 }
 
 export function resolveScopedPath(path: string, offset: number, scopes: ForScope[]): string {
@@ -149,9 +79,10 @@ export function resolveScopedPath(path: string, offset: number, scopes: ForScope
         current.startsWith(`${scope.alias}[`)
       ) {
         const suffix = current.slice(scope.alias.length);
-        const iterableBase = scope.iterablePath.endsWith(']')
-          ? scope.iterablePath
-          : `${scope.iterablePath}[0]`;
+        const iterableBasePath = getIterableBasePath(scope.iterablePath);
+        const iterableBase = iterableBasePath.endsWith(']')
+          ? iterableBasePath
+          : `${iterableBasePath}[0]`;
         current = `${iterableBase}${suffix}`;
         remaining = remaining.slice(i + 1);
         matched = true;

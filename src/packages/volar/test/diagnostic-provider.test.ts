@@ -390,6 +390,27 @@ describe('DiagnosticProvider', () => {
     expect(diag?.range.end.character).toBe(text.indexOf('unknowns') + 'unknowns'.length);
   });
 
+  it('validates variable references inside full iterable expressions', () => {
+    const text = '{% for user in users | reverse %}\n{{ user.id }}\n{% endfor %}';
+    const diagnostics = collectDiagnostics(text, { schema: sampleSchema });
+
+    expect(diagnostics.some((item) => item.code === 'templjs.undefinedVariable')).toBe(false);
+  });
+
+  it('highlights statement filter ranges using parser offsets', () => {
+    const text = '{% if unknownFilter | unknownFilter %}';
+    const diagnostics = collectDiagnostics(text, {
+      schema: sampleSchema,
+    });
+    const diag = diagnostics.find((item) => item.code === 'templjs.invalidFilter');
+
+    expect(diag).toBeDefined();
+    expect(diag?.range.start.character).toBe(text.lastIndexOf('unknownFilter'));
+    expect(diag?.range.end.character).toBe(
+      text.lastIndexOf('unknownFilter') + 'unknownFilter'.length
+    );
+  });
+
   it('highlights only the invalid filter token', () => {
     const text = '{{ user.name | unknownFilter }}';
     const diagnostics = collectDiagnostics(text, { schema: sampleSchema });

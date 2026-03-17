@@ -114,4 +114,66 @@ describe('extractTemplateScopeBindings', () => {
     expect(bindings).toHaveLength(1);
     expect(bindings[0]).toMatchObject({ alias: 'item', iterablePath: 'items' });
   });
+
+  it('normalizes computed bracket index expressions to [0] in iterable paths', () => {
+    // Regression: users[activeIndex + 1] must not be truncated at the space
+    const template = '{% for item in users[activeIndex + 1] %}{{ item.name }}{% endfor %}';
+
+    const bindings = extractTemplateScopeBindings(template);
+
+    expect(bindings).toHaveLength(1);
+    expect(bindings[0]).toMatchObject({ alias: 'item', iterablePath: 'users[0]' });
+  });
+
+  it('preserves quoted string bracket segments in iterable paths', () => {
+    // Regression: users["full name"] must not be truncated at the space inside quotes
+    const template = '{% for item in users["full name"] %}{{ item.name }}{% endfor %}';
+
+    const bindings = extractTemplateScopeBindings(template);
+
+    expect(bindings).toHaveLength(1);
+    expect(bindings[0].iterablePath).toBe('users[full name]');
+  });
+
+  it('extracts bindings when custom delimiters are configured', () => {
+    const template = '<< for item in items >>\n  {{ item.name }}\n<< endfor >>';
+
+    const bindings = extractTemplateScopeBindings(template, {
+      delimiters: {
+        statement_start: '<<',
+        statement_end: '>>',
+        expression_start: '{{',
+        expression_end: '}}',
+        comment_start: '<#',
+        comment_end: '#>',
+      },
+    });
+
+    expect(bindings).toHaveLength(1);
+    expect(bindings[0]).toMatchObject({ alias: 'item', iterablePath: 'items' });
+  });
+
+  it('computes correct alias declaration offsets with custom delimiters', () => {
+    const template = '<< for item in items >>';
+
+    const bindings = extractTemplateScopeBindings(template, {
+      delimiters: {
+        statement_start: '<<',
+        statement_end: '>>',
+        expression_start: '{{',
+        expression_end: '}}',
+        comment_start: '<#',
+        comment_end: '#>',
+      },
+    });
+
+    expect(bindings).toHaveLength(1);
+    const [binding] = bindings;
+    expect(binding.declarationStartOffset).toBeDefined();
+    expect(binding.declarationEndOffset).toBeDefined();
+    // The alias "item" must be identifiable in the source
+    expect(template.slice(binding.declarationStartOffset!, binding.declarationEndOffset!)).toBe(
+      'item'
+    );
+  });
 });
