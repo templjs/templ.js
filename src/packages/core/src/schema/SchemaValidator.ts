@@ -91,7 +91,17 @@ export class SchemaValidator {
     }
     // Schema loaded but compile failed (e.g. remote $ref, unknown meta-schema).
     if (!this.validateFunction) {
-      return { valid: true, errors: [], skipped: true };
+      return {
+        valid: false,
+        errors: [
+          {
+            path: '$schema',
+            message:
+              this.compileError ?? 'Schema validation unavailable because compilation failed.',
+          },
+        ],
+        skipped: true,
+      };
     }
 
     const valid = this.validateFunction(data);
@@ -222,6 +232,11 @@ export class SchemaValidator {
     parentRequired?: string[]
   ): SchemaMetadata {
     const metadata: SchemaMetadata = {};
+    const inferredType = Array.isArray(schema?.type)
+      ? schema.type.join('|')
+      : (schema?.type ?? (schema?.properties ? 'object' : schema?.items ? 'array' : 'any'));
+    const isObjectSchema = schema.type === 'object' || !!schema.properties;
+    const isArraySchema = schema.type === 'array' || schema.items !== undefined;
 
     if (!schema || typeof schema !== 'object') {
       return metadata;
@@ -234,14 +249,14 @@ export class SchemaValidator {
         .pop()
         ?.replace(/\[0\]$/, '');
       metadata[prefix] = {
-        type: Array.isArray(schema.type) ? schema.type.join('|') : schema.type || 'any',
+        type: inferredType,
         description: schema.description,
         required: propertyName ? (parentRequired?.includes(propertyName) ?? false) : false,
       };
     }
 
     // Handle object properties
-    if (schema.type === 'object' && schema.properties) {
+    if (isObjectSchema && schema.properties) {
       const propertyNames = Object.keys(schema.properties);
 
       if (prefix) {
@@ -260,7 +275,7 @@ export class SchemaValidator {
     }
 
     // Handle array items
-    if (schema.type === 'array' && schema.items) {
+    if (isArraySchema && schema.items) {
       const itemsSchema = Array.isArray(schema.items) ? schema.items[0] : schema.items;
       if (itemsSchema) {
         const itemType = itemsSchema.type;
@@ -284,6 +299,10 @@ export class SchemaValidator {
 
       for (const subSchema of combinator) {
         const subMetadata = this.extractMetadata(subSchema, prefix, parentRequired);
+
+        if (prefix && subMetadata[prefix]?.properties && !subMetadata[prefix].type) {
+          subMetadata[prefix].type = 'object';
+        }
 
         if (prefix && metadata[prefix] && subMetadata[prefix]) {
           const current = metadata[prefix];

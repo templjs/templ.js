@@ -161,9 +161,10 @@ export function resolveScopedPathInText(
   text: string,
   path: string,
   offset: number,
-  delimiters?: Partial<DelimiterConfig>
+  delimiters?: Partial<DelimiterConfig>,
+  precomputedScopes?: ForScope[]
 ): string {
-  const scopes = buildForScopesInText(text, delimiters);
+  const scopes = precomputedScopes ?? buildForScopesInText(text, delimiters);
   return resolveScopedPath(path, offset, scopes);
 }
 
@@ -171,9 +172,10 @@ export function findLocalAliasDefinitionInText(
   text: string,
   path: string,
   offset: number,
-  delimiters?: Partial<DelimiterConfig>
+  delimiters?: Partial<DelimiterConfig>,
+  precomputedScopes?: ForScope[]
 ): { start: number; end: number } | null {
-  const scopes = buildForScopesInText(text, delimiters);
+  const scopes = precomputedScopes ?? buildForScopesInText(text, delimiters);
   const matchingScopes = getMatchingScopesAtOffset(offset, scopes);
 
   for (const scope of matchingScopes) {

@@ -130,7 +130,7 @@ describe('SchemaValidator', () => {
       expect(validator.compilationError).toBeTruthy();
     });
 
-    it('validate() returns valid:true with skipped=true when compilation failed', () => {
+    it('validate() returns valid:false with skipped=true when compilation failed', () => {
       const schema: JSONSchema = {
         $schema: 'https://json-schema.org/draft/2020-12/schema',
         type: 'object',
@@ -139,9 +139,36 @@ describe('SchemaValidator', () => {
 
       const validator = new SchemaValidator(schema);
       const result = validator.validate({ anything: true });
-      expect(result.valid).toBe(true);
-      expect(result.errors).toEqual([]);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].path).toBe('$schema');
+      expect(result.errors[0].message).toContain(validator.compilationError ?? 'compilation');
       expect(result.skipped).toBe(true);
+    });
+
+    it('clears compilationError when reloading a cached compiled schema', () => {
+      const validSchema: JSONSchema = {
+        $id: 'schema://valid',
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+        },
+      };
+      const invalidSchema = {
+        type: 'invalid-type',
+      } as unknown as JSONSchema;
+
+      const validator = new SchemaValidator(validSchema);
+      expect(validator.isCompiled).toBe(true);
+      expect(validator.compilationError).toBeNull();
+
+      validator.loadSchema(invalidSchema);
+      expect(validator.isCompiled).toBe(false);
+      expect(validator.compilationError).toBeTruthy();
+
+      validator.loadSchema(validSchema);
+      expect(validator.isCompiled).toBe(true);
+      expect(validator.compilationError).toBeNull();
     });
 
     it('getMetadata() still returns property info even when compilation failed', () => {
@@ -1500,6 +1527,39 @@ describe('Integration Tests', () => {
       expect(metadata.milestoneObjective).toBeDefined();
       expect(metadata.successSignals).toBeDefined();
       expect(metadata['successSignals[0]']).toBeDefined();
+    });
+
+    it('should preserve object metadata from combinator branches without an explicit type', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          profile: {
+            anyOf: [
+              {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                },
+              },
+              {
+                properties: {
+                  age: { type: 'integer' },
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      const validator = new SchemaValidator(schema);
+      const metadata = validator.getMetadata();
+
+      expect(metadata.profile).toMatchObject({
+        type: 'object',
+      });
+      expect(metadata.profile.properties).toEqual(expect.arrayContaining(['name', 'age']));
+      expect(metadata['profile.name']?.type).toBe('string');
+      expect(metadata['profile.age']?.type).toBe('integer');
     });
 
     it('should track property metadata at nested levels', () => {

@@ -9,7 +9,7 @@ status_reason: completed
 priority: low
 estimated: 1
 actual: 1
-assignee: ''
+assignee: 'squirrel289'
 start_date: 2026-03-08
 end_date: 2026-03-08
 completed_date: 2026-03-08

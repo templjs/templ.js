@@ -58,4 +58,19 @@ describe('scope-resolution', () => {
 
     expect(resolveScopedPathInText(text, 'child.name', offset)).toBe('items[0].children[0].name');
   });
+
+  it('reuses precomputed scopes when resolving and finding aliases', () => {
+    const text = '{% for item in items %}\n{{ item.name }}\n{% endfor %}';
+    const offset = text.indexOf('item.name') + 2;
+    const scopes = buildForScopesInText(text);
+    const aliasStart = text.indexOf('item in items');
+
+    expect(resolveScopedPathInText(text, 'item.name', offset, undefined, scopes)).toBe(
+      'items[0].name'
+    );
+    expect(findLocalAliasDefinitionInText(text, 'item.name', offset, undefined, scopes)).toEqual({
+      start: aliasStart,
+      end: aliasStart + 'item'.length,
+    });
+  });
 });
