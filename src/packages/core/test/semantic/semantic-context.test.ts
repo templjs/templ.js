@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   detectFrontmatterRange,
+  getFrontmatterKeyValueAtOffset,
   getFrontmatterSchemaReferenceAtOffset,
   getFrontmatterSchemaAliases,
   getSemanticProfileId,
+  getTokenAtOffset,
+  isOffsetInFrontmatter,
   resolveSemanticHostLanguage,
   resolveSemanticContextBlock,
   resolveSemanticZone,
@@ -78,6 +81,31 @@ describe('semantic-context core helpers', () => {
     expect(getFrontmatterSchemaReferenceAtOffset(text, valueOffset)).toEqual({
       value: './frontmatter-crlf.json',
     });
+  });
+
+  it('extracts key/value tokens and frontmatter membership at offsets', () => {
+    const text = ['---', 'assetPath: ./docs/spec.json', '---', '{{ assetPath }}'].join('\n');
+    const keyOffset = text.indexOf('assetPath') + 2;
+    const valueOffset = text.indexOf('./docs/spec.json') + 5;
+    const bodyOffset = text.lastIndexOf('assetPath') + 2;
+
+    expect(getFrontmatterKeyValueAtOffset(text, valueOffset)).toEqual({
+      key: 'assetPath',
+      valueToken: './docs/spec.json',
+    });
+    expect(getTokenAtOffset(text, valueOffset)).toEqual(
+      expect.objectContaining({ token: './docs/spec.json' })
+    );
+    expect(isOffsetInFrontmatter(text, keyOffset)).toBe(true);
+    expect(isOffsetInFrontmatter(text, bodyOffset)).toBe(false);
+  });
+
+  it('returns undefined key/value pairs outside frontmatter lines', () => {
+    const text = ['---', 'title: Example', '---', 'body text'].join('\n');
+    const bodyOffset = text.indexOf('body') + 1;
+
+    expect(getFrontmatterKeyValueAtOffset(text, bodyOffset)).toBeNull();
+    expect(getTokenAtOffset(text, bodyOffset)).toEqual(expect.objectContaining({ token: 'body' }));
   });
 
   it('keeps semantic request/response contracts serializable for all operations', () => {
