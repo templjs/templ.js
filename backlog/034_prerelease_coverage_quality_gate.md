@@ -8,6 +8,26 @@ status: ready
 priority: critical
 estimated: 8
 assignee: ''
+commits:
+  62b21a2: 'test(core): raise semantic coverage'
+  e0ede1a: 'test(context-graph): harden coverage gates'
+  c0bb1c5: 'test(volar): add coverage utility suites'
+  74e7070: 'test(vscode): harden activation coverage'
+  0b66d42: 'chore(testing): isolate cli coverage reports'
+test_results:
+  - timestamp: 2026-03-17T00:00:00Z
+    note: |
+      Coverage remediation branch follow-up:
+      - Added targeted regression suites for core semantic helpers, context-graph lifecycle/query filtering,
+        Volar schema/expression/scope utilities, and VS Code activation tracing/startup handling
+      - Isolated per-package coverage output directories to stop parallel pre-push coverage artifact collisions
+      - Revalidated the full pre-push gate successfully after remediation
+      - Final gate summary:
+        - `@templjs/core`: Stmts 96.05%, Branches 90.50%, Funcs 99.40%, Lines 96.25%
+        - `@templjs/context-graph`: Stmts 97.00%, Branches 91.66%, Funcs 100.00%, Lines 96.80%
+        - `@templjs/volar`: Stmts 85.14%, Branches 71.92%, Funcs 94.57%, Lines 85.33%
+        - `vscode-templjs`: Stmts 83.61%, Branches 70.02%, Funcs 91.11%, Lines 83.67%
+        - `@templjs/cli`: Stmts 96.32%, Branches 88.29%, Funcs 100.00%, Lines 96.30%
 links:
   depends_on:
     - '[[031_language_feature_tests]]'

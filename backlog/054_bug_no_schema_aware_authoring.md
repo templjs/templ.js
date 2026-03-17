@@ -13,6 +13,7 @@ commits:
   8ab845c: 'perf(ide): optimize schema resolution and semantic caches'
   db623c1: 'fix(vscode): surface language client startup failures'
   8ddf67c: 'fix(vscode): avoid rethrow in startup catch'
+  74e7070: 'test(vscode): harden activation coverage'
 test_results:
   - timestamp: 2026-03-11T00:00:00Z
     note: |
@@ -42,6 +43,12 @@ test_results:
       - Focused verification:
         - `pnpm --filter vscode-templjs test -- test/server.test.ts` (32 passed)
         - `pnpm --filter @templjs/volar test -- test/context-graph-adapter.test.ts` (8 passed)
+  - timestamp: 2026-03-17T00:00:00Z
+    note: |
+      Activation coverage follow-up (74e7070):
+      - Added extension tests for non-file document context handling, startup error surfacing,
+        and trace-mode middleware logging behavior
+      - Revalidated package-local VS Code coverage gate and the shared pre-push hook successfully
 links:
   depends_on:
     - '[[031_language_feature_tests]]'

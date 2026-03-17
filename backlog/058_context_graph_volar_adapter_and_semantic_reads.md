@@ -15,6 +15,8 @@ commits:
   1b9ff47: 'test(volar): remove debug logging and de-instrument memoization test'
   8ab845c: 'perf(ide): optimize schema resolution and semantic caches'
   e87096e: 'fix(volar): avoid false YAML frontmatter scopes'
+  62b21a2: 'test(core): raise semantic coverage'
+  c0bb1c5: 'test(volar): add coverage utility suites'
 test_results:
   - timestamp: 2026-03-13T00:00:00Z
     note: |
@@ -60,6 +62,12 @@ test_results:
       - Focused verification:
         - `pnpm --filter @templjs/volar test -- test/intellisense-provider.test.ts` (67 passed)
         - `pnpm --filter @templjs/volar test -- test/context-graph-adapter.test.ts` (8 passed)
+  - timestamp: 2026-03-17T00:00:00Z
+    note: |
+      Coverage hardening follow-up (62b21a2, c0bb1c5):
+      - Expanded core template-scope and semantic helper coverage used by graph-backed semantic reads
+      - Added direct Volar regression suites for schema resolution, expression analysis, and scope resolution helpers
+      - Verified package-local Volar coverage gate and full pre-push hook passed after remediation
 links:
   implements:
     - '[[056_context_graph_platform_epic]]'

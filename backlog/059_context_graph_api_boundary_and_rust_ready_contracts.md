@@ -13,6 +13,7 @@ commits:
   82c8de1: 'feat(context-graph): add package and core semantic scope API'
   cb3f6a0: 'feat(context-graph): complete graph-backed semantic resolution'
   4c524c2: 'fix(context-graph): improve contract diagnostics and boundary checks'
+  e0ede1a: 'test(context-graph): harden coverage gates'
 test_results:
   - timestamp: 2026-03-13T00:00:00Z
     note: |
@@ -38,6 +39,11 @@ test_results:
       - Focused verification:
         - `pnpm --filter @templjs/context-graph test -- test/context-graph.test.ts` (7 passed)
         - `pnpm --filter @templjs/context-graph test -- test/api-boundary.test.ts` (3 passed)
+  - timestamp: 2026-03-17T00:00:00Z
+    note: |
+      Coverage hardening follow-up (e0ede1a):
+      - Added query-filtering, provider-close lifecycle, and provider error regression coverage
+      - Package build plus coverage gate passed with 97.00% statements / 91.66% branches / 100% functions / 96.80% lines
 links:
   implements:
     - '[[056_context_graph_platform_epic]]'

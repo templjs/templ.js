@@ -23,6 +23,10 @@ commits:
   8ab845c: 'perf(ide): optimize schema resolution and semantic caches'
   e87096e: 'fix(volar): avoid false YAML frontmatter scopes'
   db623c1: 'fix(vscode): surface language client startup failures'
+  62b21a2: 'test(core): raise semantic coverage'
+  e0ede1a: 'test(context-graph): harden coverage gates'
+  c0bb1c5: 'test(volar): add coverage utility suites'
+  74e7070: 'test(vscode): harden activation coverage'
 test_results:
   - timestamp: 2026-03-13T00:00:00Z
     note: |
@@ -39,6 +43,13 @@ test_results:
       - IDE schema resolution now avoids blocking file checks on the async server path and caches semantic snapshot/filter helpers
       - YAML frontmatter completion no longer opens nested scopes for block scalars, flow collections, anchors, or aliases
       - Focused verification: 146 passed, 0 failed across core/context-graph/volar/vscode targeted suites
+  - timestamp: 2026-03-17T00:00:00Z
+    note: |
+      Coverage hardening follow-up (62b21a2, e0ede1a, c0bb1c5, 74e7070):
+      - Added focused regression coverage across core semantic helpers, context-graph lifecycle/query filtering,
+        Volar semantic utility helpers, and VS Code activation traces
+      - Isolated package coverage outputs to make parallel pre-push checks deterministic
+      - Pre-push validation passed with all affected package coverage thresholds met or exceeded
 links:
   depends_on:
     - '[[054_bug_no_schema_aware_authoring]]'
