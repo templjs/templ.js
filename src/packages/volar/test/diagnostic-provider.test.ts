@@ -397,6 +397,18 @@ describe('DiagnosticProvider', () => {
     expect(diagnostics.some((item) => item.code === 'templjs.undefinedVariable')).toBe(false);
   });
 
+  it('validates all references in complex for-in iterable expressions', () => {
+    const text = '{% for item in users + unknowns %}';
+    const diagnostics = collectDiagnostics(text, { schema: sampleSchema });
+    const undefinedVars = diagnostics.filter((item) => item.code === 'templjs.undefinedVariable');
+
+    expect(undefinedVars).toHaveLength(1);
+    expect(undefinedVars[0]?.range.start.character).toBe(text.indexOf('unknowns'));
+    expect(undefinedVars[0]?.range.end.character).toBe(
+      text.indexOf('unknowns') + 'unknowns'.length
+    );
+  });
+
   it('highlights statement filter ranges using parser offsets', () => {
     const text = '{% if unknownFilter | unknownFilter %}';
     const diagnostics = collectDiagnostics(text, {
@@ -419,6 +431,16 @@ describe('DiagnosticProvider', () => {
     expect(diag).toBeDefined();
     expect(diag?.range.start.character).toBe(text.indexOf('unknownFilter'));
     expect(diag?.range.end.character).toBe(text.indexOf('unknownFilter') + 'unknownFilter'.length);
+  });
+
+  it('reports distinct ranges for repeated invalid filters', () => {
+    const text = '{{ user.name | unknownFilter | unknownFilter }}';
+    const diagnostics = collectDiagnostics(text, { schema: sampleSchema });
+    const filterDiagnostics = diagnostics.filter((item) => item.code === 'templjs.invalidFilter');
+
+    expect(filterDiagnostics).toHaveLength(2);
+    expect(filterDiagnostics[0]?.range.start.character).toBe(text.indexOf('unknownFilter'));
+    expect(filterDiagnostics[1]?.range.start.character).toBe(text.lastIndexOf('unknownFilter'));
   });
 
   it('does not treat string literals as variables in ternary expressions', () => {

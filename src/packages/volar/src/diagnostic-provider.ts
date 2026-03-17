@@ -85,6 +85,12 @@ interface VariableReference {
   end: number;
 }
 
+interface FilterReference {
+  name: string;
+  start: number;
+  end: number;
+}
+
 function getDelimiters(options?: DiagnosticOptions): TemplateDelimiters {
   return resolveDelimiters(options?.delimiters);
 }
@@ -137,7 +143,7 @@ function extractVariableReferences(content: string): VariableReference[] {
   }));
 }
 
-function extractFilters(content: string): Array<{ name: string; start: number; end: number }> {
+function extractFilters(content: string): FilterReference[] {
   return extractExpressionFilterReferences(content).map((ref) => ({
     name: ref.name,
     start: ref.start,
