@@ -1,5 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const configurationValues: Record<string, unknown> = {
+  schemaPath: '.templjs/schema.json',
+  contentSchemaPath: '.templjs/content-schema.json',
+  schemas: {
+    'backlog/**': {
+      schemaPath: 'https://schemas.example.com/work-item-frontmatter.json',
+      contentSchemaPath: 'https://schemas.example.com/work-item-content.json',
+    },
+  },
+  'trace.server': undefined,
+};
+
 const registerCommand = vi.fn((_name: string, _handler: () => void) => ({
   dispose: vi.fn(),
 }));
@@ -28,23 +40,7 @@ const createFileSystemWatcher = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidOpenTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidChangeActiveTextEditor = vi.fn(() => ({ dispose: vi.fn() }));
 const getConfiguration = vi.fn(() => ({
-  get: vi.fn((key: string): unknown => {
-    if (key === 'schemaPath') {
-      return '.templjs/schema.json';
-    }
-    if (key === 'contentSchemaPath') {
-      return '.templjs/content-schema.json';
-    }
-    if (key === 'schemas') {
-      return {
-        'backlog/**': {
-          schemaPath: 'https://schemas.example.com/work-item-frontmatter.json',
-          contentSchemaPath: 'https://schemas.example.com/work-item-content.json',
-        },
-      };
-    }
-    return undefined;
-  }),
+  get: vi.fn((key: string, fallback?: unknown): unknown => configurationValues[key] ?? fallback),
 }));
 
 const start = vi.fn(() => Promise.resolve());
@@ -87,9 +83,30 @@ vi.mock('vscode-languageclient/node.js', () => ({
 describe('extension-activation', () => {
   beforeEach(() => {
     vi.resetModules();
+    configurationValues.schemaPath = '.templjs/schema.json';
+    configurationValues.contentSchemaPath = '.templjs/content-schema.json';
+    configurationValues.schemas = {
+      'backlog/**': {
+        schemaPath: 'https://schemas.example.com/work-item-frontmatter.json',
+        contentSchemaPath: 'https://schemas.example.com/work-item-content.json',
+      },
+    };
+    configurationValues['trace.server'] = undefined;
+    getConfiguration.mockImplementation(() => ({
+      get: vi.fn(
+        (key: string, fallback?: unknown): unknown => configurationValues[key] ?? fallback
+      ),
+    }));
+    activeTextEditor.document.uri.scheme = 'file';
+    activeTextEditor.document.uri.toString = () =>
+      'file:///workspace/backlog/054_bug_no_schema_aware_authoring.md';
+    activeTextEditor.document.getText = () =>
+      '---\n$templ-schema: .templjs/root.json\n---\n{{ user.name }}';
     registerCommand.mockClear();
     showInformationMessage.mockClear();
     showErrorMessage.mockClear();
+    outputChannel.appendLine.mockClear();
+    outputChannel.append.mockClear();
     createFileSystemWatcher.mockClear();
     createOutputChannel.mockClear();
     outputChannel.dispose.mockClear();
@@ -359,5 +376,124 @@ describe('extension-activation', () => {
   it('returns undefined when deactivating without active client', async () => {
     const module = await import('../src/extension');
     expect(module.deactivate()).toBeUndefined();
+  });
+
+  it('omits active document context for non-file editors', async () => {
+    activeTextEditor.document.uri.scheme = 'untitled';
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const clientOptions = languageClientConstructor.mock.calls[0][3] as {
+      initializationOptions: { documentContext?: { uri: string; content: string } };
+    };
+    expect(clientOptions.initializationOptions.documentContext).toBeUndefined();
+  });
+
+  it('reports language client startup failures from the unawaited start promise', async () => {
+    start.mockImplementationOnce(() => Promise.reject(new Error('startup exploded')));
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+    await Promise.resolve();
+
+    expect(showErrorMessage).toHaveBeenCalledWith(
+      expect.stringContaining('Templjs: Language client failed to start: Error: startup exploded')
+    );
+    expect(outputChannel.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('Language client start failed: Error: startup exploded')
+    );
+  });
+
+  it('traces middleware activity for completion, hover, and definition in verbose mode', async () => {
+    configurationValues['trace.server'] = 'verbose';
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const clientOptions = languageClientConstructor.mock.calls[0][3] as {
+      middleware: {
+        provideCompletionItem: (...args: unknown[]) => Promise<unknown>;
+        provideHover: (...args: unknown[]) => Promise<unknown>;
+        provideDefinition: (...args: unknown[]) => Promise<unknown>;
+      };
+    };
+    const document = {
+      uri: { toString: () => 'file:///workspace/example.md.tpl' },
+      languageId: 'templjs-markdown',
+    };
+    const position = { line: 3, character: 7 };
+
+    await clientOptions.middleware.provideCompletionItem(document, position, {}, {}, () =>
+      Promise.resolve({ items: [{ label: 'Alpha' }, { label: 'Alpha' }, { label: '' }] })
+    );
+    await clientOptions.middleware.provideHover(document, position, {}, () =>
+      Promise.resolve({ contents: ['hover text', { value: 'details' }] })
+    );
+    await clientOptions.middleware.provideDefinition(document, position, {}, () =>
+      Promise.resolve([{ targetUri: { toString: () => 'file:///workspace/schema.json' } }])
+    );
+
+    const traceLines = outputChannel.appendLine.mock.calls
+      .map((call) => call[0])
+      .filter((line) => typeof line === 'string' && line.includes('[templjs-trace]'));
+
+    expect(
+      traceLines.some((line) =>
+        line.includes('completion requested: file:///workspace/example.md.tpl')
+      )
+    ).toBe(true);
+    expect(traceLines.some((line) => line.includes('completion duplicate labels: alpha×2'))).toBe(
+      true
+    );
+    expect(traceLines.some((line) => line.includes('hover content length=20'))).toBe(true);
+    expect(
+      traceLines.some((line) =>
+        line.includes('definition first target=file:///workspace/schema.json')
+      )
+    ).toBe(true);
+  });
+
+  it('limits tracing to message-level output when configured for messages', async () => {
+    configurationValues['trace.server'] = 'messages';
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const clientOptions = languageClientConstructor.mock.calls[0][3] as {
+      middleware: {
+        provideCompletionItem: (...args: unknown[]) => Promise<unknown>;
+      };
+    };
+
+    await clientOptions.middleware.provideCompletionItem(
+      { uri: { toString: () => 'file:///workspace/example.md.tpl' } },
+      { line: 0, character: 0 },
+      {},
+      {},
+      () => Promise.resolve({ items: [{ label: 'Alpha' }, { label: 'Alpha' }] })
+    );
+
+    const traceLines = outputChannel.appendLine.mock.calls
+      .map((call) => call[0])
+      .filter((line) => typeof line === 'string' && line.includes('[templjs-trace]'));
+    expect(traceLines.some((line) => line.includes('completion result count=2'))).toBe(true);
+    expect(traceLines.some((line) => line.includes('duplicate labels'))).toBe(false);
   });
 });
