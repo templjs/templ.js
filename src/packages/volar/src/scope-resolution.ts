@@ -122,20 +122,39 @@ export function resolveScopedPath(path: string, offset: number, scopes: ForScope
     return path;
   }
 
-  for (const scope of matchingScopes) {
-    if (
-      path === scope.alias ||
-      path.startsWith(`${scope.alias}.`) ||
-      path.startsWith(`${scope.alias}[`)
-    ) {
-      const iterableBase = scope.iterablePath.endsWith(']')
-        ? scope.iterablePath
-        : `${scope.iterablePath}[0]`;
-      return `${iterableBase}${path.slice(scope.alias.length)}`;
+  // Iteratively resolve through matching scopes (innermost first).
+  // After each substitution, continue resolving the new path against the
+  // remaining outer scopes so that aliases embedded in iterablePath are
+  // also fully expanded (e.g. nested loops where the inner iterablePath
+  // still references an outer alias).
+  let current = path;
+  let remaining = matchingScopes;
+
+  while (remaining.length > 0) {
+    let matched = false;
+    for (let i = 0; i < remaining.length; i++) {
+      const scope = remaining[i];
+      if (
+        current === scope.alias ||
+        current.startsWith(`${scope.alias}.`) ||
+        current.startsWith(`${scope.alias}[`)
+      ) {
+        const suffix = current.slice(scope.alias.length);
+        const iterableBase = scope.iterablePath.endsWith(']')
+          ? scope.iterablePath
+          : `${scope.iterablePath}[0]`;
+        current = `${iterableBase}${suffix}`;
+        remaining = remaining.slice(i + 1);
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) {
+      break;
     }
   }
 
-  return path;
+  return current;
 }
 
 export function resolveScopedPathInText(

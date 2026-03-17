@@ -51,6 +51,7 @@ export class SchemaValidator {
     // Check cache - reuse compiled validator if already compiled
     if (this.compiledSchemas.has(cacheKey)) {
       this.validateFunction = this.compiledSchemas.get(cacheKey)!;
+      this.compileError = null;
       return;
     }
 

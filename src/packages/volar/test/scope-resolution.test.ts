@@ -43,6 +43,19 @@ describe('scope-resolution', () => {
     ].join('\n');
     const offset = text.indexOf('item.name') + 2;
 
-    expect(resolveScopedPathInText(text, 'item.name', offset)).toBe('item.children[0].name');
+    expect(resolveScopedPathInText(text, 'item.name', offset)).toBe('items[0].children[0].name');
+  });
+
+  it('fully expands nested alias references through outer scopes', () => {
+    const text = [
+      '{% for item in items %}',
+      '  {% for child in item.children %}',
+      '    {{ child.name }}',
+      '  {% endfor %}',
+      '{% endfor %}',
+    ].join('\n');
+    const offset = text.indexOf('child.name') + 2;
+
+    expect(resolveScopedPathInText(text, 'child.name', offset)).toBe('items[0].children[0].name');
   });
 });
