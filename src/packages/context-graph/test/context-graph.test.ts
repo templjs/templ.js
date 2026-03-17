@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ContextGraphError, createContextGraph, type ContextProvider } from '../src/index.js';
 
 describe('ContextGraphEngine', () => {
@@ -195,5 +195,145 @@ describe('ContextGraphEngine', () => {
       expect(payload.version).toBe('v1');
       expect(payload.message).toContain('boom');
     }
+  });
+
+  it('filters nodes and edges by kind, profile, attributes, and endpoints', async () => {
+    const graph = createContextGraph();
+
+    graph.use({
+      id: 'provider-filter',
+      onInvalidate: (_uri, ctx) => {
+        ctx.upsertNode({
+          id: 'node-a',
+          profileId: 'editor-location',
+          kind: 'symbol',
+          attributes: { status: 'draft', lang: 'md' },
+        });
+        ctx.upsertNode({
+          id: 'node-b',
+          profileId: 'runtime',
+          kind: 'asset',
+          attributes: { status: 'published' },
+        });
+        ctx.upsertNode({
+          id: 'node-c',
+          profileId: 'runtime',
+          kind: 'asset',
+        });
+        ctx.upsertEdge({
+          id: 'edge-a',
+          profileId: 'editor-location',
+          from: 'node-a',
+          to: 'node-b',
+          kind: 'references',
+        });
+        ctx.upsertEdge({
+          id: 'edge-b',
+          profileId: 'runtime',
+          from: 'node-b',
+          to: 'node-a',
+          kind: 'renders',
+        });
+      },
+    });
+
+    await graph.invalidate('file:///filters');
+
+    expect(
+      graph.getNodes({
+        kind: 'symbol',
+        profileIds: ['editor-location'],
+        attributeEquals: { status: 'draft' },
+      })
+    ).toHaveLength(1);
+    expect(graph.getNodes({ profileIds: ['missing-profile'] })).toEqual([]);
+    expect(
+      graph.getNodes({ attributeEquals: { status: 'draft' }, profileIds: ['runtime'] })
+    ).toEqual([]);
+    expect(graph.getEdges({ kind: 'references', from: 'node-a', to: 'node-b' })).toHaveLength(1);
+    expect(graph.getEdges({ from: 'node-a', to: 'node-a' })).toEqual([]);
+    expect(
+      graph.query({
+        version: 'v1',
+        nodes: { kind: 'asset', profileIds: ['runtime'], attributeEquals: { status: 'published' } },
+        edges: { profileIds: ['runtime'], from: 'node-b' },
+      })
+    ).toMatchObject({
+      nodes: [{ id: 'node-b' }],
+      edges: [{ id: 'edge-b' }],
+    });
+  });
+
+  it('supports onClose write operations after clearing provider-owned state', async () => {
+    const graph = createContextGraph();
+    const onClose = vi.fn(
+      (_uri: string, ctx: Parameters<NonNullable<ContextProvider['onClose']>>[1]) => {
+        ctx.removeNode('node-before-close');
+        ctx.removeEdge('edge-before-close');
+        ctx.upsertNode({ id: 'node-after-close', profileId: 'runtime', kind: 'summary' });
+        ctx.upsertEdge({
+          id: 'edge-after-close',
+          profileId: 'runtime',
+          from: 'node-after-close',
+          to: 'node-after-close',
+          kind: 'self',
+        });
+      }
+    );
+
+    graph.use({
+      id: 'provider-close-write',
+      onInvalidate: (_uri, ctx) => {
+        ctx.upsertNode({ id: 'node-before-close', profileId: 'editor-location', kind: 'draft' });
+        ctx.upsertEdge({
+          id: 'edge-before-close',
+          profileId: 'editor-location',
+          from: 'node-before-close',
+          to: 'node-before-close',
+          kind: 'self',
+        });
+      },
+      onClose,
+    });
+
+    await graph.invalidate('file:///close');
+    const deltas = await graph.close('file:///close');
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(deltas).toEqual([
+      expect.objectContaining({
+        type: 'provider-closed',
+        providerId: 'provider-close-write',
+        nodeCount: 1,
+        edgeCount: 1,
+      }),
+    ]);
+    expect(graph.getNodes().map((node) => node.id)).toEqual(['node-after-close']);
+    expect(graph.getEdges().map((edge) => edge.id)).toEqual(['edge-after-close']);
+  });
+
+  it('wraps onClose failures into structured provider-failed errors', async () => {
+    const graph = createContextGraph();
+
+    graph.use({
+      id: 'provider-close-fail',
+      onInvalidate: (_uri, ctx) => {
+        ctx.upsertNode({ id: 'node-1', profileId: 'editor-location', kind: 'symbol' });
+      },
+      onClose: () => {
+        throw 'close failed';
+      },
+    });
+
+    await graph.invalidate('file:///close-fail');
+
+    await expect(graph.close('file:///close-fail')).rejects.toMatchObject({
+      payload: {
+        code: 'provider-failed',
+        providerId: 'provider-close-fail',
+        message: 'close failed',
+        version: 'v1',
+      },
+    });
   });
 });
