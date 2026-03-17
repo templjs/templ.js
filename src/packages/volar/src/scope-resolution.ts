@@ -35,31 +35,34 @@ function extractBlocks(text: string, start: string, end: string): BlockMatch[] {
   return blocks;
 }
 
-function isInsideBlocks(offset: number, blocks: BlockMatch[]): boolean {
-  return blocks.some((block) => offset >= block.start && offset < block.end);
-}
-
 export function buildForScopesInText(
   text: string,
-  delimiters?: Partial<DelimiterConfig>
+  delimiters?: Partial<DelimiterConfig>,
+  commentBlocks?: BlockMatch[],
+  statementBlocks?: BlockMatch[]
 ): ForScope[] {
   const resolvedDelimiters = resolveDelimiters(delimiters);
-  const statementBlocks = extractBlocks(
-    text,
-    resolvedDelimiters.statementStart,
-    resolvedDelimiters.statementEnd
-  );
-  const commentBlocks = extractBlocks(
-    text,
-    resolvedDelimiters.commentStart,
-    resolvedDelimiters.commentEnd
-  );
+  statementBlocks =
+    statementBlocks ??
+    extractBlocks(text, resolvedDelimiters.statementStart, resolvedDelimiters.statementEnd);
+  commentBlocks =
+    commentBlocks ??
+    extractBlocks(text, resolvedDelimiters.commentStart, resolvedDelimiters.commentEnd);
 
   const scopes: ForScope[] = [];
   const activeScopes: Array<Omit<ForScope, 'bodyEnd'>> = [];
+  let commentIndex = 0;
 
   for (const block of statementBlocks) {
-    if (isInsideBlocks(block.start, commentBlocks)) {
+    while (commentIndex < commentBlocks.length && commentBlocks[commentIndex].end <= block.start) {
+      commentIndex += 1;
+    }
+
+    if (
+      commentIndex < commentBlocks.length &&
+      block.start >= commentBlocks[commentIndex].start &&
+      block.start < commentBlocks[commentIndex].end
+    ) {
       continue;
     }
 
@@ -71,16 +74,22 @@ export function buildForScopesInText(
     const tag = trimmed.split(/\s+/)[0] ?? '';
 
     if (tag === 'for') {
-      const match = rawInner.match(/^\s*for\s+([A-Za-z_][\w]*)\s+in\s+([^\s%}]+)/);
+      const match = rawInner.match(/^\s*for\s+([A-Za-z_][\w]*)\s+in\s+([\s\S]+)$/);
       if (match) {
         const alias = match[1];
+        const iterablePath = match[2].trim();
+
+        if (!iterablePath) {
+          continue;
+        }
+
         const aliasIndexInInner = rawInner.indexOf(alias, match.index ?? 0);
         const aliasStart =
           block.start + resolvedDelimiters.statementStart.length + Math.max(0, aliasIndexInInner);
 
         activeScopes.push({
           alias,
-          iterablePath: match[2],
+          iterablePath,
           aliasStart,
           aliasEnd: aliasStart + alias.length,
           bodyStart: block.end,
