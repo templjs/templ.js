@@ -73,4 +73,12 @@ describe('scope-resolution', () => {
       end: aliasStart + 'item'.length,
     });
   });
+
+  it('captures full iterable expressions for for-scopes', () => {
+    const text = '{% for item in items | reverse %}\n{{ item.name }}\n{% endfor %}';
+    const scopes = buildForScopesInText(text);
+
+    expect(scopes).toHaveLength(1);
+    expect(scopes[0].iterablePath).toBe('items | reverse');
+  });
 });

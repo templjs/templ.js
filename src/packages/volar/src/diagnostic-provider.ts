@@ -233,7 +233,7 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
     delimiters.expressionStart,
     delimiters.expressionEnd
   );
-  const forScopes = buildForScopesInText(text, delimiters);
+  const forScopes = buildForScopesInText(text, delimiters, commentBlocks, statementBlocks);
 
   const statementStack: BlockStackEntry[] = [];
 
