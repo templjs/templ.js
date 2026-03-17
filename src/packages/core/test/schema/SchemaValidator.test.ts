@@ -1304,6 +1304,26 @@ describe('Integration Tests', () => {
       const result = validator.validate({ name: 'test' });
       expect(result.valid).toBe(true);
     });
+
+    it('clears compilationError when reusing a cached ValidateFunction', () => {
+      const validSchema: JSONSchema = {
+        $id: 'cached-schema-clear-error',
+        type: 'object',
+        properties: { name: { type: 'string' } },
+      };
+
+      const validator = new SchemaValidator(validSchema);
+      // Simulate a stale compile error by loading a bad schema afterwards
+      validator.loadSchema({
+        $schema: 'https://example.com/unresolvable-schema',
+        type: 'object',
+      });
+      // compilationError should now be set (unresolvable $schema causes compile failure)
+      // Load the previously-cached valid schema — must clear the stale error
+      validator.loadSchema(validSchema);
+      expect(validator.isCompiled).toBe(true);
+      expect(validator.compilationError).toBeNull();
+    });
   });
 
   describe('Error Message Formatting', () => {
