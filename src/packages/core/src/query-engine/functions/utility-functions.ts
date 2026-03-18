@@ -46,7 +46,7 @@ export const numberSignature: FunctionSignature = {
   category: 'utility',
   description: 'Convert a value to a number when possible.',
   parameters: [],
-  returnType: 'number',
+  returnType: 'number | null',
   examples: ['number("42") → 42', 'number("abc") → null'],
 };
 
