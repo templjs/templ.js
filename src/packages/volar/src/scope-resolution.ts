@@ -55,6 +55,10 @@ function getIterableBasePath(iterableExpression: string): string {
   return refs[0]?.path ?? iterableExpression;
 }
 
+function matchesAliasPath(path: string, alias: string): boolean {
+  return path === alias || path.startsWith(`${alias}.`) || path.startsWith(`${alias}[`);
+}
+
 export function resolveScopedPath(path: string, offset: number, scopes: ForScope[]): string {
   const matchingScopes = getMatchingScopesAtOffset(offset, scopes);
   if (matchingScopes.length === 0) {
@@ -73,11 +77,7 @@ export function resolveScopedPath(path: string, offset: number, scopes: ForScope
     let matched = false;
     for (let i = 0; i < remaining.length; i++) {
       const scope = remaining[i];
-      if (
-        current === scope.alias ||
-        current.startsWith(`${scope.alias}.`) ||
-        current.startsWith(`${scope.alias}[`)
-      ) {
+      if (matchesAliasPath(current, scope.alias)) {
         const suffix = current.slice(scope.alias.length);
         const iterableBasePath = getIterableBasePath(scope.iterablePath);
         const iterableBase = iterableBasePath.endsWith(']')
@@ -119,11 +119,7 @@ export function findLocalAliasDefinitionInText(
   const matchingScopes = getMatchingScopesAtOffset(offset, scopes);
 
   for (const scope of matchingScopes) {
-    if (
-      path === scope.alias ||
-      path.startsWith(`${scope.alias}.`) ||
-      path.startsWith(`${scope.alias}[`)
-    ) {
+    if (matchesAliasPath(path, scope.alias)) {
       if (scope.aliasStart === undefined || scope.aliasEnd === undefined) {
         return null;
       }
