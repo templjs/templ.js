@@ -6,8 +6,8 @@ import type { LexerOptions } from '@templjs/core';
 export interface ForScope {
   alias: string;
   iterablePath: string;
-  aliasStart: number;
-  aliasEnd: number;
+  aliasStart?: number;
+  aliasEnd?: number;
   bodyStart: number;
   bodyEnd: number;
 }
@@ -37,8 +37,8 @@ export function buildForScopesInText(
   return extractTemplateScopeBindings(text, lexerOptions).map((binding) => ({
     alias: binding.alias,
     iterablePath: binding.iterablePath,
-    aliasStart: binding.declarationStartOffset ?? 0,
-    aliasEnd: binding.declarationEndOffset ?? 0,
+    aliasStart: binding.declarationStartOffset,
+    aliasEnd: binding.declarationEndOffset,
     bodyStart: binding.scopeStartOffset,
     bodyEnd: binding.scopeEndOffset,
   }));
@@ -124,6 +124,10 @@ export function findLocalAliasDefinitionInText(
       path.startsWith(`${scope.alias}.`) ||
       path.startsWith(`${scope.alias}[`)
     ) {
+      if (scope.aliasStart === undefined || scope.aliasEnd === undefined) {
+        return null;
+      }
+
       return {
         start: scope.aliasStart,
         end: scope.aliasEnd,

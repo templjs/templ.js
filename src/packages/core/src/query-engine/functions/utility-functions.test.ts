@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { QueryEngine } from '../../src/query-engine/query-engine.js';
+import { QueryEngine } from '../query-engine.js';
 import {
   jsonFunction,
   numberFunction,
   stringFunction,
   typeofFunction,
-} from '../../src/query-engine/functions/utility-functions.js';
+} from './utility-functions.js';
 
 const engine = new QueryEngine();
 
@@ -70,6 +70,6 @@ describe('QueryEngine utility functions', () => {
         throw new Error('boom');
       },
     };
-    expect(jsonFunction(unserializable)).toBe('"[unserializable]"');
+    expect(jsonFunction(unserializable as unknown)).toBe('"[unserializable]"');
   });
 });
