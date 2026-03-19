@@ -22,7 +22,7 @@
           "type": "object",
           "properties": {
             "totalPoints": { "type": "number" },
-            "completedCount": { "type": "number" }
+            "completedCount": { "type": "integer", "minimum": 0 }
           },
           "required": ["totalPoints", "completedCount"],
           "additionalProperties": false

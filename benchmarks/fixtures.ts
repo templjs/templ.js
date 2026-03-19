@@ -234,6 +234,12 @@ export const vscodeWorkspaceFixture = (() => {
       )
     : {};
   const frontmatterRange = detectFrontmatterRange(VSCODE_DOCUMENT_TEXT) ?? { start: 0, end: 0 };
+  const completionMarker = 'task.';
+  const completionMarkerIndex = VSCODE_DOCUMENT_TEXT.indexOf(completionMarker);
+
+  if (completionMarkerIndex < 0) {
+    throw new Error("Missing 'task.' marker in benchmark fixture document");
+  }
 
   return {
     workspaceRoot: VSCODE_WORKSPACE_ROOT,
@@ -245,10 +251,7 @@ export const vscodeWorkspaceFixture = (() => {
     loadedFrontmatterSchema: (frontmatterLoaded.schema ?? frontmatterSchema) as JSONSchema,
     loadedContentSchema: (contentLoaded.schema ?? contentSchema) as JSONSchema,
     frontmatterRange,
-    completionOffset:
-      VSCODE_DOCUMENT_TEXT.indexOf('task.') >= 0
-        ? VSCODE_DOCUMENT_TEXT.indexOf('task.') + 'task.'.length
-        : 0,
+    completionOffset: completionMarkerIndex + completionMarker.length,
     diagnosticsText: `${VSCODE_DOCUMENT_TEXT}\nInvalid: {{ projects[0].missingField }}\nBad filter: {{ summary.totalPoints | nope }}`,
   };
 })();

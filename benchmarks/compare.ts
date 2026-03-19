@@ -23,7 +23,7 @@ async function main(): Promise<void> {
 
   const outputPath = getStringArg(args, 'output');
   const markdownPath = getStringArg(args, 'markdown');
-  const policyPath = getStringArg(args, 'policy', POLICY_PATH) ?? POLICY_PATH;
+  const policyPath = getStringArg(args, 'policy', POLICY_PATH);
 
   const baseline = readValidatedBenchmarkRun(baselinePath);
   const candidate = readValidatedBenchmarkRun(candidatePath);

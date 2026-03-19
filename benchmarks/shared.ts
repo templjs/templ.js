@@ -236,8 +236,60 @@ export function readValidatedBenchmarkComparison(filePath: string): BenchmarkCom
   return validateBenchmarkComparison(value);
 }
 
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readPolicyNumber(
+  section: Record<string, unknown>,
+  sectionName: string,
+  fieldName: string
+): number {
+  const value = section[fieldName];
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    throw new Error(
+      `Invalid threshold policy: expected ${sectionName}.${fieldName} to be a finite number`
+    );
+  }
+
+  return value;
+}
+
+export function validateThresholdPolicy(value: unknown): ThresholdPolicy {
+  if (!isObjectRecord(value)) {
+    throw new Error('Invalid threshold policy: expected a JSON object');
+  }
+
+  if (value.schemaVersion !== 'benchmark-policy.v1') {
+    throw new Error("Invalid threshold policy: expected schemaVersion 'benchmark-policy.v1'");
+  }
+
+  if (typeof value.enforce !== 'boolean') {
+    throw new Error('Invalid threshold policy: expected enforce to be a boolean');
+  }
+
+  if (!isObjectRecord(value.latency)) {
+    throw new Error('Invalid threshold policy: expected latency to be an object');
+  }
+
+  if (!isObjectRecord(value.memory)) {
+    throw new Error('Invalid threshold policy: expected memory to be an object');
+  }
+
+  readPolicyNumber(value.latency, 'latency', 'warnPercent');
+  readPolicyNumber(value.latency, 'latency', 'failPercent');
+  readPolicyNumber(value.latency, 'latency', 'minAbsoluteDeltaMs');
+  readPolicyNumber(value.memory, 'memory', 'warnHeapDeltaBytes');
+  readPolicyNumber(value.memory, 'memory', 'failHeapDeltaBytes');
+  readPolicyNumber(value.memory, 'memory', 'warnRssDeltaBytes');
+  readPolicyNumber(value.memory, 'memory', 'failRssDeltaBytes');
+
+  return value as ThresholdPolicy;
+}
+
 export function loadThresholdPolicy(filePath = POLICY_PATH): ThresholdPolicy {
-  return JSON.parse(readFileSync(filePath, 'utf-8')) as ThresholdPolicy;
+  const value = JSON.parse(readFileSync(filePath, 'utf-8')) as unknown;
+  return validateThresholdPolicy(value);
 }
 
 export function validateBenchmarkRun(value: unknown): BenchmarkRun {
