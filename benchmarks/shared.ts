@@ -246,13 +246,28 @@ function readPolicyNumber(
   fieldName: string
 ): number {
   const value = section[fieldName];
-  if (typeof value !== 'number' || Number.isNaN(value)) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
     throw new Error(
       `Invalid threshold policy: expected ${sectionName}.${fieldName} to be a finite number`
     );
   }
 
   return value;
+}
+
+function assertPolicyRange(value: number, name: string, minimum: number, maximum?: number): void {
+  if (value < minimum || (maximum !== undefined && value > maximum)) {
+    const range = maximum === undefined ? `>= ${minimum}` : `between ${minimum} and ${maximum}`;
+    throw new Error(`Invalid threshold policy: expected ${name} to be ${range}`);
+  }
+}
+
+function assertWarnNotAboveFail(warn: number, fail: number, label: string): void {
+  if (warn > fail) {
+    throw new Error(
+      `Invalid threshold policy: expected ${label}.warn to be less than or equal to ${label}.fail`
+    );
+  }
 }
 
 export function validateThresholdPolicy(value: unknown): ThresholdPolicy {
@@ -276,13 +291,25 @@ export function validateThresholdPolicy(value: unknown): ThresholdPolicy {
     throw new Error('Invalid threshold policy: expected memory to be an object');
   }
 
-  readPolicyNumber(value.latency, 'latency', 'warnPercent');
-  readPolicyNumber(value.latency, 'latency', 'failPercent');
-  readPolicyNumber(value.latency, 'latency', 'minAbsoluteDeltaMs');
-  readPolicyNumber(value.memory, 'memory', 'warnHeapDeltaBytes');
-  readPolicyNumber(value.memory, 'memory', 'failHeapDeltaBytes');
-  readPolicyNumber(value.memory, 'memory', 'warnRssDeltaBytes');
-  readPolicyNumber(value.memory, 'memory', 'failRssDeltaBytes');
+  const warnPercent = readPolicyNumber(value.latency, 'latency', 'warnPercent');
+  const failPercent = readPolicyNumber(value.latency, 'latency', 'failPercent');
+  const minAbsoluteDeltaMs = readPolicyNumber(value.latency, 'latency', 'minAbsoluteDeltaMs');
+  const warnHeapDeltaBytes = readPolicyNumber(value.memory, 'memory', 'warnHeapDeltaBytes');
+  const failHeapDeltaBytes = readPolicyNumber(value.memory, 'memory', 'failHeapDeltaBytes');
+  const warnRssDeltaBytes = readPolicyNumber(value.memory, 'memory', 'warnRssDeltaBytes');
+  const failRssDeltaBytes = readPolicyNumber(value.memory, 'memory', 'failRssDeltaBytes');
+
+  assertPolicyRange(warnPercent, 'latency.warnPercent', 0, 100);
+  assertPolicyRange(failPercent, 'latency.failPercent', 0, 100);
+  assertPolicyRange(minAbsoluteDeltaMs, 'latency.minAbsoluteDeltaMs', 0);
+  assertWarnNotAboveFail(warnPercent, failPercent, 'latency');
+
+  assertPolicyRange(warnHeapDeltaBytes, 'memory.warnHeapDeltaBytes', 0);
+  assertPolicyRange(failHeapDeltaBytes, 'memory.failHeapDeltaBytes', 0);
+  assertPolicyRange(warnRssDeltaBytes, 'memory.warnRssDeltaBytes', 0);
+  assertPolicyRange(failRssDeltaBytes, 'memory.failRssDeltaBytes', 0);
+  assertWarnNotAboveFail(warnHeapDeltaBytes, failHeapDeltaBytes, 'memory.heapDeltaBytes');
+  assertWarnNotAboveFail(warnRssDeltaBytes, failRssDeltaBytes, 'memory.rssDeltaBytes');
 
   return value as ThresholdPolicy;
 }
@@ -422,9 +449,17 @@ export function compareBenchmarkRuns(
 
     const sharedBaseline = baselineCase as BenchmarkCaseResult;
     const sharedCandidate = candidateCase as BenchmarkCaseResult;
-    const deltaMs = sharedCandidate.metrics.meanMs - sharedBaseline.metrics.meanMs;
+    const baselineMeanMs = sharedBaseline.metrics.meanMs;
+    const candidateMeanMs = sharedCandidate.metrics.meanMs;
+    const deltaMs = candidateMeanMs - baselineMeanMs;
     const deltaPercent =
-      sharedBaseline.metrics.meanMs === 0 ? 0 : (deltaMs / sharedBaseline.metrics.meanMs) * 100;
+      baselineMeanMs === 0
+        ? deltaMs === 0
+          ? 0
+          : deltaMs > 0
+            ? Number.POSITIVE_INFINITY
+            : Number.NEGATIVE_INFINITY
+        : (deltaMs / baselineMeanMs) * 100;
     const meaningfulLatency = Math.abs(deltaMs) >= policy.latency.minAbsoluteDeltaMs;
     const exceedsWarningThreshold = meaningfulLatency && deltaPercent >= policy.latency.warnPercent;
     const exceedsFailureThreshold = meaningfulLatency && deltaPercent >= policy.latency.failPercent;
@@ -451,8 +486,8 @@ export function compareBenchmarkRuns(
       group: sharedCandidate.group,
       name: sharedCandidate.name,
       classification,
-      baselineMeanMs: sharedBaseline.metrics.meanMs,
-      candidateMeanMs: sharedCandidate.metrics.meanMs,
+      baselineMeanMs,
+      candidateMeanMs,
       deltaMs,
       deltaPercent,
       heapDeltaBytes,
