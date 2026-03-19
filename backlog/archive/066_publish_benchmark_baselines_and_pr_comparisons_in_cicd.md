@@ -4,14 +4,17 @@ type: work-item
 subtype: story
 lifecycle: active
 title: '066: Publish Benchmark Baselines and PR Comparisons in CI/CD'
-status: ready-for-review
-status_reason: implementation-complete
+status: closed
+status_reason: completed
 priority: high
 estimated: 6
-actual: 0
+actual: 6
 assignee: ''
+completed_date: '2026-03-19'
 commits:
   27a2f28: 'ci(benchmarks): publish benchmark workflow'
+  05a1aa6: 'fix(benchmarks): harden comparison policy inputs'
+  929936d: 'fix(benchmarks): close comparison threshold gaps'
 test_results:
   - timestamp: 2026-03-19T00:00:00Z
     note: |
@@ -24,9 +27,23 @@ test_results:
       - Workflow publishes benchmark result artifacts on PRs, `main`, nightly, and `release/**` runs.
       - PR runs compare against the latest successful `main` artifact, publish job summaries, and upsert a sticky PR comment when permissions allow.
       - Threshold policy remains informational until `benchmarks/policy.json` is switched to enforcement in a follow-up.
+  - timestamp: 2026-03-19T19:54:04Z
+    note: |
+      Finalized after PR #29 merged to `main` as commit `55b8cbdc6596210b25f4b2fba3b307c3ccfbf704`.
+      GitHub validation on the merged PR head passed for Benchmark, CI, CodeQL, CodeRabbit, and Codecov.
+notes:
+  - timestamp: 2026-03-19T19:54:04Z
+    note: |
+      Archived after merge. No finer-grained effort log was recorded during implementation, so `actual`
+      was normalized to the tracked estimate during close-out.
+  - timestamp: 2026-03-19T20:24:45Z
+    note: |
+      Follow-up PR #30 hardens the benchmark workflow so the sticky PR comment is skipped with a
+      notice, rather than failing the benchmark job, when issue comment permissions are unavailable.
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/29
+    - https://github.com/templjs/templ.js/pull/30
   implements:
     - '[[064_benchmark_first_repo_optimization_program]]'
   depends_on:

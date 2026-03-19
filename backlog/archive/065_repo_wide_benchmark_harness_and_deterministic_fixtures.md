@@ -4,14 +4,19 @@ type: work-item
 subtype: story
 lifecycle: active
 title: '065: Establish Repo-Wide Benchmark Harness and Deterministic Fixtures'
-status: ready-for-review
-status_reason: implementation-complete
+status: closed
+status_reason: completed
 priority: high
 estimated: 8
-actual: 0
+actual: 8
 assignee: ''
+completed_date: '2026-03-19'
 commits:
   3a59ae9: 'feat(benchmarks): add deterministic repo benchmark harness'
+  3ba9ac7: 'style(benchmarks): format benchmark helper files'
+  936dffa: 'fix(vscode): export explicit schema-loading default module'
+  0a242cf: 'test(vscode): restore schema-loading coverage'
+  18a1112: 'fix(vscode): normalize schema pattern paths'
 test_results:
   - timestamp: 2026-03-19T00:00:00Z
     note: |
@@ -25,9 +30,19 @@ test_results:
       Notes:
       - Added deterministic core, Volar, VS Code, and context-graph fixtures plus machine-readable result/comparison schemas.
       - Fixed frontmatter schema alias parsing so `#/$defs/...` fragments survive document-scoped schema resolution in benchmark fixtures.
+  - timestamp: 2026-03-19T19:54:04Z
+    note: |
+      Finalized after PR #29 merged to `main` as commit `55b8cbdc6596210b25f4b2fba3b307c3ccfbf704`.
+      GitHub validation on the merged PR head passed for Benchmark, CI, CodeQL, CodeRabbit, and Codecov.
+notes:
+  - timestamp: 2026-03-19T19:54:04Z
+    note: |
+      Archived after merge. No finer-grained effort log was recorded during implementation, so `actual`
+      was normalized to the tracked estimate during close-out.
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/29
+    - https://github.com/templjs/templ.js/pull/30
   implements:
     - '[[064_benchmark_first_repo_optimization_program]]'
 ---
