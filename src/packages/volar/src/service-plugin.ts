@@ -62,6 +62,7 @@ export interface LSPDefinitionLocation {
 const COMPLETION_KIND = {
   Function: 3,
   Variable: 6,
+  Property: 10,
   Keyword: 14,
 } as const;
 
@@ -89,11 +90,13 @@ export class TempljsServicePlugin {
       detail: item.detail,
       documentation: item.documentation,
       kind:
-        item.kind === 'property' || item.kind === 'variable'
-          ? COMPLETION_KIND.Variable
-          : item.kind === 'filter'
-            ? COMPLETION_KIND.Function
-            : COMPLETION_KIND.Keyword,
+        item.kind === 'property'
+          ? COMPLETION_KIND.Property
+          : item.kind === 'variable'
+            ? COMPLETION_KIND.Variable
+            : item.kind === 'filter'
+              ? COMPLETION_KIND.Function
+              : COMPLETION_KIND.Keyword,
     }));
   }
 

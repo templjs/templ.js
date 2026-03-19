@@ -103,7 +103,7 @@ describe('TempljsServicePlugin', () => {
           label: 'stubbed',
           detail: undefined,
           documentation: undefined,
-          kind: 6,
+          kind: 10,
         },
       ]);
     });
