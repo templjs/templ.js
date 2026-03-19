@@ -50,6 +50,21 @@ describe('semantic-context core helpers', () => {
     expect(aliases.contentSchema).toBe('./content.json');
   });
 
+  it('preserves schema fragments in frontmatter aliases', () => {
+    const text = [
+      '---',
+      '$schema: ./frontmatter.json#/$defs/workItem',
+      '$content_schema: "./content.json#/$defs/body" # fixture comment',
+      '---',
+      'body',
+    ].join('\n');
+
+    const aliases = getFrontmatterSchemaAliases(text);
+
+    expect(aliases.templSchema).toBe('./frontmatter.json#/$defs/workItem');
+    expect(aliases.contentSchema).toBe('./content.json#/$defs/body');
+  });
+
   it('detects frontmatter and schema aliases with CRLF line endings', () => {
     const text = [
       '---',
@@ -80,6 +95,25 @@ describe('semantic-context core helpers', () => {
     });
     expect(getFrontmatterSchemaReferenceAtOffset(text, valueOffset)).toEqual({
       value: './frontmatter-crlf.json',
+    });
+  });
+
+  it('resolves schema references with fragments and trailing comments', () => {
+    const text = [
+      '---',
+      '$content_schema: ./content.json#/$defs/body # benchmark fixture',
+      '---',
+      'body',
+    ].join('\n');
+
+    const keyOffset = text.indexOf('$content_schema') + 3;
+    const valueOffset = text.indexOf('./content.json#/$defs/body') + 10;
+
+    expect(getFrontmatterSchemaReferenceAtOffset(text, keyOffset)).toEqual({
+      value: './content.json#/$defs/body',
+    });
+    expect(getFrontmatterSchemaReferenceAtOffset(text, valueOffset)).toEqual({
+      value: './content.json#/$defs/body',
     });
   });
 

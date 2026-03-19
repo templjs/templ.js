@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "benchmark-policy.v1",
+  "enforce": false,
+  "latency": {
+    "warnPercent": 7,
+    "failPercent": 15,
+    "minAbsoluteDeltaMs": 0.2
+  },
+  "memory": {
+    "warnHeapDeltaBytes": 262144,
+    "failHeapDeltaBytes": 1048576,
+    "warnRssDeltaBytes": 1048576,
+    "failRssDeltaBytes": 4194304
+  }
+}
