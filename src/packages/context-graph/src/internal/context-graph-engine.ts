@@ -12,8 +12,8 @@ import type {
 } from '../public-types.js';
 
 type ProviderState = {
-  nodeIds: Set<string>;
-  edgeIds: Set<string>;
+  nodeKeys: Set<string>;
+  edgeKeys: Set<string>;
 };
 
 const CONTRACT_VERSION = 'v1' as const;
@@ -40,13 +40,30 @@ export class ContextGraphError extends Error {
     this.payload = payload;
   }
 }
+function sortByProperties<T>(items: T[], propertyNames: (keyof T)[]): T[] {
+  return [...items].sort((a, b) => {
+    for (const propName of propertyNames) {
+      const aValue = String(a[propName]);
+      const bValue = String(b[propName]);
+      const compareResult = aValue.localeCompare(bValue);
+      if (compareResult !== 0) {
+        return compareResult;
+      }
+    }
+    return 0;
+  });
+}
 
 function sortNodes(nodes: ContextNode[]): ContextNode[] {
-  return [...nodes].sort((left, right) => left.id.localeCompare(right.id));
+  return sortByProperties(nodes, ['id', 'profileId', 'kind']);
 }
 
 function sortEdges(edges: ContextEdge[]): ContextEdge[] {
-  return [...edges].sort((left, right) => left.id.localeCompare(right.id));
+  return sortByProperties(edges, ['id', 'profileId', 'from', 'to']);
+}
+
+function scopedEntityKey(providerId: string, entityId: string): string {
+  return `${providerId}\u0000${entityId}`;
 }
 
 function matchesNodeQuery(node: ContextNode, query?: NodeQuery): boolean {
@@ -109,8 +126,8 @@ export class ContextGraphEngine implements ContextGraph {
     this.providers.set(provider.id, provider);
     if (!this.providerStates.has(provider.id)) {
       this.providerStates.set(provider.id, {
-        nodeIds: new Set(),
-        edgeIds: new Set(),
+        nodeKeys: new Set(),
+        edgeKeys: new Set(),
       });
     }
 
@@ -125,7 +142,7 @@ export class ContextGraphEngine implements ContextGraph {
       // Invalidate performs a full provider-owned rebuild: clear previous
       // contributions before onInvalidate repopulates via the write context.
       this.clearProviderState(state);
-      const writeContext = this.createWriteContext(state);
+      const writeContext = this.createWriteContext(provider.id, state);
       try {
         await provider.onInvalidate(uri, writeContext);
       } catch (error) {
@@ -152,7 +169,7 @@ export class ContextGraphEngine implements ContextGraph {
 
       if (provider.onClose) {
         try {
-          await provider.onClose(uri, this.createWriteContext(state));
+          await provider.onClose(uri, this.createWriteContext(provider.id, state));
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           throw new ContextGraphError(
@@ -207,23 +224,27 @@ export class ContextGraphEngine implements ContextGraph {
     };
   }
 
-  private createWriteContext(state: ProviderState): GraphWriteContext {
+  private createWriteContext(providerId: string, state: ProviderState): GraphWriteContext {
     return {
       upsertNode: (node) => {
-        this.nodes.set(node.id, node);
-        state.nodeIds.add(node.id);
+        const key = scopedEntityKey(providerId, node.id);
+        this.nodes.set(key, node);
+        state.nodeKeys.add(key);
       },
       upsertEdge: (edge) => {
-        this.edges.set(edge.id, edge);
-        state.edgeIds.add(edge.id);
+        const key = scopedEntityKey(providerId, edge.id);
+        this.edges.set(key, edge);
+        state.edgeKeys.add(key);
       },
       removeNode: (nodeId) => {
-        this.nodes.delete(nodeId);
-        state.nodeIds.delete(nodeId);
+        const key = scopedEntityKey(providerId, nodeId);
+        this.nodes.delete(key);
+        state.nodeKeys.delete(key);
       },
       removeEdge: (edgeId) => {
-        this.edges.delete(edgeId);
-        state.edgeIds.delete(edgeId);
+        const key = scopedEntityKey(providerId, edgeId);
+        this.edges.delete(key);
+        state.edgeKeys.delete(key);
       },
     };
   }
@@ -235,23 +256,23 @@ export class ContextGraphEngine implements ContextGraph {
     }
 
     const created: ProviderState = {
-      nodeIds: new Set(),
-      edgeIds: new Set(),
+      nodeKeys: new Set(),
+      edgeKeys: new Set(),
     };
     this.providerStates.set(providerId, created);
     return created;
   }
 
   private clearProviderState(state: ProviderState): void {
-    for (const edgeId of state.edgeIds) {
-      this.edges.delete(edgeId);
+    for (const edgeKey of state.edgeKeys) {
+      this.edges.delete(edgeKey);
     }
-    state.edgeIds.clear();
+    state.edgeKeys.clear();
 
-    for (const nodeId of state.nodeIds) {
-      this.nodes.delete(nodeId);
+    for (const nodeKey of state.nodeKeys) {
+      this.nodes.delete(nodeKey);
     }
-    state.nodeIds.clear();
+    state.nodeKeys.clear();
   }
 
   private createDelta(
@@ -264,8 +285,8 @@ export class ContextGraphEngine implements ContextGraph {
       revision: this.revision,
       type,
       providerId,
-      nodeCount: state.nodeIds.size,
-      edgeCount: state.edgeIds.size,
+      nodeCount: state.nodeKeys.size,
+      edgeCount: state.edgeKeys.size,
     };
   }
 }

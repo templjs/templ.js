@@ -36,6 +36,40 @@ describe('ContextGraphEngine', () => {
     expect(ids).toEqual(['node-a', 'node-z']);
   });
 
+  it('keeps provider contributions isolated when IDs overlap', async () => {
+    const graph = createContextGraph();
+
+    graph
+      .use({
+        id: 'provider-a',
+        onInvalidate: (_uri, ctx) => {
+          ctx.upsertNode({
+            id: 'shared-node',
+            profileId: 'editor-location',
+            kind: 'symbol',
+            attributes: { source: 'a' },
+          });
+        },
+      })
+      .use({
+        id: 'provider-b',
+        onInvalidate: (_uri, ctx) => {
+          ctx.upsertNode({
+            id: 'shared-node',
+            profileId: 'runtime',
+            kind: 'symbol',
+            attributes: { source: 'b' },
+          });
+        },
+      });
+
+    await graph.invalidate('file:///shared');
+
+    const nodes = graph.getNodes().filter((node) => node.id === 'shared-node');
+    expect(nodes).toHaveLength(2);
+    expect(nodes.map((node) => node.attributes?.source).sort()).toEqual(['a', 'b']);
+  });
+
   it('clears provider-owned nodes on re-invalidate', async () => {
     const graph = createContextGraph();
     let counter = 0;
