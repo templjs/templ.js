@@ -4,13 +4,29 @@ type: work-item
 subtype: story
 lifecycle: active
 title: '066: Publish Benchmark Baselines and PR Comparisons in CI/CD'
-status: ready
-status_reason: prioritized
+status: ready-for-review
+status_reason: implementation-complete
 priority: high
 estimated: 6
 actual: 0
 assignee: ''
+commits:
+  27a2f28: 'ci(benchmarks): publish benchmark workflow'
+test_results:
+  - timestamp: 2026-03-19T00:00:00Z
+    note: |
+      Added the dedicated benchmark GitHub Actions workflow and CI publication/comparison wiring.
+      Validation:
+      - Parsed `.github/workflows/benchmark.yml` successfully with the local `yaml` parser
+      - `pnpm benchmark:ci -- --output /tmp/templjs-benchmark-results.json --summary-output /tmp/templjs-benchmark-summary.md`
+      - `pnpm benchmark:compare -- --baseline /tmp/templjs-benchmark-results.json --candidate /tmp/templjs-benchmark-results.json --output /tmp/templjs-benchmark-comparison.json --markdown /tmp/templjs-benchmark-comparison.md`
+      Notes:
+      - Workflow publishes benchmark result artifacts on PRs, `main`, nightly, and `release/**` runs.
+      - PR runs compare against the latest successful `main` artifact, publish job summaries, and upsert a sticky PR comment when permissions allow.
+      - Threshold policy remains informational until `benchmarks/policy.json` is switched to enforcement in a follow-up.
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/29
   implements:
     - '[[064_benchmark_first_repo_optimization_program]]'
   depends_on:
@@ -34,19 +50,19 @@ Benchmarking only becomes useful as a program gate when candidate runs can be co
 
 ## Tasks
 
-- [ ] Add a benchmark workflow to CI/CD.
-- [ ] Publish benchmark artifacts for PR, `main`, nightly, and release runs.
-- [ ] Compare PR benchmark runs to the latest successful `main` baseline.
-- [ ] Add PR/job summaries that highlight regressions and improvements.
-- [ ] Store threshold policy in repo configuration without failing builds initially.
-- [ ] Document the path to future blocking-on-regression behavior.
+- [x] Add a benchmark workflow to CI/CD.
+- [x] Publish benchmark artifacts for PR, `main`, nightly, and release runs.
+- [x] Compare PR benchmark runs to the latest successful `main` baseline.
+- [x] Add PR/job summaries that highlight regressions and improvements.
+- [x] Store threshold policy in repo configuration without failing builds initially.
+- [x] Document the path to future blocking-on-regression behavior.
 
 ## Acceptance Criteria
 
-- [ ] Benchmark results are published as CI artifacts.
-- [ ] Pull requests receive a benchmark comparison summary against `main`.
-- [ ] `main` and scheduled runs publish baseline artifacts suitable for later reuse.
-- [ ] The workflow remains informational only until an explicit follow-up enables gating.
+- [x] Benchmark results are published as CI artifacts.
+- [x] Pull requests receive a benchmark comparison summary against `main`.
+- [x] `main` and scheduled runs publish baseline artifacts suitable for later reuse.
+- [x] The workflow remains informational only until an explicit follow-up enables gating.
 
 ## Implementation Notes
 

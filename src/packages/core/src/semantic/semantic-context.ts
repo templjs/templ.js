@@ -178,6 +178,42 @@ export function getTokenAtOffset(
   return { token, start, end };
 }
 
+function matchFrontmatterSchemaAlias(line: string):
+  | {
+      prefix: string;
+      key: string;
+      separator: string;
+      value: string;
+      valueOffset: number;
+    }
+  | undefined {
+  const match = line.match(
+    /^(\s*["']?)(\$schema|\$templ-schema|\$content-schema|\$content_schema)(["']?\s*:\s*)(?:"([^"\r\n]+)"|'([^'\r\n]+)'|([^\r\n]+?)(?=\s+#|$))/
+  );
+  if (!match) {
+    return undefined;
+  }
+
+  const [, prefix, key, separator, doubleQuotedValue, singleQuotedValue, unquotedValue] = match;
+  const rawValue = doubleQuotedValue ?? singleQuotedValue ?? unquotedValue ?? '';
+  const value = rawValue.trim();
+  if (!value) {
+    return undefined;
+  }
+
+  return {
+    prefix,
+    key,
+    separator,
+    value,
+    valueOffset:
+      prefix.length +
+      key.length +
+      separator.length +
+      (doubleQuotedValue !== undefined || singleQuotedValue !== undefined ? 1 : 0),
+  };
+}
+
 export function getFrontmatterSchemaAliases(text: string): {
   templSchema?: string;
   contentSchema?: string;
@@ -188,16 +224,30 @@ export function getFrontmatterSchemaAliases(text: string): {
   }
 
   const frontmatterText = text.slice(range.start, range.end);
-  const templMatch = frontmatterText.match(
-    /^\s*["']?(\$schema|\$templ-schema)["']?\s*:\s*["']?([^"'\n#]+)["']?/m
-  );
-  const contentMatch = frontmatterText.match(
-    /^\s*["']?(\$content-schema|\$content_schema)["']?\s*:\s*["']?([^"'\n#]+)["']?/m
-  );
+  let templSchema: string | undefined;
+  let contentSchema: string | undefined;
+
+  for (const line of frontmatterText.split(/\r?\n/)) {
+    const alias = matchFrontmatterSchemaAlias(line);
+    if (!alias) {
+      continue;
+    }
+
+    if ((alias.key === '$schema' || alias.key === '$templ-schema') && templSchema === undefined) {
+      templSchema = alias.value;
+    }
+
+    if (
+      (alias.key === '$content-schema' || alias.key === '$content_schema') &&
+      contentSchema === undefined
+    ) {
+      contentSchema = alias.value;
+    }
+  }
 
   return {
-    templSchema: templMatch?.[2]?.trim() || undefined,
-    contentSchema: contentMatch?.[2]?.trim() || undefined,
+    templSchema,
+    contentSchema,
   };
 }
 
@@ -225,15 +275,12 @@ export function getFrontmatterSchemaReferenceAtOffset(
       break;
     }
     const line = rawLine.replace(/\r?\n$/, '');
-    const match = line.match(
-      /^(\s*["']?)(\$schema|\$templ-schema|\$content-schema|\$content_schema)(["']?\s*:\s*["']?)([^"'\n#]+)(.*)$/
-    );
-    if (match) {
-      const [, prefix, key, separator, rawValue] = match;
-      const value = rawValue.trim();
+    const alias = matchFrontmatterSchemaAlias(line);
+    if (alias) {
+      const { prefix, key, value, valueOffset } = alias;
       const keyStart = lineStart + prefix.length;
       const keyEnd = keyStart + key.length;
-      const valueStart = keyEnd + separator.length;
+      const valueStart = lineStart + valueOffset;
       const valueEnd = valueStart + value.length;
 
       if (

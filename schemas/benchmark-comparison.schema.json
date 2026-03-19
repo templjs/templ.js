@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://templjs.dev/schemas/benchmark-comparison.schema.json",
+  "title": "templjs benchmark comparison",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "generatedAt",
+    "policy",
+    "baseline",
+    "candidate",
+    "summary",
+    "cases"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "benchmark-comparison.v1" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "enforce", "latency", "memory"],
+      "properties": {
+        "schemaVersion": { "const": "benchmark-policy.v1" },
+        "enforce": { "type": "boolean" },
+        "latency": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["warnPercent", "failPercent", "minAbsoluteDeltaMs"],
+          "properties": {
+            "warnPercent": { "type": "number" },
+            "failPercent": { "type": "number" },
+            "minAbsoluteDeltaMs": { "type": "number" }
+          }
+        },
+        "memory": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "warnHeapDeltaBytes",
+            "failHeapDeltaBytes",
+            "warnRssDeltaBytes",
+            "failRssDeltaBytes"
+          ],
+          "properties": {
+            "warnHeapDeltaBytes": { "type": "integer" },
+            "failHeapDeltaBytes": { "type": "integer" },
+            "warnRssDeltaBytes": { "type": "integer" },
+            "failRssDeltaBytes": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "mode", "branch", "sha"],
+      "properties": {
+        "label": { "type": "string" },
+        "mode": { "enum": ["full", "ci"] },
+        "branch": { "type": ["string", "null"] },
+        "sha": { "type": ["string", "null"] }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "mode", "branch", "sha"],
+      "properties": {
+        "label": { "type": "string" },
+        "mode": { "enum": ["full", "ci"] },
+        "branch": { "type": ["string", "null"] },
+        "sha": { "type": ["string", "null"] }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "regressionCount",
+        "improvementCount",
+        "neutralCount",
+        "newCount",
+        "missingCount",
+        "shouldFailIfEnforced"
+      ],
+      "properties": {
+        "regressionCount": { "type": "integer", "minimum": 0 },
+        "improvementCount": { "type": "integer", "minimum": 0 },
+        "neutralCount": { "type": "integer", "minimum": 0 },
+        "newCount": { "type": "integer", "minimum": 0 },
+        "missingCount": { "type": "integer", "minimum": 0 },
+        "shouldFailIfEnforced": { "type": "boolean" }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "group",
+          "name",
+          "classification",
+          "baselineMeanMs",
+          "candidateMeanMs",
+          "deltaMs",
+          "deltaPercent",
+          "heapDeltaBytes",
+          "rssDeltaBytes",
+          "exceedsWarningThreshold",
+          "exceedsFailureThreshold",
+          "advisoryMemoryWarning",
+          "advisoryMemoryFailure"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "group": { "type": "string" },
+          "name": { "type": "string" },
+          "classification": {
+            "enum": ["regression", "improvement", "neutral", "new", "missing"]
+          },
+          "baselineMeanMs": { "type": ["number", "null"] },
+          "candidateMeanMs": { "type": ["number", "null"] },
+          "deltaMs": { "type": ["number", "null"] },
+          "deltaPercent": { "type": ["number", "null"] },
+          "heapDeltaBytes": { "type": ["integer", "null"] },
+          "rssDeltaBytes": { "type": ["integer", "null"] },
+          "exceedsWarningThreshold": { "type": "boolean" },
+          "exceedsFailureThreshold": { "type": "boolean" },
+          "advisoryMemoryWarning": { "type": "boolean" },
+          "advisoryMemoryFailure": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

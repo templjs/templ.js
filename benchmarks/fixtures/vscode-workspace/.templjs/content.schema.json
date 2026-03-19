@@ -1,0 +1,35 @@
+{
+  "$defs": {
+    "body": {
+      "type": "object",
+      "properties": {
+        "projects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "tasks": {
+                "type": "array",
+                "items": { "$ref": "./common.schema.json#/$defs/task" }
+              }
+            },
+            "required": ["name", "tasks"],
+            "additionalProperties": false
+          }
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "totalPoints": { "type": "number" },
+            "completedCount": { "type": "integer", "minimum": 0 }
+          },
+          "required": ["totalPoints", "completedCount"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["projects", "summary"],
+      "additionalProperties": false
+    }
+  }
+}

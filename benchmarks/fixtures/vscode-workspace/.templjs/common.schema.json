@@ -1,0 +1,32 @@
+{
+  "$defs": {
+    "person": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": {
+          "type": "string",
+          "enum": ["owner", "reviewer", "writer", "maintainer"]
+        },
+        "email": { "type": "string" }
+      },
+      "required": ["name", "role"],
+      "additionalProperties": false
+    },
+    "task": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["todo", "doing", "done"]
+        },
+        "points": { "type": "number" },
+        "assignee": { "$ref": "#/$defs/person" }
+      },
+      "required": ["id", "title", "status", "points", "assignee"],
+      "additionalProperties": false
+    }
+  }
+}

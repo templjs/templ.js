@@ -1,0 +1,21 @@
+---
+title: Benchmark Fixture
+milestone: WI-065
+owner:
+  name: Taylor
+  role: owner
+reviewers:
+  - name: Morgan
+    role: reviewer
+$schema: ../.templjs/frontmatter.schema.json#/$defs/workItemDefaults
+$content_schema: ../.templjs/content.schema.json#/$defs/body
+---
+
+{% for project in projects %}
+## {{ project.name }}
+{% for task in project.tasks %}
+- {{ task.id }} {{ task.assignee.name | upper }} {{ task.status }} {{ task.points | round(0) }}
+{% endfor %}
+{% endfor %}
+
+Summary: {{ summary.totalPoints | round(2) }}
