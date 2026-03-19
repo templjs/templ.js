@@ -4,7 +4,7 @@ type: work-item
 subtype: bug
 lifecycle: active
 title: '055: Markdown syntax highlighting and linting not working for md.tpl files'
-status: ready
+status: in-progress
 priority: medium
 estimated: 2
 actual: 0
@@ -61,10 +61,10 @@ The Volar language plugin only recognizes `.templ.` and `.tmpl.` as template mar
 
 - [ ] `.md.tpl` files show Markdown syntax highlighting in VS Code
 - [ ] Markdown linting diagnostics are produced for `.md.tpl` files
-- [ ] Existing `.md.templ` and `.md.tmpl` behaviour is unaffected
-- [ ] New regression test passes in CI
-- [ ] Unit tests cover all template markers in `isTemplateFile` logic
-- [ ] String scalars in frontmatter with `.md.tpl` extension are tokenized as a single string token, not split by word boundaries
+- [x] Existing `.md.templ` and `.md.tmpl` behaviour is unaffected
+- [x] New regression test passes in CI
+- [x] Unit tests cover all template markers in `isTemplateFile` logic
+- [x] String scalars in frontmatter with `.md.tpl` extension are tokenized as a single string token, not split by word boundaries
 
 ## Follow-up Note
 

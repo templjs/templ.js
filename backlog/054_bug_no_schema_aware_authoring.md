@@ -49,6 +49,13 @@ test_results:
       - Added extension tests for non-file document context handling, startup error surfacing,
         and trace-mode middleware logging behavior
       - Revalidated package-local VS Code coverage gate and the shared pre-push hook successfully
+  - timestamp: 2026-03-19T00:00:00Z
+    note: |
+      Checklist reconciliation verification:
+      - Ran `src/extensions/vscode/test/server-inprocess.integration.test.ts` (5 passed)
+      - Ran `src/packages/volar/test/diagnostic-provider.test.ts` + `src/packages/volar/test/intellisense-provider.test.ts` (121 passed)
+      - Verified schema-aware frontmatter/content completions and diagnostics, glob/precedence resolution,
+        root schema alias extraction, URL schema loading, and backward compatibility for `templjs.schemaPath`
 links:
   depends_on:
     - '[[031_language_feature_tests]]'
@@ -130,8 +137,8 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 - [x] Add `extractFrontmatterSchemas()` function to parse YAML/JSON frontmatter and extract `$templ-schema` and `$content-schema` root properties
 - [x] Implement `resolveDocumentSchema()` function for per-document three-way precedence (inline > root > setting) applied independently to templ and content schemas
 - [x] Extend Volar plugin options types to include `contentSchema` and `contentSchemaUri`
-- [ ] Add frontmatter zone detection and content-schema zone-aware validation in diagnostic provider
-- [ ] Wire schema into completion/hover/diagnostic execution path (create service-plugin if not present)
+- [x] Add frontmatter zone detection and content-schema zone-aware validation in diagnostic provider
+- [x] Wire schema into completion/hover/diagnostic execution path (create service-plugin if not present)
 - [ ] Add file watcher for schema file changes and implement hot reload (cache invalidation, diagnostics refresh)
 - [x] Add/extend tests for all new features: glob patterns, URL loading, directives, frontmatter, precedence rules, content-schema validation
 - [ ] Update extension documentation with setup, glob patterns, content-schema usage, and troubleshooting
@@ -147,17 +154,17 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 
 **Phase 2:**
 
-- [ ] With configured schema, top-level and nested path completions appear in templjs files
+- [x] With configured schema, top-level and nested path completions appear in templjs files
 - [ ] Invalid schema paths in expressions and for-in clauses produce diagnostics with suggestions
-- [ ] Glob-pattern-based settings correctly match documents to different schemas per directory
+- [x] Glob-pattern-based settings correctly match documents to different schemas per directory
 - [ ] HTTPS URL schemas are loaded and cached (content reused on reconnect)
 - [ ] Multiple inline directives per document are parsed and first match takes precedence
-- [ ] Root properties (`$templ-schema` and `$content-schema`) are extracted from YAML/JSON frontmatter
-- [ ] Three-way precedence (inline > root > setting) is applied independently to each schema type
-- [ ] Markdown files with content-schema have Markdown body validated against content-schema (frontmatter against templ-schema)
+- [x] Root properties (`$templ-schema` and `$content-schema`) are extracted from YAML/JSON frontmatter
+- [x] Three-way precedence (inline > root > setting) is applied independently to each schema type
+- [x] Markdown files with content-schema have Markdown body validated against content-schema (frontmatter against templ-schema)
 - [ ] Schema changes on disk update editor behavior without requiring extension restart
-- [ ] Network failures, missing files, and parse errors yield clear, non-crashing diagnostics/logging
-- [ ] Backward compatibility: existing `templjs.schemaPath` setting continues to work
+- [x] Network failures, missing files, and parse errors yield clear, non-crashing diagnostics/logging
+- [x] Backward compatibility: existing `templjs.schemaPath` setting continues to work
 - [ ] All new tests pass in CI for schema-aware extension behavior
 - [ ] Documentation covers: glob patterns, content-schema usage, inline directives, root properties, URL schemas, multi-root workspace handling
 

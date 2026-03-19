@@ -4,10 +4,12 @@ type: work-item
 subtype: story
 lifecycle: active
 title: '18: Add Watch Mode and File I/O'
-status: ready-for-review
+status: closed
+status_reason: completed
 priority: high
 estimated: 6
 actual: 6
+completed_date: '2026-03-19'
 assignee: ''
 links:
   depends_on:

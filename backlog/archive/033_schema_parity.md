@@ -4,11 +4,13 @@ type: work-item
 subtype: story
 lifecycle: active
 title: '33: Implement Schema Parity (JSON/YAML/TOML Input Formats)'
-status: ready-for-review
+status: closed
+status_reason: completed
 priority: high
 estimated: 12
 assignee: ''
 actual: 13
+completed_date: '2026-03-19'
 commits:
   78e3fbd: 'fix(backlog,formats): address PR #24 major blocking issues'
   f1394b6: 'docs(wi-033): add PR metadata to backlog item'

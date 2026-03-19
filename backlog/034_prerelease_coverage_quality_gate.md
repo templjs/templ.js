@@ -4,7 +4,7 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '34: Pre-Release Coverage Quality Gate (ADR-006 Alignment)'
-status: ready
+status: in-progress
 priority: critical
 estimated: 8
 assignee: ''
@@ -133,8 +133,8 @@ Reconcile all coverage thresholds in vitest configs to align with ADR-006 target
 - [ ] All vitest configs updated with ADR-006 aligned thresholds
 - [ ] `perFile: true` enabled across all packages
 - [ ] `pnpm run test:affected:ci` passes and enforces ≥90% global coverage
-- [ ] Core package achieves ≥95% coverage on all metrics (lines, functions, branches, statements)
-- [ ] CLI package achieves ≥85% coverage on all metrics
+- [x] Core package achieves ≥95% coverage on all metrics (lines, functions, branches, statements)
+- [x] CLI package achieves ≥85% coverage on all metrics
 - [ ] Volar package achieves ≥92% coverage on all metrics
 - [ ] VSCode extension achieves ≥90% coverage on all metrics
 - [ ] No files below package-level threshold (per-file enforcement active)
