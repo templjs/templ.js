@@ -50,6 +50,34 @@ describe('expression-analysis', () => {
     ]);
   });
 
+  it('tracks quoted string-index references that include colons', () => {
+    const expression = 'user["a:b"] && user["a:b"]';
+    const refs = extractExpressionVariableReferences(expression);
+
+    const token = 'user["a:b"]';
+    const secondStart = token.length + ' && '.length;
+    expect(refs).toEqual([
+      { path: 'user[a:b]', start: 0, end: token.length },
+      {
+        path: 'user[a:b]',
+        start: secondStart,
+        end: secondStart + token.length,
+      },
+    ]);
+  });
+
+  it('does not match variable-like paths inside string literals', () => {
+    const refs = extractExpressionVariableReferences('"user.name" == user.name');
+
+    expect(refs).toEqual([
+      {
+        path: 'user.name',
+        start: '"user.name" == '.length,
+        end: '"user.name" == '.length + 'user.name'.length,
+      },
+    ]);
+  });
+
   it('returns empty references when the expression cannot be parsed', () => {
     expect(extractExpressionVariableReferences('user.')).toEqual([]);
     expect(extractExpressionFilterReferences('user.name |')).toEqual([]);

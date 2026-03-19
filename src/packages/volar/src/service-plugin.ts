@@ -125,13 +125,18 @@ export class TempljsServicePlugin {
     options?: IntellisenseOptions
   ): LSPDefinitionLocation | null {
     const definition = this.intellisenseProvider.getDefinition(text, offset, options);
-    if (!definition || !definition.range) {
+    if (!definition) {
       return null;
     }
 
+    const range = definition.range ?? {
+      start: { line: 0, character: 0 },
+      end: { line: 0, character: 0 },
+    };
+
     return {
       uri: definition.uri,
-      range: definition.range,
+      range,
     };
   }
 

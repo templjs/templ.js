@@ -198,7 +198,7 @@ describe('TempljsServicePlugin', () => {
       expect(definition).toBeNull();
     });
 
-    it('returns null when provider definition has no range', () => {
+    it('returns a fallback range when provider definition has no range', () => {
       const stubProvider = {
         getCompletions: vi.fn().mockReturnValue([]),
         getHover: vi.fn().mockReturnValue(null),
@@ -214,7 +214,12 @@ describe('TempljsServicePlugin', () => {
         schemaUri: 'file:///schema.json',
       });
 
-      expect(definition).toBeNull();
+      expect(definition).not.toBeNull();
+      expect(definition?.uri).toBe('file:///schema.json');
+      expect(definition?.range).toEqual({
+        start: { line: 0, character: 0 },
+        end: { line: 0, character: 0 },
+      });
     });
 
     it('returns a concrete definition range when available', () => {

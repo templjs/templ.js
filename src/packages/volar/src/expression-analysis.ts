@@ -135,6 +135,31 @@ function isPathBoundaryChar(char: string | undefined): boolean {
   return !/[A-Za-z0-9_.$[\]]/.test(char);
 }
 
+function isInsideStringLiteral(content: string, index: number): boolean {
+  let inSingle = false;
+  let inDouble = false;
+
+  for (let i = 0; i < index && i < content.length; i += 1) {
+    const char = content[i];
+    const escaped = i > 0 && content[i - 1] === '\\';
+
+    if (escaped) {
+      continue;
+    }
+
+    if (char === "'" && !inDouble) {
+      inSingle = !inSingle;
+      continue;
+    }
+
+    if (char === '"' && !inSingle) {
+      inDouble = !inDouble;
+    }
+  }
+
+  return inSingle || inDouble;
+}
+
 interface PathOccurrence {
   start: number;
   end: number;
@@ -146,8 +171,7 @@ function buildBracketSegmentCandidates(segmentValue: string): string[] {
   const candidates = [`[${segmentValue}]`];
 
   const looksNumeric = /^-?\d+$/.test(segmentValue);
-  const isTypedSentinel = segmentValue.includes(':');
-  if (looksNumeric || isTypedSentinel) {
+  if (looksNumeric) {
     return candidates;
   }
 
@@ -214,7 +238,11 @@ function findPathOccurrences(content: string, path: string): PathOccurrence[] {
       const after =
         index + candidate.length < content.length ? content[index + candidate.length] : undefined;
 
-      if (isPathBoundaryChar(before) && isPathBoundaryChar(after)) {
+      if (
+        !isInsideStringLiteral(content, index) &&
+        isPathBoundaryChar(before) &&
+        isPathBoundaryChar(after)
+      ) {
         const key = `${index}:${index + candidate.length}`;
         if (!seen.has(key)) {
           seen.add(key);
@@ -239,12 +267,20 @@ function findFilterOccurrences(content: string, name: string): number[] {
       break;
     }
 
+    if (isInsideStringLiteral(content, pipeIndex)) {
+      from = pipeIndex + 1;
+      continue;
+    }
+
     let cursor = pipeIndex + 1;
     while (cursor < content.length && /\s/.test(content[cursor])) {
       cursor += 1;
     }
 
-    if (content.slice(cursor, cursor + name.length) === name) {
+    if (
+      content.slice(cursor, cursor + name.length) === name &&
+      !isInsideStringLiteral(content, cursor)
+    ) {
       const after = content[cursor + name.length];
       if (isPathBoundaryChar(after)) {
         indices.push(cursor);
