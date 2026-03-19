@@ -4,8 +4,9 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '026: CI/CD Scaffolding & Repository Infrastructure (Primary Artifact)'
-status: ready-for-review
-status_reason: awaiting-review
+status: closed
+status_reason: completed
+completed_date: 2026-03-19
 priority: critical
 estimated: 6
 actual: 4
@@ -16,6 +17,8 @@ test_results:
 commits:
   1768d15: 'chore(core): add ajv dependencies for schema validation'
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/1
   depends_on:
     - '[[003_github_actions]]'
     - '[[004_precommit_hooks]]'

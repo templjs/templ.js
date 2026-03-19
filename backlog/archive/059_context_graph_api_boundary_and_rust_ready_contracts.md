@@ -4,7 +4,9 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '059: Enforce API boundary and Rust-ready contracts'
-status: ready-for-review
+status: closed
+status_reason: completed
+completed_date: 2026-03-19
 priority: high
 estimated: 10
 actual: 5
@@ -45,6 +47,8 @@ test_results:
       - Added query-filtering, provider-close lifecycle, and provider error regression coverage
       - Package build plus coverage gate passed with 97.00% statements / 91.66% branches / 100% functions / 96.80% lines
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/27
   implements:
     - '[[056_context_graph_platform_epic]]'
   depends_on:

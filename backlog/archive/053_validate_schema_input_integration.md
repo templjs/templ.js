@@ -4,7 +4,9 @@ type: work-item
 subtype: story
 lifecycle: active
 title: '053: Wire `validate` command to schema + input validation'
-status: ready-for-review
+status: closed
+status_reason: completed
+completed_date: 2026-03-19
 priority: high
 estimated: 3
 assignee: ''
@@ -25,6 +27,8 @@ test_results:
         - src/packages/cli/test/commands/validate.test.ts
         - src/packages/cli/test/cli.test.ts
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/27
   depends_on:
     - '[[033_schema_parity]]'
 ---

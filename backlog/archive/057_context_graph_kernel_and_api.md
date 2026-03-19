@@ -4,7 +4,9 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '057: Build context graph kernel and provider/query API'
-status: ready-for-review
+status: closed
+status_reason: completed
+completed_date: 2026-03-19
 priority: high
 estimated: 10
 actual: 4
@@ -20,6 +22,8 @@ test_results:
       - Added deterministic query/snapshot tests (4 passing)
       - Package build passes (`pnpm --filter @templjs/context-graph build`)
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/27
   implements:
     - '[[056_context_graph_platform_epic]]'
 ---

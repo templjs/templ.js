@@ -4,7 +4,9 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '058: Add Volar adapter and migrate semantic reads'
-status: ready-for-review
+status: closed
+status_reason: completed
+completed_date: 2026-03-19
 priority: high
 estimated: 10
 actual: 10
@@ -69,6 +71,8 @@ test_results:
       - Added direct Volar regression suites for schema resolution, expression analysis, and scope resolution helpers
       - Verified package-local Volar coverage gate and full pre-push hook passed after remediation
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/27
   implements:
     - '[[056_context_graph_platform_epic]]'
   depends_on:
