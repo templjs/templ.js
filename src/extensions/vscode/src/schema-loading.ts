@@ -533,3 +533,15 @@ export function resolveDocumentSchemaSources(params: InitializeParamsLike): {
       inlineSchemas.contentSchemaPath ?? rootSchemas.contentSchema ?? settingContentSchemaPath,
   };
 }
+
+const schemaLoadingModule = {
+  DEFAULT_SCHEMA_LOAD_TIMEOUT_MS,
+  extractDocumentSchemaKey,
+  findSchemaConfigForDocument,
+  loadSchemaSource,
+  loadSchemaSourceSync,
+  resolveDocumentSchemaSources,
+  resolveWorkspaceRoot,
+};
+
+export default schemaLoadingModule;
