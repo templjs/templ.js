@@ -218,32 +218,46 @@ jobs:
             ).trim();
             const body = `${marker}\n${comparison}`;
             const issueNumber = context.issue.number;
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issueNumber,
-              per_page: 100,
-            });
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
 
-            const existing = comments.find(
-              (comment) => comment.user?.type === 'Bot' && comment.body?.includes(marker)
-            );
-
-            if (existing) {
-              await github.rest.issues.updateComment({
+            try {
+              const comments = await github.paginate(github.rest.issues.listComments, {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                comment_id: existing.id,
+                issue_number: issueNumber,
+                per_page: 100,
+              });
+
+              const existing = comments.find(
+                (comment) => comment.user?.type === 'Bot' && comment.body?.includes(marker)
+              );
+
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner,
+                  repo,
+                  comment_id: existing.id,
+                  body,
+                });
+                core.info(`Updated benchmark PR comment ${existing.id}.`);
+                return;
+              }
+
+              const created = await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
                 body,
               });
-              core.info(`Updated benchmark PR comment ${existing.id}.`);
-              return;
-            }
+              core.info(`Created benchmark PR comment ${created.data.id}.`);
+            } catch (error) {
+              if (error?.status === 403) {
+                core.notice(
+                  'Skipping benchmark PR comment because the workflow token does not have issue comment permissions in this context.'
+                );
+                return;
+              }
 
-            const created = await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issueNumber,
-              body,
-            });
-            core.info(`Created benchmark PR comment ${created.data.id}.`);
+              throw error;
+            }

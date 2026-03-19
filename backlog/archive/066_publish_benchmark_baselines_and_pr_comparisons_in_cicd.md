@@ -36,9 +36,14 @@ notes:
     note: |
       Archived after merge. No finer-grained effort log was recorded during implementation, so `actual`
       was normalized to the tracked estimate during close-out.
+  - timestamp: 2026-03-19T20:24:45Z
+    note: |
+      Follow-up PR #30 hardens the benchmark workflow so the sticky PR comment is skipped with a
+      notice, rather than failing the benchmark job, when issue comment permissions are unavailable.
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/29
+    - https://github.com/templjs/templ.js/pull/30
   implements:
     - '[[064_benchmark_first_repo_optimization_program]]'
   depends_on:

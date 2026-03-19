@@ -42,6 +42,7 @@ notes:
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/29
+    - https://github.com/templjs/templ.js/pull/30
   implements:
     - '[[064_benchmark_first_repo_optimization_program]]'
 ---
