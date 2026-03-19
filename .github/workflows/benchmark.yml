@@ -1,0 +1,249 @@
+name: Benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - release/**
+  pull_request:
+    branches:
+      - main
+      - develop
+  schedule:
+    - cron: '0 5 * * *'
+
+concurrency:
+  group: benchmark-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  benchmark:
+    name: Benchmark Suite
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 25.6.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.0
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: benchmark-${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            benchmark-${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Compute benchmark label
+        id: meta
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            echo "label=pr-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
+            echo "label=nightly-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          else
+            sanitized_ref="${GITHUB_REF_NAME//\//-}"
+            echo "label=${sanitized_ref}-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run benchmark suite
+        env:
+          CI: 'true'
+        run: |
+          pnpm benchmark:ci -- \
+            --label "${{ steps.meta.outputs.label }}" \
+            --output artifacts/benchmarks/benchmark-results.json \
+            --summary-output artifacts/benchmarks/benchmark-summary.md
+
+      - name: Publish benchmark run summary
+        shell: bash
+        run: cat artifacts/benchmarks/benchmark-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload benchmark results artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            artifacts/benchmarks/benchmark-results.json
+            artifacts/benchmarks/benchmark-summary.md
+            benchmarks/policy.json
+          retention-days: 90
+
+      - name: Locate latest successful main baseline
+        id: baseline
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const workflowId = 'benchmark.yml';
+            const allowedEvents = new Set(['push', 'schedule', 'workflow_dispatch']);
+            const runsResponse = await github.request(
+              'GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs',
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: workflowId,
+                branch: 'main',
+                status: 'completed',
+                per_page: 100,
+              }
+            );
+            const runs = runsResponse.data.workflow_runs ?? [];
+
+            const successfulRun = runs.find(
+              (run) => run.conclusion === 'success' && allowedEvents.has(run.event)
+            );
+
+            if (!successfulRun) {
+              core.setOutput('found', 'false');
+              core.notice('No successful benchmark baseline run was found on main.');
+              return;
+            }
+
+            const artifactsResponse = await github.request(
+              'GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts',
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: successfulRun.id,
+                per_page: 100,
+              }
+            );
+
+            const artifact = artifactsResponse.data.artifacts.find(
+              (candidate) => candidate.name === 'benchmark-results' && !candidate.expired
+            );
+
+            if (!artifact) {
+              core.setOutput('found', 'false');
+              core.notice(
+                `No non-expired benchmark-results artifact was found for workflow run ${successfulRun.id}.`
+              );
+              return;
+            }
+
+            core.setOutput('found', 'true');
+            core.setOutput('artifact_id', String(artifact.id));
+            core.setOutput('run_id', String(successfulRun.id));
+            core.setOutput('sha', successfulRun.head_sha ?? '');
+            core.setOutput('created_at', successfulRun.created_at ?? '');
+
+      - name: Download baseline artifact
+        if: steps.baseline.outputs.found == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p artifacts/benchmarks/baseline
+          curl -fsSL \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${{ steps.baseline.outputs.artifact_id }}/zip" \
+            -o /tmp/benchmark-baseline.zip
+          unzip -jo /tmp/benchmark-baseline.zip -d artifacts/benchmarks/baseline
+
+      - name: Compare candidate to latest main baseline
+        if: steps.baseline.outputs.found == 'true'
+        run: |
+          pnpm benchmark:compare -- \
+            --baseline artifacts/benchmarks/baseline/benchmark-results.json \
+            --candidate artifacts/benchmarks/benchmark-results.json \
+            --output artifacts/benchmarks/benchmark-comparison.json \
+            --markdown artifacts/benchmarks/benchmark-comparison.md
+
+      - name: Publish comparison summary
+        if: steps.baseline.outputs.found == 'true'
+        shell: bash
+        run: |
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          cat artifacts/benchmarks/benchmark-comparison.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Note missing baseline in job summary
+        if: github.event_name == 'pull_request' && steps.baseline.outputs.found != 'true'
+        shell: bash
+        run: |
+          {
+            echo
+            echo '## Benchmark Comparison'
+            echo
+            echo 'No successful `main` benchmark baseline artifact is available yet for PR comparison.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload benchmark comparison artifact
+        if: steps.baseline.outputs.found == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-comparison
+          path: |
+            artifacts/benchmarks/benchmark-comparison.json
+            artifacts/benchmarks/benchmark-comparison.md
+            benchmarks/policy.json
+          retention-days: 30
+
+      - name: Upsert PR benchmark comment
+        if: github.event_name == 'pull_request' && steps.baseline.outputs.found == 'true' && github.event.pull_request.head.repo.fork == false
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const marker = '<!-- templjs-benchmark-summary -->';
+            const comparison = fs.readFileSync(
+              'artifacts/benchmarks/benchmark-comparison.md',
+              'utf8'
+            ).trim();
+            const body = `${marker}\n${comparison}`;
+            const issueNumber = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              per_page: 100,
+            });
+
+            const existing = comments.find(
+              (comment) => comment.user?.type === 'Bot' && comment.body?.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+              core.info(`Updated benchmark PR comment ${existing.id}.`);
+              return;
+            }
+
+            const created = await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body,
+            });
+            core.info(`Created benchmark PR comment ${created.data.id}.`);

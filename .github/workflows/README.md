@@ -73,6 +73,31 @@ This directory contains CI/CD workflows for the templjs monorepo.
 - ✅ Results uploaded to GitHub Security tab
 - ✅ Weekly scheduled scans
 
+### 4. Benchmark Publishing (`benchmark.yml`)
+
+**Triggers:**
+
+- Pull requests to `main` and `develop`
+- Pushes to `main`
+- Pushes to `release/**`
+- Scheduled nightly runs
+- Manual workflow dispatch
+
+**Jobs:**
+
+- **Benchmark Suite**:
+  - Runs the deterministic CI benchmark harness on a fixed Ubuntu/Node/pnpm stack
+  - Uploads machine-readable result JSON and markdown summaries as artifacts
+  - Compares PR runs against the latest successful `main` benchmark artifact when available
+  - Updates the job summary and a sticky PR comment with the comparison markdown
+
+**Features:**
+
+- ✅ Stable benchmark artifacts for `main`, nightly, and release branches
+- ✅ Informational PR comparisons against the latest successful `main` baseline
+- ✅ Repository-owned threshold policy via `benchmarks/policy.json`
+- ✅ Non-gating workflow ready for future regression enforcement
+
 ## Configuration Files
 
 ### `codecov.yml`
@@ -153,6 +178,15 @@ View detailed coverage at: `https://codecov.io/gh/yourusername/templjs`
 
 CodeQL results appear in the Security tab after each scan.
 View results at: `https://github.com/yourusername/templjs/security/code-scanning`
+
+### Benchmark Artifacts
+
+Benchmark workflow artifacts are published from the `Benchmark` workflow:
+
+- `benchmark-results`: raw benchmark JSON, markdown summary, and current policy file
+- `benchmark-comparison`: PR comparison JSON and markdown when a `main` baseline is available
+
+To make benchmark regressions blocking later, keep the workflow as-is and flip `"enforce": true` in `benchmarks/policy.json` once the team is ready.
 
 ## Nx Affected Commands
 
