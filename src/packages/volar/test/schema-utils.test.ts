@@ -83,4 +83,14 @@ describe('schema-utils', () => {
       '/tmp/schema.json'
     );
   });
+
+  it('resolves file:// schema URLs to filesystem paths', async () => {
+    const tempDir = makeTempDir();
+    const schemaPath = path.join(tempDir, 'schema.json');
+    writeFileSync(schemaPath, '{}');
+    const schemaUrl = pathToFileURL(schemaPath).href;
+
+    await expect(resolveSchemaFilePath(schemaUrl, '/workspace')).resolves.toBe(schemaPath);
+    expect(resolveSchemaFilePathSync(schemaUrl, '/workspace')).toBe(schemaPath);
+  });
 });

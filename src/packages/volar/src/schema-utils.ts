@@ -33,6 +33,14 @@ export async function resolveSchemaFilePath(
     return source;
   }
 
+  if (source.startsWith('file://')) {
+    try {
+      return fileURLToPath(source);
+    } catch {
+      return undefined;
+    }
+  }
+
   if (path.isAbsolute(source)) {
     return source;
   }
@@ -69,6 +77,14 @@ export function resolveSchemaFilePathSync(
 
   if (source.startsWith('http://') || source.startsWith('https://')) {
     return source;
+  }
+
+  if (source.startsWith('file://')) {
+    try {
+      return fileURLToPath(source);
+    } catch {
+      return undefined;
+    }
   }
 
   if (path.isAbsolute(source)) {
