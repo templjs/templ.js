@@ -494,7 +494,7 @@ function resolveDocumentPath(
     const absolutePath = documentUri.startsWith('file://')
       ? fileURLToPath(documentUri)
       : documentUri;
-    return path.relative(workspaceRoot, absolutePath);
+    return path.relative(workspaceRoot, absolutePath).replace(/\\/g, '/');
   } catch {
     return undefined;
   }
