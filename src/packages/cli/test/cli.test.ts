@@ -260,7 +260,7 @@ describe('cli-main', () => {
 
     expect(validateCommand).toHaveBeenCalledWith('template.templ', undefined, undefined);
     expect(stderrSpy).toHaveBeenCalledWith(
-      'Error: Template has errors: ParserError: unexpected end tag\n'
+      'Error: Validation failed: ParserError: unexpected end tag\n'
     );
     expect(process.exitCode).toBe(1);
   });

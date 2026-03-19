@@ -135,27 +135,98 @@ function isPathBoundaryChar(char: string | undefined): boolean {
   return !/[A-Za-z0-9_.$[\]]/.test(char);
 }
 
-function findPathOccurrences(content: string, path: string): number[] {
-  const indices: number[] = [];
-  let from = 0;
+interface PathOccurrence {
+  start: number;
+  end: number;
+}
 
-  while (from <= content.length - path.length) {
-    const index = content.indexOf(path, from);
-    if (index === -1) {
-      break;
-    }
+function buildBracketSegmentCandidates(segmentValue: string): string[] {
+  // Keep canonical bracket form and add quoted variants for string keys so
+  // source offset matching works for expressions like obj["full name"].
+  const candidates = [`[${segmentValue}]`];
 
-    const before = index > 0 ? content[index - 1] : undefined;
-    const after = index + path.length < content.length ? content[index + path.length] : undefined;
-
-    if (isPathBoundaryChar(before) && isPathBoundaryChar(after)) {
-      indices.push(index);
-    }
-
-    from = index + path.length;
+  const looksNumeric = /^-?\d+$/.test(segmentValue);
+  const isTypedSentinel = segmentValue.includes(':');
+  if (looksNumeric || isTypedSentinel) {
+    return candidates;
   }
 
-  return indices;
+  const escapedDoubleQuoted = segmentValue.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const escapedSingleQuoted = segmentValue.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  candidates.push(`["${escapedDoubleQuoted}"]`);
+  candidates.push(`['${escapedSingleQuoted}']`);
+
+  return candidates;
+}
+
+function getPathSearchCandidates(path: string): string[] {
+  const bracketRegex = /\[([^\]]+)\]/g;
+  const segments: Array<{ start: number; end: number; candidates: string[] }> = [];
+
+  for (const match of path.matchAll(bracketRegex)) {
+    if (typeof match.index !== 'number') {
+      continue;
+    }
+    const fullMatch = match[0];
+    const segmentValue = match[1];
+    segments.push({
+      start: match.index,
+      end: match.index + fullMatch.length,
+      candidates: buildBracketSegmentCandidates(segmentValue),
+    });
+  }
+
+  if (segments.length === 0) {
+    return [path];
+  }
+
+  const expanded: string[] = [];
+  const expand = (segmentIndex: number, cursor: number, acc: string): void => {
+    if (segmentIndex >= segments.length) {
+      expanded.push(acc + path.slice(cursor));
+      return;
+    }
+
+    const segment = segments[segmentIndex];
+    const prefix = path.slice(cursor, segment.start);
+    for (const candidate of segment.candidates) {
+      expand(segmentIndex + 1, segment.end, acc + prefix + candidate);
+    }
+  };
+
+  expand(0, 0, '');
+  return Array.from(new Set(expanded));
+}
+
+function findPathOccurrences(content: string, path: string): PathOccurrence[] {
+  const occurrences: PathOccurrence[] = [];
+  const seen = new Set<string>();
+
+  for (const candidate of getPathSearchCandidates(path)) {
+    let from = 0;
+    while (from <= content.length - candidate.length) {
+      const index = content.indexOf(candidate, from);
+      if (index === -1) {
+        break;
+      }
+
+      const before = index > 0 ? content[index - 1] : undefined;
+      const after =
+        index + candidate.length < content.length ? content[index + candidate.length] : undefined;
+
+      if (isPathBoundaryChar(before) && isPathBoundaryChar(after)) {
+        const key = `${index}:${index + candidate.length}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          occurrences.push({ start: index, end: index + candidate.length });
+        }
+      }
+
+      from = index + candidate.length;
+    }
+  }
+
+  return occurrences.sort((left, right) => left.start - right.start);
 }
 
 function findFilterOccurrences(content: string, name: string): number[] {
@@ -191,7 +262,7 @@ function assignVariableReferences(
   pathsInOrder: string[]
 ): ExpressionVariableReference[] {
   const uniquePaths = Array.from(new Set(pathsInOrder));
-  const pathOccurrences = new Map<string, number[]>();
+  const pathOccurrences = new Map<string, PathOccurrence[]>();
   const pathCursor = new Map<string, number>();
 
   for (const path of uniquePaths) {
@@ -207,13 +278,13 @@ function assignVariableReferences(
       continue;
     }
 
-    const index = occurrences[Math.min(cursor, occurrences.length - 1)];
+    const occurrence = occurrences[Math.min(cursor, occurrences.length - 1)];
     pathCursor.set(path, cursor + 1);
 
     refs.push({
       path,
-      start: index,
-      end: index + path.length,
+      start: occurrence.start,
+      end: occurrence.end,
     });
   }
 

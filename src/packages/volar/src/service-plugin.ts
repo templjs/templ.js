@@ -6,8 +6,8 @@
  * making integration with different IDEs simpler.
  */
 
-import { collectDiagnostics, IntellisenseProvider } from './index.js';
-import type { IntellisenseOptions } from './index.js';
+import { collectDiagnostics } from './diagnostic-provider.js';
+import { IntellisenseProvider, type IntellisenseOptions } from './intellisense-provider.js';
 
 export interface ServicePluginDiagnosticOptions {
   documentUri?: string;

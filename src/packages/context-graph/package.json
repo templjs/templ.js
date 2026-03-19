@@ -17,6 +17,7 @@
     "README.md"
   ],
   "scripts": {
+    "pretest": "pnpm build",
     "build": "tsc",
     "test": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",

@@ -34,6 +34,22 @@ describe('expression-analysis', () => {
     ]);
   });
 
+  it('tracks quoted string-index references at original offsets', () => {
+    const expression = 'user["full name"] && user["full name"]';
+    const refs = extractExpressionVariableReferences(expression);
+
+    const firstPath = 'user["full name"]';
+    const secondStart = firstPath.length + ' && '.length;
+    expect(refs).toEqual([
+      { path: 'user[full name]', start: 0, end: firstPath.length },
+      {
+        path: 'user[full name]',
+        start: secondStart,
+        end: secondStart + firstPath.length,
+      },
+    ]);
+  });
+
   it('returns empty references when the expression cannot be parsed', () => {
     expect(extractExpressionVariableReferences('user.')).toEqual([]);
     expect(extractExpressionFilterReferences('user.name |')).toEqual([]);

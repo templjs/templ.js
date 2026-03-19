@@ -244,7 +244,7 @@ function createProgram(): Command {
 
       if (!result.valid) {
         const details = result.errors.length > 0 ? `: ${result.errors.join('; ')}` : '';
-        throw new Error(`Template has errors${details}`);
+        throw new Error(`Validation failed${details}`);
       }
 
       writeSuccess(
