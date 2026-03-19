@@ -9,8 +9,7 @@ import {
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
-  const inputPath =
-    getStringArg(args, 'input') ?? args.positionals[0] ?? DEFAULT_RESULT_OUTPUT;
+  const inputPath = getStringArg(args, 'input') ?? args.positionals[0] ?? DEFAULT_RESULT_OUTPUT;
   const outputPath = getStringArg(args, 'output');
 
   const run = readValidatedBenchmarkRun(inputPath);

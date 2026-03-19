@@ -1,13 +1,11 @@
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import {
-  detectFrontmatterRange,
-  type JSONSchema,
-} from '../src/packages/core/src/index.ts';
+import { detectFrontmatterRange, type JSONSchema } from '../src/packages/core/src/index.ts';
 import schemaLoadingModule from '../src/extensions/vscode/src/schema-loading.ts';
 
-type InitializeParamsLike = import('../src/extensions/vscode/src/schema-loading.ts').InitializeParamsLike;
+type InitializeParamsLike =
+  import('../src/extensions/vscode/src/schema-loading.ts').InitializeParamsLike;
 
 const { loadSchemaSourceSync, resolveDocumentSchemaSources } = schemaLoadingModule;
 

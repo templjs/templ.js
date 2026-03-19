@@ -141,10 +141,7 @@ export const ARTIFACTS_DIR = join(REPO_ROOT, 'artifacts', 'benchmarks');
 export const DEFAULT_RESULT_OUTPUT = join(ARTIFACTS_DIR, 'benchmark-results.json');
 export const DEFAULT_SUMMARY_OUTPUT = join(ARTIFACTS_DIR, 'benchmark-summary.md');
 export const DEFAULT_COMPARISON_OUTPUT = join(ARTIFACTS_DIR, 'benchmark-comparison.json');
-export const DEFAULT_COMPARISON_MARKDOWN_OUTPUT = join(
-  ARTIFACTS_DIR,
-  'benchmark-comparison.md'
-);
+export const DEFAULT_COMPARISON_MARKDOWN_OUTPUT = join(ARTIFACTS_DIR, 'benchmark-comparison.md');
 export const RESULT_SCHEMA_PATH = join(REPO_ROOT, 'schemas', 'benchmark-results.schema.json');
 export const COMPARISON_SCHEMA_PATH = join(
   REPO_ROOT,
@@ -194,11 +191,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
   return { positionals, values };
 }
 
-export function getStringArg(
-  args: ParsedArgs,
-  key: string,
-  fallback?: string
-): string | undefined {
+export function getStringArg(args: ParsedArgs, key: string, fallback?: string): string | undefined {
   const value = args.values[key];
   if (typeof value === 'string') {
     return value;
@@ -379,9 +372,7 @@ export function compareBenchmarkRuns(
     const sharedCandidate = candidateCase as BenchmarkCaseResult;
     const deltaMs = sharedCandidate.metrics.meanMs - sharedBaseline.metrics.meanMs;
     const deltaPercent =
-      sharedBaseline.metrics.meanMs === 0
-        ? 0
-        : (deltaMs / sharedBaseline.metrics.meanMs) * 100;
+      sharedBaseline.metrics.meanMs === 0 ? 0 : (deltaMs / sharedBaseline.metrics.meanMs) * 100;
     const meaningfulLatency = Math.abs(deltaMs) >= policy.latency.minAbsoluteDeltaMs;
     const exceedsWarningThreshold = meaningfulLatency && deltaPercent >= policy.latency.warnPercent;
     const exceedsFailureThreshold = meaningfulLatency && deltaPercent >= policy.latency.failPercent;
@@ -394,7 +385,8 @@ export function compareBenchmarkRuns(
 
     const heapDeltaBytes =
       sharedCandidate.memory.heapUsedDeltaBytes - sharedBaseline.memory.heapUsedDeltaBytes;
-    const rssDeltaBytes = sharedCandidate.memory.rssDeltaBytes - sharedBaseline.memory.rssDeltaBytes;
+    const rssDeltaBytes =
+      sharedCandidate.memory.rssDeltaBytes - sharedBaseline.memory.rssDeltaBytes;
     const advisoryMemoryWarning =
       heapDeltaBytes >= policy.memory.warnHeapDeltaBytes ||
       rssDeltaBytes >= policy.memory.warnRssDeltaBytes;
@@ -502,9 +494,7 @@ export function formatComparisonMarkdown(comparison: BenchmarkComparison): strin
     );
 
   const fallbackRows =
-    importantRows.length > 0
-      ? importantRows
-      : ['| _none_ | neutral | n/a | n/a | n/a | n/a |'];
+    importantRows.length > 0 ? importantRows : ['| _none_ | neutral | n/a | n/a | n/a | n/a |'];
 
   return [
     ...intro,
