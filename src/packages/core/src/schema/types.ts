@@ -8,6 +8,7 @@
 export interface ValidationResult {
   valid: boolean;
   errors: ValidationError[];
+  skipped?: boolean;
 }
 
 /**
@@ -33,7 +34,7 @@ export interface SchemaMetadata {
 }
 
 /**
- * JSON Schema format (subset of JSON Schema v7)
+ * JSON Schema format (subset of JSON Schema 2019-09/2020-12, with v7 compatibility)
  */
 export interface JSONSchema {
   $id?: string;
@@ -64,6 +65,7 @@ export interface JSONSchema {
   minProperties?: number;
   maxProperties?: number;
   additionalProperties?: boolean | JSONSchema;
+  unevaluatedProperties?: boolean | JSONSchema;
   patternProperties?: { [key: string]: JSONSchema };
   dependencies?: { [key: string]: JSONSchema | string[] };
   title?: string;
@@ -71,4 +73,5 @@ export interface JSONSchema {
   default?: unknown;
   examples?: unknown[];
   definitions?: { [key: string]: JSONSchema };
+  $defs?: { [key: string]: JSONSchema };
 }

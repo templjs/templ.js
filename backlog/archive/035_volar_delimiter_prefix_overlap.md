@@ -4,14 +4,31 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '35: Fix Prefix-Overlapping Delimiter Matching in Volar'
-status: ready
+status: closed
+status_reason: obsolete
 priority: medium
 estimated: 2
 actual: 0
 assignee: ''
+start_date: 2026-03-08
+end_date: 2026-03-08
+commits:
+  8900fcc: 'fix(pr-23): resolve latest review round with targeted regressions'
 links:
   depends_on:
     - '[[029_cli_signal_handling]]'
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/23
+notes:
+  - timestamp: 2026-03-08T00:00:00Z
+    note: |
+      WI-035 already fixed in PR #23 commit 8900fcc:
+      - Added hasPrefixOverlap() validation to resolveDelimiters()
+      - Throws error when start/end delimiters overlap by prefix
+      - Test coverage: src/packages/volar/test/template-delimiters.test.ts
+      - Regression test verifies '<' and '<<' configuration throws /overlap/i error
+      - All delimiter tests pass (4/4 passing)
+      - Change implemented in src/packages/volar/src/template-delimiters.ts lines 42-61
 ---
 
 ## Goal

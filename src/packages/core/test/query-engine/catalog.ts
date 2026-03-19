@@ -72,7 +72,7 @@ export const wiBaselineFunctions = {
     'indexOf',
   ],
   object: ['keys', 'values', 'entries', 'has', 'get', 'merge', 'pick', 'omit', 'length'],
-  utility: ['default'],
+  utility: ['default', 'typeof', 'string', 'number', 'json'],
 } as const;
 
 export const extendedFunctions = [

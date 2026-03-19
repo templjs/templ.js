@@ -1,33 +1,57 @@
 /**
  * @templjs/cli - validate command
- * Validates a template and input data against schema
+ * Validates template syntax and optionally validates input data against a schema
  */
 
 import { readFileSync } from 'fs';
-import { validateTemplate } from '@templjs/core';
+import { SchemaValidator, validateTemplate, type JSONSchema } from '@templjs/core';
+import { parseDataAsync } from '../formats/index.js';
 
 export interface ValidateCommandResult {
   valid: boolean;
   errors: string[];
-  schemaWarning?: string;
 }
 
 export async function validateCommand(
   templatePath: string,
-  schemaPath?: string
+  schemaPath?: string,
+  inputPath?: string
 ): Promise<ValidateCommandResult> {
   try {
     const templateContent = readFileSync(templatePath, 'utf-8');
-    const result = validateTemplate(templateContent);
-    const errors = result.errors ?? [];
-    const schemaWarning = schemaPath
-      ? `Schema validation flag provided (${schemaPath}) but schema validation is not yet wired in @templjs/core`
-      : undefined;
+    const templateValidation = validateTemplate(templateContent);
+    const errors = [...(templateValidation.errors ?? [])];
+
+    if (inputPath && !schemaPath) {
+      throw new Error('Schema path is required when validating input data (pass --schema)');
+    }
+
+    if (schemaPath) {
+      const schemaContent = readFileSync(schemaPath, 'utf-8');
+      const parsedSchema = await parseDataAsync(schemaContent, schemaPath);
+      const validator = new SchemaValidator(parsedSchema as JSONSchema);
+
+      if (!validator.isCompiled) {
+        const compilationDetail =
+          validator.compilationError ?? `unknown compilation error for schema '${schemaPath}'`;
+        errors.push(`Schema compilation failed - ${compilationDetail}`);
+      } else if (inputPath) {
+        const inputContent = readFileSync(inputPath, 'utf-8');
+        const parsedInput = await parseDataAsync(inputContent, inputPath);
+        const schemaValidation = validator.validate(parsedInput);
+
+        if (!schemaValidation.valid) {
+          for (const validationError of schemaValidation.errors) {
+            const pathPrefix = validationError.path ? `${validationError.path}: ` : '';
+            errors.push(`Schema validation failed - ${pathPrefix}${validationError.message}`);
+          }
+        }
+      }
+    }
 
     return {
-      valid: result.valid,
+      valid: errors.length === 0,
       errors,
-      ...(schemaWarning ? { schemaWarning } : {}),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

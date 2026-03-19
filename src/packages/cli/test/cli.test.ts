@@ -234,7 +234,7 @@ describe('cli-main', () => {
 
     await main(['node', 'cli.js', 'validate', '-t', 'template.templ']);
 
-    expect(validateCommand).toHaveBeenCalledWith('template.templ', undefined);
+    expect(validateCommand).toHaveBeenCalledWith('template.templ', undefined, undefined);
     expect(stdoutSpy).toHaveBeenCalledWith('Template is valid\n');
     expect(process.exitCode).toBeUndefined();
   });
@@ -244,7 +244,7 @@ describe('cli-main', () => {
 
     await main(['node', 'cli.js', '--json', 'validate', '-t', 'template.templ']);
 
-    expect(validateCommand).toHaveBeenCalledWith('template.templ', undefined);
+    expect(validateCommand).toHaveBeenCalledWith('template.templ', undefined, undefined);
     expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"ok":true/));
     expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"command":"validate"/));
     expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"valid":true/));
@@ -258,26 +258,32 @@ describe('cli-main', () => {
 
     await main(['node', 'cli.js', 'validate', '-t', 'template.templ']);
 
-    expect(validateCommand).toHaveBeenCalledWith('template.templ', undefined);
+    expect(validateCommand).toHaveBeenCalledWith('template.templ', undefined, undefined);
     expect(stderrSpy).toHaveBeenCalledWith(
-      'Error: Template has errors: ParserError: unexpected end tag\n'
+      'Error: Validation failed: ParserError: unexpected end tag\n'
     );
     expect(process.exitCode).toBe(1);
   });
 
-  it('reports dedicated schema-not-supported warning for validate --schema', async () => {
+  it('passes schema and input through to validate command when provided', async () => {
     vi.mocked(validateCommand).mockResolvedValue({
       valid: true,
       errors: [],
-      schemaWarning:
-        'Schema validation flag provided (schema.json) but schema validation is not yet wired in @templjs/core',
     });
 
-    await main(['node', 'cli.js', 'validate', '-t', 'template.templ', '-s', 'schema.json']);
+    await main([
+      'node',
+      'cli.js',
+      'validate',
+      '-t',
+      'template.templ',
+      '-s',
+      'schema.json',
+      '-i',
+      'input.yaml',
+    ]);
 
-    expect(stderrSpy).toHaveBeenCalledWith(
-      'Warning: Schema validation flag provided (schema.json) but schema validation is not yet wired in @templjs/core\n'
-    );
+    expect(validateCommand).toHaveBeenCalledWith('template.templ', 'schema.json', 'input.yaml');
     expect(process.exitCode).toBeUndefined();
   });
 

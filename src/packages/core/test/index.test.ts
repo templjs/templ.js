@@ -3,8 +3,10 @@ import { version as packageVersion } from '../package.json';
 import core, {
   createLexer,
   createParser,
+  extractTemplateScopeBindings,
   createRenderer,
   createQueryEngine,
+  getBuiltinFilterSignatures,
   renderTemplate,
   validateTemplate,
   version,
@@ -53,6 +55,26 @@ describe('core entrypoint', () => {
     expect(engine).toBeInstanceOf(QueryEngine);
   });
 
+  it('exposes canonical built-in filter metadata from core', () => {
+    const signatures = getBuiltinFilterSignatures();
+    const engineMetadata = createQueryEngine().getMetadata();
+    const upperSignature = engineMetadata.functions.get('upper')?.[0];
+    const truncateSignature = engineMetadata.functions.get('truncate')?.[0];
+
+    expect(signatures.upper).toBeDefined();
+    expect(signatures.truncate).toBeDefined();
+    expect(signatures.upper?.description).toBe(upperSignature?.description);
+    expect(signatures.truncate?.description).toBe(truncateSignature?.description);
+    expect(signatures.truncate?.parameters).toEqual(truncateSignature?.parameters);
+  });
+
+  it('reuses cached built-in filter metadata across calls', () => {
+    const first = getBuiltinFilterSignatures();
+    const second = getBuiltinFilterSignatures();
+
+    expect(second).toBe(first);
+  });
+
   it('renders a simple template', () => {
     const result = renderTemplate('Hello {{name}}!', { name: 'World' });
     expect(result).toBe('Hello World!');
@@ -93,6 +115,7 @@ describe('core entrypoint', () => {
     expect(core.createParser).toBe(createParser);
     expect(core.createRenderer).toBe(createRenderer);
     expect(core.createQueryEngine).toBe(createQueryEngine);
+    expect(core.extractTemplateScopeBindings).toBe(extractTemplateScopeBindings);
     expect(core.renderTemplate).toBe(renderTemplate);
     expect(core.validateTemplate).toBe(validateTemplate);
   });

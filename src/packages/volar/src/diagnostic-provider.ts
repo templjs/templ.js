@@ -1,7 +1,25 @@
-import { SchemaValidator, type JSONSchema } from '@templjs/core';
+import {
+  getBuiltinFilterNames,
+  resolveSemanticHostLanguage,
+  resolveSemanticZoneByHostLanguage,
+  resolveSemanticZone,
+  toSemanticZone,
+  SchemaValidator,
+  type JSONSchema,
+} from '@templjs/core';
 import type { IntellisenseDelimiters } from './intellisense-provider.js';
 import { LineColumnMapper, RangeMapper, generatePositionMappings } from './position-mapping.js';
 import { buildBlockPattern, resolveDelimiters, DEFAULT_DELIMITERS } from './template-delimiters.js';
+import { type FrontmatterRange } from './frontmatter-zone.js';
+import {
+  buildForScopesInText,
+  resolveScopedPath,
+  resolveScopedPathInText as resolveScopedPathInTemplate,
+} from './scope-resolution.js';
+import {
+  extractExpressionFilterReferences,
+  extractExpressionVariableReferences,
+} from './expression-analysis.js';
 
 export enum DiagnosticSeverity {
   Error = 1,
@@ -31,36 +49,24 @@ export interface DiagnosticItem {
 export type TemplateDelimiters = IntellisenseDelimiters;
 
 export interface DiagnosticOptions {
+  documentUri?: string;
   schema?: JSONSchema;
+  contentSchema?: JSONSchema;
+  frontmatterRange?: FrontmatterRange;
   customFilters?: string[];
   delimiters?: Partial<TemplateDelimiters>;
   baseDiagnostics?: DiagnosticItem[];
 }
 
-const DEFAULT_FILTERS = new Set([
-  'upper',
-  'lower',
-  'capitalize',
-  'title',
-  'trim',
-  'length',
-  'slice',
-  'first',
-  'last',
-  'reverse',
-  'sort',
-  'default',
-  'escape',
-  'safe',
-  'json',
-  'join',
-  'split',
-  'replace',
-  'round',
-  'abs',
-  'int',
-  'float',
-]);
+let cachedDefaultFilters: ReadonlySet<string> | undefined;
+
+function getDefaultFilters(): ReadonlySet<string> {
+  if (!cachedDefaultFilters) {
+    cachedDefaultFilters = new Set(getBuiltinFilterNames());
+  }
+
+  return cachedDefaultFilters;
+}
 
 interface BlockMatch {
   start: number;
@@ -71,6 +77,18 @@ interface BlockMatch {
 interface BlockStackEntry {
   tag: string;
   start: number;
+}
+
+interface VariableReference {
+  path: string;
+  start: number;
+  end: number;
+}
+
+interface FilterReference {
+  name: string;
+  start: number;
+  end: number;
 }
 
 function getDelimiters(options?: DiagnosticOptions): TemplateDelimiters {
@@ -117,23 +135,49 @@ function parseStatementTag(content: string, delimiters: TemplateDelimiters): str
   return inner.split(/\s+/)[0] ?? '';
 }
 
-function extractExpressionVariables(content: string): string[] {
-  const vars: string[] = [];
-  const match = content.match(/^[\w.]+(?:\[[^\]]+\])*/);
-  if (match) {
-    vars.push(match[0]);
-  }
-  return vars;
+function extractVariableReferences(content: string): VariableReference[] {
+  return extractExpressionVariableReferences(content).map((ref) => ({
+    path: ref.path,
+    start: ref.start,
+    end: ref.end,
+  }));
 }
 
-function extractFilters(content: string): string[] {
-  const filters: string[] = [];
-  const regex = /\|\s*([A-Za-z_][\w]*)/g;
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(content)) !== null) {
-    filters.push(match[1]);
+function extractFilters(content: string): FilterReference[] {
+  return extractExpressionFilterReferences(content).map((ref) => ({
+    name: ref.name,
+    start: ref.start,
+    end: ref.end,
+  }));
+}
+
+function isPathValidInContext(resolvedPath: string, validator: SchemaValidator): boolean {
+  if (validator.validateQueryPath(resolvedPath).valid) {
+    return true;
   }
-  return filters;
+
+  if (resolvedPath.endsWith('.length')) {
+    const basePath = resolvedPath.slice(0, -'.length'.length);
+    if (basePath && validator.validateQueryPath(basePath).valid) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Resolve a variable path through any active for-loop scopes in the given template text.
+ * Useful in server-side handlers (e.g. go-to-definition) that need the canonical schema
+ * path for an alias-based expression like `relationship.target`.
+ */
+export function resolveScopedPathInText(
+  text: string,
+  path: string,
+  offset: number,
+  options?: Pick<DiagnosticOptions, 'delimiters'>
+): string {
+  return resolveScopedPathInTemplate(text, path, offset, options?.delimiters);
 }
 
 function findUnclosedDelimiters(
@@ -170,8 +214,27 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
   const delimiters = getDelimiters(options);
   const diagnostics: DiagnosticItem[] = [];
   const mapper = new LineColumnMapper(text);
-  const validator = options?.schema ? new SchemaValidator(options.schema) : null;
-  const filters = new Set([...DEFAULT_FILTERS, ...(options?.customFilters ?? [])]);
+  const frontmatterValidator = options?.schema ? new SchemaValidator(options.schema) : null;
+  const contentValidator = options?.contentSchema
+    ? new SchemaValidator(options.contentSchema)
+    : null;
+  const filters = new Set([...getDefaultFilters(), ...(options?.customFilters ?? [])]);
+
+  const getValidatorForOffset = (offset: number): SchemaValidator | null => {
+    const hostLanguage = resolveSemanticHostLanguage(options?.documentUri);
+    const semanticZone =
+      options?.frontmatterRange &&
+      offset >= options.frontmatterRange.start &&
+      offset < options.frontmatterRange.end
+        ? toSemanticZone('frontmatter')
+        : hostLanguage === 'unknown'
+          ? resolveSemanticZone(text, offset)
+          : resolveSemanticZoneByHostLanguage(text, offset, hostLanguage);
+    if (semanticZone.kind === 'metadata') {
+      return frontmatterValidator;
+    }
+    return contentValidator ?? frontmatterValidator;
+  };
 
   const commentBlocks = extractBlocks(text, delimiters.commentStart, delimiters.commentEnd);
   const statementBlocks = extractBlocks(text, delimiters.statementStart, delimiters.statementEnd);
@@ -180,6 +243,7 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
     delimiters.expressionStart,
     delimiters.expressionEnd
   );
+  const forScopes = buildForScopesInText(text, delimiters);
 
   const statementStack: BlockStackEntry[] = [];
 
@@ -212,24 +276,88 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
     }
 
     if (tag === 'for') {
-      const statementContent = block.content
-        .slice(
-          delimiters.statementStart.length,
-          block.content.length - delimiters.statementEnd.length
-        )
-        .trim();
-      const match = statementContent.match(/\s+in\s+([^\s]+)/);
+      const rawInner = block.content.slice(
+        delimiters.statementStart.length,
+        block.content.length - delimiters.statementEnd.length
+      );
+      const statementContent = rawInner.trim();
+      const trimOffset = rawInner.indexOf(statementContent);
+      const contentStartOffset =
+        block.start + delimiters.statementStart.length + (trimOffset >= 0 ? trimOffset : 0);
+      const match = statementContent.match(/^for\s+[A-Za-z_][\w]*\s+in\s+([\s\S]+)$/);
+      const validator = getValidatorForOffset(block.start);
       if (match && validator) {
-        const path = match[1].trim();
-        const result = validator.validateQueryPath(path);
-        if (!result.valid) {
-          diagnostics.push({
-            message: `Variable "${path}" not found in schema`,
-            range: createRangeFromOffsets(mapper, block.start, block.end),
-            severity: DiagnosticSeverity.Error,
-            code: 'templjs.undefinedVariable',
-            suggestion: result.errors[0]?.suggestion,
-          });
+        const iterableExpression = match[1].trim();
+        const iterableStart = statementContent.indexOf(iterableExpression);
+        const filterRefs = extractFilters(iterableExpression);
+        for (const ref of extractVariableReferences(iterableExpression)) {
+          const overlapsFilter = filterRefs.some(
+            (filterRef) => ref.start >= filterRef.start && ref.end <= filterRef.end
+          );
+          if (overlapsFilter) {
+            continue;
+          }
+
+          const scopedPath = resolveScopedPath(ref.path, block.start, forScopes);
+          const result = validator.validateQueryPath(scopedPath);
+          if (!result.valid) {
+            const offsetBase = contentStartOffset + (iterableStart >= 0 ? iterableStart : 0);
+            diagnostics.push({
+              message: `Variable "${ref.path}" not found in schema`,
+              range: createRangeFromOffsets(mapper, offsetBase + ref.start, offsetBase + ref.end),
+              severity: DiagnosticSeverity.Error,
+              code: 'templjs.undefinedVariable',
+              suggestion: result.errors[0]?.suggestion,
+            });
+          }
+        }
+      }
+    } else {
+      const rawInner = block.content.slice(
+        delimiters.statementStart.length,
+        block.content.length - delimiters.statementEnd.length
+      );
+      const statementContent = rawInner.trim();
+      const trimOffset = rawInner.indexOf(statementContent);
+      const contentStartOffset =
+        block.start + delimiters.statementStart.length + (trimOffset >= 0 ? trimOffset : 0);
+
+      const validator = getValidatorForOffset(block.start);
+      if (validator && statementContent.length > 0) {
+        const expressionPart = statementContent.replace(/^[A-Za-z_][\w]*\b\s*/, '');
+        const expressionPartStart = statementContent.length - expressionPart.length;
+        for (const ref of extractVariableReferences(expressionPart)) {
+          const scopedPath = resolveScopedPath(ref.path, block.start, forScopes);
+          if (!isPathValidInContext(scopedPath, validator)) {
+            const result = validator.validateQueryPath(scopedPath);
+            diagnostics.push({
+              message: `Variable "${ref.path}" not found in schema`,
+              range: createRangeFromOffsets(
+                mapper,
+                contentStartOffset + expressionPartStart + ref.start,
+                contentStartOffset + expressionPartStart + ref.end
+              ),
+              severity: DiagnosticSeverity.Error,
+              code: 'templjs.undefinedVariable',
+              suggestion: result.errors[0]?.suggestion,
+            });
+          }
+        }
+
+        for (const ref of extractFilters(expressionPart)) {
+          if (!filters.has(ref.name)) {
+            diagnostics.push({
+              message: `Filter "${ref.name}" not recognized`,
+              range: createRangeFromOffsets(
+                mapper,
+                contentStartOffset + expressionPartStart + ref.start,
+                contentStartOffset + expressionPartStart + ref.end
+              ),
+              severity: DiagnosticSeverity.Error,
+              code: 'templjs.invalidFilter',
+              suggestion: 'Check available filters in documentation',
+            });
+          }
         }
       }
     }
@@ -293,20 +421,28 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
       continue;
     }
 
-    const content = block.content
-      .slice(
-        delimiters.expressionStart.length,
-        block.content.length - delimiters.expressionEnd.length
-      )
-      .trim();
+    const rawInner = block.content.slice(
+      delimiters.expressionStart.length,
+      block.content.length - delimiters.expressionEnd.length
+    );
+    const content = rawInner.trim();
+    const trimOffset = rawInner.indexOf(content);
+    const contentStartOffset =
+      block.start + delimiters.expressionStart.length + (trimOffset >= 0 ? trimOffset : 0);
 
+    const validator = getValidatorForOffset(block.start);
     if (validator) {
-      for (const variablePath of extractExpressionVariables(content)) {
-        const result = validator.validateQueryPath(variablePath);
-        if (!result.valid) {
+      for (const ref of extractVariableReferences(content)) {
+        const scopedPath = resolveScopedPath(ref.path, block.start, forScopes);
+        if (!isPathValidInContext(scopedPath, validator)) {
+          const result = validator.validateQueryPath(scopedPath);
           diagnostics.push({
-            message: `Variable "${variablePath}" not found in schema`,
-            range: createRangeFromOffsets(mapper, block.start, block.end),
+            message: `Variable "${ref.path}" not found in schema`,
+            range: createRangeFromOffsets(
+              mapper,
+              contentStartOffset + ref.start,
+              contentStartOffset + ref.end
+            ),
             severity: DiagnosticSeverity.Error,
             code: 'templjs.undefinedVariable',
             suggestion: result.errors[0]?.suggestion,
@@ -315,11 +451,15 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
       }
     }
 
-    for (const filter of extractFilters(content)) {
-      if (!filters.has(filter)) {
+    for (const ref of extractFilters(content)) {
+      if (!filters.has(ref.name)) {
         diagnostics.push({
-          message: `Filter "${filter}" not recognized`,
-          range: createRangeFromOffsets(mapper, block.start, block.end),
+          message: `Filter "${ref.name}" not recognized`,
+          range: createRangeFromOffsets(
+            mapper,
+            contentStartOffset + ref.start,
+            contentStartOffset + ref.end
+          ),
           severity: DiagnosticSeverity.Error,
           code: 'templjs.invalidFilter',
           suggestion: 'Check available filters in documentation',

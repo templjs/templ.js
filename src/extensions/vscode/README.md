@@ -11,10 +11,11 @@ VS Code extension for templjs meta-template language support.
 
 ## Supported File Extensions
 
-- `.templ.yaml` / `.templ.yml` - YAML templates
-- `.templ.json` - JSON templates
-- `.templ.md` - Markdown templates
-- `.templ.html` - HTML templates
+- `.yaml.templ` / `.yml.templ` / `.yaml.tpl` / `.yml.tpl` - YAML templates
+- `.json.templ` / `.json.tpl` - JSON templates
+- `.md.templ` / `.md.tpl` - Markdown templates
+- `.html.templ` / `.html.tpl` - HTML templates
+- `.xml.templ` / `.xml.tpl` - XML templates
 
 ## Architecture
 
@@ -32,6 +33,31 @@ This extension uses Volar language server to provide IDE features:
   "templjs.trace.server": "off" // or "messages" or "verbose"
 }
 ```
+
+## Triage Logs
+
+### Configure logging
+
+1. Set `templjs.trace.server` to `messages` (or `verbose` for extra detail).
+2. Open the output panel and select the **templjs** channel.
+3. Reproduce the issue once to capture a clean log sequence.
+
+### What to look for
+
+- **Go-to-definition (no result or wrong file)**
+  - Check `definition requested` and `definition result` lines.
+  - Confirm resolver path: `resolved via path value`, `resolved via schema path token`, or `resolved via provider`.
+  - If range mapping looks wrong, check `definition range resolver fallback` / `definition range resolver failed`.
+
+- **Hover (missing or incomplete description)**
+  - Check `hover requested` and `hover result=none|present`.
+  - Look for provider source logs like `hover ... source=graph|schema result=none|present`.
+  - If hover exists but is thin, compare `hover markdown length` and confirm schema metadata exists for that path.
+
+- **IntelliSense (duplicate entries)**
+  - Check `completion result count` and `completion duplicate labels`.
+  - Use `completion branch=...` to identify generation path (expression, statement, frontmatter graph/schema).
+  - Compare `completion top labels` with duplicate groups to confirm whether duplicates are path aliases, enum values, or repeated schema entries.
 
 ## Status
 

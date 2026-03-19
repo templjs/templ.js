@@ -1,5 +1,5 @@
 /**
- * Array Functions (14 functions)
+ * Array Functions (19 functions)
  *
  * Functions for array manipulation including filtering, mapping,
  * sorting, and other array operations.
@@ -239,6 +239,15 @@ export const flattenSignature: FunctionSignature = {
     'flatten([[[1]], [[2]]]) → [[1], [2]]',
     'flatten([[[1]], [[2]]], 2) → [1, 2]',
   ],
+};
+
+export const whereSignature: FunctionSignature = {
+  name: 'where',
+  category: 'array',
+  description: 'Filter array items by a truthy property key.',
+  parameters: [{ name: 'key', type: 'string', required: true, description: 'Property key' }],
+  returnType: 'array',
+  examples: ['where([{active:true},{active:false}], "active") → [{active:true}]'],
 };
 
 // Array function handlers
@@ -516,6 +525,22 @@ export const flatten: FilterFunction = (value: unknown, depth?: unknown): unknow
   return value.flat(maxDepth);
 };
 
+export const where: FilterFunction = (value: unknown, key: unknown): unknown[] => {
+  if (!Array.isArray(value)) {
+    throw new Error('where expects an array');
+  }
+  if (typeof key !== 'string') {
+    throw new Error('where expects a string key');
+  }
+
+  return value.filter((item) => {
+    if (!item || typeof item !== 'object') {
+      return false;
+    }
+    return Boolean((item as Record<string, unknown>)[key]);
+  });
+};
+
 /**
  * Export all array function registrations
  */
@@ -538,4 +563,5 @@ export const arrayFunctions = [
   { signature: sliceArraySignature, handler: sliceArray },
   { signature: concatSignature, handler: concat },
   { signature: flattenSignature, handler: flatten },
+  { signature: whereSignature, handler: where },
 ];

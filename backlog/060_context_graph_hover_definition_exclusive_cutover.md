@@ -1,0 +1,100 @@
+---
+id: wi-060
+type: work-item
+subtype: task
+lifecycle: active
+title: '060: Enforce exclusive context-graph hover/definition resolution'
+status: in-progress
+priority: high
+estimated: 8
+actual: 6
+assignee: ''
+commits:
+  cb3f6a0: 'feat(context-graph): complete graph-backed semantic resolution'
+  74ec91a: 'fix(core): harden query helpers and add regressions'
+  3eef8cb: 'test(vscode): use pathToFileURL for mock definition URIs'
+  1b9ff47: 'test(volar): remove debug logging and de-instrument memoization test'
+  8ab845c: 'perf(ide): optimize schema resolution and semantic caches'
+test_results:
+  - timestamp: 2026-03-13T00:00:00Z
+    note: |
+      Initial DRY pass and $ref-aware resolution (cb3f6a0):
+      - createScopedPathResolver() DRY helper shared across completion, hover, definition
+      - resolveSchemaUriForContext() eliminates duplicate zone-kind logic in adapter
+      - resolvePathDefinitionAcrossRefs() fallback added to hover path details for $ref parity with definition
+      - Token-aware hover for for-iterable statement paths (cursor-segment only)
+      - Remaining: full extension-server cutover and Volar-only LSP forwarding
+      - Focused tests: 124 passed, 0 failed
+      - Package builds: @templjs/volar, vscode-templjs confirmed clean
+  - timestamp: 2026-03-13T00:00:00Z
+    note: |
+      Regression stabilization follow-up (74ec91a, 3eef8cb, 1b9ff47):
+      - Core: strict where() key validation coverage, safe JSON serialization edge cases, CRLF schema-reference offsets
+      - VSCode tests: switched schema-definition mock URIs to pathToFileURL().href for robust encoding
+      - Volar tests: removed temporary debug logging and replaced private-method instrumentation with public query assertions
+      - Focused verification:
+        - `pnpm --filter @templjs/core test -- test/query-engine/array-functions.test.ts test/query-engine/query-engine.functions.array.test.ts test/query-engine/query-engine.functions.utility.test.ts test/semantic/semantic-context.test.ts` (30 passed)
+        - `pnpm --filter @templjs/volar test -- test/context-graph-adapter.test.ts` (8 passed)
+        - `pnpm --filter vscode-templjs test -- test/server.test.ts` (32 passed)
+  - timestamp: 2026-03-13T00:00:00Z
+    note: |
+      Schema-resolution and cache follow-up (8ab845c):
+      - Server-side schema loading now uses async file existence checks while sync definition lookups keep a dedicated sync resolver
+      - Snapshot cache keys now prefer object-identity tokens over full schema serialization
+      - Shared scope matching and default-filter caching reduce repeated semantic helper work during hover/definition reads
+      - Focused verification:
+        - `pnpm --filter @templjs/volar test -- test/context-graph-adapter.test.ts` (8 passed)
+        - `pnpm --filter vscode-templjs test -- test/server.test.ts` (32 passed)
+links:
+  implements:
+    - '[[056_context_graph_platform_epic]]'
+  depends_on:
+    - '[[058_context_graph_volar_adapter_and_semantic_reads]]'
+---
+
+## Goal
+
+Make `@templjs/context-graph` the sole source of hover and definition answers for templ authoring so the VS Code extension server no longer computes schema-path targets, schema-token jumps, or schema range resolution.
+
+Normalize semantic ownership around location-context queries so frontmatter/content and primary/secondary are treated as input aliases derived from syntax (`$schema` / `$content_schema`) inside core, not as Volar semantics.
+
+## Scope
+
+- Remove extension-server hover/definition resolver ownership
+- Route Volar hover/definition reads through location-qualified context-graph adapter queries only
+- Return final `uri`/`range` results from Volar for semantic paths and schema references without server callbacks
+- Eliminate standalone read-side resolver layers that duplicate server logic; keep resolution encapsulated in the context-graph adapter boundary
+- Treat frontmatter/content and primary/secondary as aliasing of context blocks selected from document location only, implemented in core
+- Include `diagnostics` in the semantic operation contract and payload-shape planning to avoid operation-specific drift
+- Preserve alias-scoped definitions and frontmatter schema-reference authoring flows
+- Add regression tests for nested `type` collisions and schema-token parity
+
+## Tasks
+
+- [x] Add context-graph-backed definition target contract in Volar adapter
+- [x] Define operation contract parity for `completion`, `hover`, `definition`, and `diagnostics` at the context-graph boundary
+- [x] Route hover path details exclusively through context-graph reads
+- [x] Route definition targets exclusively through context-graph reads
+- [x] Remove extension-server schema range and schema-token definition logic
+- [x] Remove standalone Volar definition-resolver module and fold behavior into context-graph adapter boundary
+- [x] Move `$schema` / `$content_schema` alias-to-context-block translation into core
+- [ ] Reduce Volar role to operation + document + position forwarding and LSP payload mapping only
+- [x] Add regression coverage for schema refs, nested item properties, and alias-scoped definitions
+- [x] Update trace logging to reflect graph-owned hover/definition resolution
+
+## Acceptance Criteria
+
+- [x] [src/extensions/vscode/src/server.ts](src/extensions/vscode/src/server.ts) no longer computes hover/definition targets beyond request plumbing
+- [x] Volar returns final location-qualified definition results without server range callbacks
+- [x] No standalone `definition-resolver` module remains; definition resolution lives behind the context-graph adapter boundary
+- [ ] Volar does not model frontmatter/content or primary/secondary as semantic branches
+- [x] Alias handling (`$schema` / `$content_schema` → context block) is owned by core
+- [x] Core semantic operation and payload contracts are aligned across `completion`, `hover`, `definition`, and `diagnostics`
+- [x] Hover for schema-backed paths is sourced from context-graph responses, not direct schema fallbacks
+- [x] Go-to-definition for `relationships[0].type` resolves to the nested item property definition, not a substring collision
+- [x] Frontmatter schema references (`$schema`, `$content_schema`, path-like schema fields) resolve through the Volar/context-graph boundary
+- [x] Targeted tests and builds pass
+
+## Notes
+
+- This work tightens the architecture promised by [[056_context_graph_platform_epic]] and completes the fallback-removal cutover left open by [[058_context_graph_volar_adapter_and_semantic_reads]].

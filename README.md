@@ -135,6 +135,8 @@ Current extension targets:
 - `.templ.md`
 - `.templ.html`
 
+For troubleshooting language features, see [VS Code triage logs](src/extensions/vscode/README.md#triage-logs) for quick setup and symptom-specific checks for go-to-definition, hover, and IntelliSense duplicate entries.
+
 ## Example: Parse + Validate
 
 ```ts

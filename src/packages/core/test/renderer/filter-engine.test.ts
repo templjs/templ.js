@@ -45,6 +45,12 @@ describe('FilterEngine', () => {
       expect(engine.applyFilter('length', null)).toBe(0);
     });
 
+    it('supports size alias for strings, arrays, and objects', () => {
+      expect(engine.applyFilter('size', [1, 2, 3])).toBe(3);
+      expect(engine.applyFilter('size', { a: 1, b: 2 })).toBe(2);
+      expect(engine.applyFilter('size', 'abc')).toBe(3);
+    });
+
     it('joins arrays and leaves non-arrays unchanged', () => {
       expect(engine.applyFilter('join', ['a', 'b'], ['|'])).toBe('a|b');
       expect(engine.applyFilter('join', 'a,b', ['|'])).toBe('a,b');
@@ -123,6 +129,13 @@ describe('FilterEngine', () => {
     it('json stringifies input', () => {
       expect(engine.applyFilter('json', { a: 1 })).toBe('{"a":1}');
       expect(engine.applyFilter('json', ['a', 1])).toBe('["a",1]');
+    });
+
+    it('returns normalized typeof values', () => {
+      expect(engine.applyFilter('typeof', 1)).toBe('number');
+      expect(engine.applyFilter('typeof', 'x')).toBe('string');
+      expect(engine.applyFilter('typeof', null)).toBe('null');
+      expect(engine.applyFilter('typeof', [1, 2])).toBe('array');
     });
   });
 

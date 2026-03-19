@@ -11,7 +11,7 @@ import type { FunctionSignature, FilterFunction } from '../types.js';
 export const roundSignature: FunctionSignature = {
   name: 'round',
   category: 'number',
-  description: 'Round number to given decimal places',
+  description: 'Round a numeric value to the given number of decimal places.',
   parameters: [
     {
       name: 'decimals',
@@ -45,7 +45,7 @@ export const ceilSignature: FunctionSignature = {
 export const absSignature: FunctionSignature = {
   name: 'abs',
   category: 'number',
-  description: 'Get absolute value',
+  description: 'Return the absolute value of a number.',
   parameters: [],
   returnType: 'number',
   examples: ['abs(-5) → 5', 'abs(3.14) → 3.14'],

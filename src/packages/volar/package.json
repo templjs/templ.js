@@ -39,11 +39,13 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@templjs/core": "workspace:*",
-    "@volar/language-core": "~2.0.0"
+    "@templjs/context-graph": "workspace:*",
+    "@volar/language-core": "~2.0.0",
+    "gray-matter": "^4.0.3"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^4.0.2",
     "@types/node": "^20.11.0",
+    "@vitest/coverage-v8": "^4.0.2",
     "typescript": "^5.3.0",
     "vitest": "^4.0.18"
   }

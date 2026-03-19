@@ -13,6 +13,8 @@ export type * from './lexer/types.js';
 export type * from './parser/types.js';
 export type * from './schema/types.js';
 export type * from './query-engine/types.js';
+export type * from './semantic/template-scopes.js';
+export type * from './semantic/semantic-context.js';
 // Explicitly re-export FilterFunction to resolve ambiguity
 export type { FilterFunction } from './query-engine/types.js';
 export type * from './renderer/types.js';
@@ -30,6 +32,21 @@ export { parse } from './parser/parser.js';
 export { SchemaValidator } from './schema/SchemaValidator.js';
 export { extractPaths, isValidPath } from './schema/queryPathValidator.js';
 export { inferSchemaFromValue, mergeSchemas } from './schema/schemaInference.js';
+export { extractTemplateScopeBindings } from './semantic/template-scopes.js';
+export {
+  detectFrontmatterRange,
+  getSemanticProfileId,
+  getFrontmatterKeyValueAtOffset,
+  getFrontmatterSchemaAliases,
+  getFrontmatterSchemaReferenceAtOffset,
+  getTokenAtOffset,
+  isOffsetInFrontmatter,
+  resolveSemanticContextBlock,
+  resolveSemanticHostLanguage,
+  resolveSemanticZone,
+  resolveSemanticZoneByHostLanguage,
+  toSemanticZone,
+} from './semantic/semantic-context.js';
 export type {
   ValidationResult,
   ValidationError,
@@ -39,13 +56,16 @@ export type {
 
 // Export query engine
 export { QueryEngine, filter, query } from './query-engine/query-engine.js';
+export type { FunctionSignature } from './query-engine/types.js';
 
 // Export renderer
 export { Renderer, render } from './renderer/renderer.js';
+export { BUILTIN_FILTER_NAMES, getBuiltinFilterNames } from './renderer/filter-engine.js';
 import { QueryEngine } from './query-engine/query-engine.js';
 import { tokenize } from './lexer/lexer.js';
 import { parse } from './parser/parser.js';
 import { render } from './renderer/renderer.js';
+import { extractTemplateScopeBindings } from './semantic/template-scopes.js';
 import type { RenderOptions } from './renderer/types.js';
 
 /**
@@ -86,6 +106,42 @@ export function createRenderer() {
  */
 export function createQueryEngine() {
   return new QueryEngine();
+}
+
+let cachedBuiltinFilterSignatures:
+  | Record<string, import('./query-engine/types.js').FunctionSignature>
+  | undefined;
+
+/**
+ * Get built-in filter signatures registered by the query engine.
+ *
+ * Note: if a function has multiple overload signatures in `metadata.functions`,
+ * this API exposes only the first signature (`signatures[0]`) for that function
+ * in `cachedBuiltinFilterSignatures`.
+ *
+ * Callers that need all overloads should query engine metadata directly via
+ * `createQueryEngine().getMetadata().functions`.
+ */
+export function getBuiltinFilterSignatures(): Record<
+  string,
+  import('./query-engine/types.js').FunctionSignature
+> {
+  if (cachedBuiltinFilterSignatures) {
+    return cachedBuiltinFilterSignatures;
+  }
+
+  const engine = createQueryEngine();
+  const metadata = engine.getMetadata();
+  const result: Record<string, import('./query-engine/types.js').FunctionSignature> = {};
+
+  for (const [name, signatures] of metadata.functions.entries()) {
+    if (signatures.length > 0) {
+      result[name] = signatures[0];
+    }
+  }
+
+  cachedBuiltinFilterSignatures = result;
+  return cachedBuiltinFilterSignatures;
 }
 
 /**
@@ -182,6 +238,7 @@ export default {
   createParser,
   createRenderer,
   createQueryEngine,
+  extractTemplateScopeBindings,
   renderTemplate,
   validateTemplate,
 };

@@ -7,6 +7,16 @@ import type { FilterFunction } from './types.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyValue = any;
 
+function getLength(value: AnyValue): number {
+  if (typeof value === 'string' || Array.isArray(value)) {
+    return value.length;
+  }
+  if (typeof value === 'object' && value !== null) {
+    return Object.keys(value).length;
+  }
+  return 0;
+}
+
 /**
  * Built-in filters for template processing
  */
@@ -67,15 +77,12 @@ const BUILTIN_FILTERS: Record<string, FilterFunction> = {
   /**
    * Get length of string or array
    */
-  length: (value: AnyValue): number => {
-    if (typeof value === 'string' || Array.isArray(value)) {
-      return value.length;
-    }
-    if (typeof value === 'object' && value !== null) {
-      return Object.keys(value).length;
-    }
-    return 0;
-  },
+  length: (value: AnyValue): number => getLength(value),
+
+  /**
+   * Alias for length (string/array/object size)
+   */
+  size: (value: AnyValue): number => getLength(value),
 
   /**
    * Join array elements
@@ -246,7 +253,26 @@ const BUILTIN_FILTERS: Record<string, FilterFunction> = {
   json: (value: AnyValue): string => {
     return JSON.stringify(value);
   },
+
+  /**
+   * JavaScript-like type inspection with null/array handling
+   */
+  typeof: (value: AnyValue): string => {
+    if (value === null) {
+      return 'null';
+    }
+    if (Array.isArray(value)) {
+      return 'array';
+    }
+    return typeof value;
+  },
 };
+
+export function getBuiltinFilterNames(): string[] {
+  return Object.keys(BUILTIN_FILTERS);
+}
+
+export const BUILTIN_FILTER_NAMES = getBuiltinFilterNames();
 
 /**
  * Filter application engine

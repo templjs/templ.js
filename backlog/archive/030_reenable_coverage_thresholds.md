@@ -4,12 +4,13 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '30: Re-enable Coverage Thresholds in CI'
-status: in-progress
-status_reason: reopened_for_dependency_consistency
+status: closed
+status_reason: completed
 priority: medium
 estimated: 1
 assignee: ''
 actual: 1.5
+completed_date: 2026-03-08
 links:
   depends_on:
     - '[[009_lexer_tests]]'

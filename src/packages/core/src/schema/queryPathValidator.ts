@@ -4,6 +4,114 @@
 
 import type { JSONSchema } from './types.js';
 
+function decodeJsonPointerSegment(segment: string): string {
+  const unescaped = segment.replace(/~1/g, '/').replace(/~0/g, '~');
+  try {
+    return decodeURIComponent(unescaped);
+  } catch {
+    return unescaped;
+  }
+}
+
+function resolveLocalRef(rootSchema: JSONSchema, ref: string): JSONSchema | undefined {
+  if (ref === '#') {
+    return rootSchema;
+  }
+
+  if (!ref.startsWith('#/')) {
+    return undefined;
+  }
+
+  const segments = ref
+    .slice(2)
+    .split('/')
+    .map((segment) => decodeJsonPointerSegment(segment));
+
+  let current: unknown = rootSchema;
+  for (const segment of segments) {
+    if (
+      !current ||
+      typeof current !== 'object' ||
+      !(segment in (current as Record<string, unknown>))
+    ) {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[segment];
+  }
+
+  return current && typeof current === 'object' && !Array.isArray(current)
+    ? (current as JSONSchema)
+    : undefined;
+}
+
+function extractPathsInternal(
+  schema: JSONSchema,
+  prefix: string,
+  rootSchema: JSONSchema,
+  activeRefs: Set<string>
+): Set<string> {
+  const paths = new Set<string>();
+
+  if (!schema || typeof schema !== 'object') {
+    return paths;
+  }
+
+  if (prefix) {
+    paths.add(prefix);
+  }
+
+  if (schema.$ref) {
+    const resolved = resolveLocalRef(rootSchema, schema.$ref);
+    if (!resolved || activeRefs.has(schema.$ref)) {
+      return paths;
+    }
+
+    const nextActiveRefs = new Set(activeRefs);
+    nextActiveRefs.add(schema.$ref);
+    const referencedPaths = extractPathsInternal(resolved, prefix, rootSchema, nextActiveRefs);
+    for (const path of referencedPaths) {
+      paths.add(path);
+    }
+    return paths;
+  }
+
+  if (schema.type === 'object' && schema.properties) {
+    for (const [key, subSchema] of Object.entries(schema.properties)) {
+      const newPrefix = prefix ? `${prefix}.${key}` : key;
+      const subPaths = extractPathsInternal(subSchema, newPrefix, rootSchema, activeRefs);
+      for (const path of subPaths) {
+        paths.add(path);
+      }
+    }
+  }
+
+  if (schema.type === 'array' && schema.items) {
+    const itemsSchema = Array.isArray(schema.items) ? schema.items[0] : schema.items;
+    if (itemsSchema) {
+      const arrayPrefix = prefix ? `${prefix}[0]` : '[0]';
+      paths.add(arrayPrefix);
+      const subPaths = extractPathsInternal(itemsSchema, arrayPrefix, rootSchema, activeRefs);
+      for (const path of subPaths) {
+        paths.add(path);
+      }
+    }
+  }
+
+  const combinators = [schema.allOf, schema.anyOf, schema.oneOf].filter(Boolean);
+  for (const combinator of combinators) {
+    if (Array.isArray(combinator)) {
+      for (const subSchema of combinator) {
+        const subPaths = extractPathsInternal(subSchema, prefix, rootSchema, activeRefs);
+        for (const path of subPaths) {
+          paths.add(path);
+        }
+      }
+    }
+  }
+
+  return paths;
+}
+
 /**
  * Extract all valid paths from a JSON Schema
  * @param schema - JSON Schema object
@@ -11,57 +119,7 @@ import type { JSONSchema } from './types.js';
  * @returns Set of valid dot-notation paths
  */
 export function extractPaths(schema: JSONSchema, prefix = ''): Set<string> {
-  const paths = new Set<string>();
-
-  if (!schema || typeof schema !== 'object') {
-    return paths;
-  }
-
-  // Add current path if not root
-  if (prefix) {
-    paths.add(prefix);
-  }
-
-  // Handle $ref
-  if (schema.$ref) {
-    // Note: Full $ref resolution would require a schema registry
-    // For now, we just note that the path exists
-    return paths;
-  }
-
-  // Handle object properties
-  if (schema.type === 'object' && schema.properties) {
-    for (const [key, subSchema] of Object.entries(schema.properties)) {
-      const newPrefix = prefix ? `${prefix}.${key}` : key;
-      const subPaths = extractPaths(subSchema, newPrefix);
-      subPaths.forEach((p) => paths.add(p));
-    }
-  }
-
-  // Handle arrays
-  if (schema.type === 'array' && schema.items) {
-    const itemsSchema = Array.isArray(schema.items) ? schema.items[0] : schema.items;
-    if (itemsSchema) {
-      // Add array indexing patterns
-      const arrayPrefix = prefix ? `${prefix}[0]` : '[0]';
-      paths.add(arrayPrefix);
-      const subPaths = extractPaths(itemsSchema, arrayPrefix);
-      subPaths.forEach((p) => paths.add(p));
-    }
-  }
-
-  // Handle allOf, anyOf, oneOf
-  const combinators = [schema.allOf, schema.anyOf, schema.oneOf].filter(Boolean);
-  for (const combinator of combinators) {
-    if (Array.isArray(combinator)) {
-      for (const subSchema of combinator) {
-        const subPaths = extractPaths(subSchema, prefix);
-        subPaths.forEach((p) => paths.add(p));
-      }
-    }
-  }
-
-  return paths;
+  return extractPathsInternal(schema, prefix, schema, new Set());
 }
 
 /**
