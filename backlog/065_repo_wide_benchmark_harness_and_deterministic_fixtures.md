@@ -4,13 +4,30 @@ type: work-item
 subtype: story
 lifecycle: active
 title: '065: Establish Repo-Wide Benchmark Harness and Deterministic Fixtures'
-status: ready
-status_reason: prioritized
+status: ready-for-review
+status_reason: implementation-complete
 priority: high
 estimated: 8
 actual: 0
 assignee: ''
+commits:
+  3a59ae9: 'feat(benchmarks): add deterministic repo benchmark harness'
+test_results:
+  - timestamp: 2026-03-19T00:00:00Z
+    note: |
+      Implemented the first repo-wide benchmark harness with deterministic fixtures and JSON/markdown output.
+      Validation:
+      - `pnpm --filter @templjs/core test -- test/semantic/semantic-context.test.ts` (13 passed)
+      - `pnpm --filter vscode-templjs test -- test/server.test.ts` (32 passed)
+      - `pnpm benchmark:ci -- --output /tmp/templjs-benchmark-results.json --summary-output /tmp/templjs-benchmark-summary.md`
+      - `pnpm benchmark:summary -- --input /tmp/templjs-benchmark-results.json --output /tmp/templjs-benchmark-summary-regenerated.md`
+      - `pnpm benchmark:compare -- --baseline /tmp/templjs-benchmark-results.json --candidate /tmp/templjs-benchmark-results.json --output /tmp/templjs-benchmark-comparison.json --markdown /tmp/templjs-benchmark-comparison.md`
+      Notes:
+      - Added deterministic core, Volar, VS Code, and context-graph fixtures plus machine-readable result/comparison schemas.
+      - Fixed frontmatter schema alias parsing so `#/$defs/...` fragments survive document-scoped schema resolution in benchmark fixtures.
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/29
   implements:
     - '[[064_benchmark_first_repo_optimization_program]]'
 ---
@@ -32,19 +49,19 @@ The repo currently has a few timing-style tests and benchmark references in docs
 
 ## Tasks
 
-- [ ] Choose and wire a benchmark runner suitable for the monorepo.
-- [ ] Create benchmark fixtures for parser, renderer, query engine, schema analysis, Volar diagnostics/completions, VS Code schema loading, and context-graph queries.
-- [ ] Define the benchmark JSON schema and summary format.
-- [ ] Add root benchmark scripts for local, CI, compare, and summary workflows.
-- [ ] Capture latency and advisory memory metrics with deterministic warmup and measurement settings.
-- [ ] Document how packages add new benchmark cases.
+- [x] Choose and wire a benchmark runner suitable for the monorepo.
+- [x] Create benchmark fixtures for parser, renderer, query engine, schema analysis, Volar diagnostics/completions, VS Code schema loading, and context-graph queries.
+- [x] Define the benchmark JSON schema and summary format.
+- [x] Add root benchmark scripts for local, CI, compare, and summary workflows.
+- [x] Capture latency and advisory memory metrics with deterministic warmup and measurement settings.
+- [x] Document how packages add new benchmark cases.
 
 ## Acceptance Criteria
 
-- [ ] Local commands exist for `benchmark`, `benchmark:ci`, `benchmark:compare`, and `benchmark:summary`.
-- [ ] Benchmarks cover parser, renderer, query engine, schema analysis, Volar diagnostics/completions, VS Code schema loading, and context-graph queries.
-- [ ] Output is machine-readable and stable enough for CI artifact publication and PR comparison.
-- [ ] The harness is non-gating and can run end-to-end on current `main`.
+- [x] Local commands exist for `benchmark`, `benchmark:ci`, `benchmark:compare`, and `benchmark:summary`.
+- [x] Benchmarks cover parser, renderer, query engine, schema analysis, Volar diagnostics/completions, VS Code schema loading, and context-graph queries.
+- [x] Output is machine-readable and stable enough for CI artifact publication and PR comparison.
+- [x] The harness is non-gating and can run end-to-end on current `main`.
 
 ## Implementation Notes
 
