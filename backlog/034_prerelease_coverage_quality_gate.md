@@ -9,6 +9,7 @@ priority: critical
 estimated: 8
 assignee: ''
 commits:
+  03014dc: 'chore(testing): align WI-034 coverage policy to ADR-006'
   62b21a2: 'test(core): raise semantic coverage'
   e0ede1a: 'test(context-graph): harden coverage gates'
   c0bb1c5: 'test(volar): add coverage utility suites'
