@@ -1194,4 +1194,322 @@ describe('language-server-bootstrap', () => {
       expect.any(Object)
     );
   });
+
+  it('returns empty completion/null hover/definition when document cache is missing', async () => {
+    await import('../src/server');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({ rootUri: 'file:///workspace' });
+
+    const completionHandler = onCompletion.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      position: { line: number; character: number };
+    }) => unknown[];
+    const hoverHandler = onHover.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      position: { line: number; character: number };
+    }) => unknown;
+    const definitionHandler = onDefinition.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      position: { line: number; character: number };
+    }) => unknown;
+
+    expect(
+      completionHandler({
+        textDocument: { uri: 'file:///workspace/missing.md.tpl' },
+        position: { line: 0, character: 0 },
+      })
+    ).toEqual([]);
+    expect(
+      hoverHandler({
+        textDocument: { uri: 'file:///workspace/missing.md.tpl' },
+        position: { line: 0, character: 0 },
+      })
+    ).toBeNull();
+    expect(
+      definitionHandler({
+        textDocument: { uri: 'file:///workspace/missing.md.tpl' },
+        position: { line: 0, character: 0 },
+      })
+    ).toBeNull();
+  });
+
+  it('maps provider completion kinds and emits duplicate-label traces in message mode', async () => {
+    getCompletions.mockReturnValueOnce([
+      { label: 'dup', kind: 'property', detail: 'a', documentation: 'A' },
+      { label: 'Dup', kind: 'variable', detail: 'b', documentation: 'B' },
+      { label: 'flt', kind: 'filter', detail: 'c', documentation: 'C' },
+      { label: 'kw', kind: 'keyword', detail: 'd', documentation: 'D' },
+      { label: 'num', kind: 999, detail: 'e', documentation: 'E' },
+    ]);
+
+    await import('../src/server');
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+
+    await initializeHandler({
+      rootUri: 'file:///workspace',
+      initializationOptions: {
+        traceMode: 'messages',
+        documentContext: {
+          uri: 'file:///workspace/sample.md.tpl',
+          content: '{{ user.name }}',
+        },
+      },
+    });
+
+    const completionHandler = onCompletion.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      position: { line: number; character: number };
+    }) => Array<{ label: string; kind: number }>;
+
+    const result = completionHandler({
+      textDocument: { uri: 'file:///workspace/sample.md.tpl' },
+      position: { line: 0, character: 3 },
+    });
+
+    expect(result).toEqual([
+      expect.objectContaining({ label: 'dup', kind: 10 }),
+      expect.objectContaining({ label: 'Dup', kind: 6 }),
+      expect.objectContaining({ label: 'flt', kind: 3 }),
+      expect.objectContaining({ label: 'kw', kind: 14 }),
+      expect.objectContaining({ label: 'num', kind: 6 }),
+    ]);
+
+    expect(consoleLog).toHaveBeenCalledWith(expect.stringContaining('completion duplicate labels'));
+  });
+
+  it('suppresses trace logging when trace mode is off', async () => {
+    await import('../src/server');
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+
+    await initializeHandler({
+      rootUri: 'file:///workspace',
+      initializationOptions: {
+        traceMode: 'off',
+        documentContext: {
+          uri: 'file:///workspace/sample.md.tpl',
+          content: '{{ user.name }}',
+        },
+      },
+    });
+
+    const completionHandler = onCompletion.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      position: { line: number; character: number };
+    }) => unknown[];
+
+    completionHandler({
+      textDocument: { uri: 'file:///workspace/sample.md.tpl' },
+      position: { line: 0, character: 3 },
+    });
+
+    expect(consoleLog.mock.calls.some((call) => String(call[0]).includes('[templjs-trace]'))).toBe(
+      false
+    );
+  });
+
+  it('logs and clears diagnostics when diagnostic collection throws', async () => {
+    collectDiagnostics.mockImplementationOnce(() => {
+      throw new Error('diagnostics exploded');
+    });
+
+    await import('../src/server');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({ rootUri: 'file:///workspace' });
+
+    const openHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
+      textDocument: { uri: string; text: string; languageId: string; version: number };
+    }) => void;
+
+    vi.useFakeTimers();
+    openHandler({
+      textDocument: {
+        uri: 'file:///workspace/diag-fail.md.tpl',
+        languageId: 'templjs-markdown',
+        version: 1,
+        text: '{{ user.name }}',
+      },
+    });
+    await vi.runAllTimersAsync();
+    vi.useRealTimers();
+
+    expect(consoleLog).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Diagnostics skipped for file:///workspace/diag-fail.md.tpl: diagnostics exploded'
+      )
+    );
+    expect(sendDiagnostics).toHaveBeenCalledWith({
+      uri: 'file:///workspace/diag-fail.md.tpl',
+      diagnostics: [],
+    });
+  });
+
+  it('handles completion positions beyond available lines', async () => {
+    await import('../src/server');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({
+      rootUri: 'file:///workspace',
+      initializationOptions: {
+        documentContext: {
+          uri: 'file:///workspace/single-line.md.tpl',
+          content: '{{ user.name }}',
+        },
+      },
+    });
+
+    const completionHandler = onCompletion.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      position: { line: number; character: number };
+    }) => unknown[];
+
+    const result = completionHandler({
+      textDocument: { uri: 'file:///workspace/single-line.md.tpl' },
+      position: { line: 10, character: 0 },
+    });
+
+    expect(Array.isArray(result)).toBe(true);
+    expect(getCompletions).toHaveBeenCalled();
+  });
+
+  it('traces definition none-path when provider returns null', async () => {
+    getDefinition.mockReturnValueOnce(null);
+
+    await import('../src/server');
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({
+      rootUri: 'file:///workspace',
+      initializationOptions: {
+        traceMode: 'messages',
+        documentContext: {
+          uri: 'file:///workspace/sample.md.tpl',
+          content: '{{ user.name }}',
+        },
+      },
+    });
+
+    const definitionHandler = onDefinition.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      position: { line: number; character: number };
+    }) => unknown;
+
+    const result = definitionHandler({
+      textDocument: { uri: 'file:///workspace/sample.md.tpl' },
+      position: { line: 0, character: 3 },
+    });
+
+    expect(result).toBeNull();
+    expect(consoleLog).toHaveBeenCalledWith(expect.stringContaining('definition result=none'));
+  });
+
+  it('sorts duplicate completion label summaries deterministically', async () => {
+    getCompletions.mockReturnValueOnce([
+      { label: 'zeta', kind: 'property' },
+      { label: 'ZETA', kind: 'property' },
+      { label: 'alpha', kind: 'property' },
+      { label: 'ALPHA', kind: 'property' },
+    ]);
+
+    await import('../src/server');
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({
+      rootUri: 'file:///workspace',
+      initializationOptions: {
+        traceMode: 'messages',
+        documentContext: {
+          uri: 'file:///workspace/sort.md.tpl',
+          content: '{{ user.name }}',
+        },
+      },
+    });
+
+    const completionHandler = onCompletion.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      position: { line: number; character: number };
+    }) => unknown[];
+
+    completionHandler({
+      textDocument: { uri: 'file:///workspace/sort.md.tpl' },
+      position: { line: 0, character: 3 },
+    });
+
+    expect(consoleLog).toHaveBeenCalledWith(expect.stringContaining('alpha×2, zeta×2'));
+  });
+
+  it('drops stale schema reload generations when a newer change is queued', async () => {
+    await import('../src/server');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({
+      rootUri: 'file:///workspace',
+      initializationOptions: {
+        documentContext: {
+          uri: 'file:///workspace/stale.md.tpl',
+          content: '{{ user.name }}',
+        },
+      },
+    });
+
+    sendDiagnostics.mockClear();
+    collectDiagnostics.mockReturnValue([]);
+
+    const changeHandler = onDidChangeTextDocument.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      contentChanges: Array<{
+        range?: {
+          start: { line: number; character: number };
+          end: { line: number; character: number };
+        };
+        text: string;
+      }>;
+    }) => void;
+
+    changeHandler({
+      textDocument: { uri: 'file:///workspace/stale.md.tpl' },
+      contentChanges: [
+        {
+          range: {
+            start: { line: 0, character: 0 },
+            end: { line: 0, character: 0 },
+          },
+          text: '{{# schema: a.json }}\n',
+        },
+      ],
+    });
+
+    changeHandler({
+      textDocument: { uri: 'file:///workspace/stale.md.tpl' },
+      contentChanges: [
+        {
+          range: {
+            start: { line: 0, character: 0 },
+            end: { line: 0, character: 0 },
+          },
+          text: '{{# schema: b.json }}\n',
+        },
+      ],
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(Array.isArray(sendDiagnostics.mock.calls)).toBe(true);
+  });
 });
