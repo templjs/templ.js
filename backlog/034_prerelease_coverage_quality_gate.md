@@ -28,6 +28,18 @@ test_results:
         - `@templjs/volar`: Stmts 85.14%, Branches 71.92%, Funcs 94.57%, Lines 85.33%
         - `vscode-templjs`: Stmts 83.61%, Branches 70.02%, Funcs 91.11%, Lines 83.67%
         - `@templjs/cli`: Stmts 96.32%, Branches 88.29%, Funcs 100.00%, Lines 96.30%
+  - timestamp: 2026-03-20T05:12:00Z
+    note: |
+      WI-034 ADR alignment pass in cleanup branch (`cleanup/wi-034-coverage-gate`):
+      - Updated coverage thresholds to ADR-006 targets in root and package vitest configs
+      - Enabled `perFile: true` coverage enforcement across root, src workspace, and package configs
+      - Added `docs/COVERAGE_STRATEGY.md` to document threshold policy and remediation workflow
+      - Re-ran package coverage commands under new thresholds:
+        - `@templjs/core`: All files 96.30/91.31/99.41/96.50 (fails per-file and package branch threshold 95)
+        - `@templjs/cli`: All files 96.32/88.29/100.00/96.30 (fails per-file branch thresholds in render/validate/xml/toml parsers)
+        - `@templjs/volar`: All files 85.30/72.57/94.73/85.45 (fails package-level ADR targets and multiple per-file checks)
+        - `vscode-templjs`: All files 87.86/76.88/91.30/87.94 (fails package-level ADR targets and per-file checks)
+      - Gap closure remains in progress; failures are now surfaced deterministically by policy
 links:
   depends_on:
     - '[[031_language_feature_tests]]'
@@ -130,10 +142,10 @@ Reconcile all coverage thresholds in vitest configs to align with ADR-006 target
 
 ## Acceptance Criteria
 
-- [ ] All vitest configs updated with ADR-006 aligned thresholds
-- [ ] `perFile: true` enabled across all packages
+- [x] All vitest configs updated with ADR-006 aligned thresholds
+- [x] `perFile: true` enabled across all packages
 - [ ] `pnpm run test:affected:ci` passes and enforces ≥90% global coverage
-- [x] Core package achieves ≥95% coverage on all metrics (lines, functions, branches, statements)
+- [ ] Core package achieves ≥95% coverage on all metrics (lines, functions, branches, statements)
 - [x] CLI package achieves ≥85% coverage on all metrics
 - [ ] Volar package achieves ≥92% coverage on all metrics
 - [ ] VSCode extension achieves ≥90% coverage on all metrics

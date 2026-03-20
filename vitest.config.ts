@@ -20,18 +20,12 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: [...configDefaults.exclude, '**/{test,dist}/**', '**/*.spec.ts'],
       thresholds: {
-        // Global thresholds are set to measured baselines to catch regressions
-        // while avoiding false failures due to noise in coverage measurements.
-        // Baselines determined from actual measured coverage across all packages (WI-031).
-        // perFile: false - allows some variation across files while catching overall regressions.
-        // NOTE: ADR-006 aspirational targets (90%+ all metrics) to be achieved before v1.0 release.
-        // See WI-034 for reconciliation plan.
-        lines: 95,
-        functions: 99,
-        branches: 75,
-        statements: 95,
-        autoUpdate: false, // enable to rebaseline thresholds
-        perFile: false,
+        lines: 90,
+        functions: 90,
+        branches: 90,
+        statements: 90,
+        autoUpdate: false,
+        perFile: true,
       },
     },
   },
