@@ -9,6 +9,7 @@ priority: critical
 estimated: 8
 assignee: ''
 commits:
+  30196db: 'test(vscode): raise strict WI-034 branch coverage'
   03014dc: 'chore(testing): align WI-034 coverage policy to ADR-006'
   62b21a2: 'test(core): raise semantic coverage'
   e0ede1a: 'test(context-graph): harden coverage gates'
