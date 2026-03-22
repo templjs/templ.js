@@ -1481,36 +1481,41 @@ describe('language-server-bootstrap', () => {
       }>;
     }) => void;
 
-    changeHandler({
-      textDocument: { uri: 'file:///workspace/stale.md.tpl' },
-      contentChanges: [
-        {
-          range: {
-            start: { line: 0, character: 0 },
-            end: { line: 0, character: 0 },
+    vi.useFakeTimers();
+    try {
+      changeHandler({
+        textDocument: { uri: 'file:///workspace/stale.md.tpl' },
+        contentChanges: [
+          {
+            range: {
+              start: { line: 0, character: 0 },
+              end: { line: 0, character: 0 },
+            },
+            text: '{{# schema: a.json }}\n',
           },
-          text: '{{# schema: a.json }}\n',
-        },
-      ],
-    });
+        ],
+      });
 
-    changeHandler({
-      textDocument: { uri: 'file:///workspace/stale.md.tpl' },
-      contentChanges: [
-        {
-          range: {
-            start: { line: 0, character: 0 },
-            end: { line: 0, character: 0 },
+      changeHandler({
+        textDocument: { uri: 'file:///workspace/stale.md.tpl' },
+        contentChanges: [
+          {
+            range: {
+              start: { line: 0, character: 0 },
+              end: { line: 0, character: 0 },
+            },
+            text: '{{# schema: b.json }}\n',
           },
-          text: '{{# schema: b.json }}\n',
-        },
-      ],
-    });
+        ],
+      });
 
-    await Promise.resolve();
-    await Promise.resolve();
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
 
-    // The stale a.json load should be discarded; at most one diagnostic publish (for b.json) should occur.
-    expect(sendDiagnostics.mock.calls.length).toBeLessThanOrEqual(1);
+      // Stale a.json generation should be dropped; only the newest generation should publish.
+      expect(sendDiagnostics).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

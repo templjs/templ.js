@@ -926,6 +926,25 @@ function resolvePathDefinitionAcrossRefs(
           }
         }
 
+        if (schemaText[matched.valueStart] === '{') {
+          const terminalRef = findTopLevelPropertyInObjectRange(
+            schemaText,
+            '$ref',
+            matched.valueStart,
+            matched.valueEnd
+          );
+          if (terminalRef) {
+            const refValueRaw = schemaText.slice(terminalRef.valueStart, terminalRef.valueEnd);
+            const refValue = stripJsonQuotes(refValueRaw);
+            const splitRef = splitSchemaSourceReference(refValue);
+            const targetUri = resolveRefTargetUri(activeUri, splitRef.source);
+            if (targetUri) {
+              const targetPointer = splitRef.fragment ?? '#';
+              return visit(targetUri, [], targetPointer, depth + 1);
+            }
+          }
+        }
+
         return {
           uri: activeUri,
           startOffset: matched.keyOffset,
@@ -968,6 +987,25 @@ function resolvePathDefinitionAcrossRefs(
 
     // Reached when remainingSegments is empty on a recursive visit (all segments
     // consumed by $ref redirection); returns the resolved pointer location.
+    if (schemaText[pointerRange.start] === '{') {
+      const pointerRef = findTopLevelPropertyInObjectRange(
+        schemaText,
+        '$ref',
+        pointerRange.start,
+        pointerRange.end
+      );
+      if (pointerRef) {
+        const refValueRaw = schemaText.slice(pointerRef.valueStart, pointerRef.valueEnd);
+        const refValue = stripJsonQuotes(refValueRaw);
+        const splitRef = splitSchemaSourceReference(refValue);
+        const targetUri = resolveRefTargetUri(activeUri, splitRef.source);
+        if (targetUri) {
+          const targetPointer = splitRef.fragment ?? '#';
+          return visit(targetUri, [], targetPointer, depth + 1);
+        }
+      }
+    }
+
     return {
       uri: activeUri,
       startOffset: pointerRange.start,
