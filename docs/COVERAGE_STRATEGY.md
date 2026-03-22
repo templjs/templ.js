@@ -1,5 +1,5 @@
 ---
-id: coverage-strategy-001
+id: coverage-001
 type: document
 subtype: runbook
 lifecycle: active
