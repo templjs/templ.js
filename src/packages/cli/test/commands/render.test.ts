@@ -280,6 +280,24 @@ describe('renderCommand', () => {
     ).rejects.toThrow('Render failed: Rendered output is not valid JSON:');
   });
 
+  it('returns raw output when JSON formatting is requested without output validation', async () => {
+    vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(readFileSync).mockImplementation((value) => {
+      if (value === 'template.templ') {
+        return 'Hello {{ name }}';
+      }
+      return '{"name":"World"}';
+    });
+    vi.mocked(renderTemplate).mockReturnValue('not-json');
+
+    const output = await renderCommand('template.templ', 'data.json', {
+      outputFormat: 'json',
+      validateOutput: false,
+    });
+
+    expect(output).toBe('not-json');
+  });
+
   it('throws error when input file does not exist', async () => {
     vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
     vi.mocked(statSync).mockImplementation(() => {
@@ -331,6 +349,49 @@ describe('renderCommand', () => {
 
     await expect(renderCommand('template.templ', 'busy.json')).rejects.toThrow(
       'Render failed: EBUSY: resource busy'
+    );
+  });
+
+  it('stringifies non-Error JSON parse failures when input validation is disabled', async () => {
+    const parseSpy = vi.spyOn(JSON, 'parse').mockImplementation(() => {
+      throw 'broken-json';
+    });
+
+    vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(readFileSync).mockImplementation((value) => {
+      if (value === 'template.templ') {
+        return 'Hello {{ name }}';
+      }
+      return '{"name":"World"}';
+    });
+
+    try {
+      await expect(
+        renderCommand('template.templ', 'data.json', {
+          validateInput: false,
+        })
+      ).rejects.toThrow(
+        'Render failed: Failed to parse input data as JSON: Invalid JSON: broken-json'
+      );
+    } finally {
+      parseSpy.mockRestore();
+    }
+  });
+
+  it('stringifies non-Error render failures', async () => {
+    vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
+    vi.mocked(readFileSync).mockImplementation((value) => {
+      if (value === 'template.templ') {
+        return 'Hello {{ name }}';
+      }
+      return '{"name":"World"}';
+    });
+    vi.mocked(renderTemplate).mockImplementation(() => {
+      throw 'renderer panic';
+    });
+
+    await expect(renderCommand('template.templ', 'data.json')).rejects.toThrow(
+      'Render failed: renderer panic'
     );
   });
 
@@ -541,6 +602,22 @@ describe('renderCommand', () => {
     ).rejects.toThrow(
       'Render failed: Invalid input file path (not a regular file): not-a-directory'
     );
+  });
+
+  it('reports stream-json permission errors from file creation', async () => {
+    vi.mocked(readFileSync).mockReturnValue('Hello {{ name }}');
+    vi.mocked(statSync).mockImplementation(() => {
+      const error: NodeJS.ErrnoException = new Error('EPERM: operation not permitted');
+      error.code = 'EPERM';
+      throw error;
+    });
+
+    await expect(
+      renderCommand('template.templ', 'restricted.json', {
+        experimentalStreamJson: true,
+        inputFormat: 'json',
+      })
+    ).rejects.toThrow('Render failed: Permission denied reading input file: restricted.json');
   });
 
   it('rejects empty stdin in experimental stream-json mode', async () => {
