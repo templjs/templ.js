@@ -75,12 +75,35 @@ describe('schema-utils', () => {
     expect(resolveSchemaFilePathSync('./missing.json', undefined)).toBeUndefined();
   });
 
+  it('falls back to workspace resolution when document URI is not a file URI', async () => {
+    const tempDir = makeTempDir();
+    const resolved = await resolveSchemaFilePath(
+      './schemas/doc.json',
+      tempDir,
+      'untitled:Untitled-1'
+    );
+    expect(resolved).toBe(path.join(tempDir, 'schemas/doc.json'));
+  });
+
   it('passes through URLs and absolute paths unchanged', async () => {
     expect(resolveSchemaFilePathSync('https://example.com/schema.json', '/workspace')).toBe(
       'https://example.com/schema.json'
     );
     await expect(resolveSchemaFilePath('/tmp/schema.json', '/workspace')).resolves.toBe(
       '/tmp/schema.json'
+    );
+  });
+
+  it('passes through http URLs in async resolution', async () => {
+    await expect(
+      resolveSchemaFilePath('http://example.com/schema.json', '/workspace')
+    ).resolves.toBe('http://example.com/schema.json');
+  });
+
+  it('resolves absolute and workspace-relative paths in sync mode', () => {
+    expect(resolveSchemaFilePathSync('/tmp/schema.json', '/workspace')).toBe('/tmp/schema.json');
+    expect(resolveSchemaFilePathSync('schemas/frontmatter.json', '/workspace')).toBe(
+      path.resolve('/workspace', 'schemas/frontmatter.json')
     );
   });
 
@@ -92,5 +115,38 @@ describe('schema-utils', () => {
 
     await expect(resolveSchemaFilePath(schemaUrl, '/workspace')).resolves.toBe(schemaPath);
     expect(resolveSchemaFilePathSync(schemaUrl, '/workspace')).toBe(schemaPath);
+  });
+
+  it('returns undefined for invalid file URI schemas', async () => {
+    await expect(resolveSchemaFilePath('file://%zz', '/workspace')).resolves.toBeUndefined();
+    expect(resolveSchemaFilePathSync('file://%zz', '/workspace')).toBeUndefined();
+  });
+
+  it('handles parent-relative document schema paths', async () => {
+    const tempDir = makeTempDir();
+    const schemaDir = path.join(tempDir, 'schemas');
+    const docsDir = path.join(tempDir, 'docs');
+    mkdirSync(schemaDir, { recursive: true });
+    mkdirSync(docsDir, { recursive: true });
+
+    const schemaPath = path.join(schemaDir, 'frontmatter.json');
+    const documentPath = path.join(docsDir, 'entry.md.tpl');
+    writeFileSync(schemaPath, '{}');
+    writeFileSync(documentPath, 'body');
+
+    await expect(
+      resolveSchemaFilePath(
+        '../schemas/frontmatter.json',
+        tempDir,
+        pathToFileURL(documentPath).href
+      )
+    ).resolves.toBe(schemaPath);
+    expect(
+      resolveSchemaFilePathSync(
+        '../schemas/frontmatter.json',
+        tempDir,
+        pathToFileURL(documentPath).href
+      )
+    ).toBe(schemaPath);
   });
 });

@@ -48,6 +48,23 @@ describe('PositionMapper', () => {
     expect(mapper.originalToCleaned(0)).toBe(0);
     expect(mapper.cleanedToOriginal(0)).toBe(0);
   });
+
+  it('should return originalToCleaned from cache on repeated lookups', () => {
+    const mapper = new PositionMapper([{ originalOffset: 0, cleanedOffset: 0, length: 5 }]);
+    expect(mapper.originalToCleaned(3)).toBe(3);
+    expect(mapper.originalToCleaned(3)).toBe(3);
+  });
+
+  it('should return cleanedToOriginal from cache on repeated lookups', () => {
+    const mapper = new PositionMapper([{ originalOffset: 0, cleanedOffset: 0, length: 5 }]);
+    expect(mapper.cleanedToOriginal(3)).toBe(3);
+    expect(mapper.cleanedToOriginal(3)).toBe(3);
+  });
+
+  it('should return current cleaned offset when original offset is before first mapping', () => {
+    const mapper = new PositionMapper([{ originalOffset: 10, cleanedOffset: 0, length: 5 }]);
+    expect(mapper.originalToCleaned(2)).toBe(0);
+  });
 });
 
 describe('LineColumnMapper', () => {
@@ -91,6 +108,11 @@ describe('LineColumnMapper', () => {
     const mapper = new LineColumnMapper('');
     expect(mapper.getLineCount()).toBe(1);
     expect(mapper.offsetToLineCol(0)).toEqual({ line: 0, column: 0 });
+  });
+
+  it('should clamp out-of-range line requests to the last known line offset', () => {
+    const mapper = new LineColumnMapper('first\nsecond');
+    expect(mapper.lineColToOffset(99, 10)).toBe(6);
   });
 });
 

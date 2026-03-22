@@ -3,6 +3,7 @@ import {
   collectDiagnostics,
   DiagnosticSeverity,
   remapDiagnosticsToOriginal,
+  resolveScopedPathInText,
 } from '../src/diagnostic-provider.js';
 
 const sampleSchema = {
@@ -518,6 +519,85 @@ describe('DiagnosticProvider', () => {
     });
 
     expect(diagnostics.some((diag) => diag.code === 'templjs.undefinedVariable')).toBe(true);
+  });
+
+  it('accepts .length access when the base path exists', () => {
+    const diagnostics = collectDiagnostics('{% if users.length > 0 %}ok{% endif %}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.undefinedVariable')).toBe(false);
+  });
+
+  it('flags .length access when the base path is invalid', () => {
+    const diagnostics = collectDiagnostics('{% if unknown.length > 0 %}x{% endif %}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.undefinedVariable')).toBe(true);
+  });
+
+  it('ignores empty statement tags', () => {
+    const diagnostics = collectDiagnostics('{%    %}\n{{ user.name }}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it('does not treat unknown statement tags as unclosed blocks', () => {
+    const diagnostics = collectDiagnostics('{% custom user.name %}\n{{ user.name }}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.unclosedStatement')).toBe(false);
+    expect(diagnostics.some((diag) => diag.code === 'templjs.undefinedVariable')).toBe(false);
+  });
+
+  it('does not report filter names as variables in for iterable expressions', () => {
+    const diagnostics = collectDiagnostics('{% for user in users | unknownFilter %}x{% endfor %}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.undefinedVariable')).toBe(false);
+  });
+
+  it('uses frontmatter range to select metadata schema in known host language files', () => {
+    const text = '---\ntitle: "{{ front.title }}"\n---\n{{ content.heading }}';
+    const diagnostics = collectDiagnostics(text, {
+      schema: frontmatterSchema,
+      contentSchema,
+      documentUri: 'file:///doc.md.tmpl',
+      frontmatterRange: {
+        start: 0,
+        end: text.indexOf('---\n{{ content.heading }}') + 3,
+      },
+    });
+
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it('uses host-language semantic zoning when frontmatter range is not provided', () => {
+    const text = '---\ntitle: "{{ front.title }}"\n---\n{{ content.heading }}';
+    const diagnostics = collectDiagnostics(text, {
+      schema: frontmatterSchema,
+      contentSchema,
+      documentUri: 'file:///doc.md.tmpl',
+    });
+
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it('resolves scoped aliases directly from raw template text', () => {
+    const text = '{% for relationship in relationships %}\n{{ relationship.target }}\n{% endfor %}';
+    const offset = text.indexOf('relationship.target');
+    const resolved = resolveScopedPathInText(text, 'relationship.target', offset);
+
+    expect(resolved).toBe('relationships[0].target');
+  });
+
+  it('returns an empty array when remapping no base diagnostics', () => {
+    expect(remapDiagnosticsToOriginal('Hello {{ name }}', [])).toEqual([]);
   });
 
   // ── Draft 2020-12 schema compatibility ────────────────────────────────────
