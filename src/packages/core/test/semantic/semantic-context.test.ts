@@ -142,6 +142,127 @@ describe('semantic-context core helpers', () => {
     expect(getTokenAtOffset(text, bodyOffset)).toEqual(expect.objectContaining({ token: 'body' }));
   });
 
+  it('handles missing frontmatter fences and invalid offsets safely', () => {
+    const text = 'plain body text';
+
+    expect(detectFrontmatterRange(text)).toBeUndefined();
+    expect(isOffsetInFrontmatter(text, 0)).toBe(false);
+    expect(getFrontmatterSchemaAliases(text)).toEqual({});
+    expect(getFrontmatterSchemaReferenceAtOffset(text, 999)).toBeNull();
+    expect(getFrontmatterKeyValueAtOffset(text, -1)).toBeNull();
+    expect(getTokenAtOffset(text, -1)).toBeUndefined();
+    expect(getTokenAtOffset(text, text.length + 1)).toBeUndefined();
+  });
+
+  it('treats unterminated frontmatter as absent', () => {
+    const text = ['---', '$schema: ./frontmatter.json', 'title: Example'].join('\n');
+
+    expect(detectFrontmatterRange(text)).toBeUndefined();
+    expect(getFrontmatterSchemaAliases(text)).toEqual({});
+    expect(getFrontmatterSchemaReferenceAtOffset(text, text.indexOf('$schema') + 2)).toBeNull();
+  });
+
+  it('handles token lookup on token boundaries and whitespace', () => {
+    const text = 'alpha beta';
+
+    expect(getTokenAtOffset(text, text.indexOf('alpha') + 'alpha'.length)).toEqual({
+      token: 'alpha',
+      start: 0,
+      end: 5,
+    });
+    expect(getTokenAtOffset(text, text.indexOf(' '))).toEqual({ token: 'alpha', start: 0, end: 5 });
+    expect(getTokenAtOffset(text, text.length)).toEqual({ token: 'beta', start: 6, end: 10 });
+  });
+
+  it('returns undefined for token lookup when no token characters are present', () => {
+    expect(getTokenAtOffset(',', 0)).toBeUndefined();
+    expect(getTokenAtOffset('   ', 1)).toBeUndefined();
+  });
+
+  it('walks backward from punctuation offsets to the previous token', () => {
+    const text = 'alpha,beta';
+    const commaOffset = text.indexOf(',');
+
+    expect(getTokenAtOffset(text, commaOffset)).toEqual({ token: 'alpha', start: 0, end: 5 });
+  });
+
+  it('returns undefined when only an opening frontmatter fence is present', () => {
+    const text = '---\n$schema: ./schema.json\nbody';
+    expect(detectFrontmatterRange(text)).toBeUndefined();
+  });
+
+  it('extracts quoted schema aliases and ignores unrelated frontmatter keys', () => {
+    const text = [
+      '---',
+      '"$schema": "./quoted-frontmatter.json"',
+      "'$content_schema': './quoted-content.json'",
+      'title: Example',
+      '---',
+    ].join('\n');
+
+    expect(getFrontmatterSchemaAliases(text)).toEqual({
+      templSchema: './quoted-frontmatter.json',
+      contentSchema: './quoted-content.json',
+    });
+    expect(getFrontmatterSchemaReferenceAtOffset(text, text.indexOf('title:') + 2)).toBeNull();
+  });
+
+  it('prefers the first matching schema aliases and ignores empty values', () => {
+    const text = [
+      '---',
+      '$schema: ./first.json',
+      '$schema: ./second.json',
+      '$content-schema: ',
+      '$content_schema: ./content.json',
+      '---',
+    ].join('\n');
+
+    expect(getFrontmatterSchemaAliases(text)).toEqual({
+      templSchema: './first.json',
+      contentSchema: './content.json',
+    });
+  });
+
+  it('returns null for offsets before a frontmatter value begins', () => {
+    const text = ['---', 'title: Example', '---'].join('\n');
+    const keyOffset = text.indexOf('title') + 2;
+
+    expect(getFrontmatterKeyValueAtOffset(text, keyOffset)).toBeNull();
+  });
+
+  it('returns null for frontmatter lines that do not match key/value shape', () => {
+    const text = ['---', '- invalid', '---'].join('\n');
+    const offset = text.indexOf('- invalid') + 2;
+
+    expect(getFrontmatterKeyValueAtOffset(text, offset)).toBeNull();
+  });
+
+  it('returns null when querying key/value outside frontmatter on terminal lines', () => {
+    const text = ['---', 'asset: ./docs/spec.json', '---', 'title: Example'].join('\n');
+    const offset = text.lastIndexOf('Example') + 2;
+
+    expect(getFrontmatterKeyValueAtOffset(text, offset)).toBeNull();
+  });
+
+  it('parses quoted frontmatter keys and rejects empty values', () => {
+    const text = ['---', '"asset-path": "./docs/spec.json"', "subtitle: ''", '---'].join('\n');
+    const valueOffset = text.indexOf('./docs/spec.json') + 4;
+    const emptyValueOffset = text.indexOf("''") + 1;
+
+    expect(getFrontmatterKeyValueAtOffset(text, valueOffset)).toEqual({
+      key: 'asset-path',
+      valueToken: './docs/spec.json',
+    });
+    expect(getFrontmatterKeyValueAtOffset(text, emptyValueOffset)).toBeNull();
+  });
+
+  it('falls back to token-based alias detection for content schema references', () => {
+    const text = ['---', 'reference: $content-schema', '---', 'body'].join('\n');
+    const tokenOffset = text.indexOf('$content-schema') + 3;
+
+    expect(resolveSemanticContextBlock(text, tokenOffset)).toBe('content');
+  });
+
   it('keeps semantic request/response contracts serializable for all operations', () => {
     const request: SemanticRequest = {
       version: 'v1',
@@ -217,11 +338,19 @@ describe('semantic-context core helpers', () => {
 
   it('detects host language from templ document URI', () => {
     expect(resolveSemanticHostLanguage('file:///workspace/note.md.templ')).toBe('markdown');
+    expect(resolveSemanticHostLanguage('file:///workspace/note.templ.md')).toBe('markdown');
     expect(resolveSemanticHostLanguage('file:///workspace/spec.yaml.templ')).toBe('yaml');
+    expect(resolveSemanticHostLanguage('file:///workspace/spec.templ.yml')).toBe('yaml');
     expect(resolveSemanticHostLanguage('file:///workspace/data.json.templ')).toBe('json');
+    expect(resolveSemanticHostLanguage('file:///workspace/data.templ.json')).toBe('json');
     expect(resolveSemanticHostLanguage('file:///workspace/template.html.templ')).toBe('html');
+    expect(resolveSemanticHostLanguage('file:///workspace/template.templ.html')).toBe('html');
     expect(resolveSemanticHostLanguage('file:///workspace/config.toml.templ')).toBe('toml');
+    expect(resolveSemanticHostLanguage('file:///workspace/config.templ.toml')).toBe('toml');
     expect(resolveSemanticHostLanguage('file:///workspace/layout.xml.templ')).toBe('xml');
+    expect(resolveSemanticHostLanguage('file:///workspace/layout.templ.xml')).toBe('xml');
+    expect(resolveSemanticHostLanguage(undefined)).toBe('unknown');
+    expect(resolveSemanticHostLanguage('file:///workspace/file.templ')).toBe('unknown');
   });
 
   it('uses host language to resolve semantic zone with markdown compatibility', () => {

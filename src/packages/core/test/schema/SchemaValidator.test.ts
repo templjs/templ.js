@@ -184,6 +184,10 @@ describe('SchemaValidator', () => {
       expect(metadata).toHaveProperty('title');
       expect(metadata).toHaveProperty('count');
     });
+
+    it('returns empty metadata when no schema has been loaded', () => {
+      expect(new SchemaValidator().getMetadata()).toEqual({});
+    });
   });
 
   describe('Data Validation', () => {
@@ -360,6 +364,13 @@ describe('SchemaValidator', () => {
       expect(result.valid).toBe(false);
       expect(result.errors[0].suggestion).toBeDefined();
       expect(result.errors[0].suggestion).toContain('Did you mean');
+    });
+
+    it('omits suggestions when no similar paths exist', () => {
+      const result = validator.validateQueryPath('totally.unknown.path');
+
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].suggestion).toBeUndefined();
     });
 
     it('should suggest multiple alternatives', () => {
@@ -577,6 +588,22 @@ describe('SchemaValidator', () => {
       expect(validator1.validate({ value: 'test' }).valid).toBe(true);
       expect(validator2.validate({ value: 'test' }).valid).toBe(true);
     });
+
+    it('uses JSON stringification as a cache key when no $id is present', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          value: { type: 'string' },
+        },
+      };
+
+      const validator = new SchemaValidator();
+      validator.loadSchema(schema);
+
+      const stats = validator.getCacheStats();
+      expect(stats.size).toBe(1);
+      expect(stats.keys[0]).toContain('"type":"object"');
+    });
   });
 
   describe('Valid Paths', () => {
@@ -599,6 +626,212 @@ describe('SchemaValidator', () => {
       expect(paths.has('user')).toBe(true);
       expect(paths.has('user.name')).toBe(true);
     });
+
+    it('returns a defensive copy of valid paths', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: { user: { type: 'string' } },
+      };
+
+      const validator = new SchemaValidator(schema);
+      const paths = validator.getValidPaths();
+      paths.add('mutated');
+
+      expect(validator.getValidPaths().has('mutated')).toBe(false);
+    });
+  });
+});
+
+describe('SchemaValidator metadata edge cases', () => {
+  it('merges combinator metadata and preserves inferred container types', () => {
+    const schema: JSONSchema = {
+      type: 'object',
+      properties: {
+        target: {
+          allOf: [
+            { type: 'object', properties: { first: { type: 'string' } } },
+            { anyOf: [{ type: 'object', properties: { second: { type: 'number' } } }] },
+          ],
+        },
+      },
+    };
+
+    const metadata = new SchemaValidator(schema).getMetadata();
+    expect(metadata.target.type).toBe('object');
+    expect(metadata.target.properties).toEqual(expect.arrayContaining(['first', 'second']));
+  });
+
+  it('records array item metadata for tuple-style items', () => {
+    const schema: JSONSchema = {
+      type: 'object',
+      properties: {
+        entries: {
+          type: 'array',
+          items: [
+            {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+              },
+            },
+          ],
+        },
+      },
+    };
+
+    const metadata = new SchemaValidator(schema).getMetadata();
+    expect(metadata.entries.itemType).toBe('object');
+    expect(metadata['entries[0]'].type).toBe('object');
+    expect(metadata['entries[0].name'].type).toBe('string');
+  });
+
+  it('merges combinator item metadata into an existing prefix', () => {
+    const schema: JSONSchema = {
+      type: 'object',
+      properties: {
+        target: {
+          allOf: [
+            { type: 'array', items: { type: 'string' } },
+            { description: 'merged array metadata' },
+          ],
+        },
+      },
+    };
+
+    const metadata = new SchemaValidator(schema).getMetadata();
+    expect(metadata.target.type).toBe('array');
+    expect(metadata.target.itemType).toBe('string');
+  });
+
+  it('handles non-array combinator values without throwing', () => {
+    const validator = new SchemaValidator();
+    const metadata = (validator as any).extractMetadata(
+      {
+        type: 'object',
+        properties: {
+          target: {
+            allOf: { type: 'object' },
+          },
+        },
+      },
+      '',
+      undefined
+    );
+
+    expect(metadata.target.type).toBe('any');
+  });
+
+  it('formats fallback Ajv error paths and default messages', () => {
+    const validator = new SchemaValidator();
+    const formatted = (validator as any).formatErrors([
+      {
+        keyword: 'custom',
+        instancePath: '',
+        schemaPath: '',
+        params: {},
+        message: '',
+      },
+    ]);
+
+    expect(formatted).toEqual([{ path: '', message: 'Validation error' }]);
+  });
+
+  it('uses fallback compilation message when compileError is absent', () => {
+    const validator = new SchemaValidator();
+    (validator as any).currentSchema = { type: 'object' };
+    (validator as any).validateFunction = undefined;
+    (validator as any).compileError = undefined;
+
+    expect(validator.validate({})).toEqual({
+      valid: false,
+      skipped: true,
+      errors: [
+        {
+          path: '$schema',
+          message: 'Schema validation unavailable because compilation failed.',
+        },
+      ],
+    });
+  });
+
+  it('handles validateFunction errors fallback when the validator returns false without errors', () => {
+    const validator = new SchemaValidator();
+    (validator as any).currentSchema = { type: 'object' };
+    (validator as any).validateFunction = () => false;
+
+    const result = validator.validate({});
+    expect(result).toEqual({ valid: false, errors: [] });
+  });
+
+  it('extracts union type strings from schema metadata', () => {
+    const schema: JSONSchema = {
+      type: 'object',
+      properties: {
+        status: {
+          type: ['string', 'null'],
+        },
+      },
+    };
+
+    const metadata = new SchemaValidator(schema).getMetadata();
+    expect(metadata.status.type).toBe('string|null');
+  });
+
+  it('infers array metadata when schema defines items without an explicit type', () => {
+    const schema: JSONSchema = {
+      type: 'object',
+      properties: {
+        list: {
+          items: { type: 'string' },
+        },
+      },
+    };
+
+    const metadata = new SchemaValidator(schema).getMetadata();
+    expect(metadata.list.type).toBe('array');
+    expect(metadata.list.itemType).toBe('string');
+  });
+
+  it('handles root array schemas with union item types', () => {
+    const schema: JSONSchema = {
+      type: 'array',
+      items: {
+        type: ['string', 'null'],
+      },
+    };
+
+    const metadata = new SchemaValidator(schema).getMetadata();
+    expect(metadata['[0]'].type).toBe('string|null');
+  });
+
+  it('returns empty metadata for primitive non-object values in private extraction', () => {
+    const validator = new SchemaValidator();
+    expect((validator as any).extractMetadata('primitive', '', undefined)).toEqual({});
+  });
+
+  it('skips tuple item metadata when tuple array has no first item schema', () => {
+    const schema: JSONSchema = {
+      type: 'array',
+      items: [],
+    };
+
+    const metadata = new SchemaValidator(schema).getMetadata();
+    expect(metadata).toEqual({});
+  });
+
+  it('marks array-index metadata as not required when property name normalizes to empty', () => {
+    const validator = new SchemaValidator();
+    const metadata = (validator as any).extractMetadata({ type: 'string' }, '[0]', ['item']);
+
+    expect(metadata['[0]']).toMatchObject({
+      required: false,
+      type: 'string',
+    });
+  });
+
+  it('throws for null value in private extraction', () => {
+    const validator = new SchemaValidator();
+    expect(() => (validator as any).extractMetadata(null, '', undefined)).toThrow();
   });
 });
 
@@ -666,6 +899,34 @@ describe('Query Path Validator', () => {
       expect(paths.has('items[0].name')).toBe(true);
     });
 
+    it('should extract root-level array paths', () => {
+      const schema: JSONSchema = {
+        type: 'array',
+        items: { type: 'string' },
+      };
+
+      const paths = extractPaths(schema);
+
+      expect(paths.has('[0]')).toBe(true);
+    });
+
+    it('should skip tuple-style arrays with no first item schema', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          items: {
+            type: 'array',
+            items: [],
+          },
+        },
+      };
+
+      const paths = extractPaths(schema);
+
+      expect(paths.has('items')).toBe(true);
+      expect(paths.has('items[0]')).toBe(false);
+    });
+
     it('should extract paths through local #/definitions $ref', () => {
       const schema: JSONSchema = {
         type: 'object',
@@ -690,6 +951,28 @@ describe('Query Path Validator', () => {
       expect(paths.has('relationship')).toBe(true);
       expect(paths.has('relationship.target')).toBe(true);
       expect(paths.has('relationship.type')).toBe(true);
+    });
+
+    it('should traverse local refs that point to schema objects describing arrays', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          list: {
+            $ref: '#/$defs/list',
+          },
+        },
+        $defs: {
+          list: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+        },
+      };
+
+      const paths = extractPaths(schema);
+
+      expect(paths.has('list')).toBe(true);
+      expect(paths.has('list[0]')).toBe(true);
     });
 
     it('should extract paths through local #/$defs $ref in arrays', () => {
@@ -746,6 +1029,47 @@ describe('Query Path Validator', () => {
       expect(paths.has('node')).toBe(true);
       expect(paths.has('node.name')).toBe(true);
       expect(paths.has('node.parent')).toBe(true);
+    });
+
+    it('should ignore non-array combinator values when extracting paths', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          user: {
+            allOf: { type: 'object' } as unknown as JSONSchema[],
+          },
+        },
+      };
+
+      const paths = extractPaths(schema);
+
+      expect(paths.has('user')).toBe(true);
+    });
+
+    it('should skip root-level array tuple recursion when first item schema is absent', () => {
+      const schema: JSONSchema = {
+        type: 'array',
+        items: [],
+      };
+
+      const paths = extractPaths(schema);
+      expect(paths.size).toBe(0);
+    });
+
+    it('should keep prefix-only paths when local refs resolve to array schemas', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        allOf: [{ type: 'string' }],
+        properties: {
+          alias: {
+            $ref: '#/allOf',
+          },
+        },
+      };
+
+      const paths = extractPaths(schema);
+      expect(paths.has('alias')).toBe(true);
+      expect(paths.has('alias[0]')).toBe(false);
     });
   });
 
@@ -825,9 +1149,89 @@ describe('Query Path Validator', () => {
       expect(isValidPath('items[5].name', validPaths)).toBe(true);
     });
 
+    it('matches equivalent normalized paths even when the stored path uses a different index', () => {
+      const validPaths = new Set(['items[3].name']);
+      expect(isValidPath('items[5].name', validPaths)).toBe(true);
+    });
+
     it('should reject invalid paths', () => {
       const validPaths = new Set(['user.name']);
       expect(isValidPath('user.invalid', validPaths)).toBe(false);
+    });
+
+    it('extracts paths from local root refs, tuple arrays, and combinators', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          rootAlias: { $ref: '#' },
+          tupleItems: {
+            type: 'array',
+            items: [
+              {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                },
+              },
+            ],
+          },
+          combined: {
+            allOf: [
+              { type: 'object', properties: { first: { type: 'string' } } },
+              { anyOf: [{ type: 'object', properties: { second: { type: 'number' } } }] },
+              { oneOf: [{ type: 'object', properties: { third: { type: 'boolean' } } }] },
+            ],
+          },
+        },
+      };
+
+      const paths = extractPaths(schema);
+      expect(paths.has('rootAlias')).toBe(true);
+      expect(paths.has('tupleItems[0]')).toBe(true);
+      expect(paths.has('tupleItems[0].name')).toBe(true);
+      expect(paths.has('combined.first')).toBe(true);
+      expect(paths.has('combined.second')).toBe(true);
+      expect(paths.has('combined.third')).toBe(true);
+    });
+
+    it('stops recursing on circular and unresolved refs', () => {
+      const circularSchema: JSONSchema = {
+        type: 'object',
+        properties: {
+          node: {
+            $ref: '#/properties/node',
+          },
+          broken: {
+            $ref: '#/properties/missing',
+          },
+        },
+      };
+
+      const paths = extractPaths(circularSchema);
+      expect(paths.has('node')).toBe(true);
+      expect(paths.has('broken')).toBe(true);
+      expect(paths.has('node.node')).toBe(false);
+    });
+
+    it('falls back when a decoded pointer segment cannot be resolved', () => {
+      const schema: JSONSchema = {
+        type: 'object',
+        properties: {
+          alias: {
+            $ref: '#/properties/%ZZ',
+          },
+          '%ZZ': {
+            type: 'string',
+          },
+        },
+      };
+
+      const paths = extractPaths(schema);
+      expect(paths.has('alias')).toBe(true);
+    });
+
+    it('returns no extracted paths for non-object schema input', () => {
+      expect(extractPaths('not-a-schema' as unknown as JSONSchema).size).toBe(0);
     });
   });
 });

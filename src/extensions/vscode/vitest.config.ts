@@ -9,14 +9,11 @@ export default mergeConfig(
       coverage: {
         reportsDirectory: path.resolve(__dirname, 'coverage'),
         thresholds: {
-          // Rebaselined to the current measured suite after activation and
-          // middleware coverage expansion in the coverage remediation branch.
-          // Keep thresholds pinned close to the measured totals so future
-          // regressions still fail quickly.
-          lines: 83,
-          functions: 91,
-          branches: 70,
-          statements: 83,
+          lines: 90,
+          functions: 90,
+          branches: 90,
+          statements: 90,
+          perFile: true,
         },
       },
     },

@@ -135,4 +135,58 @@ describe('scope-resolution', () => {
 
     expect(resolveScopedPathInText(text, 'item.name', offset, delimiters)).toBe('items[0].name');
   });
+
+  it('leaves path unchanged when scopes match offset but alias path does not match', () => {
+    const scopes = [
+      {
+        alias: 'item',
+        iterablePath: 'items',
+        bodyStart: 0,
+        bodyEnd: 100,
+      },
+    ];
+
+    expect(resolveScopedPath('user.name', 5, scopes)).toBe('user.name');
+  });
+
+  it('preserves iterable paths that already end with an index segment', () => {
+    const scopes = [
+      {
+        alias: 'item',
+        iterablePath: 'items[2]',
+        bodyStart: 0,
+        bodyEnd: 100,
+      },
+    ];
+
+    expect(resolveScopedPath('item.name', 10, scopes)).toBe('items[2].name');
+  });
+
+  it('falls back to raw iterable expression when no variable refs are found', () => {
+    const scopes = [
+      {
+        alias: 'item',
+        iterablePath: '42',
+        bodyStart: 0,
+        bodyEnd: 100,
+      },
+    ];
+
+    expect(resolveScopedPath('item.name', 8, scopes)).toBe('42[0].name');
+  });
+
+  it('returns null when alias declaration offsets are unavailable', () => {
+    const text = '{% for item in items %}\n{{ item.name }}\n{% endfor %}';
+    const scopes = [
+      {
+        alias: 'item',
+        iterablePath: 'items',
+        bodyStart: text.indexOf('{{ item.name }}'),
+        bodyEnd: text.length,
+      },
+    ];
+    const offset = text.indexOf('item.name') + 2;
+
+    expect(findLocalAliasDefinitionInText(text, 'item.name', offset, undefined, scopes)).toBeNull();
+  });
 });

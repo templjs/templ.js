@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { tokenize } from '../../src/lexer/lexer.js';
-import { parse } from '../../src/parser/parser.js';
+import { TokenType } from '../../src/lexer/types.js';
+import { parse, TemplateParser } from '../../src/parser/parser.js';
 import type {
   ExpressionStatementNode,
   IfNode,
@@ -352,6 +353,29 @@ describe('parse', () => {
         const result = parse(tokens);
         expect(result.ast?.children[0].type).toBe('if');
       });
+
+      it('reports a syntax error for an invalid if statement', () => {
+        const tokens = tokenize('{% if %}Broken{% endif %}');
+        const result = parse(tokens);
+        const errorNode = result.ast?.children[0];
+
+        expect(errorNode?.type).toBe('error');
+        expect(result.errors.some((error) => error.message === 'Unknown statement type')).toBe(
+          true
+        );
+      });
+
+      it('recovers an if block without endif even when the body is empty', () => {
+        const tokens = tokenize('{% if user %}');
+        const result = parse(tokens);
+        const ifNode = result.ast?.children[0] as IfNode;
+
+        expect(ifNode.type).toBe('if');
+        expect(ifNode.body).toEqual([]);
+        expect(result.errors.some((error) => error.message.includes('Unclosed if block'))).toBe(
+          true
+        );
+      });
     });
 
     describe('If-Else', () => {
@@ -441,6 +465,30 @@ describe('parse', () => {
         const result = parse(tokens);
         const forNode = result.ast?.children[0] as ForNode;
         expect(forNode.iterator).toBe('ITEM');
+      });
+
+      it('reports a syntax error for an invalid for statement', () => {
+        const tokens = tokenize('{% for item items %}Broken{% endfor %}');
+        const result = parse(tokens);
+        const forNode = result.ast?.children[0] as ForNode;
+
+        expect(forNode.type).toBe('for');
+        expect(forNode.iterable.type).toBe('error');
+        expect(
+          result.errors.some((error) => error.message === 'Invalid for statement syntax')
+        ).toBe(true);
+      });
+
+      it('recovers a for block without endfor even when the body is empty', () => {
+        const tokens = tokenize('{% for item in items %}');
+        const result = parse(tokens);
+        const forNode = result.ast?.children[0] as ForNode;
+
+        expect(forNode.type).toBe('for');
+        expect(forNode.body).toEqual([]);
+        expect(result.errors.some((error) => error.message.includes('Unclosed for block'))).toBe(
+          true
+        );
       });
     });
 
@@ -1075,6 +1123,166 @@ describe('parse', () => {
       const tokens = tokenize('{% if value is defined %}yes{% endif %}');
       const result = parse(tokens);
       expect(result.ast?.children.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Parser - Internal Recovery Branches', () => {
+    it('returns null when parseStatement is called on a non-statement token', () => {
+      const parser = new TemplateParser([
+        {
+          type: TokenType.EXPRESSION,
+          content: '{{ value }}',
+          start: { line: 1, column: 0 },
+          end: { line: 1, column: 11 },
+        },
+      ] as any);
+
+      expect((parser as any).parseStatement()).toBeNull();
+    });
+
+    it('handles invalid if syntax when private parser is invoked directly', () => {
+      const parser = new TemplateParser([
+        {
+          type: TokenType.STATEMENT,
+          content: '{% if %}',
+          start: { line: 1, column: 0 },
+          end: { line: 1, column: 8 },
+        },
+      ] as any);
+
+      const node = (parser as any).parseIfStatement();
+      expect(node).toEqual(
+        expect.objectContaining({
+          type: 'if',
+        })
+      );
+      expect(node.condition).toEqual(expect.objectContaining({ type: 'error' }));
+      expect(
+        (parser as any).errors.some(
+          (error: { message: string }) => error.message === 'Invalid if statement'
+        )
+      ).toBe(true);
+    });
+
+    it('records recovery errors for unclosed blocks and falls back to start token end', () => {
+      const result = parse(tokenize('{% block header %}content'));
+      const blockNode = result.ast?.children[0] as BlockNode;
+
+      expect(blockNode.type).toBe('block');
+      expect(blockNode.end.line).toBe(blockNode.start.line);
+      expect(blockNode.end.column).toBeGreaterThan(blockNode.start.column);
+      expect(
+        result.errors.some((error) => error.message === 'Unclosed block: missing {% endblock %}')
+      ).toBe(true);
+    });
+
+    it('advances in parse() when parseStatement returns null after consuming a token', () => {
+      const parser = new TemplateParser([
+        {
+          type: TokenType.STATEMENT,
+          content: '{% noop %}',
+          start: { line: 1, column: 0 },
+          end: { line: 1, column: 10 },
+        },
+      ] as any);
+
+      (parser as any).parseStatement = function () {
+        this.advance();
+        return null;
+      };
+
+      const result = parser.parse();
+      expect(result.ast?.children).toEqual([]);
+    });
+
+    it('advances in parseStatementBody when nested parseStatement returns null', () => {
+      const parser = new TemplateParser([
+        {
+          type: TokenType.STATEMENT,
+          content: '{% noop %}',
+          start: { line: 1, column: 0 },
+          end: { line: 1, column: 10 },
+        },
+      ] as any);
+
+      (parser as any).parseStatement = () => null;
+      expect((parser as any).parseStatementBody(['endif'])).toEqual([]);
+    });
+
+    it('handles sparse token arrays without crashing', () => {
+      const parser = new TemplateParser(new Array(1) as any);
+      const result = parser.parse();
+
+      expect(result.ast?.children).toEqual([]);
+      expect(result.ast?.start).toEqual({ line: 1, column: 0 });
+      expect(result.ast?.end).toEqual({ line: 1, column: 0 });
+    });
+
+    it('skips null statements returned during parse', () => {
+      const parser = new TemplateParser([
+        {
+          type: TokenType.STATEMENT,
+          content: '{% noop %}',
+          start: { line: 1, column: 0 },
+          end: { line: 1, column: 10 },
+        },
+      ] as any);
+      (parser as any).parseStatement = () => null;
+
+      const result = parser.parse();
+      expect(result.ast?.children).toEqual([]);
+    });
+
+    it('throws when private statement parsers are invoked without a token', () => {
+      const parser = new TemplateParser([] as any);
+
+      expect(() => (parser as any).parseIfStatement()).toThrow('Expected statement token');
+      expect(() => (parser as any).parseForStatement()).toThrow('Expected statement token');
+      expect(() => (parser as any).parseSetStatement()).toThrow('Expected statement token');
+      expect(() => (parser as any).parseBlockStatement()).toThrow('Expected statement token');
+    });
+
+    it('covers parser internals for missing closers, invalid variables, and raw delimiter extraction', () => {
+      const parser = new TemplateParser([] as any);
+
+      expect((parser as any).parseVariable('123abc')).toEqual(
+        expect.objectContaining({ type: 'variable', name: '123abc', path: [] })
+      );
+      expect((parser as any).parsePath('.')).toEqual([]);
+      expect((parser as any).extractStatementContent('if user')).toBe('if user');
+      expect((parser as any).extractExpressionContent('name')).toBe('name');
+      expect((parser as any).createErrorVariable('broken')).toEqual(
+        expect.objectContaining({ type: 'variable', name: 'broken' })
+      );
+    });
+
+    it('parses malformed set and block statements into error nodes', () => {
+      let result = parse(tokenize('{% set value %}'));
+      expect(result.ast?.children[0]).toEqual(expect.objectContaining({ type: 'set', name: '' }));
+      expect(result.errors.some((error) => error.message === 'Invalid set statement syntax')).toBe(
+        true
+      );
+
+      result = parse(tokenize('{% block name extra %}content{% endblock %}'));
+      expect(result.ast?.children[0]).toEqual(expect.objectContaining({ type: 'block', name: '' }));
+      expect(
+        result.errors.some((error) => error.message === 'Invalid block statement syntax')
+      ).toBe(true);
+    });
+
+    it('handles expression bodies with comments and missing delimiters', () => {
+      const bodyParser = new TemplateParser([
+        {
+          type: TokenType.COMMENT,
+          content: '{# noop #}',
+          start: { line: 1, column: 0 },
+          end: { line: 1, column: 10 },
+        },
+      ] as any);
+
+      expect((bodyParser as any).parseStatementBody(['endif'])).toEqual([]);
+      expect(parse(tokenize('{{ user. }}')).ast?.children[0].type).toBe('expression_statement');
+      expect(parse(tokenize('{{ user[foo }}')).ast?.children[0].type).toBe('expression_statement');
     });
   });
 

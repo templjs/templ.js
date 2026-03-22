@@ -496,4 +496,140 @@ describe('extension-activation', () => {
     expect(traceLines.some((line) => line.includes('completion result count=2'))).toBe(true);
     expect(traceLines.some((line) => line.includes('duplicate labels'))).toBe(false);
   });
+
+  it('handles middleware edge cases for non-standard completion/hover/definition payloads', async () => {
+    configurationValues['trace.server'] = 'verbose';
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const clientOptions = languageClientConstructor.mock.calls[0][3] as {
+      middleware: {
+        provideCompletionItem: (...args: unknown[]) => Promise<unknown>;
+        provideHover: (...args: unknown[]) => Promise<unknown>;
+        provideDefinition: (...args: unknown[]) => Promise<unknown>;
+      };
+    };
+
+    const document = {
+      uri: { toString: () => 'file:///workspace/edge.md.tpl' },
+      languageId: 'templjs-markdown',
+    };
+    const position = { line: 0, character: 0 };
+
+    await clientOptions.middleware.provideCompletionItem(document, position, {}, {}, () =>
+      Promise.resolve({ foo: 'bar' })
+    );
+    await clientOptions.middleware.provideHover(document, position, {}, () =>
+      Promise.resolve({ contents: { value: 'not-an-array' } })
+    );
+    await clientOptions.middleware.provideDefinition(document, position, {}, () =>
+      Promise.resolve([{ location: 'missing-uri-shape' }])
+    );
+
+    const traceLines = outputChannel.appendLine.mock.calls
+      .map((call) => call[0])
+      .filter((line) => typeof line === 'string' && line.includes('[templjs-trace]'));
+
+    expect(traceLines.some((line) => line.includes('completion result count=1'))).toBe(true);
+    expect(traceLines.some((line) => line.includes('hover content length=0'))).toBe(true);
+    expect(traceLines.some((line) => line.includes('definition first target=unknown'))).toBe(true);
+
+    await clientOptions.middleware.provideDefinition(document, position, {}, () =>
+      Promise.resolve([{ uri: { toString: () => 'file:///workspace/from-uri.json' } }])
+    );
+    await clientOptions.middleware.provideDefinition(document, position, {}, () =>
+      Promise.resolve([null])
+    );
+
+    const traceLinesAfterUriCases = outputChannel.appendLine.mock.calls
+      .map((call) => call[0])
+      .filter((line) => typeof line === 'string' && line.includes('[templjs-trace]'));
+    expect(
+      traceLinesAfterUriCases.some((line) =>
+        line.includes('definition first target=file:///workspace/from-uri.json')
+      )
+    ).toBe(true);
+    expect(
+      traceLinesAfterUriCases.some((line) => line.includes('definition first target=unknown'))
+    ).toBe(true);
+  });
+
+  it('suppresses middleware trace logs when trace.server is off', async () => {
+    configurationValues['trace.server'] = 'off';
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const clientOptions = languageClientConstructor.mock.calls[0][3] as {
+      middleware: {
+        provideCompletionItem: (...args: unknown[]) => Promise<unknown>;
+      };
+    };
+
+    await clientOptions.middleware.provideCompletionItem(
+      { uri: { toString: () => 'file:///workspace/no-trace.md.tpl' } },
+      { line: 0, character: 0 },
+      {},
+      {},
+      () => Promise.resolve([{ label: 'OnlyOne' }])
+    );
+
+    const traceLines = outputChannel.appendLine.mock.calls
+      .map((call) => call[0])
+      .filter((line) => typeof line === 'string' && line.includes('[templjs-trace]'));
+    expect(traceLines.length).toBe(0);
+  });
+
+  it('traces active editor changes only when an editor is provided', async () => {
+    configurationValues['trace.server'] = 'verbose';
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const activeEditorHandler = onDidChangeActiveTextEditor.mock.calls[0][0] as (
+      editor: { document: { uri: { toString: () => string }; languageId: string } } | undefined
+    ) => void;
+
+    activeEditorHandler(undefined);
+    activeEditorHandler({
+      document: {
+        uri: { toString: () => 'file:///workspace/changed.md.tpl' },
+        languageId: 'templjs-markdown',
+      },
+    });
+
+    const traceLines = outputChannel.appendLine.mock.calls
+      .map((call) => call[0])
+      .filter((line) => typeof line === 'string' && line.includes('[templjs-trace]'));
+
+    expect(onDidChangeActiveTextEditor).toHaveBeenCalled();
+    expect(Array.isArray(traceLines)).toBe(true);
+  });
+
+  it('disposes output channel on deactivate when client was not created', async () => {
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: () => {
+        throw new Error('broken path resolution');
+      },
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+    expect(module.deactivate()).toBeUndefined();
+    expect(outputChannel.dispose).toHaveBeenCalled();
+  });
 });

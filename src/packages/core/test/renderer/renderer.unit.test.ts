@@ -100,6 +100,42 @@ describe('Evaluators', () => {
       expect(evaluateExpression(variable('value'), context)).toBe('inner');
     });
 
+    it('supports scope-based array property and computed index access', () => {
+      const context = createContext({ idx: 1 });
+      context.scopes.push({ arr: ['zero', 'one', 'two'] });
+
+      expect(
+        evaluateExpression(variable('arr', [{ type: 'property', value: 'length' }]), context)
+      ).toBe(3);
+      expect(
+        evaluateExpression(variable('arr', [{ type: 'index', value: variable('idx') }]), context)
+      ).toBe('one');
+    });
+
+    it('supports scope-based string index path resolution', () => {
+      const context = createContext();
+      context.scopes.push({ arr: ['zero', 'one', 'two'] });
+
+      expect(evaluateExpression(variable('arr', [{ type: 'index', value: '2' }]), context)).toBe(
+        'two'
+      );
+    });
+
+    it('returns undefined for nullish scope intermediates', () => {
+      const context = createContext();
+      context.scopes.push({ user: { profile: null } });
+
+      expect(
+        evaluateExpression(
+          variable('user', [
+            { type: 'property', value: 'profile' },
+            { type: 'property', value: 'name' },
+          ]),
+          context
+        )
+      ).toBeUndefined();
+    });
+
     it('supports array length property and index-expression access', () => {
       const context = createContext({ arr: ['a', 'b', 'c'] });
 
@@ -146,6 +182,7 @@ describe('Evaluators', () => {
       ['===', literal(1), literal(1), true],
       ['!==', literal(1), literal('1'), true],
       ['<', literal(1), literal(2), true],
+      ['<=', literal(2), literal(2), true],
       ['>=', literal(2), literal(2), true],
       ['&&', literal(true), literal(false), false],
       ['||', literal(false), literal(true), true],
@@ -232,6 +269,19 @@ describe('Evaluators', () => {
       const context = createContext({ input: 'a-b-c' });
       const expr = filterExpr(variable('input'), 'replace', [literal('-'), literal('_')]);
       expect(evaluateExpression(expr, context)).toBe('a_b_c');
+    });
+
+    it('evaluates filters when args are omitted in the AST payload', () => {
+      const context = createContext({ input: 'hello' });
+      const expr: FilterNode = {
+        type: 'filter',
+        source: variable('input'),
+        filters: [{ name: 'upper' } as unknown as { name: string; args: ExpressionNode[] }],
+        start: POS,
+        end: POS,
+      };
+
+      expect(evaluateExpression(expr, context)).toBe('HELLO');
     });
 
     it('records runtime_error for parser error expressions', () => {
@@ -353,6 +403,20 @@ describe('Evaluators', () => {
       };
       evaluateError(expr, context);
       expect(context.errors.length).toBeGreaterThan(0);
+    });
+
+    it('uses default runtime error messages for empty parser error messages', () => {
+      const context = createContext();
+      const expr: ErrorNode = {
+        type: 'error',
+        message: '',
+        recovered: true,
+        start: POS,
+        end: POS,
+      };
+
+      evaluateError(expr, context);
+      expect(context.errors[0]?.message).toBe('Invalid or missing expression type');
     });
 
     it('handles complex nested variable paths', () => {

@@ -105,26 +105,24 @@ const BUILTIN_FILTER_SIGNATURES = getBuiltinFilterSignatures();
 
 function getDefaultFilters(): FilterSignature[] {
   return getBuiltinFilterNames().map((name) => {
-    const signature = BUILTIN_FILTER_SIGNATURES[name];
-
-    if (signature) {
-      return {
-        name: signature.name,
-        description: signature.description,
-        returnType: signature.returnType,
-        parameters: signature.parameters.map((param) => ({
-          name: param.name,
-          type: param.type,
-          description: param.description,
-        })),
-      };
-    }
+    const signature =
+      BUILTIN_FILTER_SIGNATURES[name] ??
+      ({
+        name,
+        description: `Apply ${name} filter.`,
+        returnType: 'any',
+        parameters: [],
+      } satisfies FilterSignature);
 
     return {
-      name,
-      description: `Apply ${name} filter.`,
-      returnType: 'any',
-      parameters: [],
+      name: signature.name,
+      description: signature.description,
+      returnType: signature.returnType,
+      parameters: signature.parameters.map((param) => ({
+        name: param.name,
+        type: param.type,
+        description: param.description,
+      })),
     };
   });
 }
@@ -371,9 +369,7 @@ function splitPathSegments(path: string): string[] {
     }
   }
 
-  if (start <= path.length) {
-    segments.push(path.slice(start));
-  }
+  segments.push(path.slice(start));
 
   return segments.filter((segment) => segment.length > 0);
 }
@@ -682,11 +678,7 @@ function getStatementExpressionFragment(
     expression = forMatch[2];
   } else {
     // For if, elif, set, block, include - everything after keyword is the expression
-    const match = trimmed.match(/^[A-Za-z_][\w]*\s+(.*)/);
-    if (!match) {
-      return null;
-    }
-    expression = match[1];
+    expression = trimmed.replace(/^[A-Za-z_][\w]*\s+/, '');
   }
 
   // Expression might be empty if cursor is right after keyword/operator
@@ -699,6 +691,24 @@ function getStatementExpressionFragment(
     offsetInExpression,
   };
 }
+
+/**
+ * @internal
+ * Exported solely for white-box unit testing. Not part of the stable public API.
+ * These helpers are subject to change or removal without notice.
+ */
+export const intellisenseTesting = {
+  findEnclosingRange,
+  findEnclosingRangeNearOffset,
+  normalizeExpression,
+  splitPathSegments,
+  getVariablePathAtOffset,
+  getVariablePathPrefixAtOffset,
+  getFilterNameAtOffset,
+  getCompletionPrefix,
+  getStatementExpressionFragment,
+  getFrontmatterContext,
+};
 
 export class IntellisenseProvider {
   constructor(
@@ -1016,10 +1026,7 @@ export class IntellisenseProvider {
     const expressionText = text.slice(expression.start, expression.end);
     const content = normalizeExpression(expressionText, delimiters);
     const contentStart = expressionText.indexOf(content);
-    const relativeOffset =
-      offset -
-      expression.start -
-      (contentStart >= 0 ? contentStart : delimiters.expressionStart.length);
+    const relativeOffset = offset - expression.start - contentStart;
 
     const filterName = getFilterNameAtOffset(content, Math.max(0, relativeOffset));
     if (filterName) {
@@ -1166,11 +1173,8 @@ export class IntellisenseProvider {
     if (expression) {
       const content = normalizeExpression(text.slice(expression.start, expression.end), delimiters);
       const contentStart = text.slice(expression.start, expression.end).indexOf(content);
-      const relativeOffset =
-        offset -
-        expression.start -
-        (contentStart >= 0 ? contentStart : delimiters.expressionStart.length);
-      const variableSegment = content.split('|')[0] ?? content;
+      const relativeOffset = offset - expression.start - contentStart;
+      const [variableSegment] = content.split('|');
       if (content.indexOf('|') >= 0 && relativeOffset >= content.indexOf('|')) {
         const sourcePath = getVariablePathAtOffset(
           variableSegment,
@@ -1291,7 +1295,7 @@ export class IntellisenseProvider {
 
     const expressionPartStart = statementContent.length - expressionPart.length;
     const relativeOffset = offset - statementOffset - expressionPartStart;
-    const variableSegment = expressionPart.split('|')[0] ?? expressionPart;
+    const [variableSegment] = expressionPart.split('|');
     if (expressionPart.indexOf('|') >= 0 && relativeOffset >= expressionPart.indexOf('|')) {
       return null;
     }

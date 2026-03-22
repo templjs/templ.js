@@ -6,6 +6,7 @@ import {
   padEnd as padEndStringHandler,
   padStart as padStartStringHandler,
   slice as sliceStringHandler,
+  truncate as truncateStringHandler,
 } from '../../src/query-engine/functions/string-functions.js';
 
 const engine = new QueryEngine();
@@ -40,7 +41,17 @@ describe('QueryEngine string functions', () => {
     expect(sliceStringHandler('hello', 1)).toBe('ello');
     expect(padStartStringHandler('5', 3)).toBe('  5');
     expect(padEndStringHandler('5', 3)).toBe('5  ');
+    expect(padStartStringHandler('5', 3, '')).toBe('  5');
+    expect(padEndStringHandler('5', 3, '')).toBe('5  ');
     expect(joinStringHandler(['a', 'b'], '|')).toBe('a|b');
     expect(() => joinStringHandler('ab', '|')).toThrow('join expects an array');
+  });
+
+  it('covers truncate edge cases and invalid maximum lengths', () => {
+    expect(truncateStringHandler('hello world', 5)).toBe('hello...');
+    expect(truncateStringHandler('hello world', 5, '!')).toBe('hello!');
+    expect(truncateStringHandler('hello', 10)).toBe('hello');
+    expect(truncateStringHandler('hello', Number.NaN)).toBe('hello');
+    expect(truncateStringHandler('hello', -1)).toBe('hello');
   });
 });

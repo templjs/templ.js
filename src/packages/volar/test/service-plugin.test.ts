@@ -133,6 +133,29 @@ describe('TempljsServicePlugin', () => {
       expect(completions.length).toBeGreaterThan(0);
       expect(completions.some((c) => c.label === 'type' || c.label === 'target')).toBe(true);
     });
+
+    it('maps all completion kinds to LSP numeric kinds', () => {
+      const stubProvider = {
+        getCompletions: vi.fn().mockReturnValue([
+          { label: 'prop', kind: 'property' },
+          { label: 'var', kind: 'variable' },
+          { label: 'flt', kind: 'filter' },
+          { label: 'kw', kind: 'keyword' },
+        ]),
+        getHover: vi.fn().mockReturnValue(null),
+        getDefinition: vi.fn().mockReturnValue(null),
+      } as unknown as IntellisenseProvider;
+      const plugin = new TempljsServicePlugin(stubProvider);
+
+      const completions = plugin.getCompletions('{{ anything }}', 5, { schema: sampleSchema });
+
+      expect(completions).toEqual([
+        expect.objectContaining({ label: 'prop', kind: 10 }),
+        expect.objectContaining({ label: 'var', kind: 6 }),
+        expect.objectContaining({ label: 'flt', kind: 3 }),
+        expect.objectContaining({ label: 'kw', kind: 14 }),
+      ]);
+    });
   });
 
   describe('getHover', () => {
@@ -351,6 +374,17 @@ describe('TempljsServicePlugin', () => {
       });
 
       expect(diagnostics.some((d) => d.code === 'templjs.invalidFilter')).toBe(true);
+    });
+
+    it('preserves diagnostic source when provided and defaults when omitted', () => {
+      const diagnostics = new TempljsServicePlugin().collectDiagnostics('{{ unknownVar }}', {
+        schema: sampleSchema,
+      });
+
+      expect(diagnostics.length).toBeGreaterThan(0);
+      expect(diagnostics.every((d) => typeof d.source === 'string' && d.source.length > 0)).toBe(
+        true
+      );
     });
   });
 });

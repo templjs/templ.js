@@ -90,6 +90,10 @@ interface ResolvedSchemaPathTarget {
   pathAtTarget: string;
 }
 
+export interface ContextGraphSemanticReadAdapterOptions {
+  readTextFile?: (filePath: string) => string;
+}
+
 const ZERO_RANGE: DefinitionTarget['range'] = {
   start: { line: 0, character: 0 },
   end: { line: 0, character: 0 },
@@ -621,7 +625,6 @@ function findPropertyViaSchemaStructure(
     if (!matched) {
       let candidateObjectStart = currentObjectStart;
       let candidateObjectEnd = currentObjectEnd;
-      const visitedItemRanges = new Set<string>();
 
       while (true) {
         const itemsEntry = findTopLevelPropertyInObjectRange(
@@ -633,12 +636,6 @@ function findPropertyViaSchemaStructure(
         if (!itemsEntry || schemaText[itemsEntry.valueStart] !== '{') {
           break;
         }
-
-        const itemRangeKey = `${itemsEntry.valueStart}:${itemsEntry.valueEnd}`;
-        if (visitedItemRanges.has(itemRangeKey)) {
-          break;
-        }
-        visitedItemRanges.add(itemRangeKey);
 
         const nestedProperties = findTopLevelPropertyInObjectRange(
           schemaText,
@@ -757,7 +754,6 @@ function findPropertyMatchInObjectRange(
 
   let candidateObjectStart = objectStart;
   let candidateObjectEnd = objectEndExclusive;
-  const visitedItemRanges = new Set<string>();
   while (true) {
     const itemsEntry = findTopLevelPropertyInObjectRange(
       schemaText,
@@ -768,12 +764,6 @@ function findPropertyMatchInObjectRange(
     if (!itemsEntry || schemaText[itemsEntry.valueStart] !== '{') {
       break;
     }
-
-    const itemRangeKey = `${itemsEntry.valueStart}:${itemsEntry.valueEnd}`;
-    if (visitedItemRanges.has(itemRangeKey)) {
-      break;
-    }
-    visitedItemRanges.add(itemRangeKey);
 
     const nestedProperties = findTopLevelPropertyInObjectRange(
       schemaText,
@@ -875,7 +865,8 @@ function resolvePathDefinitionAcrossRefs(
   pathValue: string,
   pathKind: 'property' | 'value',
   valueToken: string | undefined,
-  maxDepth = 8
+  maxDepth = 8,
+  readFn: (filePath: string) => string = (p) => readFileSync(p, 'utf-8')
 ): ResolvedSchemaPathTarget | null {
   if (!rootUri.startsWith('file://')) {
     return null;
@@ -883,29 +874,26 @@ function resolvePathDefinitionAcrossRefs(
 
   const segments = splitPropertyPath(pathValue);
   if (segments.length === 0) {
-    return null;
+    return {
+      uri: rootUri,
+      startOffset: 0,
+      pathAtTarget: '',
+    };
   }
 
   const visit = (
     activeUri: string,
     remainingSegments: string[],
     pointer: string,
-    depth: number,
-    seen: Set<string>
+    depth: number
   ): ResolvedSchemaPathTarget | null => {
     if (depth > maxDepth || !activeUri.startsWith('file://')) {
       return null;
     }
 
-    const visitKey = `${activeUri}::${pointer}::${remainingSegments.join('.')}`;
-    if (seen.has(visitKey)) {
-      return null;
-    }
-    seen.add(visitKey);
-
     let schemaText: string;
     try {
-      schemaText = readFileSync(fileURLToPath(activeUri), 'utf-8');
+      schemaText = readFn(fileURLToPath(activeUri));
     } catch {
       return null;
     }
@@ -917,7 +905,6 @@ function resolvePathDefinitionAcrossRefs(
 
     let currentStart = pointerRange.start;
     let currentEnd = pointerRange.end;
-    let lastMatch: { keyOffset: number; valueStart: number; valueEnd: number } | null = null;
 
     for (let index = 0; index < remainingSegments.length; index += 1) {
       const segment = remainingSegments[index];
@@ -925,8 +912,6 @@ function resolvePathDefinitionAcrossRefs(
       if (!matched) {
         return null;
       }
-
-      lastMatch = matched;
 
       if (index === remainingSegments.length - 1) {
         if (pathKind === 'value' && valueToken) {
@@ -938,6 +923,25 @@ function resolvePathDefinitionAcrossRefs(
               startOffset: valueIndex,
               pathAtTarget: remainingSegments.slice(0, index + 1).join('.'),
             };
+          }
+        }
+
+        if (schemaText[matched.valueStart] === '{') {
+          const terminalRef = findTopLevelPropertyInObjectRange(
+            schemaText,
+            '$ref',
+            matched.valueStart,
+            matched.valueEnd
+          );
+          if (terminalRef) {
+            const refValueRaw = schemaText.slice(terminalRef.valueStart, terminalRef.valueEnd);
+            const refValue = stripJsonQuotes(refValueRaw);
+            const splitRef = splitSchemaSourceReference(refValue);
+            const targetUri = resolveRefTargetUri(activeUri, splitRef.source);
+            if (targetUri) {
+              const targetPointer = splitRef.fragment ?? '#';
+              return visit(targetUri, [], targetPointer, depth + 1);
+            }
           }
         }
 
@@ -965,13 +969,7 @@ function resolvePathDefinitionAcrossRefs(
         const targetUri = resolveRefTargetUri(activeUri, splitRef.source);
         if (targetUri) {
           const targetPointer = splitRef.fragment ?? '#';
-          return visit(
-            targetUri,
-            remainingSegments.slice(index + 1),
-            targetPointer,
-            depth + 1,
-            seen
-          );
+          return visit(targetUri, remainingSegments.slice(index + 1), targetPointer, depth + 1);
         }
       }
 
@@ -987,18 +985,35 @@ function resolvePathDefinitionAcrossRefs(
       currentEnd = matched.valueEnd;
     }
 
-    if (lastMatch) {
-      return {
-        uri: activeUri,
-        startOffset: lastMatch.keyOffset,
-        pathAtTarget: remainingSegments.join('.'),
-      };
+    // Reached when remainingSegments is empty on a recursive visit (all segments
+    // consumed by $ref redirection); returns the resolved pointer location.
+    if (schemaText[pointerRange.start] === '{') {
+      const pointerRef = findTopLevelPropertyInObjectRange(
+        schemaText,
+        '$ref',
+        pointerRange.start,
+        pointerRange.end
+      );
+      if (pointerRef) {
+        const refValueRaw = schemaText.slice(pointerRef.valueStart, pointerRef.valueEnd);
+        const refValue = stripJsonQuotes(refValueRaw);
+        const splitRef = splitSchemaSourceReference(refValue);
+        const targetUri = resolveRefTargetUri(activeUri, splitRef.source);
+        if (targetUri) {
+          const targetPointer = splitRef.fragment ?? '#';
+          return visit(targetUri, [], targetPointer, depth + 1);
+        }
+      }
     }
 
-    return null;
+    return {
+      uri: activeUri,
+      startOffset: pointerRange.start,
+      pathAtTarget: remainingSegments.join('.'),
+    };
   };
 
-  return visit(rootUri, segments, '#', 0, new Set<string>());
+  return visit(rootUri, segments, '#', 0);
 }
 
 function stableSerialize(value: unknown): string {
@@ -1108,6 +1123,14 @@ function resolveSchemaUriForContext(
     : (options.contentSchemaUri ?? options.schemaUri);
 }
 
+function asString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function asNonEmptyString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
 function buildPathNodes(contextBlock: SemanticContextBlock, schema?: object): ContextNode[] {
   if (!schema) {
     return [];
@@ -1206,8 +1229,46 @@ function querySnapshot(snapshot: GraphSnapshot, request: QueryRequest): QueryRes
   };
 }
 
+/**
+ * @internal
+ * Exported solely for white-box unit testing. Not part of the stable public API.
+ * These helpers are subject to change or removal without notice.
+ */
+export const contextGraphAdapterTesting = {
+  getPathRegistryKeysFromSchema,
+  isLikelyPathValue,
+  toDefinitionTarget,
+  getPathValueDefinition,
+  getSchemaPathDefinition,
+  getPositionForOffset,
+  findMatchingBracket,
+  skipWhitespace,
+  findStringEnd,
+  findValueRange,
+  findTopLevelPropertyInObjectRange,
+  collectTopLevelObjectRangesInArray,
+  findPropertyViaCombinators,
+  findPropertyViaSchemaStructure,
+  splitPropertyPath,
+  stripJsonQuotes,
+  findPropertyMatchInObjectRange,
+  resolveRefTargetUri,
+  findObjectRangeByPointer,
+  stableSerialize,
+  findBestPropertyOffset,
+  resolvePathDefinitionAcrossRefs,
+};
+
 export class ContextGraphSemanticReadAdapter {
   private readonly snapshotCache = new Map<string, GraphSnapshot>();
+
+  constructor(private readonly options: ContextGraphSemanticReadAdapterOptions = {}) {}
+
+  private readTextFile(filePath: string): string {
+    return this.options.readTextFile
+      ? this.options.readTextFile(filePath)
+      : readFileSync(filePath, 'utf-8');
+  }
 
   private getSnapshot(options: { schema?: object; contentSchema?: object }): GraphSnapshot {
     const cacheKey = buildSnapshotCacheKey(options);
@@ -1298,9 +1359,8 @@ export class ContextGraphSemanticReadAdapter {
     if (node?.attributes) {
       return {
         path,
-        type: typeof node.attributes.type === 'string' ? node.attributes.type : undefined,
-        description:
-          typeof node.attributes.description === 'string' ? node.attributes.description : undefined,
+        type: asString(node.attributes.type),
+        description: asString(node.attributes.description),
       };
     }
 
@@ -1309,13 +1369,20 @@ export class ContextGraphSemanticReadAdapter {
       return null;
     }
 
-    const resolved = resolvePathDefinitionAcrossRefs(schemaUri, path, 'property', undefined);
+    const resolved = resolvePathDefinitionAcrossRefs(
+      schemaUri,
+      path,
+      'property',
+      undefined,
+      8,
+      (p) => this.readTextFile(p)
+    );
     if (!resolved || !resolved.uri.startsWith('file://')) {
       return null;
     }
 
     try {
-      const schemaText = readFileSync(fileURLToPath(resolved.uri), 'utf-8');
+      const schemaText = this.readTextFile(fileURLToPath(resolved.uri));
       const schema = JSON.parse(schemaText) as object;
       const metadata = new SchemaValidator(schema).getMetadata();
       const entry = metadata[resolved.pathAtTarget];
@@ -1373,11 +1440,8 @@ export class ContextGraphSemanticReadAdapter {
     return response.nodes.map((node) => ({
       label: String(node.attributes?.label ?? ''),
       kind: parentPath ? 'property' : 'variable',
-      detail: typeof node.attributes?.type === 'string' ? node.attributes.type : undefined,
-      documentation:
-        typeof node.attributes?.description === 'string' && node.attributes.description.length > 0
-          ? node.attributes.description
-          : undefined,
+      detail: asString(node.attributes?.type),
+      documentation: asNonEmptyString(node.attributes?.description),
     }));
   }
 
@@ -1450,11 +1514,13 @@ export class ContextGraphSemanticReadAdapter {
       descriptor.uri,
       descriptor.path,
       descriptor.pathKind ?? 'property',
-      descriptor.valueToken
+      descriptor.valueToken,
+      8,
+      (p) => this.readTextFile(p)
     );
     if (refResolved) {
       try {
-        const targetText = readFileSync(fileURLToPath(refResolved.uri), 'utf-8');
+        const targetText = this.readTextFile(fileURLToPath(refResolved.uri));
         const endOffset = Math.min(
           targetText.length,
           refResolved.startOffset +
@@ -1478,7 +1544,7 @@ export class ContextGraphSemanticReadAdapter {
 
     try {
       const schemaFilePath = fileURLToPath(descriptor.uri);
-      const schemaText = readFileSync(schemaFilePath, 'utf-8');
+      const schemaText = this.readTextFile(schemaFilePath);
       const startOffset = findBestPropertyOffset(
         schemaText,
         descriptor.path,
@@ -1569,6 +1635,8 @@ export class ContextGraphSemanticReadAdapter {
   }
 }
 
-export function createContextGraphSemanticReadAdapter(): ContextGraphSemanticReadAdapter {
-  return new ContextGraphSemanticReadAdapter();
+export function createContextGraphSemanticReadAdapter(
+  options: ContextGraphSemanticReadAdapterOptions = {}
+): ContextGraphSemanticReadAdapter {
+  return new ContextGraphSemanticReadAdapter(options);
 }

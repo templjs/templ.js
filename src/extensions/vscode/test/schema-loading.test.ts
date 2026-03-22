@@ -254,6 +254,93 @@ describe('schema-loading', () => {
     });
   });
 
+  it('returns empty for unsupported fragment syntax and scalar fragment targets', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ foo: { value: 1 }, scalar: 'text' }),
+    }));
+
+    await expect(
+      loadSchemaSource(
+        'https://schemas.example.com/work-item.json#invalid-fragment',
+        undefined,
+        undefined,
+        {
+          fetchImpl: fetchImpl as typeof fetch,
+        }
+      )
+    ).resolves.toEqual({});
+
+    await expect(
+      loadSchemaSource('https://schemas.example.com/work-item.json#/scalar', undefined, undefined, {
+        fetchImpl: fetchImpl as typeof fetch,
+      })
+    ).resolves.toEqual({});
+  });
+
+  it('handles HTTP fetch failures and malformed responses', async () => {
+    const log = vi.fn();
+
+    await expect(
+      loadSchemaSource('https://schemas.example.com/work-item.json', undefined, undefined, {
+        fetchImpl: (async () => {
+          throw new Error('socket hang up');
+        }) as unknown as typeof fetch,
+        log,
+      })
+    ).resolves.toEqual({});
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Error loading schema from URL 'https://schemas.example.com/work-item.json': socket hang up"
+      )
+    );
+  });
+
+  it('dereferences circular and missing local refs without crashing', async () => {
+    const tempDir = makeTempDir();
+    const schemaPath = path.join(tempDir, '.templjs', 'circular.json');
+
+    writeJson(schemaPath, {
+      $defs: {
+        cyc: {
+          type: 'object',
+          $ref: '#/$defs/cyc',
+          properties: {
+            id: { type: 'string' },
+          },
+        },
+        missingRef: {
+          $ref: './missing.json#/$defs/shape',
+          type: 'object',
+          properties: {
+            fallback: { type: 'string' },
+          },
+        },
+      },
+    });
+
+    await expect(loadSchemaSource('.templjs/circular.json#/$defs/cyc', tempDir)).resolves.toEqual(
+      expect.objectContaining({
+        schema: expect.objectContaining({
+          type: 'object',
+          properties: expect.objectContaining({ id: { type: 'string' } }),
+        }),
+      })
+    );
+
+    await expect(
+      loadSchemaSource('.templjs/circular.json#/$defs/missingRef', tempDir)
+    ).resolves.toEqual(
+      expect.objectContaining({
+        schema: expect.objectContaining({
+          type: 'object',
+          properties: expect.objectContaining({ fallback: { type: 'string' } }),
+        }),
+      })
+    );
+  });
+
   it('loads schema sources synchronously for local files and ignores unsupported sources', () => {
     const tempDir = makeTempDir();
     const schemaPath = path.join(tempDir, '.templjs', 'frontmatter.json');

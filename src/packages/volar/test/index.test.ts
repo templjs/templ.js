@@ -918,6 +918,37 @@ describe('LanguagePlugin', () => {
       expect(boundedSpy).toHaveBeenCalledWith(2, 0, 'q');
       boundedSpy.mockRestore();
     });
+
+    it('falls back from simple edit when mapped end offset precedes mapped start', () => {
+      const content = 'abcdef';
+      const snapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return content;
+          return content.slice(start, end);
+        },
+        getLength: () => content.length,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///simple-fallback-order.md.tmpl',
+        'templjs-markdown',
+        snapshot
+      ) as any;
+
+      const mapSpy = vi
+        .spyOn(virtualCode, 'mapOriginalOffsetToCleaned')
+        .mockReturnValueOnce(5)
+        .mockReturnValueOnce(4);
+      const boundedSpy = vi.spyOn(virtualCode, 'applyBoundedEdit').mockReturnValue(true);
+
+      const updated = virtualCode.applyEdit(2, 1, 'q');
+
+      expect(updated).toBe(true);
+      expect(boundedSpy).toHaveBeenCalledWith(2, 1, 'q');
+      mapSpy.mockRestore();
+      boundedSpy.mockRestore();
+    });
   });
 
   describe('Custom delimiter integration', () => {
@@ -1367,6 +1398,54 @@ describe('LanguagePlugin', () => {
 
       expect(virtualCode?.languageId).toBe('plaintext');
     });
+
+    it('should default to plaintext for .templ without base extension', () => {
+      const mockSnapshot = {
+        getText: () => 'content',
+        getLength: () => 7,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///doc.templ',
+        'templjs-markdown',
+        mockSnapshot
+      );
+
+      expect(virtualCode?.languageId).toBe('plaintext');
+    });
+
+    it('should default to plaintext when templ marker uses an unknown extension', () => {
+      const mockSnapshot = {
+        getText: () => 'content',
+        getLength: () => 7,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///doc.templ.xyz',
+        'templjs-markdown',
+        mockSnapshot
+      );
+
+      expect(virtualCode?.languageId).toBe('plaintext');
+    });
+
+    it('should default to plaintext for non-template paths', () => {
+      const mockSnapshot = {
+        getText: () => 'content',
+        getLength: () => 7,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///README.md',
+        'templjs-markdown',
+        mockSnapshot
+      );
+
+      expect(virtualCode?.languageId).toBe('plaintext');
+    });
   });
 
   describe('Snapshot handling', () => {
@@ -1387,6 +1466,23 @@ describe('LanguagePlugin', () => {
       expect(virtualCode?.snapshot.getText(0, virtualCode.snapshot.getLength())).toBe(
         'test content'
       );
+    });
+
+    it('should return full cleaned text when snapshot end is omitted', () => {
+      const content = 'example content';
+      const mockSnapshot = {
+        getText: () => content,
+        getLength: () => content.length,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///snapshot.md.tmpl',
+        'templjs-markdown',
+        mockSnapshot
+      );
+
+      expect(virtualCode?.snapshot.getText(2)).toBe(content.slice(2));
     });
 
     it('should call snapshot getText correctly', () => {

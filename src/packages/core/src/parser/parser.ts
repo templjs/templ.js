@@ -48,13 +48,23 @@ export class TemplateParser {
 
     while (!this.isAtEnd()) {
       const token = this.peek();
-      if (!token) break;
+      if (!token) {
+        // Defensive recovery for sparse token arrays: advance so parsing cannot stall.
+        this.position++;
+        continue;
+      }
 
       if (token.type === TokenType.TEXT) {
         children.push(this.parseText());
       } else if (token.type === TokenType.STATEMENT) {
+        const startPosition = this.position;
         const node = this.parseStatement();
-        if (node) children.push(node);
+        if (node) {
+          children.push(node);
+        } else if (this.position === startPosition) {
+          // Defensive fallback if a statement parser returns null without consuming.
+          this.position++;
+        }
       } else if (token.type === TokenType.EXPRESSION) {
         children.push(this.parseExpressionStatement());
       } else if (token.type === TokenType.COMMENT) {
@@ -371,8 +381,14 @@ export class TemplateParser {
       if (token.type === TokenType.TEXT) {
         body.push(this.parseText());
       } else if (token.type === TokenType.STATEMENT) {
+        const startPosition = this.position;
         const node = this.parseStatement();
-        if (node) body.push(node);
+        if (node) {
+          body.push(node);
+        } else if (this.position === startPosition) {
+          // Defensive fallback if a nested statement parser returns null without consuming.
+          this.position++;
+        }
       } else if (token.type === TokenType.EXPRESSION) {
         body.push(this.parseExpressionStatement());
       } else if (token.type === TokenType.COMMENT) {

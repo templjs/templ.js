@@ -82,4 +82,38 @@ describe('expression-analysis', () => {
     expect(extractExpressionVariableReferences('user.')).toEqual([]);
     expect(extractExpressionFilterReferences('user.name |')).toEqual([]);
   });
+
+  it('matches numeric bracket index references', () => {
+    const refs = extractExpressionVariableReferences('users[0].id');
+
+    expect(refs).toEqual([
+      {
+        path: 'users[0].id',
+        start: 0,
+        end: 'users[0].id'.length,
+      },
+    ]);
+  });
+
+  it('ignores filters and variables inside escaped and single-quoted string literals', () => {
+    const expression = String.raw`"\"user.name\" | lower" == 'user.name | lower' || user.name | lower`;
+
+    const varRefs = extractExpressionVariableReferences(expression);
+    const filterRefs = extractExpressionFilterReferences(expression);
+
+    expect(varRefs).toEqual([
+      {
+        path: 'user.name',
+        start: expression.lastIndexOf('user.name'),
+        end: expression.lastIndexOf('user.name') + 'user.name'.length,
+      },
+    ]);
+    expect(filterRefs).toEqual([
+      {
+        name: 'lower',
+        start: expression.lastIndexOf('lower'),
+        end: expression.lastIndexOf('lower') + 'lower'.length,
+      },
+    ]);
+  });
 });
