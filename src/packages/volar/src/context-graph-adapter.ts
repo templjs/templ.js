@@ -965,6 +965,8 @@ function resolvePathDefinitionAcrossRefs(
       currentEnd = matched.valueEnd;
     }
 
+    // Reached when remainingSegments is empty on a recursive visit (all segments
+    // consumed by $ref redirection); returns the resolved pointer location.
     return {
       uri: activeUri,
       startOffset: pointerRange.start,

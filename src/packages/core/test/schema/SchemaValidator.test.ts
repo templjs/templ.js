@@ -829,7 +829,7 @@ describe('SchemaValidator metadata edge cases', () => {
     });
   });
 
-  it('returns empty metadata for non-object values in private extraction', () => {
+  it('throws for null value in private extraction', () => {
     const validator = new SchemaValidator();
     expect(() => (validator as any).extractMetadata(null, '', undefined)).toThrow();
   });

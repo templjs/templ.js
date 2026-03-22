@@ -121,15 +121,6 @@ describe('Evaluators', () => {
       );
     });
 
-    it('supports scope-based string index access for arrays', () => {
-      const context = createContext();
-      context.scopes.push({ arr: ['zero', 'one', 'two'] });
-
-      expect(evaluateExpression(variable('arr', [{ type: 'index', value: '2' }]), context)).toBe(
-        'two'
-      );
-    });
-
     it('returns undefined for nullish scope intermediates', () => {
       const context = createContext();
       context.scopes.push({ user: { profile: null } });

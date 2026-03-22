@@ -1014,6 +1014,10 @@ export class IntellisenseProvider {
       return null;
     }
 
+    if (!expression) {
+      return null;
+    }
+
     const expressionText = text.slice(expression.start, expression.end);
     const content = normalizeExpression(expressionText, delimiters);
     const contentStart = expressionText.indexOf(content);
