@@ -320,8 +320,12 @@ describe('template-scopes helpers', () => {
     });
 
     const template = '{% for item in users %}{{ item }}{% endfor %}';
-    const bindings = extractTemplateScopeBindings(template);
-    indexOfSpy.mockRestore();
+    let bindings: ReturnType<typeof extractTemplateScopeBindings>;
+    try {
+      bindings = extractTemplateScopeBindings(template);
+    } finally {
+      indexOfSpy.mockRestore();
+    }
 
     expect(bindings).toHaveLength(1);
     expect(bindings[0].declarationStartOffset).toBeUndefined();

@@ -1510,6 +1510,7 @@ describe('language-server-bootstrap', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(Array.isArray(sendDiagnostics.mock.calls)).toBe(true);
+    // The stale a.json load should be discarded; at most one diagnostic publish (for b.json) should occur.
+    expect(sendDiagnostics.mock.calls.length).toBeLessThanOrEqual(1);
   });
 });

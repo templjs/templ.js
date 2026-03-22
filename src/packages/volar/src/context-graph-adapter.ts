@@ -865,7 +865,8 @@ function resolvePathDefinitionAcrossRefs(
   pathValue: string,
   pathKind: 'property' | 'value',
   valueToken: string | undefined,
-  maxDepth = 8
+  maxDepth = 8,
+  readFn: (filePath: string) => string = (p) => readFileSync(p, 'utf-8')
 ): ResolvedSchemaPathTarget | null {
   if (!rootUri.startsWith('file://')) {
     return null;
@@ -892,7 +893,7 @@ function resolvePathDefinitionAcrossRefs(
 
     let schemaText: string;
     try {
-      schemaText = readFileSync(fileURLToPath(activeUri), 'utf-8');
+      schemaText = readFn(fileURLToPath(activeUri));
     } catch {
       return null;
     }
@@ -1330,7 +1331,14 @@ export class ContextGraphSemanticReadAdapter {
       return null;
     }
 
-    const resolved = resolvePathDefinitionAcrossRefs(schemaUri, path, 'property', undefined);
+    const resolved = resolvePathDefinitionAcrossRefs(
+      schemaUri,
+      path,
+      'property',
+      undefined,
+      8,
+      (p) => this.readTextFile(p)
+    );
     if (!resolved || !resolved.uri.startsWith('file://')) {
       return null;
     }
@@ -1468,7 +1476,9 @@ export class ContextGraphSemanticReadAdapter {
       descriptor.uri,
       descriptor.path,
       descriptor.pathKind ?? 'property',
-      descriptor.valueToken
+      descriptor.valueToken,
+      8,
+      (p) => this.readTextFile(p)
     );
     if (refResolved) {
       try {
