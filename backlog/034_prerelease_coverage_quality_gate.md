@@ -17,6 +17,7 @@ commits:
   74e7070: 'test(vscode): harden activation coverage'
   0b66d42: 'chore(testing): isolate cli coverage reports'
   e8cc1f0: 'test(volar): close WI-034 per-file coverage gates'
+  8b4673f: 'test(cli): close WI-034 per-file coverage gates for CLI package'
 test_results:
   - timestamp: 2026-03-17T00:00:00Z
     note: |
