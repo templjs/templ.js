@@ -949,6 +949,9 @@ describe('context-graph helper branch coverage', () => {
     expect(keys.has('configFile')).toBe(true);
     expect(keys.has('note')).toBe(true);
     expect(keys.has('ignored')).toBe(false);
+    expect(contextGraphAdapterTesting.getPathRegistryKeysFromSchema({ type: 'object' }).size).toBe(
+      0
+    );
   });
 
   it('classifies likely path tokens across URL and suffix forms', () => {
@@ -1468,6 +1471,117 @@ describe('context-graph helper branch coverage', () => {
 
     expect(items[0]?.label).toBe('');
     expect(items[0]?.detail).toBe('status enum');
+  });
+
+  it('resolves multi-segment path through a fragment-free cross-file $ref at a non-terminal segment', () => {
+    const tempDir = makeTempDir();
+    const rootSchema = path.join(tempDir, 'root.json');
+    const profileSchema = path.join(tempDir, 'profile.json');
+
+    writeFileSync(
+      rootSchema,
+      JSON.stringify(
+        {
+          type: 'object',
+          properties: {
+            user: { $ref: './profile.json' },
+          },
+        },
+        null,
+        2
+      )
+    );
+
+    writeFileSync(
+      profileSchema,
+      JSON.stringify({ type: 'object', properties: { name: { type: 'string' } } }, null, 2)
+    );
+
+    const resolved = contextGraphAdapterTesting.resolvePathDefinitionAcrossRefs(
+      pathToFileURL(rootSchema).toString(),
+      'user.name',
+      'property',
+      undefined
+    );
+
+    // Non-terminal $ref without fragment uses '#' as targetPointer (splitRef.fragment ?? '#' fallback).
+    expect(resolved?.uri).toBe(pathToFileURL(profileSchema).toString());
+    expect(resolved?.pathAtTarget).toBe('name');
+  });
+
+  it('follows $ref on the terminal path segment to the referenced target schema', () => {
+    const tempDir = makeTempDir();
+    const rootSchema = path.join(tempDir, 'root.json');
+    const targetSchema = path.join(tempDir, 'user.json');
+
+    writeFileSync(
+      rootSchema,
+      JSON.stringify(
+        {
+          type: 'object',
+          properties: {
+            user: { $ref: './user.json' },
+          },
+        },
+        null,
+        2
+      )
+    );
+
+    writeFileSync(
+      targetSchema,
+      JSON.stringify({ type: 'object', properties: { name: { type: 'string' } } }, null, 2)
+    );
+
+    const resolved = contextGraphAdapterTesting.resolvePathDefinitionAcrossRefs(
+      pathToFileURL(rootSchema).toString(),
+      'user',
+      'property',
+      undefined
+    );
+
+    // Terminal segment is a $ref; should follow it to the referenced schema URI.
+    expect(resolved?.uri).toBe(pathToFileURL(targetSchema).toString());
+  });
+
+  it('follows chained $ref through the empty-segments fallback path', () => {
+    const tempDir = makeTempDir();
+    const rootSchema = path.join(tempDir, 'root.json');
+    const bridgeSchema = path.join(tempDir, 'bridge.json');
+    const finalSchema = path.join(tempDir, 'final.json');
+
+    writeFileSync(
+      rootSchema,
+      JSON.stringify(
+        {
+          type: 'object',
+          properties: {
+            entity: { $ref: './bridge.json' },
+          },
+        },
+        null,
+        2
+      )
+    );
+
+    // bridge.json is itself a bare $ref – this exercises the empty-segments
+    // fallback path that follows $ref when remainingSegments is already empty.
+    writeFileSync(bridgeSchema, JSON.stringify({ $ref: './final.json' }, null, 2));
+
+    writeFileSync(
+      finalSchema,
+      JSON.stringify({ type: 'object', properties: { id: { type: 'string' } } }, null, 2)
+    );
+
+    const resolved = contextGraphAdapterTesting.resolvePathDefinitionAcrossRefs(
+      pathToFileURL(rootSchema).toString(),
+      'entity',
+      'property',
+      undefined
+    );
+
+    // root.entity -> bridge.json ($ref) -> final.json
+    expect(resolved?.uri).toBe(pathToFileURL(finalSchema).toString());
   });
 
   it('falls back to zero-range target when ref-resolved schema text cannot be read', () => {
