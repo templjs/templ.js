@@ -4,7 +4,7 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '34: Pre-Release Coverage Quality Gate (ADR-006 Alignment)'
-status: in-progress
+status: ready-for-review
 priority: critical
 estimated: 8
 assignee: ''
@@ -16,6 +16,7 @@ commits:
   c0bb1c5: 'test(volar): add coverage utility suites'
   74e7070: 'test(vscode): harden activation coverage'
   0b66d42: 'chore(testing): isolate cli coverage reports'
+  e8cc1f0: 'test(volar): close WI-034 per-file coverage gates'
 test_results:
   - timestamp: 2026-03-17T00:00:00Z
     note: |
@@ -56,10 +57,24 @@ test_results:
         - `@templjs/cli`: All files 96.32/88.29/100.00/96.30, but per-file branch gaps remain in `render.ts`, `validate.ts`, `toml-parser.ts`, `xml-parser.ts`
         - `@templjs/core`: All files 96.30/91.31/99.41/96.50, but multiple per-file files remain below 95 branch/line targets
       - Branch is still blocked at pre-push until core/cli/volar strict per-file failures are remediated
+  - timestamp: 2026-03-21T22:30:09Z
+    note: |
+      WI-034 final critical-path completion and PR packaging:
+      - Closed remaining Volar per-file coverage gaps with targeted branch suites and helper-safe refactors
+      - Revalidated full package coverage with strict per-file enforcement
+      - Pre-push gate passed (lint frontmatter, eslint, type-check, affected tests)
+      - Final package summaries from pre-push run:
+        - `@templjs/core`: Stmts 99.39%, Branches 97.32%, Funcs 100.00%, Lines 99.42%
+        - `@templjs/context-graph`: Stmts 97.00%, Branches 91.66%, Funcs 100.00%, Lines 96.80%
+        - `@templjs/volar`: Stmts 98.35%, Branches 92.89%, Funcs 99.13%, Lines 98.34%
+        - `vscode-templjs`: Stmts 96.32%, Branches 90.12%, Funcs 96.73%, Lines 96.47%
+        - `@templjs/cli`: Stmts 97.54%, Branches 90.96%, Funcs 100.00%, Lines 97.53%
 links:
   depends_on:
     - '[[031_language_feature_tests]]'
     - '[[030_reenable_coverage_thresholds]]'
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/31
 ---
 
 ## Goal
@@ -160,15 +175,15 @@ Reconcile all coverage thresholds in vitest configs to align with ADR-006 target
 
 - [x] All vitest configs updated with ADR-006 aligned thresholds
 - [x] `perFile: true` enabled across all packages
-- [ ] `pnpm run test:affected:ci` passes and enforces ≥90% global coverage
-- [ ] Core package achieves ≥95% coverage on all metrics (lines, functions, branches, statements)
+- [x] `pnpm run test:affected:ci` passes and enforces ≥90% global coverage
+- [x] Core package achieves ≥95% coverage on all metrics (lines, functions, branches, statements)
 - [x] CLI package achieves ≥85% coverage on all metrics
-- [ ] Volar package achieves ≥92% coverage on all metrics
-- [ ] VSCode extension achieves ≥90% coverage on all metrics
-- [ ] No files below package-level threshold (per-file enforcement active)
-- [ ] Coverage gaps identified and either closed or documented with per-file overrides
+- [x] Volar package achieves ≥92% coverage on all metrics
+- [x] VSCode extension achieves ≥90% coverage on all metrics
+- [x] No files below package-level threshold (per-file enforcement active)
+- [x] Coverage gaps identified and either closed or documented with per-file overrides
 - [ ] Coverage audit report completed and committed
-- [ ] All status checks pass (lint, type-check, build, test, coverage)
+- [x] All status checks pass (lint, type-check, build, test, coverage)
 - [ ] PR reviewed and merged to main before v1.0 release
 - [ ] Work item marked closed with `status_reason: completed`
 
