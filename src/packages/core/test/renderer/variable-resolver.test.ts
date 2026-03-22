@@ -38,6 +38,11 @@ describe('VariableResolver', () => {
       expect(resolver.resolve({ items: ['a', 'b'] }, 'items[foo]')).toBeUndefined();
     });
 
+    it('returns undefined when an indexed value becomes nullish before the next segment', () => {
+      expect(resolver.resolve({ items: [null] }, 'items[0].name')).toBeUndefined();
+      expect(resolver.resolve({ items: [undefined] }, 'items[0].name')).toBeUndefined();
+    });
+
     it('returns undefined for empty path', () => {
       expect(resolver.resolve({ x: 1 }, '')).toBeUndefined();
     });
@@ -110,6 +115,11 @@ describe('VariableResolver', () => {
       { value: { ok: true }, expected: true },
     ])('coerces $value to $expected', ({ value, expected }) => {
       expect(resolver.toBoolean(value)).toBe(expected);
+    });
+
+    it('treats other non-null primitive-like values as truthy', () => {
+      expect(resolver.toBoolean(Symbol.for('templjs'))).toBe(true);
+      expect(resolver.toBoolean(10n)).toBe(true);
     });
   });
 
