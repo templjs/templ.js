@@ -692,6 +692,11 @@ function getStatementExpressionFragment(
   };
 }
 
+/**
+ * @internal
+ * Exported solely for white-box unit testing. Not part of the stable public API.
+ * These helpers are subject to change or removal without notice.
+ */
 export const intellisenseTesting = {
   findEnclosingRange,
   findEnclosingRangeNearOffset,

@@ -1190,6 +1190,11 @@ function querySnapshot(snapshot: GraphSnapshot, request: QueryRequest): QueryRes
   };
 }
 
+/**
+ * @internal
+ * Exported solely for white-box unit testing. Not part of the stable public API.
+ * These helpers are subject to change or removal without notice.
+ */
 export const contextGraphAdapterTesting = {
   getPathRegistryKeysFromSchema,
   isLikelyPathValue,
