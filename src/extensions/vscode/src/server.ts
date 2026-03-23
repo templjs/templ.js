@@ -596,7 +596,7 @@ connection.onDidChangeWatchedFiles((event) => {
   }
 
   trace(
-    `schema-like file change detected; reloading schema caches for ${changes.length} change(s)`
+    `schema-like file change detected (${changes.length} file(s)); reloading schemas for ${documentTextByUri.size} cached document(s)`
   );
   schemaFileCache.clear();
 

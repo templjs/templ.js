@@ -236,6 +236,66 @@ describe('language-server-inprocess-integration', () => {
     }
   });
 
+  it('re-publishes diagnostics for open documents when watched schema files change', async () => {
+    const workspaceDir = mkdtempSync(path.join(tmpdir(), 'templjs-server-watch-'));
+
+    try {
+      const schemaPath = path.join(workspaceDir, 'schema.json');
+      writeFileSync(
+        schemaPath,
+        JSON.stringify({
+          type: 'object',
+          properties: {
+            user: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+              },
+            },
+          },
+        })
+      );
+
+      await import('../src/server');
+      const initializeHandler = onInitialize.mock.calls[0][0] as (
+        params: unknown
+      ) => Promise<unknown>;
+      await initializeHandler({
+        rootUri: `file://${workspaceDir}`,
+        initializationOptions: { schemaPath },
+      });
+
+      const docUri = `file://${path.join(workspaceDir, 'sample.md.tpl')}`;
+      const didOpenHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
+        textDocument: { uri: string; text: string };
+      }) => void;
+      didOpenHandler({
+        textDocument: {
+          uri: docUri,
+          text: '{{ user.name }}',
+        },
+      });
+
+      await vi.waitFor(() => {
+        expect(sendDiagnostics).toHaveBeenCalledWith(expect.objectContaining({ uri: docUri }));
+      });
+      sendDiagnostics.mockClear();
+
+      const watchedFilesHandler = onDidChangeWatchedFiles.mock.calls[0][0] as (event: {
+        changes: Array<{ uri: string; type: number }>;
+      }) => void;
+      watchedFilesHandler({
+        changes: [{ uri: `file://${schemaPath}`, type: 2 }],
+      });
+
+      await vi.waitFor(() => {
+        expect(sendDiagnostics).toHaveBeenCalledWith(expect.objectContaining({ uri: docUri }));
+      });
+    } finally {
+      rmSync(workspaceDir, { recursive: true, force: true });
+    }
+  });
+
   it('supports definition for frontmatter schema paths and template variables', async () => {
     const workspaceDir = mkdtempSync(path.join(tmpdir(), 'templjs-server-def-'));
 

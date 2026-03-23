@@ -301,22 +301,29 @@ describe('language-server-bootstrap', () => {
       },
     });
 
-    await Promise.resolve();
-    sendDiagnostics.mockClear();
+    vi.useFakeTimers();
+    try {
+      await vi.runAllTimersAsync();
+      expect(sendDiagnostics).toHaveBeenCalledWith(
+        expect.objectContaining({ uri: 'file:///workspace/templates/sample.md.tpl' })
+      );
+      sendDiagnostics.mockClear();
 
-    const watchedFilesHandler = onDidChangeWatchedFiles.mock.calls[0][0] as (event: {
-      changes: Array<{ uri: string; type: number }>;
-    }) => void;
-    watchedFilesHandler({
-      changes: [{ uri: 'file:///workspace/.templjs/schema.json', type: 2 }],
-    });
+      const watchedFilesHandler = onDidChangeWatchedFiles.mock.calls[0][0] as (event: {
+        changes: Array<{ uri: string; type: number }>;
+      }) => void;
+      watchedFilesHandler({
+        changes: [{ uri: 'file:///workspace/.templjs/schema.json', type: 2 }],
+      });
 
-    await Promise.resolve();
-    await Promise.resolve();
+      await vi.runAllTimersAsync();
 
-    expect(sendDiagnostics).toHaveBeenCalledWith(
-      expect.objectContaining({ uri: 'file:///workspace/templates/sample.md.tpl' })
-    );
+      expect(sendDiagnostics).toHaveBeenCalledWith(
+        expect.objectContaining({ uri: 'file:///workspace/templates/sample.md.tpl' })
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('binds initialized and shutdown callbacks to server instance handlers', async () => {
