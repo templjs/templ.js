@@ -171,6 +171,8 @@ function createWatchModeDependencies(
         return process.stderr.write(data);
       }
 
+      // Keep these prefixes aligned with watch loop error wording in src/packages/cli/src/watch-mode.ts.
+      // If upstream wording changes, update this list; unmatched formats still flow through fallback handling below.
       const watchErrorPrefixes = [
         'Error: ',
         'Watch error: ',
