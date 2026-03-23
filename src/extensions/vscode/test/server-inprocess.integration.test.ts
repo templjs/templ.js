@@ -8,6 +8,7 @@ const onInitialized = vi.fn();
 const onShutdown = vi.fn();
 const onDidOpenTextDocument = vi.fn();
 const onDidChangeTextDocument = vi.fn();
+const onDidChangeWatchedFiles = vi.fn();
 const onCompletion = vi.fn();
 const onHover = vi.fn();
 const onDefinition = vi.fn();
@@ -27,6 +28,7 @@ vi.mock('@volar/language-server/node', () => ({
     onShutdown,
     onDidOpenTextDocument,
     onDidChangeTextDocument,
+    onDidChangeWatchedFiles,
     onCompletion,
     onHover,
     onDefinition,
@@ -53,6 +55,7 @@ describe('language-server-inprocess-integration', () => {
     onShutdown.mockClear();
     onDidOpenTextDocument.mockClear();
     onDidChangeTextDocument.mockClear();
+    onDidChangeWatchedFiles.mockClear();
     onCompletion.mockClear();
     onHover.mockClear();
     onDefinition.mockClear();

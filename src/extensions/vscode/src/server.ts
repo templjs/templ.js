@@ -155,6 +155,11 @@ const serverOptions = {
     '.tmpl.yaml',
     '.tmpl.yml',
     '.tmpl.html',
+    '.tpl.md',
+    '.tpl.json',
+    '.tpl.yaml',
+    '.tpl.yml',
+    '.tpl.html',
   ],
   getServicePlugins() {
     return [];
@@ -206,6 +211,10 @@ function applyContentChanges(
 
 function getSchemaOptionsForUri(uri: string): SchemaRuntimeOptions {
   return schemaOptionsByUri.get(uri) ?? runtimeSchemaOptions;
+}
+
+function isLikelySchemaUri(uri: string): boolean {
+  return /\.(json|ya?ml)(\?|#|$)/i.test(uri);
 }
 
 function ensureSchemaOptionsForUri(uri: string, text: string): SchemaRuntimeOptions {
@@ -577,6 +586,36 @@ connection.onDidChangeTextDocument((event) => {
     }
     publishDiagnosticsForDocument(uri);
   });
+});
+
+connection.onDidChangeWatchedFiles((event) => {
+  const changes = event.changes ?? [];
+  const schemaChanged = changes.some((change) => isLikelySchemaUri(change.uri));
+  if (!schemaChanged) {
+    return;
+  }
+
+  trace(
+    `schema-like file change detected; reloading schema caches for ${changes.length} change(s)`
+  );
+  schemaFileCache.clear();
+
+  for (const [uri, text] of documentTextByUri.entries()) {
+    const generation = (schemaLoadGenerationByUri.get(uri) ?? 0) + 1;
+    schemaLoadGenerationByUri.set(uri, generation);
+
+    void loadSchemasForDocumentContext(
+      uri,
+      text,
+      storedWorkspaceRoot,
+      storedInitializationOptions
+    ).then(() => {
+      if (schemaLoadGenerationByUri.get(uri) !== generation) {
+        return;
+      }
+      publishDiagnosticsForDocument(uri);
+    });
+  }
 });
 
 connection.onInitialized(server.initialized);

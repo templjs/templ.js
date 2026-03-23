@@ -8,6 +8,7 @@ const onShutdown = vi.fn();
 const listen = vi.fn();
 const onDidOpenTextDocument = vi.fn();
 const onDidChangeTextDocument = vi.fn();
+const onDidChangeWatchedFiles = vi.fn();
 const onCompletion = vi.fn();
 const onHover = vi.fn();
 const onDefinition = vi.fn();
@@ -141,6 +142,7 @@ vi.mock('@volar/language-server/node', () => ({
     onShutdown,
     onDidOpenTextDocument,
     onDidChangeTextDocument,
+    onDidChangeWatchedFiles,
     onCompletion,
     onHover,
     onDefinition,
@@ -179,6 +181,7 @@ describe('language-server-bootstrap', () => {
     onShutdown.mockClear();
     onDidOpenTextDocument.mockClear();
     onDidChangeTextDocument.mockClear();
+    onDidChangeWatchedFiles.mockClear();
     onCompletion.mockClear();
     onHover.mockClear();
     onDefinition.mockClear();
@@ -212,6 +215,7 @@ describe('language-server-bootstrap', () => {
     expect(onShutdown).toHaveBeenCalledWith(shutdown);
     expect(onDidOpenTextDocument).toHaveBeenCalledWith(expect.any(Function));
     expect(onDidChangeTextDocument).toHaveBeenCalledWith(expect.any(Function));
+    expect(onDidChangeWatchedFiles).toHaveBeenCalledWith(expect.any(Function));
     expect(listen).toHaveBeenCalled();
 
     // completion/hover/definition handlers are registered inside onInitialize,
@@ -264,7 +268,54 @@ describe('language-server-bootstrap', () => {
     const serverOptions = initializeCalls[0][2];
 
     expect(serverOptions.watchFileExtensions).toEqual(
-      expect.arrayContaining(['.templ.md', '.templ.json', '.templ.yaml', '.templ.html', '.tmpl.md'])
+      expect.arrayContaining([
+        '.templ.md',
+        '.templ.json',
+        '.templ.yaml',
+        '.templ.html',
+        '.tmpl.md',
+        '.tpl.md',
+        '.tpl.json',
+        '.tpl.yaml',
+      ])
+    );
+  });
+
+  it('reloads diagnostics for open documents when schema files change on disk', async () => {
+    await import('../src/server');
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({
+      rootUri: 'file:///workspace',
+      initializationOptions: { schemaPath: '.templjs/schema.json' },
+    });
+
+    const didOpenHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
+      textDocument: { uri: string; text: string };
+    }) => void;
+    didOpenHandler({
+      textDocument: {
+        uri: 'file:///workspace/templates/sample.md.tpl',
+        text: '{{ user.name }}',
+      },
+    });
+
+    await Promise.resolve();
+    sendDiagnostics.mockClear();
+
+    const watchedFilesHandler = onDidChangeWatchedFiles.mock.calls[0][0] as (event: {
+      changes: Array<{ uri: string; type: number }>;
+    }) => void;
+    watchedFilesHandler({
+      changes: [{ uri: 'file:///workspace/.templjs/schema.json', type: 2 }],
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(sendDiagnostics).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: 'file:///workspace/templates/sample.md.tpl' })
     );
   });
 

@@ -56,6 +56,17 @@ test_results:
       - Ran `src/packages/volar/test/diagnostic-provider.test.ts` + `src/packages/volar/test/intellisense-provider.test.ts` (121 passed)
       - Verified schema-aware frontmatter/content completions and diagnostics, glob/precedence resolution,
         root schema alias extraction, URL schema loading, and backward compatibility for `templjs.schemaPath`
+  - timestamp: 2026-03-22T00:00:00Z
+    note: |
+      Schema hot-reload + documentation follow-up:
+      - Added server-side watched-file handler to invalidate schema cache and republish diagnostics
+        for open documents when schema-like files (`.json`, `.yaml`, `.yml`) change on disk
+      - Expanded watched template extension coverage for `.tpl.*` variants in server options
+      - Updated VS Code extension README with schema configuration, precedence, and hot-reload behavior
+      - Verification:
+        - `src/extensions/vscode/test/server.test.ts` (41 passed)
+        - `src/extensions/vscode/test/server-inprocess.integration.test.ts` (5 passed)
+        - Full VS Code extension test set (80 passed)
 links:
   depends_on:
     - '[[031_language_feature_tests]]'
@@ -139,9 +150,9 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 - [x] Extend Volar plugin options types to include `contentSchema` and `contentSchemaUri`
 - [x] Add frontmatter zone detection and content-schema zone-aware validation in diagnostic provider
 - [x] Wire schema into completion/hover/diagnostic execution path (create service-plugin if not present)
-- [ ] Add file watcher for schema file changes and implement hot reload (cache invalidation, diagnostics refresh)
+- [x] Add file watcher for schema file changes and implement hot reload (cache invalidation, diagnostics refresh)
 - [x] Add/extend tests for all new features: glob patterns, URL loading, directives, frontmatter, precedence rules, content-schema validation
-- [ ] Update extension documentation with setup, glob patterns, content-schema usage, and troubleshooting
+- [x] Update extension documentation with setup, glob patterns, content-schema usage, and troubleshooting
 
 ## Acceptance Criteria
 
@@ -162,7 +173,7 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 - [x] Root properties (`$templ-schema` and `$content-schema`) are extracted from YAML/JSON frontmatter
 - [x] Three-way precedence (inline > root > setting) is applied independently to each schema type
 - [x] Markdown files with content-schema have Markdown body validated against content-schema (frontmatter against templ-schema)
-- [ ] Schema changes on disk update editor behavior without requiring extension restart
+- [x] Schema changes on disk update editor behavior without requiring extension restart
 - [x] Network failures, missing files, and parse errors yield clear, non-crashing diagnostics/logging
 - [x] Backward compatibility: existing `templjs.schemaPath` setting continues to work
 - [ ] All new tests pass in CI for schema-aware extension behavior

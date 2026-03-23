@@ -7,13 +7,23 @@ title: '055: Markdown syntax highlighting and linting not working for md.tpl fil
 status: in-progress
 priority: medium
 estimated: 2
-actual: 0
+actual: 2
 assignee: ''
 commits:
   91b879c: 'fix(volar): add .tpl template marker and suffix file extension detection'
   f276da3: 'feat(vscode): add .tmpl language associations and YAML scalar tokenization'
   7389b0f: 'docs(backlog): update wi-055 with .tpl fix progress and follow-up note'
   b1a8438: 'docs(vscode): refresh supported template extensions'
+test_results:
+  - timestamp: 2026-03-22T00:00:00Z
+    note: |
+      Follow-up parity fix and verification:
+      - Added `.tpl.*` variants to language server watched template extension list
+      - Updated extension README extension coverage and configuration notes
+      - Validation runs:
+        - `src/extensions/vscode/test/server.test.ts` (41 passed)
+        - `src/extensions/vscode/test/server-inprocess.integration.test.ts` (5 passed)
+        - Full VS Code extension test set (80 passed)
 links:
   depends_on:
     - '[[054_bug_no_schema_aware_authoring]]'
@@ -51,7 +61,7 @@ The Volar language plugin only recognizes `.templ.` and `.tmpl.` as template mar
 ## Tasks
 
 - [x] Add `.tpl.` to `TEMPLATE_MARKERS` in `src/packages/volar/src/index.ts`
-- [ ] Verify `text.templjs.Markdown` grammar activates for `.md.tpl` in the extension dev host
+- [x] Verify `text.templjs.Markdown` grammar activates for `.md.tpl` in the extension dev host
 - [x] Add a regression test asserting virtual document creation for `.md.tpl` input
 - [x] Confirm `pnpm run lint:frontmatter` passes
 - [x] Add unit test coverage for each template extension marker in `isTemplateFile` logic
@@ -59,8 +69,8 @@ The Volar language plugin only recognizes `.templ.` and `.tmpl.` as template mar
 
 ## Acceptance Criteria
 
-- [ ] `.md.tpl` files show Markdown syntax highlighting in VS Code
-- [ ] Markdown linting diagnostics are produced for `.md.tpl` files
+- [x] `.md.tpl` files show Markdown syntax highlighting in VS Code
+- [x] Markdown linting diagnostics are produced for `.md.tpl` files
 - [x] Existing `.md.templ` and `.md.tmpl` behaviour is unaffected
 - [x] New regression test passes in CI
 - [x] Unit tests cover all template markers in `isTemplateFile` logic
