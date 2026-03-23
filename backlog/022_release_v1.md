@@ -7,7 +7,17 @@ title: '22: Release v1.0 to npm and VS Code Marketplace'
 status: proposed
 priority: critical
 estimated: 10
+actual: 1
 assignee: ''
+test_results:
+  - timestamp: 2026-03-22T00:00:00Z
+    note: |
+      Release gate preparation started:
+      - Advanced WI-040, WI-054, WI-055 implementation and verification
+      - Delivered reduced WI-020/WI-021 documentation + example slice needed for release docs path
+      Remaining blockers before publish:
+      - Dependency work items must be moved to closed state with merged PR evidence
+      - Release credentials and publication steps require maintainer execution (`npm publish`, `vsce publish`)
 links:
   depends_on:
     - '[[005_chevrotain_lexer]]'

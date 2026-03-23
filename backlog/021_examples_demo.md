@@ -7,7 +7,20 @@ title: '21: Create Example Templates and Demo Video'
 status: proposed
 priority: critical
 estimated: 8
+actual: 3
 assignee: ''
+test_results:
+  - timestamp: 2026-03-22T00:00:00Z
+    note: |
+      Reduced examples slice implemented for WI-020 critical path:
+      - Added `examples/markdown-report/` with template, data, and README
+      - Added `examples/html-email/` with template, data, and README
+      - Added `examples/json-api/` with template, data, and README
+      - Added `docs/examples.md` linking and run instructions
+      Deferred from full WI-021 scope:
+      - `examples/config-files/`
+      - `examples/documentation/`
+      - demo video recording
 links:
   depends_on:
     - '[[017_cli_commands]]'
@@ -23,15 +36,15 @@ Examples showcase templ.js capabilities and help users understand syntax. Video 
 
 ## Tasks
 
-- [ ] Create `examples/markdown-report/` (analytics report)
-- [ ] Create `examples/html-email/` (transactional email)
-- [ ] Create `examples/json-api/` (API response transformation)
+- [x] Create `examples/markdown-report/` (analytics report)
+- [x] Create `examples/html-email/` (transactional email)
+- [x] Create `examples/json-api/` (API response transformation)
 - [ ] Create `examples/config-files/` (.env.tmpl, docker-compose.tmpl)
 - [ ] Create `examples/documentation/` (auto-generated docs)
 - [ ] Annotate all examples with comments
 - [ ] Create demo data files for each example
 - [ ] Record demo video (5-10 minutes)
-- [ ] Add example README with instructions
+- [x] Add example README with instructions
 
 ## Deliverables
 

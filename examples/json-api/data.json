@@ -1,0 +1,11 @@
+{
+  "request": {
+    "id": "req-88f3",
+    "timestamp": "2026-03-22T10:15:00Z"
+  },
+  "customer": {
+    "id": "cus-1029",
+    "tier": "pro"
+  },
+  "features": ["reports", "export", "alerts"]
+}

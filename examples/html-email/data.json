@@ -1,0 +1,12 @@
+{
+  "user": { "first_name": "Taylor" },
+  "order": {
+    "id": "ORD-1042",
+    "status": "Shipped",
+    "total": "$129.90",
+    "items": [
+      { "name": "Wireless Mouse", "quantity": 1 },
+      { "name": "USB-C Cable", "quantity": 2 }
+    ]
+  }
+}

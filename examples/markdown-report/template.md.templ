@@ -1,0 +1,25 @@
+# Analytics Report for {{ company.name }}
+
+Generated: {{ generated_at }}
+
+## KPI Summary
+
+- Total Users: {{ kpi.total_users }}
+- Active Users (30d): {{ kpi.active_users_30d }}
+- Conversion Rate: {{ kpi.conversion_rate }}
+
+## Top Regions
+
+{% for region in top_regions %}
+- {{ region.name }}: {{ region.users }} users
+{% endfor %}
+
+## Risks
+
+{% if risks %}
+{% for risk in risks %}
+- {{ risk }}
+{% endfor %}
+{% else %}
+- None
+{% endif %}

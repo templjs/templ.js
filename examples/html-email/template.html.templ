@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+  <body>
+    <h1>Hello {{ user.first_name }},</h1>
+    <p>Your order <strong>{{ order.id }}</strong> is now <strong>{{ order.status }}</strong>.</p>
+
+    {% if order.items %}
+    <ul>
+      {% for item in order.items %}
+      <li>{{ item.name }} x{{ item.quantity }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <p>Total: {{ order.total }}</p>
+  </body>
+</html>
