@@ -179,7 +179,12 @@ function createWatchModeDependencies(
         if (trimmed.startsWith(prefix)) {
           if (mode.quiet || mode.json) {
             const message = trimmed.slice(prefix.length) || trimmed;
-            writeError(mode, 'render', message);
+            writeError(
+              mode,
+              'render',
+              message,
+              outputPath ? `Output path: ${outputPath}` : undefined
+            );
             return true;
           }
 
