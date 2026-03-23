@@ -154,6 +154,7 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 - [x] Add file watcher for schema file changes and implement hot reload (cache invalidation, diagnostics refresh)
 - [x] Add/extend tests for all new features: glob patterns, URL loading, directives, frontmatter, precedence rules, content-schema validation
 - [ ] Update extension documentation with setup, glob patterns, content-schema usage, inline directives, root properties, URL schemas, multi-root workspace handling, and troubleshooting
+  - Note: README coverage is partially complete (schema configuration, precedence, and schema hot-reload behavior were documented on 2026-03-22); remaining documentation: inline directives, root properties, URL schema usage details, multi-root workspace handling, and troubleshooting guidance.
 
 ## Acceptance Criteria
 
@@ -179,6 +180,7 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 - [x] Backward compatibility: existing `templjs.schemaPath` setting continues to work
 - [ ] All new tests pass in CI for schema-aware extension behavior
 - [ ] Documentation covers: glob patterns, content-schema usage, inline directives, root properties, URL schemas, multi-root workspace handling
+  - Note: README currently covers schema configuration, precedence, and schema hot-reload behavior; remaining acceptance coverage needed for inline directives, root properties, URL schema usage details, multi-root workspace handling, and troubleshooting guidance.
 
 ## Evidence / References
 
