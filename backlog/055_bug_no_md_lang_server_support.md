@@ -14,6 +14,7 @@ commits:
   f276da3: 'feat(vscode): add .tmpl language associations and YAML scalar tokenization'
   7389b0f: 'docs(backlog): update wi-055 with .tpl fix progress and follow-up note'
   b1a8438: 'docs(vscode): refresh supported template extensions'
+  13a7f34: 'fix(vscode): reload schema-aware diagnostics on schema file changes (WI-054, WI-055)'
 test_results:
   - timestamp: 2026-03-22T00:00:00Z
     note: |

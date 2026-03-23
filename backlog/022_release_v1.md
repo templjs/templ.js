@@ -9,6 +9,8 @@ priority: critical
 estimated: 10
 actual: 1
 assignee: ''
+commits:
+  8418c57: 'docs(release): add critical-path docs and reduced example slice (WI-020, WI-021, WI-022)'
 test_results:
   - timestamp: 2026-03-22T00:00:00Z
     note: |

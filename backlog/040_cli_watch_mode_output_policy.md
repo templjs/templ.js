@@ -9,6 +9,8 @@ priority: medium
 estimated: 3
 actual: 3
 assignee: ''
+commits:
+  f5979e5: 'fix(cli): honor json and quiet output policies in watch mode (WI-040)'
 test_results:
   - timestamp: 2026-03-22T00:00:00Z
     note: |

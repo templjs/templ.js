@@ -14,6 +14,7 @@ commits:
   db623c1: 'fix(vscode): surface language client startup failures'
   8ddf67c: 'fix(vscode): avoid rethrow in startup catch'
   74e7070: 'test(vscode): harden activation coverage'
+  13a7f34: 'fix(vscode): reload schema-aware diagnostics on schema file changes (WI-054, WI-055)'
 test_results:
   - timestamp: 2026-03-11T00:00:00Z
     note: |
