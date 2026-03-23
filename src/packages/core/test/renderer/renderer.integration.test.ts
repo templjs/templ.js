@@ -1248,8 +1248,8 @@ describe('Renderer', () => {
         const template = '{{ text | escape }}';
         const tokens = tokenize(template);
         const parseResult = parse(tokens);
-        const result = render(parseResult.ast!, { text: '<b>Tom & "Jerry"</b>' });
-        expect(result.output).toBe('&lt;b&gt;Tom &amp; &quot;Jerry&quot;&lt;/b&gt;');
+        const result = render(parseResult.ast!, { text: `<b>Tom & "Jerry"'s</b>` });
+        expect(result.output).toBe('&lt;b&gt;Tom &amp; &quot;Jerry&quot;&#39;s&lt;/b&gt;');
       });
 
       it('should support e alias for html escaping', () => {

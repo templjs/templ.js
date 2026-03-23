@@ -110,7 +110,7 @@ export class TemplateParser {
     const token = this.peek();
     if (!token || token.type !== TokenType.STATEMENT) return null;
 
-    const content = this.extractStatementContent(token).trim();
+    const content = this.extractStatementContent(token);
 
     if (content.match(/^if\s+/)) {
       return this.parseIfStatement();
@@ -716,7 +716,10 @@ export class TemplateParser {
     // Use flat string operations instead of regex to avoid ReDoS
     const token =
       typeof tokenOrContent === 'string'
-        ? ({ content: tokenOrContent } as Pick<Token, 'content'>)
+        ? ({ content: tokenOrContent } as Pick<
+            Token,
+            'content' | 'delimiterStart' | 'delimiterEnd'
+          >)
         : tokenOrContent;
     let result = typeof token.content === 'string' ? token.content : '';
 
@@ -734,9 +737,9 @@ export class TemplateParser {
    */
   private extractExpressionContent(tokenOrContent: Token | string): string {
     // Use flat string operations instead of regex to avoid ReDoS
-    const token =
+    const token: Pick<Token, 'content' | 'delimiterStart' | 'delimiterEnd'> =
       typeof tokenOrContent === 'string'
-        ? ({ content: tokenOrContent } as Pick<Token, 'content'>)
+        ? { content: tokenOrContent, delimiterStart: undefined, delimiterEnd: undefined }
         : tokenOrContent;
     let result = typeof token.content === 'string' ? token.content : '';
 

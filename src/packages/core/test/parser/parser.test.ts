@@ -14,6 +14,73 @@ import type {
   LiteralNode,
 } from '../../src/parser/types.js';
 
+function splitTopLevel(str: string, delimiter: string): string[] {
+  if (!delimiter) return [str];
+
+  const parts: string[] = [];
+  let current = '';
+  let parenDepth = 0;
+  let bracketDepth = 0;
+  let braceDepth = 0;
+  let quote: "'" | '"' | '`' | null = null;
+  let escaped = false;
+
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+
+    if (escaped) {
+      current += char;
+      escaped = false;
+      continue;
+    }
+
+    if (quote) {
+      current += char;
+      if (char === '\\') {
+        escaped = true;
+        continue;
+      }
+      if (char === quote) {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char === '`') {
+      quote = char;
+      current += char;
+      continue;
+    }
+
+    if (char === '(') parenDepth++;
+    if (char === ')' && parenDepth > 0) parenDepth--;
+    if (char === '[') bracketDepth++;
+    if (char === ']' && bracketDepth > 0) bracketDepth--;
+    if (char === '{') braceDepth++;
+    if (char === '}' && braceDepth > 0) braceDepth--;
+
+    if (
+      parenDepth === 0 &&
+      bracketDepth === 0 &&
+      braceDepth === 0 &&
+      str.startsWith(delimiter, i)
+    ) {
+      parts.push(current);
+      current = '';
+      i += delimiter.length - 1;
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (current || str.endsWith(delimiter)) {
+    parts.push(current);
+  }
+
+  return parts;
+}
+
 function createExpressionParserContext() {
   const context = {
     parseExpression: (expr: string): ExpressionNode =>
@@ -57,7 +124,7 @@ function createExpressionParserContext() {
       end: { line: 1, column: expr.length },
     }),
     parseObjectProperties: () => [],
-    splitTopLevel: (str: string, delimiter: string) => str.split(delimiter),
+    splitTopLevel,
     isVariableStart: (char: string) => /[a-zA-Z_]/.test(char),
     createErrorExpression: (message: string) => ({
       type: 'error' as const,
@@ -70,6 +137,27 @@ function createExpressionParserContext() {
 
   return context;
 }
+
+describe('splitTopLevel', () => {
+  it('does not split delimiters inside quoted strings', () => {
+    const result = splitTopLevel(`value | "a|b" | 'c|d' | ` + '`e|f`', '|');
+
+    expect(result).toEqual(['value ', ' "a|b" ', " 'c|d' ", ' `e|f`']);
+  });
+
+  it('does not split delimiters inside nested structures', () => {
+    const expr = 'fn(a, [1, 2], { key: "x,y" }, (c, d)), tail';
+    const result = splitTopLevel(expr, ',');
+
+    expect(result).toEqual(['fn(a, [1, 2], { key: "x,y" }, (c, d))', ' tail']);
+  });
+
+  it('respects escaped quote characters while scanning strings', () => {
+    const result = splitTopLevel(`'a\\'|b'|next`, '|');
+
+    expect(result).toEqual([`'a\\'|b'`, 'next']);
+  });
+});
 
 describe('parse', () => {
   describe('Parser - Basic Functionality', () => {
@@ -2581,6 +2669,7 @@ describe('parse', () => {
 
     it('still treats parentheses inside template expressions as structural', () => {
       const context = createExpressionParserContext();
+      // Deliberately malformed `${...}` interpolation (unbalanced `(`) to assert structural-paren edge behavior.
       const result = parseExpressionWithPriorityList('(`value ${count + (offset}`)', context);
 
       expect(result.type).not.toBe('paren');

@@ -72,17 +72,33 @@ export interface LexerOptions {
   delimiters?: DelimiterConfig;
 }
 
+type DelimiterBoundaries = Pick<
+  Required<DelimiterConfig>,
+  | 'statement_start'
+  | 'statement_end'
+  | 'expression_start'
+  | 'expression_end'
+  | 'comment_start'
+  | 'comment_end'
+>;
+
+function buildDefaultDelimiters(boundaries: DelimiterBoundaries): Required<DelimiterConfig> {
+  return {
+    ...boundaries,
+    statement: [boundaries.statement_start, boundaries.statement_end],
+    expression: [boundaries.expression_start, boundaries.expression_end],
+    comment: [boundaries.comment_start, boundaries.comment_end],
+  };
+}
+
 /**
  * Default delimiter configuration
  */
-export const DEFAULT_DELIMITERS: Required<DelimiterConfig> = {
+export const DEFAULT_DELIMITERS: Required<DelimiterConfig> = buildDefaultDelimiters({
   statement_start: '{%',
   statement_end: '%}',
-  statement: ['{%', '%}'],
   expression_start: '{{',
   expression_end: '}}',
-  expression: ['{{', '}}'],
   comment_start: '{#',
   comment_end: '#}',
-  comment: ['{#', '#}'],
-};
+});
