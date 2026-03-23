@@ -29,10 +29,10 @@ Each folder contains:
 
 ## Implementation Links
 
-- CLI command registration for `templjs render`: [src/packages/cli/src/cli.ts](../src/packages/cli/src/cli.ts#L223)
-- CLI render implementation (`renderCommand`): [src/packages/cli/src/commands/render.ts](../src/packages/cli/src/commands/render.ts#L303)
-- Core rendering API (`renderTemplate`): [src/packages/core/src/index.ts](../src/packages/core/src/index.ts#L155)
-- Core renderer internals (`Renderer`): [src/packages/core/src/renderer/renderer.ts](../src/packages/core/src/renderer/renderer.ts#L42)
+- CLI command registration for `templjs render`: [src/packages/cli/src/cli.ts](../src/packages/cli/src/cli.ts)
+- CLI render implementation (`renderCommand`): [src/packages/cli/src/commands/render.ts](../src/packages/cli/src/commands/render.ts)
+- Core rendering API (`renderTemplate`): [src/packages/core/src/index.ts](../src/packages/core/src/index.ts)
+- Core renderer internals (`Renderer`): [src/packages/core/src/renderer/renderer.ts](../src/packages/core/src/renderer/renderer.ts)
 
 ## ADRs
 
