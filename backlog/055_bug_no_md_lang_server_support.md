@@ -7,7 +7,7 @@ title: '055: Markdown syntax highlighting and linting not working for md.tpl fil
 status: in-progress
 priority: medium
 estimated: 2
-actual: 2
+actual: 3
 assignee: ''
 commits:
   91b879c: 'fix(volar): add .tpl template marker and suffix file extension detection'
