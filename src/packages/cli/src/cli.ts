@@ -180,8 +180,12 @@ function createWatchModeDependencies(
 
       for (const prefix of watchErrorPrefixes) {
         if (trimmed.startsWith(prefix)) {
-          writeError(mode, 'render', trimmed.slice(prefix.length));
-          return true;
+          if (mode.quiet || mode.json) {
+            writeError(mode, 'render', trimmed.slice(prefix.length));
+            return true;
+          }
+
+          return process.stderr.write(data);
         }
       }
 

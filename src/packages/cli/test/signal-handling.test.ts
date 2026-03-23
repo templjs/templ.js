@@ -239,6 +239,7 @@ describe('signal-handler', () => {
   it('times out if handler hangs indefinitely', { timeout: 10000 }, async () => {
     vi.useFakeTimers();
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
 
     // Create a handler that never resolves (infinite hang)
     const onSigInt = vi.fn((): Promise<void> => {
@@ -260,6 +261,7 @@ describe('signal-handler', () => {
 
     cleanup();
     exitSpy.mockRestore();
+    stderrSpy.mockRestore();
     vi.useRealTimers();
   });
 
@@ -673,11 +675,9 @@ describe('Streaming I/O and Large File Support', () => {
       },
     });
 
-    // Write enough data to trigger backpressure
-    const chunks: Promise<void>[] = [];
-
+    // Write enough data to trigger backpressure while keeping only one drain listener at a time.
     for (let i = 0; i < 100; i++) {
-      const promise = new Promise<void>((resolve) => {
+      await new Promise<void>((resolve) => {
         const canContinue = slowStream.write('x'.repeat(100));
         if (!canContinue) {
           backpressureApplied = true;
@@ -686,10 +686,8 @@ describe('Streaming I/O and Large File Support', () => {
           resolve();
         }
       });
-      chunks.push(promise);
     }
 
-    await Promise.all(chunks);
     slowStream.end();
 
     // Should have multiple write calls (chunked writing)
