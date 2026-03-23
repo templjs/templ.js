@@ -1,13 +1,26 @@
-# Analytics Report for {{ company.name }}
+# Analytics Report for {% if company is defined and company is not none %}{% if company.name is defined and company.name is not none %}{{ company.name }}{% else %}<missing company.name>{% endif %}{% else %}<missing company.name>{% endif %}
 
-Generated: {{ generated_at }}
+Generated: {% if generated_at is defined and generated_at is not none %}{{ generated_at }}{% else %}<missing generated_at>{% endif %}
 
 ## KPI Summary
 
+{% if kpi is defined and kpi is not none and kpi.total_users is defined and kpi.total_users is not none %}
 - Total Users: {{ kpi.total_users }}
+{% else %}
+- Total Users: N/A
+{% endif %}
+{% if kpi is defined and kpi is not none and kpi.active_users_30d is defined and kpi.active_users_30d is not none %}
 - Active Users (30d): {{ kpi.active_users_30d }}
+{% else %}
+- Active Users (30d): N/A
+{% endif %}
 {% if kpi.conversion_rate is defined and kpi.conversion_rate is not none and kpi.conversion_rate is number %}
-- Conversion Rate: {{ (kpi.conversion_rate * 100) | round(1) }}%
+{% if kpi.conversion_rate > 1 %}
+{% set conversion_rate_decimal = kpi.conversion_rate / 100 %}
+{% else %}
+{% set conversion_rate_decimal = kpi.conversion_rate %}
+{% endif %}
+- Conversion Rate: {{ (conversion_rate_decimal * 100) | round(1) }}%
 {% else %}
 - Conversion Rate: {{ kpi.conversion_rate }}
 {% endif %}
@@ -26,7 +39,13 @@ Generated: {{ generated_at }}
 
 {% if risks %}
 {% for risk in risks %}
-- {{ risk }}
+{% if risk %}
+{% if risk.message is defined and risk.message is not none %}
+- {{ risk.message }}
+{% else %}
+- {{ risk | string }}
+{% endif %}
+{% endif %}
 {% endfor %}
 {% else %}
 - None

@@ -1,7 +1,7 @@
 {
   "$schema": "./data.schema.json",
   "company": { "name": "Acme Labs" },
-  "generated_at": "2026-03-22T10:00:00Z",
+  "generated_at": "2026-03-23T08:30:55Z",
   "kpi": {
     "total_users": 12040,
     "active_users_30d": 8432,

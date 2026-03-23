@@ -30,7 +30,7 @@
       "format": "date-time"
     },
     "kpi": {
-      "description": "Top-level KPI metrics shown in the report summary section.",
+      "description": "Top-level KPI metrics shown in the report summary section. Consumers should enforce that active_users_30d is less than or equal to total_users and that conversion_rate remains between 0 and 1.",
       "type": "object",
       "additionalProperties": false,
       "required": ["total_users", "active_users_30d", "conversion_rate"],
@@ -54,7 +54,7 @@
       }
     },
     "active_users_by_region": {
-      "description": "Breakdown of active users by region for regional report sections.",
+      "description": "Breakdown of active users by region for regional report sections. Region names must be unique within this array.",
       "type": "array",
       "minItems": 1,
       "items": {
