@@ -297,18 +297,18 @@ describe('language-server-bootstrap', () => {
       initializationOptions: { schemaPath: '.templjs/schema.json' },
     });
 
-    const didOpenHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
-      textDocument: { uri: string; text: string };
-    }) => void;
-    didOpenHandler({
-      textDocument: {
-        uri: 'file:///workspace/templates/sample.md.tpl',
-        text: '{{ user.name }}',
-      },
-    });
-
     vi.useFakeTimers();
     try {
+      const didOpenHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
+        textDocument: { uri: string; text: string };
+      }) => void;
+      didOpenHandler({
+        textDocument: {
+          uri: 'file:///workspace/templates/sample.md.tpl',
+          text: '{{ user.name }}',
+        },
+      });
+
       await vi.runAllTimersAsync();
       expect(sendDiagnostics).toHaveBeenCalledWith(
         expect.objectContaining({ uri: 'file:///workspace/templates/sample.md.tpl' })
