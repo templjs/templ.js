@@ -20,6 +20,7 @@ const consoleWarn = vi.fn();
 const initialize = vi.fn(async () => ({ capabilities: {} }));
 const initialized = vi.fn();
 const shutdown = vi.fn();
+const FILE_CHANGE_TYPE_CHANGED = 2;
 
 vi.mock('@volar/language-server/node', () => ({
   createConnection: vi.fn(() => ({
@@ -285,7 +286,7 @@ describe('language-server-inprocess-integration', () => {
         changes: Array<{ uri: string; type: number }>;
       }) => void;
       watchedFilesHandler({
-        changes: [{ uri: `file://${schemaPath}`, type: 2 /* FileChangeType.Changed */ }],
+        changes: [{ uri: `file://${schemaPath}`, type: FILE_CHANGE_TYPE_CHANGED }],
       });
 
       await vi.waitFor(() => {
