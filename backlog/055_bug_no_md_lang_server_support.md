@@ -81,4 +81,5 @@ The Volar language plugin only recognizes `.templ.` and `.tmpl.` as template mar
 
 ## Follow-up Note
 
-- Revisit host-language activation: as of 2026-03-13, VS Code still does not reliably recognize Markdown host-language behavior for templ Markdown files in local validation, even after `.tpl`/`.tmpl` marker and extension association fixes.
+- Core parity fixes are complete (`.md.tpl`/`.md.templ`/`.md.tmpl` marker handling, `isTemplateFile` coverage, and regression validation), but host-language activation still has edge cases.
+- Revisit host-language activation: as of 2026-03-13, VS Code still does not reliably recognize Markdown host-language behavior for some templ Markdown files in local validation, including `.md.tpl` host-language activation scenarios.

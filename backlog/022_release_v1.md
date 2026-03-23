@@ -2,9 +2,9 @@
 id: wi-022
 type: work-item
 subtype: task
-lifecycle: draft
+lifecycle: active
 title: '22: Release v1.0 to npm and VS Code Marketplace'
-status: proposed
+status: in-progress
 priority: critical
 estimated: 10
 actual: 1
