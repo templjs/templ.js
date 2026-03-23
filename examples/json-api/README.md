@@ -1,4 +1,12 @@
-# JSON API Example
+---
+id: jsonapi-001
+type: document
+subtype: guide
+lifecycle: active
+status: ready
+title: JSON API Example
+summary: Run and understand the JSON API transformation templating example.
+---
 
 ## Run
 

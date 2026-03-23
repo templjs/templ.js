@@ -1,4 +1,12 @@
-# HTML Email Example
+---
+id: htmlemail-001
+type: document
+subtype: guide
+lifecycle: active
+status: ready
+title: HTML Email Example
+summary: Run and understand the transactional HTML email templating example.
+---
 
 ## Run
 

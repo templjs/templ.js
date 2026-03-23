@@ -4,7 +4,7 @@
   "kpi": {
     "total_users": 12040,
     "active_users_30d": 8432,
-    "conversion_rate": "6.2%"
+    "conversion_rate": 0.062
   },
   "top_regions": [
     { "name": "North America", "users": 4200 },
