@@ -479,6 +479,40 @@ describe('Lexer', () => {
           expect(tokens[0].type).toBe(TokenType.COMMENT);
           expect(tokens[0].content).toBe('/* note */');
         });
+
+        it('should use statement and comment tuple delimiters', () => {
+          const tokens = tokenize('<% if x %> /* note */', {
+            delimiters: {
+              statement: ['<%', '%>'],
+              comment: ['/*', '*/'],
+            },
+          });
+
+          expect(tokens).toHaveLength(3);
+          expect(tokens[0].type).toBe(TokenType.STATEMENT);
+          expect(tokens[0].content).toBe('<% if x %>');
+          expect(tokens[2].type).toBe(TokenType.COMMENT);
+          expect(tokens[2].content).toBe('/* note */');
+        });
+
+        it('should prefer tuple delimiters over separate start/end fields', () => {
+          const tokens = tokenize('<% if x %> [[ note ]]', {
+            delimiters: {
+              statement: ['<%', '%>'],
+              statement_start: '{%',
+              statement_end: '%}',
+              comment: ['[[', ']]'],
+              comment_start: '{#',
+              comment_end: '#}',
+            },
+          });
+
+          expect(tokens).toHaveLength(3);
+          expect(tokens[0].type).toBe(TokenType.STATEMENT);
+          expect(tokens[0].content).toBe('<% if x %>');
+          expect(tokens[2].type).toBe(TokenType.COMMENT);
+          expect(tokens[2].content).toBe('[[ note ]]');
+        });
       });
 
       describe('Multiple Custom Delimiters', () => {

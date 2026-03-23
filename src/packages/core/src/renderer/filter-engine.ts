@@ -7,6 +7,15 @@ import type { FilterFunction } from './types.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyValue = any;
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
 function getLength(value: AnyValue): number {
   if (typeof value === 'string' || Array.isArray(value)) {
     return value.length;
@@ -252,6 +261,26 @@ const BUILTIN_FILTERS: Record<string, FilterFunction> = {
    */
   json: (value: AnyValue): string => {
     return JSON.stringify(value);
+  },
+
+  /**
+   * Escape HTML-sensitive characters
+   */
+  escape: (value: AnyValue): AnyValue => {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    return escapeHtml(String(value));
+  },
+
+  /**
+   * Alias for HTML escape
+   */
+  e: (value: AnyValue): AnyValue => {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    return escapeHtml(String(value));
   },
 
   /**

@@ -20,10 +20,18 @@ import { TokenType, DEFAULT_DELIMITERS } from './types.js';
  */
 export function tokenize(template: string, options?: LexerOptions): Token[] {
   // Merge delimiters with defaults
+  const statementPair = options?.delimiters?.statement;
   const expressionPair = options?.delimiters?.expression;
+  const commentPair = options?.delimiters?.comment;
   const delimiters: Required<DelimiterConfig> = {
     ...DEFAULT_DELIMITERS,
     ...options?.delimiters,
+    statement_start:
+      statementPair?.[0] ??
+      options?.delimiters?.statement_start ??
+      DEFAULT_DELIMITERS.statement_start,
+    statement_end:
+      statementPair?.[1] ?? options?.delimiters?.statement_end ?? DEFAULT_DELIMITERS.statement_end,
     expression_start:
       expressionPair?.[0] ??
       options?.delimiters?.expression_start ??
@@ -32,6 +40,10 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
       expressionPair?.[1] ??
       options?.delimiters?.expression_end ??
       DEFAULT_DELIMITERS.expression_end,
+    comment_start:
+      commentPair?.[0] ?? options?.delimiters?.comment_start ?? DEFAULT_DELIMITERS.comment_start,
+    comment_end:
+      commentPair?.[1] ?? options?.delimiters?.comment_end ?? DEFAULT_DELIMITERS.comment_end,
   };
 
   const tokens: Token[] = [];
@@ -48,8 +60,17 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
     start: number;
     end: number;
     content: string;
+    delimiterStart: string;
+    delimiterEnd: string;
   } | null {
-    let earliest: { type: TokenType; start: number; end: number; content: string } | null = null;
+    let earliest: {
+      type: TokenType;
+      start: number;
+      end: number;
+      content: string;
+      delimiterStart: string;
+      delimiterEnd: string;
+    } | null = null;
 
     // Check each delimiter type
     const checks = [
@@ -91,6 +112,8 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
           start: startPos,
           end: endPos + check.end.length,
           content: text.substring(startPos, endPos + check.end.length),
+          delimiterStart: check.start,
+          delimiterEnd: check.end,
         };
       }
     }
@@ -148,6 +171,8 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
       tokens.push({
         type: nextDelim.type,
         content: nextDelim.content,
+        delimiterStart: nextDelim.delimiterStart,
+        delimiterEnd: nextDelim.delimiterEnd,
         start,
         end: { line, column },
       });

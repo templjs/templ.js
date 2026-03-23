@@ -110,7 +110,7 @@ export class TemplateParser {
     const token = this.peek();
     if (!token || token.type !== TokenType.STATEMENT) return null;
 
-    const content = this.extractStatementContent(token.content).trim();
+    const content = this.extractStatementContent(token).trim();
 
     if (content.match(/^if\s+/)) {
       return this.parseIfStatement();
@@ -134,7 +134,7 @@ export class TemplateParser {
     const startToken = this.peek();
     if (!startToken) throw new Error('Expected statement token');
 
-    const content = this.extractStatementContent(startToken.content);
+    const content = this.extractStatementContent(startToken);
     const conditionMatch = content.match(/^if\s+(.+?)$/is);
     if (!conditionMatch) {
       this.addError(
@@ -164,7 +164,7 @@ export class TemplateParser {
     if (
       nextToken &&
       nextToken.type === TokenType.STATEMENT &&
-      this.extractStatementContent(nextToken.content).trim().startsWith('else')
+      this.extractStatementContent(nextToken).trim().startsWith('else')
     ) {
       this.advance();
       elseBody = this.parseStatementBody(['endif']);
@@ -175,7 +175,7 @@ export class TemplateParser {
     if (
       endToken &&
       endToken.type === TokenType.STATEMENT &&
-      this.extractStatementContent(endToken.content).startsWith('endif')
+      this.extractStatementContent(endToken).startsWith('endif')
     ) {
       this.advance();
     } else {
@@ -206,7 +206,7 @@ export class TemplateParser {
     const startToken = this.peek();
     if (!startToken) throw new Error('Expected statement token');
 
-    const content = this.extractStatementContent(startToken.content);
+    const content = this.extractStatementContent(startToken);
     const match = content.match(/^for\s+(\w+)\s+in\s+(.+?)$/);
 
     if (!match) {
@@ -231,7 +231,7 @@ export class TemplateParser {
     if (
       endToken &&
       endToken.type === TokenType.STATEMENT &&
-      this.extractStatementContent(endToken.content).startsWith('endfor')
+      this.extractStatementContent(endToken).startsWith('endfor')
     ) {
       this.advance();
     } else {
@@ -262,7 +262,7 @@ export class TemplateParser {
     const startToken = this.peek();
     if (!startToken) throw new Error('Expected statement token');
 
-    const content = this.extractStatementContent(startToken.content);
+    const content = this.extractStatementContent(startToken);
     const match = content.match(/^set\s+(\w+)\s*=\s*(.+?)$/);
 
     if (!match) {
@@ -299,7 +299,7 @@ export class TemplateParser {
     const startToken = this.peek();
     if (!startToken) throw new Error('Expected statement token');
 
-    const content = this.extractStatementContent(startToken.content);
+    const content = this.extractStatementContent(startToken);
     const match = content.match(/^block\s+(\w+)$/);
 
     if (!match) {
@@ -322,7 +322,7 @@ export class TemplateParser {
     if (
       endToken &&
       endToken.type === TokenType.STATEMENT &&
-      this.extractStatementContent(endToken.content).startsWith('endblock')
+      this.extractStatementContent(endToken).startsWith('endblock')
     ) {
       this.advance();
     } else {
@@ -349,7 +349,7 @@ export class TemplateParser {
    */
   private parseExpressionStatement(): ExpressionStatementNode {
     const token = this.advance();
-    const content = this.extractExpressionContent(token.content);
+    const content = this.extractExpressionContent(token);
     const value = this.parseExpression(content);
 
     return {
@@ -373,7 +373,7 @@ export class TemplateParser {
       // Check if we've reached a closing keyword
       if (
         token.type === TokenType.STATEMENT &&
-        closeKeywords.some((kw) => this.extractStatementContent(token.content).startsWith(kw))
+        closeKeywords.some((kw) => this.extractStatementContent(token).startsWith(kw))
       ) {
         break;
       }
@@ -712,36 +712,40 @@ export class TemplateParser {
   /**
    * Extract statement content between delimiters
    */
-  private extractStatementContent(content: string): string {
+  private extractStatementContent(tokenOrContent: Token | string): string {
     // Use flat string operations instead of regex to avoid ReDoS
-    let result = content;
-    if (result.startsWith('{%')) {
-      result = result.substring(2);
+    const token =
+      typeof tokenOrContent === 'string'
+        ? ({ content: tokenOrContent } as Pick<Token, 'content'>)
+        : tokenOrContent;
+    let result = typeof token.content === 'string' ? token.content : '';
+
+    const startDelimiter = token.delimiterStart ?? '{%';
+    const endDelimiter = token.delimiterEnd ?? '%}';
+    if (result.startsWith(startDelimiter) && result.endsWith(endDelimiter)) {
+      result = result.substring(startDelimiter.length, result.length - endDelimiter.length);
     }
-    if (result.endsWith('%}')) {
-      result = result.substring(0, result.length - 2);
-    }
+
     return result.trim();
   }
 
   /**
    * Extract expression content between delimiters
    */
-  private extractExpressionContent(content: string): string {
+  private extractExpressionContent(tokenOrContent: Token | string): string {
     // Use flat string operations instead of regex to avoid ReDoS
-    let result = content;
-    const expressionDelimiterPairs: Array<[string, string]> = [
-      ['{{', '}}'],
-      ['[[', ']]'],
-      ['<%', '%>'],
-    ];
+    const token =
+      typeof tokenOrContent === 'string'
+        ? ({ content: tokenOrContent } as Pick<Token, 'content'>)
+        : tokenOrContent;
+    let result = typeof token.content === 'string' ? token.content : '';
 
-    for (const [startDelimiter, endDelimiter] of expressionDelimiterPairs) {
-      if (result.startsWith(startDelimiter) && result.endsWith(endDelimiter)) {
-        result = result.substring(startDelimiter.length, result.length - endDelimiter.length);
-        break;
-      }
+    const startDelimiter = token.delimiterStart ?? '{{';
+    const endDelimiter = token.delimiterEnd ?? '}}';
+    if (result.startsWith(startDelimiter) && result.endsWith(endDelimiter)) {
+      result = result.substring(startDelimiter.length, result.length - endDelimiter.length);
     }
+
     return result.trim();
   }
 

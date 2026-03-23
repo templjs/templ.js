@@ -30,6 +30,10 @@ export interface Token {
   type: TokenType;
   /** Full content including delimiters */
   content: string;
+  /** Delimiter start marker for non-text tokens */
+  delimiterStart?: string;
+  /** Delimiter end marker for non-text tokens */
+  delimiterEnd?: string;
   /** Starting position in source */
   start: Position;
   /** Ending position in source */
@@ -44,16 +48,20 @@ export interface DelimiterConfig {
   statement_start?: string;
   /** Statement end delimiter (default: " %}") */
   statement_end?: string;
+  /** Statement delimiter pair shorthand (start, end); when provided, this takes precedence over statement_start/statement_end. */
+  statement?: [string, string];
   /** Expression start delimiter (default: "{{ ") */
   expression_start?: string;
   /** Expression end delimiter (default: " }}") */
   expression_end?: string;
-  /** Expression delimiter pair shorthand (start, end) */
+  /** Expression delimiter pair shorthand (start, end); when provided, this takes precedence over expression_start/expression_end. */
   expression?: [string, string];
   /** Comment start delimiter (default: "{# ") */
   comment_start?: string;
   /** Comment end delimiter (default: " #}") */
   comment_end?: string;
+  /** Comment delimiter pair shorthand (start, end); when provided, this takes precedence over comment_start/comment_end. */
+  comment?: [string, string];
 }
 
 /**
@@ -70,8 +78,11 @@ export interface LexerOptions {
 export const DEFAULT_DELIMITERS: Required<DelimiterConfig> = {
   statement_start: '{%',
   statement_end: '%}',
+  statement: ['{%', '%}'],
   expression_start: '{{',
   expression_end: '}}',
+  expression: ['{{', '}}'],
   comment_start: '{#',
   comment_end: '#}',
+  comment: ['{#', '#}'],
 };

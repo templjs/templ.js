@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { tokenize } from '../../src/lexer/lexer.js';
 import { TokenType } from '../../src/lexer/types.js';
 import { parse, TemplateParser } from '../../src/parser/parser.js';
+import { parseExpressionWithPriorityList } from '../../src/parser/parsers.js';
 import type {
+  ExpressionNode,
   ExpressionStatementNode,
   IfNode,
   ForNode,
@@ -11,6 +13,63 @@ import type {
   VariableNode,
   LiteralNode,
 } from '../../src/parser/types.js';
+
+function createExpressionParserContext() {
+  const context = {
+    parseExpression: (expr: string): ExpressionNode =>
+      parseExpressionWithPriorityList(expr, context),
+    parseLiteral: (expr: string): LiteralNode | null => {
+      const trimmed = expr.trim();
+      if (trimmed.startsWith('`') && trimmed.endsWith('`')) {
+        return {
+          type: 'literal',
+          valueType: 'string',
+          value: trimmed.slice(1, -1),
+          start: { line: 1, column: 0 },
+          end: { line: 1, column: trimmed.length },
+        };
+      }
+
+      if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) {
+        return {
+          type: 'literal',
+          valueType: 'number',
+          value: Number(trimmed),
+          start: { line: 1, column: 0 },
+          end: { line: 1, column: trimmed.length },
+        };
+      }
+
+      return null;
+    },
+    parseFilterExpression: (expr: string) => ({
+      type: 'filter' as const,
+      source: context.createErrorExpression(`Unexpected filter parse: ${expr}`),
+      filters: [],
+      start: { line: 1, column: 0 },
+      end: { line: 1, column: expr.length },
+    }),
+    parseVariable: (expr: string) => ({
+      type: 'variable' as const,
+      name: expr,
+      path: [],
+      start: { line: 1, column: 0 },
+      end: { line: 1, column: expr.length },
+    }),
+    parseObjectProperties: () => [],
+    splitTopLevel: (str: string, delimiter: string) => str.split(delimiter),
+    isVariableStart: (char: string) => /[a-zA-Z_]/.test(char),
+    createErrorExpression: (message: string) => ({
+      type: 'error' as const,
+      message,
+      recovered: true,
+      start: { line: 1, column: 0 },
+      end: { line: 1, column: message.length },
+    }),
+  };
+
+  return context;
+}
 
 describe('parse', () => {
   describe('Parser - Basic Functionality', () => {
@@ -2501,6 +2560,30 @@ describe('parse', () => {
 
       expect(expressionNode.value.filters[0]?.name).toBe('round');
       expect(expressionNode.value.filters[0]?.args).toHaveLength(1);
+    });
+
+    it('treats parentheses in template literal text as non-structural for outer wrapping', () => {
+      const context = createExpressionParserContext();
+      const result = parseExpressionWithPriorityList('(`literal (`)', context);
+
+      expect(result.type).toBe('paren');
+      if (result.type !== 'paren') {
+        throw new Error('Expected paren expression');
+      }
+
+      expect(result.value).toEqual(
+        expect.objectContaining({
+          type: 'literal',
+          value: 'literal (',
+        })
+      );
+    });
+
+    it('still treats parentheses inside template expressions as structural', () => {
+      const context = createExpressionParserContext();
+      const result = parseExpressionWithPriorityList('(`value ${count + (offset}`)', context);
+
+      expect(result.type).not.toBe('paren');
     });
 
     it('parses in and is operators', () => {

@@ -85,10 +85,13 @@ function isWrappedByOutermostParens(expr: string): boolean {
   let depth = 0;
   let inSingleQuote = false;
   let inDoubleQuote = false;
+  let inTemplateLiteral = false;
+  let templateExprDepth = 0;
   let escaped = false;
 
   for (let i = 0; i < expr.length; i++) {
     const ch = expr[i];
+    const nextCh = expr[i + 1];
 
     if (escaped) {
       escaped = false;
@@ -96,7 +99,22 @@ function isWrappedByOutermostParens(expr: string): boolean {
     }
 
     if (ch === '\\') {
-      escaped = inSingleQuote || inDoubleQuote;
+      escaped = inSingleQuote || inDoubleQuote || inTemplateLiteral;
+      continue;
+    }
+
+    if (inTemplateLiteral && templateExprDepth === 0) {
+      if (ch === '`') {
+        inTemplateLiteral = false;
+        continue;
+      }
+
+      if (ch === '$' && nextCh === '{') {
+        templateExprDepth = 1;
+        i++;
+        continue;
+      }
+
       continue;
     }
 
@@ -110,8 +128,25 @@ function isWrappedByOutermostParens(expr: string): boolean {
       continue;
     }
 
+    if (ch === '`' && !inSingleQuote && !inDoubleQuote) {
+      inTemplateLiteral = !inTemplateLiteral;
+      continue;
+    }
+
     if (inSingleQuote || inDoubleQuote) {
       continue;
+    }
+
+    if (inTemplateLiteral && templateExprDepth > 0) {
+      if (ch === '{') {
+        templateExprDepth++;
+        continue;
+      }
+
+      if (ch === '}') {
+        templateExprDepth--;
+        continue;
+      }
     }
 
     if (ch === '(') {

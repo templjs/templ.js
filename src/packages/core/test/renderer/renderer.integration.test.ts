@@ -1244,6 +1244,22 @@ describe('Renderer', () => {
         expect(result.output).toBe('spaces');
       });
 
+      it('should escape html-sensitive characters with escape filter', () => {
+        const template = '{{ text | escape }}';
+        const tokens = tokenize(template);
+        const parseResult = parse(tokens);
+        const result = render(parseResult.ast!, { text: '<b>Tom & "Jerry"</b>' });
+        expect(result.output).toBe('&lt;b&gt;Tom &amp; &quot;Jerry&quot;&lt;/b&gt;');
+      });
+
+      it('should support e alias for html escaping', () => {
+        const template = '{{ text | e }}';
+        const tokens = tokenize(template);
+        const parseResult = parse(tokens);
+        const result = render(parseResult.ast!, { text: "O'Malley <admin>" });
+        expect(result.output).toBe('O&#39;Malley &lt;admin&gt;');
+      });
+
       it('should chain multiple filters', () => {
         const template = '{{ text | lower | capitalize }}';
         const tokens = tokenize(template);
