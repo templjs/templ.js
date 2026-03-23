@@ -153,7 +153,7 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 - [x] Wire schema into completion/hover/diagnostic execution path (create service-plugin if not present)
 - [x] Add file watcher for schema file changes and implement hot reload (cache invalidation, diagnostics refresh)
 - [x] Add/extend tests for all new features: glob patterns, URL loading, directives, frontmatter, precedence rules, content-schema validation
-- [x] Update extension documentation with setup, glob patterns, content-schema usage, and troubleshooting
+- [ ] Update extension documentation with setup, glob patterns, content-schema usage, inline directives, root properties, URL schemas, multi-root workspace handling, and troubleshooting
 
 ## Acceptance Criteria
 
