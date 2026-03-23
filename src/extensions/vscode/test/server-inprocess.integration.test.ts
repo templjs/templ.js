@@ -285,7 +285,7 @@ describe('language-server-inprocess-integration', () => {
         changes: Array<{ uri: string; type: number }>;
       }) => void;
       watchedFilesHandler({
-        changes: [{ uri: `file://${schemaPath}`, type: 2 }],
+        changes: [{ uri: `file://${schemaPath}`, type: 2 /* FileChangeType.Changed */ }],
       });
 
       await vi.waitFor(() => {

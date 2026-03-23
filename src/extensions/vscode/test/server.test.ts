@@ -15,6 +15,7 @@ const onDefinition = vi.fn();
 const sendDiagnostics = vi.fn();
 const consoleLog = vi.fn();
 const consoleWarn = vi.fn();
+const FILE_CHANGE_TYPE_CHANGED = 2;
 
 const initialize = vi.fn(async () => ({ capabilities: {} }));
 const initialized = vi.fn();
@@ -267,18 +268,23 @@ describe('language-server-bootstrap', () => {
     >;
     const serverOptions = initializeCalls[0][2];
 
-    expect(serverOptions.watchFileExtensions).toEqual(
-      expect.arrayContaining([
-        '.templ.md',
-        '.templ.json',
-        '.templ.yaml',
-        '.templ.html',
-        '.tmpl.md',
-        '.tpl.md',
-        '.tpl.json',
-        '.tpl.yaml',
-      ])
-    );
+    expect(serverOptions.watchFileExtensions).toEqual([
+      '.templ.md',
+      '.templ.json',
+      '.templ.yaml',
+      '.templ.yml',
+      '.templ.html',
+      '.tmpl.md',
+      '.tmpl.json',
+      '.tmpl.yaml',
+      '.tmpl.yml',
+      '.tmpl.html',
+      '.tpl.md',
+      '.tpl.json',
+      '.tpl.yaml',
+      '.tpl.yml',
+      '.tpl.html',
+    ]);
   });
 
   it('reloads diagnostics for open documents when schema files change on disk', async () => {
@@ -313,7 +319,9 @@ describe('language-server-bootstrap', () => {
         changes: Array<{ uri: string; type: number }>;
       }) => void;
       watchedFilesHandler({
-        changes: [{ uri: 'file:///workspace/.templjs/schema.json', type: 2 }],
+        changes: [
+          { uri: 'file:///workspace/.templjs/schema.json', type: FILE_CHANGE_TYPE_CHANGED },
+        ],
       });
 
       await vi.runAllTimersAsync();
