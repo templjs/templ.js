@@ -2455,7 +2455,7 @@ describe('parse', () => {
       expect(result.ast?.children.filter((n) => n.type === 'expression_statement').length).toBe(2);
     });
 
-    it('parses parenthesized arithmetic before a filter without recursion', () => {
+    it('parses parenthesized arithmetic before a filter', () => {
       const template = '{{ (value * 100) | round(1) }}';
       const tokens = tokenize(template);
       const result = parse(tokens);
@@ -2469,6 +2469,38 @@ describe('parse', () => {
       }
 
       expect(expressionNode.value.type).toBe('filter');
+      if (expressionNode.value.type !== 'filter') {
+        throw new Error('Expected filter expression');
+      }
+
+      expect(expressionNode.value.filters[0]?.name).toBe('round');
+      expect(expressionNode.value.filters[0]?.args).toHaveLength(1);
+    });
+
+    it('parses parenthesized arithmetic before a filter with custom expression delimiters', () => {
+      const template = '[[ (value * 100) | round(1) ]]';
+      const tokens = tokenize(template, {
+        delimiters: {
+          expression: ['[[', ']]'],
+        },
+      });
+      const result = parse(tokens);
+
+      expect(result.errors).toHaveLength(0);
+      const expressionNode = result.ast?.children.find((n) => n.type === 'expression_statement');
+      expect(expressionNode).toBeDefined();
+
+      if (!expressionNode || expressionNode.type !== 'expression_statement') {
+        throw new Error('Expected expression statement node');
+      }
+
+      expect(expressionNode.value.type).toBe('filter');
+      if (expressionNode.value.type !== 'filter') {
+        throw new Error('Expected filter expression');
+      }
+
+      expect(expressionNode.value.filters[0]?.name).toBe('round');
+      expect(expressionNode.value.filters[0]?.args).toHaveLength(1);
     });
 
     it('parses in and is operators', () => {

@@ -730,11 +730,17 @@ export class TemplateParser {
   private extractExpressionContent(content: string): string {
     // Use flat string operations instead of regex to avoid ReDoS
     let result = content;
-    if (result.startsWith('{{')) {
-      result = result.substring(2);
-    }
-    if (result.endsWith('}}')) {
-      result = result.substring(0, result.length - 2);
+    const expressionDelimiterPairs: Array<[string, string]> = [
+      ['{{', '}}'],
+      ['[[', ']]'],
+      ['<%', '%>'],
+    ];
+
+    for (const [startDelimiter, endDelimiter] of expressionDelimiterPairs) {
+      if (result.startsWith(startDelimiter) && result.endsWith(endDelimiter)) {
+        result = result.substring(startDelimiter.length, result.length - endDelimiter.length);
+        break;
+      }
     }
     return result.trim();
   }

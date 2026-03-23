@@ -48,6 +48,8 @@ export interface DelimiterConfig {
   expression_start?: string;
   /** Expression end delimiter (default: " }}") */
   expression_end?: string;
+  /** Expression delimiter pair shorthand (start, end) */
+  expression?: [string, string];
   /** Comment start delimiter (default: "{# ") */
   comment_start?: string;
   /** Comment end delimiter (default: " #}") */

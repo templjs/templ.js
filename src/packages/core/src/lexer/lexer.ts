@@ -20,9 +20,18 @@ import { TokenType, DEFAULT_DELIMITERS } from './types.js';
  */
 export function tokenize(template: string, options?: LexerOptions): Token[] {
   // Merge delimiters with defaults
+  const expressionPair = options?.delimiters?.expression;
   const delimiters: Required<DelimiterConfig> = {
     ...DEFAULT_DELIMITERS,
     ...options?.delimiters,
+    expression_start:
+      expressionPair?.[0] ??
+      options?.delimiters?.expression_start ??
+      DEFAULT_DELIMITERS.expression_start,
+    expression_end:
+      expressionPair?.[1] ??
+      options?.delimiters?.expression_end ??
+      DEFAULT_DELIMITERS.expression_end,
   };
 
   const tokens: Token[] = [];

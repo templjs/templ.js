@@ -1166,6 +1166,22 @@ describe('Renderer', () => {
           expect(result.errors).toHaveLength(0);
           expect(result.output).toBe('6.2');
         });
+
+        it('applies filters to parenthesized arithmetic expressions with custom delimiters', () => {
+          const template = '<% (value * 100) | round(1) %>';
+          const tokens = tokenize(template, {
+            delimiters: {
+              expression_start: '<%',
+              expression_end: '%>',
+            },
+          });
+          const parseResult = parse(tokens);
+          const result = render(parseResult.ast!, { value: 0.062 });
+
+          expect(result.success).toBe(true);
+          expect(result.errors).toHaveLength(0);
+          expect(result.output).toBe('6.2');
+        });
       });
 
       describe('default and multi-type filter combinations', () => {
