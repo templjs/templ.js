@@ -28,6 +28,8 @@ test_results:
 links:
   depends_on:
     - '[[054_bug_no_schema_aware_authoring]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pulls?q=WI-055'
 ---
 
 ## Goal

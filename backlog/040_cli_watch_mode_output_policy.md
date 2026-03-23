@@ -25,6 +25,8 @@ links:
   depends_on:
     - '[[029_cli_signal_handling]]'
     - '[[018_cli_watch_mode]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/23'
 ---
 
 ## Goal

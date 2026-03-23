@@ -2,9 +2,9 @@
 id: wi-021
 type: work-item
 subtype: task
-lifecycle: draft
+lifecycle: active
 title: '21: Create Example Templates and Demo Video'
-status: proposed
+status: in-progress
 priority: critical
 estimated: 8
 actual: 3

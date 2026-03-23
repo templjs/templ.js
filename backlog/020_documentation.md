@@ -2,9 +2,9 @@
 id: wi-020
 type: work-item
 subtype: task
-lifecycle: draft
+lifecycle: active
 title: '20: Write Documentation (Getting Started and API Reference)'
-status: proposed
+status: in-progress
 priority: critical
 estimated: 14
 actual: 4
