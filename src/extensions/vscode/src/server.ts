@@ -214,7 +214,13 @@ function getSchemaOptionsForUri(uri: string): SchemaRuntimeOptions {
 }
 
 function isLikelySchemaUri(uri: string): boolean {
-  return /\.(json|ya?ml)(\?|#|$)/i.test(uri);
+  const normalized = uri.split(/[?#]/, 1)[0].toLowerCase();
+  if (!/\.(json|ya?ml)$/.test(normalized)) {
+    return false;
+  }
+
+  const fileName = normalized.split('/').pop() ?? normalized;
+  return !/\.(templ|template|tpl|tmpl)\.(json|ya?ml)$/.test(fileName);
 }
 
 function ensureSchemaOptionsForUri(uri: string, text: string): SchemaRuntimeOptions {

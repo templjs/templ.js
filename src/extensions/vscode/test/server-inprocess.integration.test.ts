@@ -20,7 +20,7 @@ const consoleWarn = vi.fn();
 const initialize = vi.fn(async () => ({ capabilities: {} }));
 const initialized = vi.fn();
 const shutdown = vi.fn();
-const FILE_CHANGE_TYPE_CHANGED = 2;
+const FILE_CHANGE_TYPE_CHANGED = 2; // LSP FileChangeType.Changed
 
 vi.mock('@volar/language-server/node', () => ({
   createConnection: vi.fn(() => ({
@@ -282,7 +282,14 @@ describe('language-server-inprocess-integration', () => {
       });
       sendDiagnostics.mockClear();
 
-      const watchedFilesHandler = onDidChangeWatchedFiles.mock.calls[0][0] as (event: {
+      const watchedFilesRegistration = onDidChangeWatchedFiles.mock.calls[0];
+      if (!watchedFilesRegistration || typeof watchedFilesRegistration[0] !== 'function') {
+        throw new Error(
+          'Server did not register onDidChangeWatchedFiles handler during test setup'
+        );
+      }
+
+      const watchedFilesHandler = watchedFilesRegistration[0] as (event: {
         changes: Array<{ uri: string; type: number }>;
       }) => void;
       watchedFilesHandler({
