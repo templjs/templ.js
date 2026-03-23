@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "./data.schema.json",
+  "title": "Markdown Report Example Data",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["company", "generated_at", "kpi", "top_regions", "risks"],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "company": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "kpi": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total_users", "active_users_30d", "conversion_rate"],
+      "properties": {
+        "total_users": {
+          "type": "number",
+          "minimum": 0
+        },
+        "active_users_30d": {
+          "type": "number",
+          "minimum": 0
+        },
+        "conversion_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "top_regions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "users"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "users": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

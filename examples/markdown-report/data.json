@@ -1,4 +1,5 @@
 {
+  "$schema": "./data.schema.json",
   "company": { "name": "Acme Labs" },
   "generated_at": "2026-03-22T10:00:00Z",
   "kpi": {
