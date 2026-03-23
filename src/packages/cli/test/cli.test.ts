@@ -26,6 +26,12 @@ vi.mock('../src/commands/validate.js', () => ({
 }));
 
 vi.mock('../src/watch-mode.js', () => ({
+  WATCH_ERROR_PREFIXES: [
+    'Error: ',
+    'Watch error: ',
+    'Unexpected watch render loop error: ',
+    'Unexpected watch mode startup error: ',
+  ],
   defaultWatchModeDependencies: {
     fileExists: vi.fn(),
     render: vi.fn(),
@@ -274,6 +280,9 @@ describe('cli-main', () => {
       'Watching template.templ and data.json. Press Ctrl+C to stop.\n'
     );
 
+    watchDeps?.writeStderr('odd warning\n');
+    expect(stderrSpy).toHaveBeenCalledWith('Unexpected watch stderr: odd warning\n');
+
     watchDeps?.writeStderr('Error: still loud\n');
     expect(stderrSpy).toHaveBeenCalledWith('Error: still loud\n');
   });
@@ -299,6 +308,7 @@ describe('cli-main', () => {
     expect(watchDeps).toBeDefined();
     watchDeps?.writeOutput('out.txt', 'rendered-output', 'utf-8');
 
+    expect(writeFileSync).toHaveBeenCalledWith('out.txt', 'rendered-output', 'utf-8');
     expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"ok":true/));
     expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"wroteFile":true/));
     expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"outputPath":"out.txt"/));

@@ -18,7 +18,11 @@ import { renderCommand } from './commands/render.js';
 import { validateCommand } from './commands/validate.js';
 import { version } from './index.js';
 import { loadConfig, applyConfig } from './config/index.js';
-import { defaultWatchModeDependencies, startRenderWatchMode } from './watch-mode.js';
+import {
+  defaultWatchModeDependencies,
+  startRenderWatchMode,
+  WATCH_ERROR_PREFIXES,
+} from './watch-mode.js';
 import { registerSignalHandlers } from './signal-handler.js';
 import { detectTTY } from './tty-detection.js';
 import { provideErrorSuggestion } from './error-formatter.js';
@@ -121,7 +125,7 @@ function createWatchModeDependencies(
   return {
     ...defaultWatchModeDependencies,
     writeOutput: (path: string, data: string, encoding: BufferEncoding): void => {
-      defaultWatchModeDependencies.writeOutput(path, data, encoding);
+      writeFileSync(path, data, encoding);
       if (mode.quiet) {
         return;
       }
@@ -171,19 +175,11 @@ function createWatchModeDependencies(
         return process.stderr.write(data);
       }
 
-      // Keep these prefixes aligned with watch loop error wording in src/packages/cli/src/watch-mode.ts.
-      // If upstream wording changes, update this list; unmatched formats still flow through fallback handling below.
-      const watchErrorPrefixes = [
-        'Error: ',
-        'Watch error: ',
-        'Unexpected watch render loop error: ',
-        'Unexpected watch mode startup error: ',
-      ];
-
-      for (const prefix of watchErrorPrefixes) {
+      for (const prefix of WATCH_ERROR_PREFIXES) {
         if (trimmed.startsWith(prefix)) {
           if (mode.quiet || mode.json) {
-            writeError(mode, 'render', trimmed.slice(prefix.length));
+            const message = trimmed.slice(prefix.length) || trimmed;
+            writeError(mode, 'render', message);
             return true;
           }
 
@@ -192,7 +188,8 @@ function createWatchModeDependencies(
       }
 
       if (mode.quiet) {
-        return true;
+        const unexpectedMessage = trimmed || data;
+        return process.stderr.write(`Unexpected watch stderr: ${unexpectedMessage}\n`);
       }
 
       if (mode.json) {

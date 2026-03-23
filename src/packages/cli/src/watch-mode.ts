@@ -21,6 +21,13 @@ export interface WatchModeDependencies {
 
 export const DEFAULT_DEBOUNCE_MS = 75;
 
+export const WATCH_ERROR_PREFIXES = [
+  'Error: ',
+  'Watch error: ',
+  'Unexpected watch render loop error: ',
+  'Unexpected watch mode startup error: ',
+] as const;
+
 export const defaultWatchModeDependencies: WatchModeDependencies = {
   fileExists: existsSync,
   render: async () => {
