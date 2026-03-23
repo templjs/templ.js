@@ -57,6 +57,22 @@ const output = renderTemplate('Hello {{ user.name }}', {
 console.log(output);
 ```
 
+## Architecture & Source
+
+Design context (ADRs):
+
+- [ADR 001: Language Migration](./adr/001-language-migration.md)
+- [ADR 002: Parser Selection](./adr/002-parser-selection.md)
+- [ADR 005: Monorepo](./adr/005-monorepo.md)
+
+Implementation references:
+
+- Core quick-start API export `renderTemplate`: [src/packages/core/src/index.ts](../src/packages/core/src/index.ts#L155)
+- CLI entrypoint (`templjs render` wiring): [src/packages/cli/src/cli.ts](../src/packages/cli/src/cli.ts#L223)
+- CLI command export `renderCommand`: [src/packages/cli/src/commands/render.ts](../src/packages/cli/src/commands/render.ts#L303)
+- CLI command export `validateCommand`: [src/packages/cli/src/commands/validate.ts](../src/packages/cli/src/commands/validate.ts#L15)
+- CLI command export `initCommand`: [src/packages/cli/src/commands/init.ts](../src/packages/cli/src/commands/init.ts#L20)
+
 ## VS Code Setup
 
 1. Install the templjs VS Code extension package in this repository.
