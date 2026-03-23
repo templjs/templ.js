@@ -266,6 +266,7 @@ describe('cli-main', () => {
     ]);
 
     const watchDeps = vi.mocked(startRenderWatchMode).mock.calls[0]?.[1];
+    expect(watchDeps).toBeDefined();
     watchDeps?.writeStdout('rendered-output\n');
     watchDeps?.writeStderr('Watching template.templ and data.json. Press Ctrl+C to stop.\n');
     expect(stdoutSpy).not.toHaveBeenCalledWith('rendered-output\n');
@@ -295,6 +296,7 @@ describe('cli-main', () => {
     ]);
 
     const watchDeps = vi.mocked(startRenderWatchMode).mock.calls[0]?.[1];
+    expect(watchDeps).toBeDefined();
     watchDeps?.writeOutput('out.txt', 'rendered-output', 'utf-8');
 
     expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"ok":true/));

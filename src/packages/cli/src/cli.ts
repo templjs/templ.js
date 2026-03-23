@@ -110,7 +110,7 @@ function normalizeCommanderErrorMessage(error: CommanderError): string {
 }
 
 function trimTrailingNewline(value: string): string {
-  return value.endsWith('\n') ? value.slice(0, -1) : value;
+  return value.replace(/\r?\n$/, '');
 }
 
 function createWatchModeDependencies(
@@ -171,24 +171,18 @@ function createWatchModeDependencies(
         return process.stderr.write(data);
       }
 
-      if (trimmed.startsWith('Error: ')) {
-        writeError(mode, 'render', trimmed.slice('Error: '.length));
-        return true;
-      }
+      const watchErrorPrefixes = [
+        'Error: ',
+        'Watch error: ',
+        'Unexpected watch render loop error: ',
+        'Unexpected watch mode startup error: ',
+      ];
 
-      if (trimmed.startsWith('Watch error: ')) {
-        writeError(mode, 'render', trimmed.slice('Watch error: '.length));
-        return true;
-      }
-
-      if (trimmed.startsWith('Unexpected watch render loop error: ')) {
-        writeError(mode, 'render', trimmed.slice('Unexpected watch render loop error: '.length));
-        return true;
-      }
-
-      if (trimmed.startsWith('Unexpected watch mode startup error: ')) {
-        writeError(mode, 'render', trimmed.slice('Unexpected watch mode startup error: '.length));
-        return true;
+      for (const prefix of watchErrorPrefixes) {
+        if (trimmed.startsWith(prefix)) {
+          writeError(mode, 'render', trimmed.slice(prefix.length));
+          return true;
+        }
       }
 
       if (mode.quiet) {
