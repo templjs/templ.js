@@ -6,6 +6,7 @@ import type {
   ErrorNode,
   FilterNode,
   LiteralNode,
+  ParenNode,
   UnaryOpNode,
   VariableNode,
 } from '../parser/types.js';
@@ -208,6 +209,13 @@ export function evaluateUnaryOp(node: UnaryOpNode, context: RenderContext): AnyV
 }
 
 /**
+ * Evaluate a parenthesized expression
+ */
+export function evaluateParen(node: ParenNode, context: RenderContext): AnyValue {
+  return evaluateExpression(node.value, context);
+}
+
+/**
  * Handle parse error expressions
  */
 export function evaluateError(expr: ErrorNode, context: RenderContext): AnyValue {
@@ -241,6 +249,7 @@ export function evaluateExpression(expr: ExpressionNode, context: RenderContext)
     filter: evaluateFilter as any,
     binary_op: evaluateBinaryOp as any,
     unary_op: evaluateUnaryOp as any,
+    paren: evaluateParen as any,
     error: evaluateError as any,
   };
 

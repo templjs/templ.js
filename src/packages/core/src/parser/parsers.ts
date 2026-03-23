@@ -77,6 +77,63 @@ interface ExpressionParserRule {
   parse: (expr: string, context: ExpressionParserContext) => ExpressionNode | null;
 }
 
+function isWrappedByOutermostParens(expr: string): boolean {
+  if (!(expr.startsWith('(') && expr.endsWith(')'))) {
+    return false;
+  }
+
+  let depth = 0;
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let escaped = false;
+
+  for (let i = 0; i < expr.length; i++) {
+    const ch = expr[i];
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    if (ch === '\\') {
+      escaped = inSingleQuote || inDoubleQuote;
+      continue;
+    }
+
+    if (ch === "'" && !inDoubleQuote) {
+      inSingleQuote = !inSingleQuote;
+      continue;
+    }
+
+    if (ch === '"' && !inSingleQuote) {
+      inDoubleQuote = !inDoubleQuote;
+      continue;
+    }
+
+    if (inSingleQuote || inDoubleQuote) {
+      continue;
+    }
+
+    if (ch === '(') {
+      depth++;
+      continue;
+    }
+
+    if (ch === ')') {
+      depth--;
+      if (depth < 0) {
+        return false;
+      }
+
+      if (depth === 0 && i < expr.length - 1) {
+        return false;
+      }
+    }
+  }
+
+  return depth === 0;
+}
+
 /**
  * Priority-ordered expression parser rules
  * Rules are evaluated in order of priority, and the first match wins
@@ -147,7 +204,7 @@ const expressionParserRules: ExpressionParserRule[] = [
     name: 'paren',
     priority: 40,
     parse: (expr, context) => {
-      if (!(expr.startsWith('(') && expr.endsWith(')'))) return null;
+      if (!isWrappedByOutermostParens(expr)) return null;
       const inner = expr.substring(1, expr.length - 1);
       return {
         type: 'paren',
@@ -200,7 +257,8 @@ const expressionParserRules: ExpressionParserRule[] = [
   {
     name: 'filter',
     priority: 80,
-    parse: (expr, context) => (expr.includes('|') ? context.parseFilterExpression(expr) : null),
+    parse: (expr, context) =>
+      context.splitTopLevel(expr, '|').length > 1 ? context.parseFilterExpression(expr) : null,
   },
   {
     name: 'variable',

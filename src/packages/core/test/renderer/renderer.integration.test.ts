@@ -1155,6 +1155,17 @@ describe('Renderer', () => {
           const result = render(parseResult.ast!, { price: -123.456 });
           expect(result.success).toBe(true);
         });
+
+        it('applies filters to parenthesized arithmetic expressions', () => {
+          const template = '{{ (value * 100) | round(1) }}';
+          const tokens = tokenize(template);
+          const parseResult = parse(tokens);
+          const result = render(parseResult.ast!, { value: 0.062 });
+
+          expect(result.success).toBe(true);
+          expect(result.errors).toHaveLength(0);
+          expect(result.output).toBe('6.2');
+        });
       });
 
       describe('default and multi-type filter combinations', () => {

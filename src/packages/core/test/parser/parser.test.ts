@@ -2455,6 +2455,22 @@ describe('parse', () => {
       expect(result.ast?.children.filter((n) => n.type === 'expression_statement').length).toBe(2);
     });
 
+    it('parses parenthesized arithmetic before a filter without recursion', () => {
+      const template = '{{ (value * 100) | round(1) }}';
+      const tokens = tokenize(template);
+      const result = parse(tokens);
+
+      expect(result.errors).toHaveLength(0);
+      const expressionNode = result.ast?.children.find((n) => n.type === 'expression_statement');
+      expect(expressionNode).toBeDefined();
+
+      if (!expressionNode || expressionNode.type !== 'expression_statement') {
+        throw new Error('Expected expression statement node');
+      }
+
+      expect(expressionNode.value.type).toBe('filter');
+    });
+
     it('parses in and is operators', () => {
       const template = `{{ "key" in obj }}{{ x is defined }}{{ y is not empty }}{{ z in [1, 2, 3] }}`;
       const tokens = tokenize(template);
