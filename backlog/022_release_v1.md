@@ -47,6 +47,8 @@ links:
     - '[[032_cli_config_files]]'
     - '[[033_schema_parity]]'
     - '[[034_prerelease_coverage_quality_gate]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/commit/8418c57'
 ---
 
 ## Goal
