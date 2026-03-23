@@ -208,7 +208,7 @@ describe('cli-main', () => {
     const watchDeps = vi.mocked(startRenderWatchMode).mock.calls[0]?.[1];
     expect(watchDeps?.fileExists).toBe(defaultWatchModeDependencies.fileExists);
     expect(watchDeps?.watchFile).toBe(defaultWatchModeDependencies.watchFile);
-    expect(watchDeps?.writeOutput).toBe(defaultWatchModeDependencies.writeOutput);
+    expect(typeof watchDeps?.writeOutput).toBe('function');
     expect(typeof watchDeps?.render).toBe('function');
     expect(renderCommand).not.toHaveBeenCalled();
 
@@ -218,6 +218,88 @@ describe('cli-main', () => {
       'data.json',
       expect.objectContaining({ outputFormat: 'text' })
     );
+  });
+
+  it('emits json envelopes for watch render output in json mode', async () => {
+    vi.mocked(startRenderWatchMode).mockResolvedValue();
+
+    await main([
+      'node',
+      'cli.js',
+      '--json',
+      'render',
+      '-t',
+      'template.templ',
+      '-i',
+      'data.json',
+      '--watch',
+    ]);
+
+    const watchDeps = vi.mocked(startRenderWatchMode).mock.calls[0]?.[1];
+    expect(watchDeps).toBeDefined();
+
+    watchDeps?.writeStdout('rendered-output\n');
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"ok":true/));
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"command":"render"/));
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"watch":true/));
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"output":"rendered-output"/));
+
+    watchDeps?.writeStderr('Error: watch exploded\n');
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/"ok":false/));
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/"command":"render"/));
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/"error":"watch exploded"/));
+  });
+
+  it('suppresses non-error watch output in quiet mode', async () => {
+    vi.mocked(startRenderWatchMode).mockResolvedValue();
+
+    await main([
+      'node',
+      'cli.js',
+      '--quiet',
+      'render',
+      '-t',
+      'template.templ',
+      '-i',
+      'data.json',
+      '--watch',
+    ]);
+
+    const watchDeps = vi.mocked(startRenderWatchMode).mock.calls[0]?.[1];
+    watchDeps?.writeStdout('rendered-output\n');
+    watchDeps?.writeStderr('Watching template.templ and data.json. Press Ctrl+C to stop.\n');
+    expect(stdoutSpy).not.toHaveBeenCalledWith('rendered-output\n');
+    expect(stderrSpy).not.toHaveBeenCalledWith(
+      'Watching template.templ and data.json. Press Ctrl+C to stop.\n'
+    );
+
+    watchDeps?.writeStderr('Error: still loud\n');
+    expect(stderrSpy).toHaveBeenCalledWith('Error: still loud\n');
+  });
+
+  it('emits json success envelope when watch mode writes to output file', async () => {
+    vi.mocked(startRenderWatchMode).mockResolvedValue();
+
+    await main([
+      'node',
+      'cli.js',
+      '--json',
+      'render',
+      '-t',
+      'template.templ',
+      '-i',
+      'data.json',
+      '--watch',
+      '-o',
+      'out.txt',
+    ]);
+
+    const watchDeps = vi.mocked(startRenderWatchMode).mock.calls[0]?.[1];
+    watchDeps?.writeOutput('out.txt', 'rendered-output', 'utf-8');
+
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"ok":true/));
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"wroteFile":true/));
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"outputPath":"out.txt"/));
   });
 
   it('reports watch mode startup failures', async () => {

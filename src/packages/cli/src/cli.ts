@@ -109,6 +109,102 @@ function normalizeCommanderErrorMessage(error: CommanderError): string {
   return error.message.replace(/^error:\s*/i, '').trim();
 }
 
+function trimTrailingNewline(value: string): string {
+  return value.endsWith('\n') ? value.slice(0, -1) : value;
+}
+
+function createWatchModeDependencies(
+  mode: ReturnType<typeof resolveOutputModeFromCommand>,
+  outputFormat: string,
+  outputPath: string | undefined
+): typeof defaultWatchModeDependencies {
+  return {
+    ...defaultWatchModeDependencies,
+    writeOutput: (path: string, data: string, encoding: BufferEncoding): void => {
+      defaultWatchModeDependencies.writeOutput(path, data, encoding);
+      if (mode.quiet) {
+        return;
+      }
+
+      if (mode.json) {
+        writeSuccess(mode, {
+          command: 'render',
+          data: {
+            watch: true,
+            wroteFile: true,
+            outputPath: path,
+            outputFormat,
+          },
+        });
+        return;
+      }
+
+      writeVerbose(mode, `Watch render wrote output to "${path}"`);
+    },
+    writeStdout: (data: string): boolean => {
+      if (mode.quiet) {
+        return true;
+      }
+
+      if (mode.json) {
+        writeSuccess(mode, {
+          command: 'render',
+          data: {
+            watch: true,
+            wroteFile: false,
+            output: trimTrailingNewline(data),
+            outputFormat,
+          },
+        });
+        return true;
+      }
+
+      return process.stdout.write(data);
+    },
+    writeStderr: (data: string): boolean => {
+      const trimmed = trimTrailingNewline(data);
+
+      if (trimmed.startsWith('Watching ')) {
+        if (mode.quiet || mode.json) {
+          return true;
+        }
+        return process.stderr.write(data);
+      }
+
+      if (trimmed.startsWith('Error: ')) {
+        writeError(mode, 'render', trimmed.slice('Error: '.length));
+        return true;
+      }
+
+      if (trimmed.startsWith('Watch error: ')) {
+        writeError(mode, 'render', trimmed.slice('Watch error: '.length));
+        return true;
+      }
+
+      if (trimmed.startsWith('Unexpected watch render loop error: ')) {
+        writeError(mode, 'render', trimmed.slice('Unexpected watch render loop error: '.length));
+        return true;
+      }
+
+      if (trimmed.startsWith('Unexpected watch mode startup error: ')) {
+        writeError(mode, 'render', trimmed.slice('Unexpected watch mode startup error: '.length));
+        return true;
+      }
+
+      if (mode.quiet) {
+        return true;
+      }
+
+      if (mode.json) {
+        writeError(mode, 'render', trimmed, outputPath ? `Output path: ${outputPath}` : undefined);
+        return true;
+      }
+
+      return process.stderr.write(data);
+    },
+  };
+}
+
 function createProgram(): Command {
   const program = new Command();
 
@@ -167,7 +263,7 @@ function createProgram(): Command {
             output: finalOptions.output,
           },
           {
-            ...defaultWatchModeDependencies,
+            ...createWatchModeDependencies(mode, outputFormat, finalOptions.output),
             render: (watchTemplatePath: string, watchInputPath: string) =>
               renderCommand(watchTemplatePath, watchInputPath, {
                 experimentalStreamJson:
