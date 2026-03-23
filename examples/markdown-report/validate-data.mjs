@@ -31,6 +31,24 @@ function validateKpi(kpi) {
     throw new Error('Invalid KPI payload: expected kpi to be an object');
   }
 
+  if (typeof kpi.active_users_30d !== 'number' || Number.isNaN(kpi.active_users_30d)) {
+    throw new Error(
+      `Invalid KPI payload: active_users_30d must be a valid number (received ${String(kpi.active_users_30d)})`
+    );
+  }
+
+  if (typeof kpi.total_users !== 'number' || Number.isNaN(kpi.total_users)) {
+    throw new Error(
+      `Invalid KPI payload: total_users must be a valid number (received ${String(kpi.total_users)})`
+    );
+  }
+
+  if (typeof kpi.conversion_rate !== 'number' || Number.isNaN(kpi.conversion_rate)) {
+    throw new Error(
+      `Invalid KPI payload: conversion_rate must be a valid number (received ${String(kpi.conversion_rate)})`
+    );
+  }
+
   if (kpi.active_users_30d > kpi.total_users) {
     throw new Error(
       `Invalid KPI payload: active_users_30d (${kpi.active_users_30d}) must be less than or equal to total_users (${kpi.total_users})`

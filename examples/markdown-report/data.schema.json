@@ -30,7 +30,8 @@
       "format": "date-time"
     },
     "kpi": {
-      "description": "Top-level KPI metrics shown in the report summary section. Consumers should enforce that active_users_30d is less than or equal to total_users and that conversion_rate remains between 0 and 1.",
+      "description": "Top-level KPI metrics shown in the report summary section. Consumers should enforce that active_users_30d is less than or equal to total_users and that conversion_rate remains between 0 and 1. Consumers must ensure active_users_30d <= total_users.",
+      "x-validation": "Consumers must ensure active_users_30d <= total_users.",
       "type": "object",
       "additionalProperties": false,
       "required": ["total_users", "active_users_30d", "conversion_rate"],
