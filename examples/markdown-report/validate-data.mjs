@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import Ajv2020 from 'ajv/dist/2020.js';
+import Ajv2020 from 'ajv/dist/2020';
 import addFormats from 'ajv-formats';
 import process from 'node:process';
 import console from 'node:console';

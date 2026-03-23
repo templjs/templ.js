@@ -2,42 +2,51 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "./data.schema.json",
   "title": "Markdown Report Example Data",
+  "description": "Schema for markdown-report example input data used to render company KPIs, regional activity, and risk notes.",
   "type": "object",
   "additionalProperties": false,
   "required": ["company", "generated_at", "kpi", "active_users_by_region", "risks"],
   "properties": {
     "$schema": {
+      "description": "Optional JSON Schema identifier for the data document itself.",
       "type": "string"
     },
     "company": {
+      "description": "Company metadata displayed in the report header.",
       "type": "object",
       "additionalProperties": false,
       "required": ["name"],
       "properties": {
         "name": {
+          "description": "Display name of the company the report summarizes.",
           "type": "string",
           "minLength": 1
         }
       }
     },
     "generated_at": {
+      "description": "ISO 8601 timestamp indicating when the report data was generated.",
       "type": "string",
       "format": "date-time"
     },
     "kpi": {
+      "description": "Top-level KPI metrics shown in the report summary section.",
       "type": "object",
       "additionalProperties": false,
       "required": ["total_users", "active_users_30d", "conversion_rate"],
       "properties": {
         "total_users": {
+          "description": "Total number of users in the measured population.",
           "type": "integer",
           "minimum": 0
         },
         "active_users_30d": {
+          "description": "Number of users active during the last 30 days.",
           "type": "integer",
           "minimum": 0
         },
         "conversion_rate": {
+          "description": "Conversion rate as a ratio between 0 and 1.",
           "type": "number",
           "minimum": 0,
           "maximum": 1
@@ -45,17 +54,22 @@
       }
     },
     "active_users_by_region": {
+      "description": "Breakdown of active users by region for regional report sections.",
       "type": "array",
+      "minItems": 1,
       "items": {
+        "description": "A single regional active-user aggregate.",
         "type": "object",
         "additionalProperties": false,
         "required": ["name", "users"],
         "properties": {
           "name": {
+            "description": "Region name label used in report tables or bullet lists.",
             "type": "string",
             "minLength": 1
           },
           "users": {
+            "description": "Active user count for the region.",
             "type": "integer",
             "minimum": 0
           }
@@ -63,9 +77,12 @@
       }
     },
     "risks": {
+      "description": "List of risk statements to include in the report's risk section.",
       "type": "array",
       "items": {
-        "type": "string"
+        "description": "A single concise risk statement.",
+        "type": "string",
+        "minLength": 1
       }
     }
   }
