@@ -7,7 +7,7 @@
   },
   "features": [
     {% for feature in features %}
-    "{{ feature }}"{% if loop.last %}{% else %},{% endif %}
+    "{{ feature }}"{% if not loop.last %},{% endif %}
     {% endfor %}
   ]
 }
