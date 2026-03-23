@@ -6,7 +6,7 @@ Generated: {{ generated_at }}
 
 - Total Users: {{ kpi.total_users }}
 - Active Users (30d): {{ kpi.active_users_30d }}
-{% if kpi.conversion_rate | typeof == "number" %}
+{% if kpi.conversion_rate is defined and kpi.conversion_rate is not none and kpi.conversion_rate is number %}
 - Conversion Rate: {{ (kpi.conversion_rate * 100) | round(1) }}%
 {% else %}
 - Conversion Rate: {{ kpi.conversion_rate }}
@@ -14,8 +14,8 @@ Generated: {{ generated_at }}
 
 ## Top Regions
 
-{% if top_regions %}
-{% for region in top_regions %}
+{% if active_users_by_region %}
+{% for region in active_users_by_region %}
 - {{ region.name }}: {{ region.users }} users
 {% endfor %}
 {% else %}

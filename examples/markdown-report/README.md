@@ -22,3 +22,8 @@ pnpm --filter @templjs/cli exec node dist/cli.js render \
 ## Purpose
 
 Demonstrates report generation with loops and conditional blocks.
+
+## Data Contract
+
+- `active_users_by_region` lists the regional active-user counts that contribute to `kpi.active_users_30d`.
+- The sample data currently sums to the same value as `kpi.active_users_30d`.

@@ -7,7 +7,7 @@
     "active_users_30d": 8432,
     "conversion_rate": 0.062
   },
-  "top_regions": [
+  "active_users_by_region": [
     { "name": "North America", "users": 4200 },
     { "name": "EMEA", "users": 2700 },
     { "name": "APAC", "users": 1532 }

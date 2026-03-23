@@ -4,7 +4,7 @@
   "title": "Markdown Report Example Data",
   "type": "object",
   "additionalProperties": false,
-  "required": ["company", "generated_at", "kpi", "top_regions", "risks"],
+  "required": ["company", "generated_at", "kpi", "active_users_by_region", "risks"],
   "properties": {
     "$schema": {
       "type": "string"
@@ -30,11 +30,11 @@
       "required": ["total_users", "active_users_30d", "conversion_rate"],
       "properties": {
         "total_users": {
-          "type": "number",
+          "type": "integer",
           "minimum": 0
         },
         "active_users_30d": {
-          "type": "number",
+          "type": "integer",
           "minimum": 0
         },
         "conversion_rate": {
@@ -44,7 +44,7 @@
         }
       }
     },
-    "top_regions": {
+    "active_users_by_region": {
       "type": "array",
       "items": {
         "type": "object",
