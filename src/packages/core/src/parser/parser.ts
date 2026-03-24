@@ -24,6 +24,13 @@ import type {
 } from './types.js';
 import { parseExpressionWithPriorityList } from './parsers.js';
 
+export type ExtractTokenInput = Pick<Token, 'content' | 'delimiterStart' | 'delimiterEnd'>;
+
+export interface DelimiterConfig {
+  start: string;
+  end: string;
+}
+
 /**
  * Parser for converting token stream into AST
  * Handles statements (if, for, set, block) and expressions
@@ -710,41 +717,65 @@ export class TemplateParser {
   }
 
   /**
-   * Extract statement content between delimiters
+   * Extract statement content between delimiters.
+   *
+   * Callers must provide delimiter information either via token metadata
+   * (`delimiterStart`/`delimiterEnd`) or through `delimiters`.
+   *
+   * @param tokenOrContent - Statement token-like input or raw statement content.
+   * @param delimiters - Optional explicit delimiter configuration used when input metadata is missing.
    */
-  private extractStatementContent(tokenOrContent: Token | string): string {
+  public extractStatementContent(
+    tokenOrContent: string | ExtractTokenInput,
+    delimiters?: DelimiterConfig
+  ): string {
     // Use flat string operations instead of regex to avoid ReDoS
-    const token =
+    const token: ExtractTokenInput =
       typeof tokenOrContent === 'string'
-        ? ({ content: tokenOrContent } as Pick<
-            Token,
-            'content' | 'delimiterStart' | 'delimiterEnd'
-          >)
+        ? { content: tokenOrContent, delimiterStart: undefined, delimiterEnd: undefined }
         : tokenOrContent;
     let result = typeof token.content === 'string' ? token.content : '';
 
-    const startDelimiter = token.delimiterStart ?? '{%';
-    const endDelimiter = token.delimiterEnd ?? '%}';
+    const startDelimiter = token.delimiterStart ?? delimiters?.start;
+    const endDelimiter = token.delimiterEnd ?? delimiters?.end;
+    if (!startDelimiter || !endDelimiter) {
+      throw new Error(
+        'extractStatementContent requires delimiterStart/delimiterEnd in token metadata or explicit delimiters config'
+      );
+    }
     if (result.startsWith(startDelimiter) && result.endsWith(endDelimiter)) {
       result = result.substring(startDelimiter.length, result.length - endDelimiter.length);
     }
 
     return result.trim();
   }
-
   /**
-   * Extract expression content between delimiters
+   * Extract expression content between delimiters.
+   *
+   * Callers must provide delimiter information either via token metadata
+   * (`delimiterStart`/`delimiterEnd`) or through `delimiters`.
+   *
+   * @param tokenOrContent - Expression token-like input or raw expression content.
+   * @param delimiters - Optional explicit delimiter configuration used when input metadata is missing.
    */
-  private extractExpressionContent(tokenOrContent: Token | string): string {
+  public extractExpressionContent(
+    tokenOrContent: string | ExtractTokenInput,
+    delimiters?: DelimiterConfig
+  ): string {
     // Use flat string operations instead of regex to avoid ReDoS
-    const token: Pick<Token, 'content' | 'delimiterStart' | 'delimiterEnd'> =
+    const token: ExtractTokenInput =
       typeof tokenOrContent === 'string'
         ? { content: tokenOrContent, delimiterStart: undefined, delimiterEnd: undefined }
         : tokenOrContent;
     let result = typeof token.content === 'string' ? token.content : '';
 
-    const startDelimiter = token.delimiterStart ?? '{{';
-    const endDelimiter = token.delimiterEnd ?? '}}';
+    const startDelimiter = token.delimiterStart ?? delimiters?.start;
+    const endDelimiter = token.delimiterEnd ?? delimiters?.end;
+    if (!startDelimiter || !endDelimiter) {
+      throw new Error(
+        'extractExpressionContent requires delimiterStart/delimiterEnd in token metadata or explicit delimiters config'
+      );
+    }
     if (result.startsWith(startDelimiter) && result.endsWith(endDelimiter)) {
       result = result.substring(startDelimiter.length, result.length - endDelimiter.length);
     }
