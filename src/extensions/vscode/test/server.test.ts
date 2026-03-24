@@ -314,6 +314,7 @@ describe('language-server-bootstrap', () => {
         expect.objectContaining({ uri: 'file:///workspace/templates/sample.md.tpl' })
       );
       sendDiagnostics.mockClear();
+      const schemaReadsAfterInitialOpen = readFileSync.mock.calls.length;
 
       const watchedFilesHandler = onDidChangeWatchedFiles.mock.calls[0][0] as (event: {
         changes: Array<{ uri: string; type: number }>;
@@ -325,6 +326,12 @@ describe('language-server-bootstrap', () => {
       });
 
       await vi.runAllTimersAsync();
+
+      expect(readFileSync.mock.calls.length).toBeGreaterThan(schemaReadsAfterInitialOpen);
+      const schemaReadCallIndexAfterCheckpoint = readFileSync.mock.calls
+        .slice(schemaReadsAfterInitialOpen)
+        .findIndex((args) => args[0] === '/workspace/.templjs/schema.json' && args[1] === 'utf-8');
+      expect(schemaReadCallIndexAfterCheckpoint).toBeGreaterThanOrEqual(0);
 
       expect(sendDiagnostics).toHaveBeenCalledWith(
         expect.objectContaining({ uri: 'file:///workspace/templates/sample.md.tpl' })
