@@ -356,7 +356,7 @@ describe('createCharContextIterator', () => {
     expect(frames.every((f) => !f.inTemplateBody && !f.inTemplateExpr)).toBe(true);
   });
 
-  it('does not visit characters inside template literal body (inTemplateBody chars are skipped)', () => {
+  it('never emits inTemplateBody=true because template literal body characters are skipped', () => {
     const visitedChars: string[] = [];
 
     createCharContextIterator('`body chars`', (frame) => {

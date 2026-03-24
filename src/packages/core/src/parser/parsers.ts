@@ -82,11 +82,13 @@ type TemplateContext = 'template' | 'template-expr';
 /**
  * Snapshot emitted by createCharContextIterator for each visited character.
  *
- * Because the iterator skips characters inside quoted string literals before invoking the visitor,
- * emitted CharContextFrame values will have inSingleQuote and inDoubleQuote set to false.
+ * Because the iterator skips characters inside quoted string literals and template-literal body
+ * segments before invoking the visitor, emitted CharContextFrame values will have
+ * inSingleQuote, inDoubleQuote, and inTemplateBody set to false.
  *
  * To reason about template-literal/interpolation nesting in emitted frames, use
- * inTemplateBody, inTemplateExpr, templateLiteralDepth, and templateExprDepth.
+ * inTemplateExpr, templateLiteralDepth, and templateExprDepth. The inTemplateBody field is
+ * retained for API compatibility and is always false for emitted frames.
  */
 export interface CharContextFrame {
   index: number;
@@ -94,6 +96,12 @@ export interface CharContextFrame {
   nextCh: string | undefined;
   depthBefore: number;
   depthAfter: number;
+  /**
+   * Always false for emitted frames.
+   *
+   * createCharContextIterator does not invoke the visitor while scanning template literal body
+   * content. This field is retained as a compatibility marker for existing consumers.
+   */
   inTemplateBody: boolean;
   inTemplateExpr: boolean;
   inSingleQuote: boolean;
@@ -119,6 +127,10 @@ export interface CharContextSummary {
  * Walks each character in `expr`, tracks nesting, string-literal, comment, and template-literal
  * state, and emits {@link CharContextFrame} snapshots to `visitor` for characters that are
  * structurally relevant to downstream parsing helpers.
+ *
+ * Note: characters inside template literal bodies (outside `${...}` interpolation segments) are
+ * not emitted to `visitor`. As a result, emitted {@link CharContextFrame}.inTemplateBody is
+ * always false.
  *
  * This is primarily used by parser utilities that need quote-aware and template-aware traversal
  * without re-implementing state management. Consumers can inspect each emitted
@@ -280,43 +292,43 @@ export function createCharContextIterator(
       }
     }
 
-    if (!inTemplateExpr && (inSingleQuote || inDoubleQuote) && ch === '\\' && !escaped) {
+    if ((inSingleQuote || inDoubleQuote) && ch === '\\' && !escaped) {
       escaped = true;
       continue;
     }
 
-    if (!inTemplateExpr && !escaped && ch === "'" && !inDoubleQuote) {
+    if (!escaped && ch === "'" && !inDoubleQuote) {
       inSingleQuote = !inSingleQuote;
       continue;
     }
 
-    if (!inTemplateExpr && !escaped && ch === '"' && !inSingleQuote) {
+    if (!escaped && ch === '"' && !inSingleQuote) {
       inDoubleQuote = !inDoubleQuote;
       continue;
     }
 
-    if (!inTemplateExpr && !escaped && ch === '`' && !inSingleQuote && !inDoubleQuote) {
+    if (!escaped && ch === '`' && !inSingleQuote && !inDoubleQuote) {
       templateContextStack.push('template');
       templateLiteralDepth++;
       continue;
     }
 
-    if (!inTemplateExpr && escaped) {
+    if (escaped) {
       escaped = false;
       continue;
     }
 
-    if (!inTemplateExpr && (inSingleQuote || inDoubleQuote)) {
+    if (inSingleQuote || inDoubleQuote) {
       continue;
     }
 
-    if (!inTemplateExpr && ch === '/' && nextCh === '/') {
+    if (ch === '/' && nextCh === '/') {
       inLineComment = true;
       i++;
       continue;
     }
 
-    if (!inTemplateExpr && ch === '/' && nextCh === '*') {
+    if (ch === '/' && nextCh === '*') {
       inBlockComment = true;
       i++;
       continue;
@@ -330,6 +342,8 @@ export function createCharContextIterator(
       depth--;
     }
 
+    // Visitor is never invoked for template body characters because the inTemplateBody branch
+    // above always continues before this point.
     const shouldContinue = visitor({
       index: i,
       ch,
