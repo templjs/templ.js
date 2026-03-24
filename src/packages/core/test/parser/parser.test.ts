@@ -74,19 +74,41 @@ function splitTopLevel(str: string, delimiter: string): string[] {
     current += char;
   }
 
-  if (current || str.endsWith(delimiter)) {
+  if (current || str.length === 0 || str.endsWith(delimiter)) {
     parts.push(current);
   }
 
   return parts;
 }
 
-function createExpressionParserContext() {
+interface ExpressionParserTestConfig {
+  delimiters?: {
+    expression?: [string, string];
+  };
+}
+
+function createExpressionParserContext(config: ExpressionParserTestConfig = {}) {
+  const expressionDelimiters = config.delimiters?.expression;
+  const normalizeExpressionInput = (expr: string): string => {
+    const trimmed = expr.trim();
+    if (!expressionDelimiters) {
+      return trimmed;
+    }
+
+    const [startDelimiter, endDelimiter] = expressionDelimiters;
+    if (trimmed.startsWith(startDelimiter) && trimmed.endsWith(endDelimiter)) {
+      return trimmed.slice(startDelimiter.length, trimmed.length - endDelimiter.length).trim();
+    }
+
+    return trimmed;
+  };
+
   const context = {
+    config,
     parseExpression: (expr: string): ExpressionNode =>
-      parseExpressionWithPriorityList(expr, context),
+      parseExpressionWithPriorityList(normalizeExpressionInput(expr), context),
     parseLiteral: (expr: string): LiteralNode | null => {
-      const trimmed = expr.trim();
+      const trimmed = normalizeExpressionInput(expr);
       if (trimmed.startsWith('`') && trimmed.endsWith('`')) {
         return {
           type: 'literal',
@@ -109,19 +131,40 @@ function createExpressionParserContext() {
 
       return null;
     },
-    parseFilterExpression: (expr: string) => ({
-      type: 'filter' as const,
-      source: context.createErrorExpression(`Unexpected filter parse: ${expr}`),
-      filters: [],
-      start: { line: 1, column: 0 },
-      end: { line: 1, column: expr.length },
-    }),
+    parseFilterExpression: (expr: string) => {
+      const normalized = normalizeExpressionInput(expr);
+      const [sourceExpr, ...filterParts] = splitTopLevel(normalized, '|').map((part) =>
+        part.trim()
+      );
+
+      return {
+        type: 'filter' as const,
+        source: context.parseExpression(sourceExpr),
+        filters: filterParts
+          .filter((part) => part.length > 0)
+          .map((part) => {
+            const filterMatch = part.match(/^([a-zA-Z_]\w*)(?:\((.*)\))?$/);
+            if (!filterMatch) {
+              return { name: part, args: [] };
+            }
+
+            const [, name, rawArgs] = filterMatch;
+            const args = rawArgs
+              ? splitTopLevel(rawArgs, ',').map((arg) => context.parseExpression(arg.trim()))
+              : [];
+
+            return { name, args };
+          }),
+        start: { line: 1, column: 0 },
+        end: { line: 1, column: normalized.length },
+      };
+    },
     parseVariable: (expr: string) => ({
       type: 'variable' as const,
-      name: expr,
+      name: normalizeExpressionInput(expr),
       path: [],
       start: { line: 1, column: 0 },
-      end: { line: 1, column: expr.length },
+      end: { line: 1, column: normalizeExpressionInput(expr).length },
     }),
     parseObjectProperties: () => [],
     splitTopLevel,
@@ -139,6 +182,24 @@ function createExpressionParserContext() {
 }
 
 describe('splitTopLevel', () => {
+  it("returns [''] for empty input", () => {
+    const result = splitTopLevel('', '|');
+
+    expect(result).toEqual(['']);
+  });
+
+  it('returns the original string when delimiter is absent', () => {
+    const result = splitTopLevel('no pipes here', '|');
+
+    expect(result).toEqual(['no pipes here']);
+  });
+
+  it('preserves empty segments for consecutive delimiters', () => {
+    const result = splitTopLevel('a||b', '|');
+
+    expect(result).toEqual(['a', '', 'b']);
+  });
+
   it('does not split delimiters inside quoted strings', () => {
     const result = splitTopLevel(`value | "a|b" | 'c|d' | ` + '`e|f`', '|');
 
@@ -1274,6 +1335,80 @@ describe('parse', () => {
   });
 
   describe('Parser - Internal Recovery Branches', () => {
+    describe('Parser - Public Extract Content Helpers', () => {
+      it('extracts statement content from token delimiter metadata', () => {
+        const parser = new TemplateParser([] as any);
+
+        expect(
+          parser.extractStatementContent({
+            content: '{%   if user.active   %}',
+            delimiterStart: '{%',
+            delimiterEnd: '%}',
+          })
+        ).toBe('if user.active');
+      });
+
+      it('extracts statement content from plain strings with explicit delimiters', () => {
+        const parser = new TemplateParser([] as any);
+
+        expect(
+          parser.extractStatementContent('<%   set total = price * qty   %>', {
+            start: '<%',
+            end: '%>',
+          })
+        ).toBe('set total = price * qty');
+      });
+
+      it('throws when statement delimiter metadata and explicit delimiters are both missing', () => {
+        const parser = new TemplateParser([] as any);
+
+        expect(() => parser.extractStatementContent('if user.active')).toThrow(
+          'extractStatementContent requires delimiterStart/delimiterEnd in token metadata or explicit delimiters config'
+        );
+      });
+
+      it('extracts expression content from plain strings with explicit delimiters', () => {
+        const parser = new TemplateParser([] as any);
+
+        expect(
+          parser.extractExpressionContent('[[   user.email   ]]', {
+            start: '[[',
+            end: ']]',
+          })
+        ).toBe('user.email');
+      });
+
+      it('throws when expression delimiter metadata and explicit delimiters are both missing', () => {
+        const parser = new TemplateParser([] as any);
+
+        expect(() => parser.extractExpressionContent('user.email')).toThrow(
+          'extractExpressionContent requires delimiterStart/delimiterEnd in token metadata or explicit delimiters config'
+        );
+      });
+
+      it('supports custom delimiters for both methods and default expression delimiters', () => {
+        const parser = new TemplateParser([] as any);
+
+        expect(
+          parser.extractStatementContent({
+            content: '<<   if user.active   >>',
+            delimiterStart: '<<',
+            delimiterEnd: '>>',
+          })
+        ).toBe('if user.active');
+
+        expect(
+          parser.extractExpressionContent({
+            content: '<%   user.email   %>',
+            delimiterStart: '<%',
+            delimiterEnd: '%>',
+          })
+        ).toBe('user.email');
+
+        expect(parser.extractExpressionContent('{{   user.name   }}')).toBe('user.name');
+      });
+    });
+
     it('returns null when parseStatement is called on a non-statement token', () => {
       const parser = new TemplateParser([
         {
@@ -1292,6 +1427,8 @@ describe('parse', () => {
         {
           type: TokenType.STATEMENT,
           content: '{% if %}',
+          delimiterStart: '{%',
+          delimiterEnd: '%}',
           start: { line: 1, column: 0 },
           end: { line: 1, column: 8 },
         },
@@ -1328,6 +1465,8 @@ describe('parse', () => {
         {
           type: TokenType.STATEMENT,
           content: '{% noop %}',
+          delimiterStart: '{%',
+          delimiterEnd: '%}',
           start: { line: 1, column: 0 },
           end: { line: 1, column: 10 },
         },
@@ -1347,6 +1486,8 @@ describe('parse', () => {
         {
           type: TokenType.STATEMENT,
           content: '{% noop %}',
+          delimiterStart: '{%',
+          delimiterEnd: '%}',
           start: { line: 1, column: 0 },
           end: { line: 1, column: 10 },
         },
@@ -1370,6 +1511,8 @@ describe('parse', () => {
         {
           type: TokenType.STATEMENT,
           content: '{% noop %}',
+          delimiterStart: '{%',
+          delimiterEnd: '%}',
           start: { line: 1, column: 0 },
           end: { line: 1, column: 10 },
         },
@@ -1396,7 +1539,9 @@ describe('parse', () => {
         expect.objectContaining({ type: 'variable', name: '123abc', path: [] })
       );
       expect((parser as any).parsePath('.')).toEqual([]);
-      expect((parser as any).extractStatementContent('if user')).toBe('if user');
+      expect((parser as any).extractStatementContent('if user', { start: '{%', end: '%}' })).toBe(
+        'if user'
+      );
       expect((parser as any).extractExpressionContent('name')).toBe('name');
       expect((parser as any).createErrorVariable('broken')).toEqual(
         expect.objectContaining({ type: 'variable', name: 'broken' })
@@ -2673,6 +2818,69 @@ describe('parse', () => {
       const result = parseExpressionWithPriorityList('(`value ${count + (offset}`)', context);
 
       expect(result.type).not.toBe('paren');
+    });
+
+    it('handles nested template literals inside template expressions', () => {
+      const context = createExpressionParserContext();
+      const result = parseExpressionWithPriorityList('(`value ${fn(`${nested}`)}`)', context);
+
+      expect(result.type).toBe('paren');
+      if (result.type !== 'paren') {
+        throw new Error('Expected paren expression');
+      }
+
+      expect(result.value).toEqual(
+        expect.objectContaining({
+          type: 'literal',
+          value: 'value ${fn(`${nested}`)}',
+        })
+      );
+    });
+
+    it('handles nested template literals inside template expressions with custom delimiters configured', () => {
+      const context = createExpressionParserContext({
+        delimiters: {
+          expression: ['[[', ']]'],
+        },
+      });
+      const result = parseExpressionWithPriorityList('(`value ${fn(`${nested}`)}`)', context);
+
+      expect(result.type).toBe('paren');
+      if (result.type !== 'paren') {
+        throw new Error('Expected paren expression');
+      }
+
+      expect(result.value).toEqual(
+        expect.objectContaining({
+          type: 'literal',
+          value: 'value ${fn(`${nested}`)}',
+        })
+      );
+    });
+
+    it('parses filter expressions wrapped by custom expression delimiters in test context', () => {
+      const context = createExpressionParserContext({
+        delimiters: {
+          expression: ['[[', ']]'],
+        },
+      });
+
+      const result = context.parseExpression('[[ amount | round(2) ]]');
+
+      expect(result.type).toBe('filter');
+      if (result.type !== 'filter') {
+        throw new Error('Expected filter expression');
+      }
+
+      expect(result.source).toEqual(
+        expect.objectContaining({
+          type: 'variable',
+          name: 'amount',
+        })
+      );
+      expect(result.filters).toHaveLength(1);
+      expect(result.filters[0]?.name).toBe('round');
+      expect(result.filters[0]?.args).toHaveLength(1);
     });
 
     it('parses in and is operators', () => {

@@ -260,6 +260,28 @@ describe('Renderer', () => {
       expect(result.output).toBe('empty');
     });
 
+    it('should keep loop-local set variables scoped when not predeclared', () => {
+      const template =
+        '{% for item in items %}{% set local = item %}{{ local }}{% endfor %}{{ local }}';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { items: ['a', 'b'] });
+
+      expect(result.output).toBe('ab');
+      expect(result.errors.some((error) => error.type === 'undefined_variable')).toBe(true);
+    });
+
+    it('should update predeclared outer variables from inside loops', () => {
+      const template =
+        '{% set total = 0 %}{% for item in items %}{% set total = total + item %}{% endfor %}{{ total }}';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { items: [1, 2, 3] });
+
+      expect(result.output).toBe('6');
+      expect(result.errors).toHaveLength(0);
+    });
+
     it('should handle for-if combination', () => {
       const template = '{% for item in items %}{% if item > 2 %}{{ item }},{% endif %}{% endfor %}';
       const tokens = tokenize(template);
@@ -318,6 +340,37 @@ describe('Renderer', () => {
       const result = render(parseResult.ast!, { items: ['a', 'b', 'c'] });
       expect(result.output).toContain('Fa');
       expect(result.output).toContain('cL');
+    });
+  });
+
+  describe('set statement', () => {
+    it('should assign and read variables via set in root scope', () => {
+      const template = '{% set greeting = "Hello" %}{{ greeting }}';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, {});
+
+      expect(result.output).toBe('Hello');
+      expect(result.success).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('should assign and read variables via set with custom delimiters', () => {
+      const template = '<% set greeting = "Hello" %><= greeting =>';
+      const tokens = tokenize(template, {
+        delimiters: {
+          statement_start: '<%',
+          statement_end: '%>',
+          expression_start: '<=',
+          expression_end: '=>',
+        },
+      });
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, {});
+
+      expect(result.output).toBe('Hello');
+      expect(result.success).toBe(true);
+      expect(result.errors).toHaveLength(0);
     });
   });
 

@@ -495,6 +495,18 @@ describe('Lexer', () => {
           expect(tokens[2].content).toBe('/* note */');
         });
 
+        it('should use expression tuple delimiters', () => {
+          const tokens = tokenize('[[ x ]]', {
+            delimiters: {
+              expression: ['[[', ']]'],
+            },
+          });
+
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[0].content).toBe('[[ x ]]');
+        });
+
         it('should prefer tuple delimiters over separate start/end fields', () => {
           const tokens = tokenize('<% if x %> [[ note ]]', {
             delimiters: {
