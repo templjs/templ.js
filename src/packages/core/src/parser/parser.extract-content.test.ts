@@ -1,19 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import { TemplateParser } from './parser.js';
-import type { ExtractTokenInput } from './parser.js';
+import type { ExtractTokenInput, DelimiterConfig } from './parser.js';
 
 function createParser() {
   return new TemplateParser([]);
 }
 
-function extractStatementContent(input: string | ExtractTokenInput): string {
+function extractStatementContent(
+  input: string | ExtractTokenInput,
+  delimiters: DelimiterConfig = { start: '{%', end: '%}' }
+): string {
   const parser = createParser();
-  return parser.extractStatementContent(input, { start: '{%', end: '%}' });
+  return parser.extractStatementContent(input, delimiters);
 }
 
-function extractExpressionContent(input: string | ExtractTokenInput): string {
+function extractExpressionContent(
+  input: string | ExtractTokenInput,
+  delimiters: DelimiterConfig = { start: '{{', end: '}}' }
+): string {
   const parser = createParser();
-  return parser.extractExpressionContent(input);
+  return parser.extractExpressionContent(input, delimiters);
 }
 
 describe('TemplateParser extract content helpers', () => {
