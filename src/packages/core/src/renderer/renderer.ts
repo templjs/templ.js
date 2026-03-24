@@ -10,6 +10,7 @@ import type {
   ExpressionNode,
   IfNode,
   ForNode,
+  SetNode,
   TextNode,
   ExpressionStatementNode,
 } from '../parser/types.js';
@@ -237,12 +238,40 @@ class ForNodeRenderer extends BaseNodeRenderer<ForNode> {
   }
 }
 
+class SetNodeRenderer extends BaseNodeRenderer<SetNode> {
+  render(node: SetNode, context: RenderContext): string {
+    const value = this.evaluateExpression(node.value, context);
+
+    for (let i = context.scopes.length - 1; i >= 0; i--) {
+      const scope = context.scopes[i];
+      if (Object.prototype.hasOwnProperty.call(scope, node.name)) {
+        scope[node.name] = value;
+        return '';
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(context.data, node.name)) {
+      context.data[node.name] = value;
+      return '';
+    }
+
+    if (context.scopes.length > 0) {
+      context.scopes[context.scopes.length - 1][node.name] = value;
+      return '';
+    }
+
+    context.data[node.name] = value;
+    return '';
+  }
+}
+
 const nodeRendererRegistry = new Map<string, BaseNodeRenderer<ASTNode>>([
   ['template', new TemplateNodeRenderer()],
   ['text', new TextNodeRenderer()],
   ['expression_statement', new ExpressionStatementNodeRenderer()],
   ['if', new IfNodeRenderer()],
   ['for', new ForNodeRenderer()],
+  ['set', new SetNodeRenderer()],
   ['unknown', new UnknownNodeRenderer()],
   ['undefined', new UnknownNodeRenderer()],
   ['null', new UnknownNodeRenderer()],
