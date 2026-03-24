@@ -23,15 +23,54 @@ interface NormalizedTemplate {
   text: string;
   toOriginalOffset: (normalizedOffset: number | undefined) => number | undefined;
 }
-
+/**
+ * Resolves delimiter configuration from options, supporting both array-based
+ * and legacy underscore-based formats.
+ *
+ * Precedence order for each delimiter type:
+ * 1. Array format: options.delimiters.<type>[0|1]
+ * 2. Underscore format: options.delimiters.<type>_start/_end
+ * 3. DEFAULT_DELIMITERS fallback
+ *
+ * @param options - Lexer options containing delimiter configuration
+ * @returns Fully resolved delimiter config with both array and underscore formats
+ */
 function getResolvedDelimiters(options?: LexerOptions): Required<DelimiterConfig> {
+  const statementStart =
+    options?.delimiters?.statement?.[0] ??
+    options?.delimiters?.statement_start ??
+    DEFAULT_DELIMITERS.statement_start;
+  const statementEnd =
+    options?.delimiters?.statement?.[1] ??
+    options?.delimiters?.statement_end ??
+    DEFAULT_DELIMITERS.statement_end;
+  const expressionStart =
+    options?.delimiters?.expression?.[0] ??
+    options?.delimiters?.expression_start ??
+    DEFAULT_DELIMITERS.expression_start;
+  const expressionEnd =
+    options?.delimiters?.expression?.[1] ??
+    options?.delimiters?.expression_end ??
+    DEFAULT_DELIMITERS.expression_end;
+  const commentStart =
+    options?.delimiters?.comment?.[0] ??
+    options?.delimiters?.comment_start ??
+    DEFAULT_DELIMITERS.comment_start;
+  const commentEnd =
+    options?.delimiters?.comment?.[1] ??
+    options?.delimiters?.comment_end ??
+    DEFAULT_DELIMITERS.comment_end;
+
   return {
-    statement_start: options?.delimiters?.statement_start ?? DEFAULT_DELIMITERS.statement_start,
-    statement_end: options?.delimiters?.statement_end ?? DEFAULT_DELIMITERS.statement_end,
-    expression_start: options?.delimiters?.expression_start ?? DEFAULT_DELIMITERS.expression_start,
-    expression_end: options?.delimiters?.expression_end ?? DEFAULT_DELIMITERS.expression_end,
-    comment_start: options?.delimiters?.comment_start ?? DEFAULT_DELIMITERS.comment_start,
-    comment_end: options?.delimiters?.comment_end ?? DEFAULT_DELIMITERS.comment_end,
+    statement_start: statementStart,
+    statement_end: statementEnd,
+    statement: [statementStart, statementEnd],
+    expression_start: expressionStart,
+    expression_end: expressionEnd,
+    expression: [expressionStart, expressionEnd],
+    comment_start: commentStart,
+    comment_end: commentEnd,
+    comment: [commentStart, commentEnd],
   };
 }
 
