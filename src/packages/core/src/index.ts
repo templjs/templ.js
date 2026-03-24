@@ -27,6 +27,8 @@ export { tokenize } from './lexer/lexer.js';
 
 // Export parser functions
 export { parse } from './parser/parser.js';
+export { createCharContextIterator } from './parser/parsers.js';
+export type { CharContextFrame, CharContextSummary } from './parser/parsers.js';
 
 // Export schema validation
 export { SchemaValidator } from './schema/SchemaValidator.js';
@@ -60,7 +62,12 @@ export type { FunctionSignature } from './query-engine/types.js';
 
 // Export renderer
 export { Renderer, render } from './renderer/renderer.js';
-export { BUILTIN_FILTER_NAMES, getBuiltinFilterNames } from './renderer/filter-engine.js';
+export {
+  BUILTIN_FILTER_NAMES,
+  getBuiltinFilterNames,
+  clearFormatterCaches,
+} from './renderer/filter-engine.js';
+export { isHighlightablePosition, UNKNOWN_POSITION } from './renderer/evaluators.js';
 import { QueryEngine } from './query-engine/query-engine.js';
 import { tokenize } from './lexer/lexer.js';
 import { parse } from './parser/parser.js';
