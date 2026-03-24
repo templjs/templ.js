@@ -9,8 +9,6 @@ priority: critical
 estimated: 10
 actual: 1
 assignee: ''
-commits:
-  8418c57: 'docs(release): add critical-path docs and reduced example slice (WI-020, WI-021, WI-022)'
 test_results:
   - timestamp: 2026-03-22T00:00:00Z
     note: |
@@ -22,33 +20,10 @@ test_results:
       - Release credentials and publication steps require maintainer execution (`npm publish`, `vsce publish`)
 links:
   depends_on:
-    - '[[005_chevrotain_lexer]]'
-    - '[[006_chevrotain_parser]]'
-    - '[[007_ast_renderer]]'
-    - '[[008_query_engine]]'
-    - '[[009_lexer_tests]]'
-    - '[[010_parser_tests]]'
-    - '[[011_renderer_tests]]'
-    - '[[012_volar_plugin]]'
-    - '[[013_syntax_highlighting]]'
-    - '[[014_diagnostics]]'
-    - '[[015_intellisense]]'
-    - '[[016_extension_tests]]'
-    - '[[017_cli_commands]]'
-    - '[[018_cli_watch_mode]]'
-    - '[[019_cli_tests]]'
     - '[[020_documentation]]'
     - '[[021_examples_demo]]'
-    - '[[025_schema_validation]]'
-    - '[[026_cicd_scaffolding_artifact]]'
-    - '[[027_virtual_code_mapping]]'
-    - '[[028_textmate_grammar]]'
-    - '[[029_cli_signal_handling]]'
-    - '[[032_cli_config_files]]'
-    - '[[033_schema_parity]]'
-    - '[[034_prerelease_coverage_quality_gate]]'
   pull_requests:
-    - 'https://github.com/templjs/templ.js/commit/8418c57'
+    - 'https://github.com/templjs/templ.js/pull/31'
 ---
 
 ## Goal
@@ -173,5 +148,5 @@ vsce publish
 
 ## Dependencies
 
-- Requires: [[20 Write Documentation]], [[21 Create Examples and Demo]]
+- Immediate dependencies: [[020_documentation]], [[021_examples_demo]]
 - Marks completion of Phase 5

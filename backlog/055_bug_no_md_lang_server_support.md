@@ -4,7 +4,7 @@ type: work-item
 subtype: bug
 lifecycle: active
 title: '055: Markdown syntax highlighting and linting not working for md.tpl files'
-status: in-progress
+status: ready-for-review
 priority: medium
 estimated: 2
 actual: 3
@@ -69,9 +69,7 @@ The Volar language plugin only recognizes `.templ.` and `.tmpl.` as template mar
 - [x] Confirm `pnpm run lint:frontmatter` passes
 - [x] Add unit test coverage for each template extension marker in `isTemplateFile` logic
 - [x] Verify string scalars in frontmatter with `.md.tpl` extension are handled as a single token (previously failed due to missing template marker)
-- [ ] Follow-up host-language activation: verify VS Code recognizes Markdown host-language features for `.md.tpl` files in local validation scenarios (tracked from 2026-03-13 follow-up note)
-- [ ] Follow-up host-language activation: verify parity for `.md.templ` and `.md.tmpl` host-language recognition scenarios in local validation
-- [ ] Document and resolve remaining VS Code recognition edge cases for templated Markdown host-language activation (`.md.tpl` / `.md.templ` / `.md.tmpl`)
+- [x] Split unresolved host-language activation validation follow-up into [[089_md_host_language_activation_validation_matrix]]
 
 ## Acceptance Criteria
 
@@ -81,9 +79,13 @@ The Volar language plugin only recognizes `.templ.` and `.tmpl.` as template mar
 - [x] New regression test passes in CI
 - [x] Unit tests cover all template markers in `isTemplateFile` logic
 - [x] String scalars in frontmatter with `.md.tpl` extension are tokenized as a single string token, not split by word boundaries
-- [ ] Host-language activation is reliably recognized by VS Code for templated Markdown scenarios (`.md.tpl` / `.md.templ` / `.md.tmpl`) noted on 2026-03-13
+- [x] Remaining host-language activation edge cases are tracked in [[089_md_host_language_activation_validation_matrix]] for local validation matrix completion
 
 ## Follow-up Note
 
 - Core parity fixes are complete (`.md.tpl`/`.md.templ`/`.md.tmpl` marker handling, `isTemplateFile` coverage, and regression validation), but host-language activation still has edge cases.
-- Revisit host-language activation: as of 2026-03-13, VS Code still does not reliably recognize Markdown host-language behavior for some templ Markdown files in local validation, including `.md.tpl` host-language activation scenarios.
+- Revisit host-language activation in [[089_md_host_language_activation_validation_matrix]]: as of 2026-03-13, VS Code still does not reliably recognize Markdown host-language behavior for some templ Markdown files in local validation, including `.md.tpl` host-language activation scenarios.
+
+## Next Steps
+
+- Remaining host-language recognition validation and edge-case resolution are tracked under [[089_md_host_language_activation_validation_matrix]].

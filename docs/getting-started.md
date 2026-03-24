@@ -14,36 +14,36 @@ title: Getting Started with templjs
    - pnpm 8+
 2. Clone and install dependencies:
 
-```bash
-pnpm install
-pnpm build
-```
+   ```bash
+   pnpm install
+   pnpm build
+   ```
 
-1. Create a template file `hello.md.templ`:
+3. Create a template file `hello.md.templ`:
 
-```templ
-# Hello {{ user.name }}
+   ```templ
+   # Hello {{ user.name }}
 
-Items:
-{% for item in items %}
-- {{ item }}
-{% endfor %}
-```
+   Items:
+   {% for item in items %}
+   - {{ item }}
+   {% endfor %}
+   ```
 
-1. Create a data file `data.json`:
+4. Create a data file `data.json`:
 
-```json
-{
-  "user": { "name": "Ada" },
-  "items": ["One", "Two", "Three"]
-}
-```
+   ```json
+   {
+     "user": { "name": "Ada" },
+     "items": ["One", "Two", "Three"]
+   }
+   ```
 
-1. Render from CLI:
+5. Render from CLI:
 
-```bash
-pnpm --filter @templjs/cli exec node dist/cli.js render -t hello.md.templ -i data.json
-```
+   ```bash
+   pnpm --filter @templjs/cli exec node dist/cli.js render -t hello.md.templ -i data.json
+   ```
 
 ## Core Library Quick Start
 
@@ -83,18 +83,18 @@ Implementation references:
    - `.html.templ`, `.html.tmpl`, `.html.tpl`
 3. Optionally configure schema-aware authoring:
 
-```json
-{
-  "templjs.schemaPath": ".templjs/frontmatter.schema.json",
-  "templjs.contentSchemaPath": ".templjs/content.schema.json",
-  "templjs.schemas": {
-    "backlog/**": {
-      "schemaPath": ".templjs/work-item.frontmatter.schema.json",
-      "contentSchemaPath": ".templjs/work-item.content.schema.json"
-    }
-  }
-}
-```
+   ```json
+   {
+     "templjs.schemaPath": ".templjs/frontmatter.schema.json",
+     "templjs.contentSchemaPath": ".templjs/content.schema.json",
+     "templjs.schemas": {
+       "backlog/**": {
+         "schemaPath": ".templjs/work-item.frontmatter.schema.json",
+         "contentSchemaPath": ".templjs/work-item.content.schema.json"
+       }
+     }
+   }
+   ```
 
 ## Next Steps
 
