@@ -7,6 +7,11 @@
     "active_users_30d": 8432,
     "conversion_rate": 0.062
   },
+  "field_formats": {
+    "kpi": {
+      "conversion_rate": "decimal"
+    }
+  },
   "active_users_by_region": [
     { "name": "North America", "users": 4200 },
     { "name": "EMEA", "users": 2700 },

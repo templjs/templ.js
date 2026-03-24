@@ -8,8 +8,6 @@ title: Markdown Report Example
 summary: Run and understand the markdown report templating example.
 ---
 
-## Markdown Report Example
-
 ## Run
 
 ```bash

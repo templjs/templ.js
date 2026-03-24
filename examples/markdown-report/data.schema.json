@@ -5,7 +5,14 @@
   "description": "Schema for markdown-report example input data used to render company KPIs, regional activity, and risk notes.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["company", "generated_at", "kpi", "active_users_by_region", "risks"],
+  "required": [
+    "company",
+    "generated_at",
+    "kpi",
+    "field_formats",
+    "active_users_by_region",
+    "risks"
+  ],
   "properties": {
     "$schema": {
       "description": "Optional JSON Schema identifier for the data document itself.",
@@ -30,7 +37,7 @@
       "format": "date-time"
     },
     "kpi": {
-      "description": "Top-level KPI metrics shown in the report summary section. Consumers should enforce that active_users_30d is less than or equal to total_users and that conversion_rate remains between 0 and 1. Consumers must ensure active_users_30d <= total_users.",
+      "description": "Top-level KPI metrics shown in the report summary section; consumers should enforce active_users_30d <= total_users.",
       "x-validation": "Consumers must ensure active_users_30d <= total_users.",
       "type": "object",
       "additionalProperties": false,
@@ -47,15 +54,35 @@
           "minimum": 0
         },
         "conversion_rate": {
-          "description": "Conversion rate as a ratio between 0 and 1.",
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
+          "description": "Conversion rate value whose scale is defined by field_formats.kpi.conversion_rate: \"decimal\" uses a ratio in [0,1], while \"percentage\" uses a percentage in [0,100].",
+          "type": "number"
+        }
+      }
+    },
+    "field_formats": {
+      "description": "Canonical numeric field format map used to keep formatting metadata consistent across report metrics.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kpi"],
+      "properties": {
+        "kpi": {
+          "description": "Format metadata for KPI fields.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["conversion_rate"],
+          "properties": {
+            "conversion_rate": {
+              "description": "Format for kpi.conversion_rate.",
+              "type": "string",
+              "enum": ["decimal", "percentage"]
+            }
+          }
         }
       }
     },
     "active_users_by_region": {
-      "description": "Breakdown of active users by region for regional report sections. Region names must be unique within this array.",
+      "description": "Breakdown of active users by region for regional report sections. Each region object in this array should have a unique name, but JSON Schema cannot enforce uniqueness of one property across objects; data consumers must validate this constraint.",
+      "x-uniqueBy": "name",
       "type": "array",
       "minItems": 1,
       "items": {
@@ -86,5 +113,65 @@
         "minLength": 1
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "field_formats": {
+            "properties": {
+              "kpi": {
+                "properties": {
+                  "conversion_rate": {
+                    "const": "decimal"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "kpi": {
+            "properties": {
+              "conversion_rate": {
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "field_formats": {
+            "properties": {
+              "kpi": {
+                "properties": {
+                  "conversion_rate": {
+                    "const": "percentage"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "kpi": {
+            "properties": {
+              "conversion_rate": {
+                "minimum": 0,
+                "maximum": 100
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

@@ -19,3 +19,9 @@ pnpm --filter @templjs/cli exec node dist/cli.js render \
 ## Purpose
 
 Demonstrates transactional email generation with optional list rendering.
+
+## Data Notes
+
+- `order.total` must be numeric.
+- `order.currency_code` must be an ISO 4217 code (for example `USD`, `EUR`).
+- `order.locale` must be a BCP 47 locale string (for example `en-US`, `de-DE`).

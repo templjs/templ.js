@@ -3,6 +3,8 @@
   "order": {
     "id": "ORD-1042",
     "status": "Shipped",
+    "currency_code": "USD",
+    "locale": "en-US",
     "total": 129.9,
     "items": [
       { "name": "Wireless Mouse", "quantity": 1 },

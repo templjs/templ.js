@@ -26,7 +26,7 @@ function loadJsonFile(filePath) {
 const schema = loadJsonFile(schemaPath);
 const data = loadJsonFile(dataPath);
 
-function validateKpi(kpi) {
+function validateKpi(kpi, conversionRateFormat) {
   if (!kpi || typeof kpi !== 'object') {
     throw new Error('Invalid KPI payload: expected kpi to be an object');
   }
@@ -55,9 +55,10 @@ function validateKpi(kpi) {
     );
   }
 
-  if (kpi.conversion_rate < 0 || kpi.conversion_rate > 1) {
+  const maxConversionRate = conversionRateFormat === 'percentage' ? 100 : 1;
+  if (kpi.conversion_rate < 0 || kpi.conversion_rate > maxConversionRate) {
     throw new Error(
-      `Invalid KPI payload: conversion_rate (${kpi.conversion_rate}) must be between 0 and 1`
+      `Invalid KPI payload: conversion_rate (${kpi.conversion_rate}) must be between 0 and ${maxConversionRate} when field_formats.kpi.conversion_rate is "${conversionRateFormat}"`
     );
   }
 }
@@ -70,10 +71,12 @@ function validateActiveUsersByRegion(activeUsersByRegion) {
   }
 
   const seenRegionNames = new Set();
-  for (const region of activeUsersByRegion) {
+  for (const [index, region] of activeUsersByRegion.entries()) {
     const regionName = region?.name;
     if (typeof regionName !== 'string') {
-      continue;
+      throw new Error(
+        `Invalid active_users_by_region payload: region at index ${index} has non-string name (${String(regionName)})`
+      );
     }
 
     if (seenRegionNames.has(regionName)) {
@@ -84,6 +87,29 @@ function validateActiveUsersByRegion(activeUsersByRegion) {
 
     seenRegionNames.add(regionName);
   }
+}
+
+function validateFieldFormats(data) {
+  const { field_formats: fieldFormats } = data;
+
+  if (Array.isArray(fieldFormats)) {
+    throw new Error(
+      'Invalid field_formats payload: expected field_formats to be an object, not an array'
+    );
+  }
+
+  if (!fieldFormats || typeof fieldFormats !== 'object') {
+    throw new Error('Invalid field_formats payload: expected field_formats to be an object');
+  }
+
+  const conversionRateFormat = fieldFormats.kpi?.conversion_rate;
+  if (conversionRateFormat !== 'decimal' && conversionRateFormat !== 'percentage') {
+    throw new Error(
+      `Invalid field_formats payload: field_formats.kpi.conversion_rate (${String(conversionRateFormat)}) must be either "decimal" or "percentage"`
+    );
+  }
+
+  return conversionRateFormat;
 }
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
@@ -101,19 +127,32 @@ if (!validate(data)) {
 }
 
 try {
-  validateKpi(data.kpi);
-} catch (error) {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`Invalid markdown-report KPI data at examples/markdown-report/data.json: ${message}`);
-  process.exit(1);
-}
-
-try {
   validateActiveUsersByRegion(data.active_users_by_region);
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
   console.error(
     `Invalid markdown-report regional data at examples/markdown-report/data.json: ${message}`
+  );
+  process.exit(1);
+}
+
+let conversionRateFormat;
+try {
+  conversionRateFormat = validateFieldFormats(data);
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(
+    `Invalid markdown-report field format metadata at examples/markdown-report/data.json: ${message}`
+  );
+  process.exit(1);
+}
+
+try {
+  validateKpi(data.kpi, conversionRateFormat);
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(
+    `Invalid markdown-report KPI data at examples/markdown-report/data.json: ${message}`
   );
   process.exit(1);
 }
