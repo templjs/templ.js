@@ -72,7 +72,7 @@ In progress across the repo:
 
 ### Prerequisites
 
-- Node.js `>=18`
+- Node.js `^22.0.0 || ^24.0.0`
 - pnpm `>=8`
 
 ### Setup

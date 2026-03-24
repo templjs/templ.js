@@ -17,7 +17,7 @@ This directory contains CI/CD workflows for the templjs monorepo.
 - **Install**: Sets up pnpm with caching
 - **Lint**: Runs ESLint and Prettier checks on affected packages
 - **Type Check**: Validates TypeScript compilation
-- **Test**: Runs tests with coverage on Node 18 and 20
+- **Test**: Runs tests with coverage on Node 22 and 24
 - **Build**: Builds all affected packages
 
 **Features:**

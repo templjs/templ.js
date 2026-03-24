@@ -68,7 +68,7 @@
     "@eslint/js": "latest",
     "@nx/js": "latest",
     "@nx/vitest": "22.5.1",
-    "@types/node": "latest",
+    "@types/node": "^22.0.0 || ^24.0.0",
     "@typescript-eslint/eslint-plugin": "latest",
     "@typescript-eslint/parser": "latest",
     "@vitest/coverage-v8": "^4.0.18",
@@ -108,7 +108,7 @@
     ]
   },
   "engines": {
-    "node": ">=24.19.0 <25",
+    "node": "^22.0.0 || ^24.0.0",
     "pnpm": "8.15.0"
   },
   "packageManager": "pnpm@8.15.0"
