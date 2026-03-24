@@ -2,7 +2,12 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { defaultWatchModeDependencies, startRenderWatchMode } from '../src/watch-mode.js';
+import {
+  WATCH_ERROR_PREFIXES,
+  WatchModeDependencies,
+  defaultWatchModeDependencies,
+  startRenderWatchMode,
+} from './watch-mode.js';
 
 interface FakeWatcher {
   close: ReturnType<typeof vi.fn>;
@@ -35,6 +40,58 @@ function createFakeWatcher(listener: () => void): FakeWatcher {
   return watcher;
 }
 
+const EXPECTED_WATCH_ERROR_PREFIXES = [
+  'Error: ',
+  'Watch error: ',
+  'Unexpected watch render loop error: ',
+  'Unexpected watch mode startup error: ',
+] as const;
+
+function createMockDeps(
+  capturedErrorMessages: string[],
+  signalHandlers: Partial<Record<NodeJS.Signals, () => void>>,
+  watchers: Map<string, FakeWatcher>,
+  overrides: Partial<{
+    fileExists: ReturnType<typeof vi.fn>;
+    render: ReturnType<typeof vi.fn>;
+    watchFile: ReturnType<typeof vi.fn>;
+    writeOutput: ReturnType<typeof vi.fn>;
+    writeStdout: ReturnType<typeof vi.fn>;
+    writeStderr: ReturnType<typeof vi.fn>;
+    addSignalListener: ReturnType<typeof vi.fn>;
+    removeSignalListener: ReturnType<typeof vi.fn>;
+    setProcessExitCode: ReturnType<typeof vi.fn>;
+  }> = {}
+) {
+  const baseWatchFile = vi.fn((path: string, listener: () => void) => {
+    const watcher = createFakeWatcher(listener);
+    watchers.set(path, watcher);
+    return watcher as unknown as ReturnType<WatchModeDependencies['watchFile']>;
+  });
+
+  const baseWriteStderr = vi.fn((data: string) => {
+    capturedErrorMessages.push(data);
+    return true;
+  });
+
+  const baseAddSignalListener = vi.fn((signal: NodeJS.Signals, handler: () => void) => {
+    signalHandlers[signal] = handler;
+  });
+
+  return {
+    fileExists: vi.fn(() => true),
+    render: vi.fn().mockResolvedValue('rendered-content'),
+    watchFile: baseWatchFile,
+    writeOutput: vi.fn(),
+    writeStdout: vi.fn(() => true),
+    writeStderr: baseWriteStderr,
+    addSignalListener: baseAddSignalListener,
+    removeSignalListener: vi.fn(),
+    setProcessExitCode: vi.fn(),
+    ...overrides,
+  };
+}
+
 describe('watch-mode', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -45,18 +102,128 @@ describe('watch-mode', () => {
     vi.clearAllMocks();
   });
 
-  it('rejects inline JSON input for watch mode', async () => {
-    const deps = {
-      fileExists: vi.fn((path) => path === 'template.templ'),
-      render: vi.fn(),
-      watchFile: vi.fn(),
-      writeOutput: vi.fn(),
-      writeStdout: vi.fn(),
-      writeStderr: vi.fn(),
+  it('keeps WATCH_ERROR_PREFIXES aligned with emitted watch-mode errors', async () => {
+    expect(WATCH_ERROR_PREFIXES).toEqual(EXPECTED_WATCH_ERROR_PREFIXES);
+
+    const capturedErrorMessages: string[] = [];
+
+    const signalHandlers1: Partial<Record<NodeJS.Signals, () => void>> = {};
+    const watchers1 = new Map<string, FakeWatcher>();
+    const deps1 = createMockDeps(capturedErrorMessages, signalHandlers1, watchers1, {
+      render: vi.fn().mockRejectedValue(new Error('boom')),
+    });
+
+    const runPromise1 = startRenderWatchMode(
+      {
+        template: 'template.templ',
+        input: 'data.json',
+      },
+      deps1
+    );
+
+    await vi.waitFor(() => {
+      expect(deps1.writeStderr).toHaveBeenCalledWith('Error: boom\n');
+      expect(signalHandlers1.SIGINT).toBeTypeOf('function');
+    });
+    signalHandlers1.SIGINT?.();
+    await runPromise1;
+
+    const signalHandlers2: Partial<Record<NodeJS.Signals, () => void>> = {};
+    const watchers2 = new Map<string, FakeWatcher>();
+    const deps2 = createMockDeps(capturedErrorMessages, signalHandlers2, watchers2);
+
+    const runPromise2 = startRenderWatchMode(
+      {
+        template: 'template.templ',
+        input: 'data.json',
+      },
+      deps2
+    );
+
+    await vi.waitFor(() => {
+      expect(watchers2.get('template.templ')).toBeDefined();
+    });
+    watchers2.get('template.templ')?.emitError(new Error('watch exploded'));
+    await runPromise2;
+
+    const signalHandlers3: Partial<Record<NodeJS.Signals, () => void>> = {};
+    const watchers3 = new Map<string, FakeWatcher>();
+    const deps3 = createMockDeps(capturedErrorMessages, signalHandlers3, watchers3, {
+      writeStderr: vi.fn((data: string) => {
+        capturedErrorMessages.push(data);
+        if (data.startsWith('Watching ')) {
+          throw new Error('stderr exploded');
+        }
+        return true;
+      }),
       addSignalListener: vi.fn(),
-      removeSignalListener: vi.fn(),
-      setProcessExitCode: vi.fn(),
-    };
+    });
+
+    await startRenderWatchMode(
+      {
+        template: 'template.templ',
+        input: 'data.json',
+      },
+      deps3
+    );
+
+    const signalHandlers4: Partial<Record<NodeJS.Signals, () => void>> = {};
+    const watchers4 = new Map<string, FakeWatcher>();
+    const deps4 = createMockDeps(capturedErrorMessages, signalHandlers4, watchers4, {
+      render: vi
+        .fn()
+        .mockResolvedValueOnce('rendered-content')
+        .mockRejectedValueOnce({
+          toString: () => {
+            throw new Error('render loop stringify failure');
+          },
+        }),
+    });
+
+    const runPromise4 = startRenderWatchMode(
+      {
+        template: 'template.templ',
+        input: 'data.json',
+        debounceMs: 1,
+      },
+      deps4
+    );
+
+    await vi.waitFor(() => {
+      expect(watchers4.get('template.templ')).toBeDefined();
+      expect(signalHandlers4.SIGINT).toBeTypeOf('function');
+    });
+    watchers4.get('template.templ')?.emit();
+    await vi.advanceTimersByTimeAsync(1);
+    await vi.waitFor(() => {
+      expect(capturedErrorMessages).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^Unexpected watch render loop error: /)])
+      );
+    });
+    signalHandlers4.SIGINT?.();
+    await runPromise4;
+
+    const emittedErrors = capturedErrorMessages.filter((message) =>
+      EXPECTED_WATCH_ERROR_PREFIXES.some((prefix) => message.startsWith(prefix))
+    );
+
+    expect(emittedErrors).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/^Error: /),
+        expect.stringMatching(/^Watch error: /),
+        expect.stringMatching(/^Unexpected watch render loop error: /),
+        expect.stringMatching(/^Unexpected watch mode startup error: /),
+      ])
+    );
+  });
+
+  it('rejects inline JSON input for watch mode', async () => {
+    const capturedErrorMessages: string[] = [];
+    const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
+    const watchers = new Map<string, FakeWatcher>();
+    const deps = createMockDeps(capturedErrorMessages, signalHandlers, watchers, {
+      fileExists: vi.fn((path) => path === 'template.templ'),
+    });
 
     await expect(
       startRenderWatchMode(
@@ -70,17 +237,12 @@ describe('watch-mode', () => {
   });
 
   it('rejects missing template file for watch mode', async () => {
-    const deps = {
+    const capturedErrorMessages: string[] = [];
+    const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
+    const watchers = new Map<string, FakeWatcher>();
+    const deps = createMockDeps(capturedErrorMessages, signalHandlers, watchers, {
       fileExists: vi.fn((path) => path !== 'missing.templ'),
-      render: vi.fn(),
-      watchFile: vi.fn(),
-      writeOutput: vi.fn(),
-      writeStdout: vi.fn(),
-      writeStderr: vi.fn(),
-      addSignalListener: vi.fn(),
-      removeSignalListener: vi.fn(),
-      setProcessExitCode: vi.fn(),
-    };
+    });
 
     await expect(
       startRenderWatchMode(
@@ -94,28 +256,12 @@ describe('watch-mode', () => {
   });
 
   it('renders initially and on debounced change, then cleans up on SIGINT', async () => {
+    const capturedErrorMessages: string[] = [];
     const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
     const watchers = new Map<string, FakeWatcher>();
-
-    const watchFile = vi.fn((path: string, listener: () => void) => {
-      const watcher = createFakeWatcher(listener);
-      watchers.set(path, watcher);
-      return watcher as unknown as ReturnType<typeof watchFile>;
-    });
-
-    const deps = {
-      fileExists: vi.fn(() => true),
+    const deps = createMockDeps(capturedErrorMessages, signalHandlers, watchers, {
       render: vi.fn().mockResolvedValue('rendered-content'),
-      watchFile,
-      writeOutput: vi.fn(),
-      writeStdout: vi.fn(() => true),
-      writeStderr: vi.fn(() => true),
-      addSignalListener: vi.fn((signal: NodeJS.Signals, handler: () => void) => {
-        signalHandlers[signal] = handler;
-      }),
-      removeSignalListener: vi.fn(),
-      setProcessExitCode: vi.fn(),
-    };
+    });
 
     const runPromise = startRenderWatchMode(
       {
@@ -147,26 +293,12 @@ describe('watch-mode', () => {
   });
 
   it('writes to output file when output path is provided', async () => {
+    const capturedErrorMessages: string[] = [];
     const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
-    const watchers: FakeWatcher[] = [];
-
-    const deps = {
-      fileExists: vi.fn(() => true),
+    const watchers = new Map<string, FakeWatcher>();
+    const deps = createMockDeps(capturedErrorMessages, signalHandlers, watchers, {
       render: vi.fn().mockResolvedValue('rendered-to-file'),
-      watchFile: vi.fn((_path: string, listener: () => void) => {
-        const watcher = createFakeWatcher(listener);
-        watchers.push(watcher);
-        return watcher as unknown as ReturnType<typeof deps.watchFile>;
-      }),
-      writeOutput: vi.fn(),
-      writeStdout: vi.fn(() => true),
-      writeStderr: vi.fn(() => true),
-      addSignalListener: vi.fn((signal: NodeJS.Signals, handler: () => void) => {
-        signalHandlers[signal] = handler;
-      }),
-      removeSignalListener: vi.fn(),
-      setProcessExitCode: vi.fn(),
-    };
+    });
 
     const runPromise = startRenderWatchMode(
       {
@@ -187,37 +319,23 @@ describe('watch-mode', () => {
     await runPromise;
 
     expect(deps.setProcessExitCode).toHaveBeenCalledWith(143);
-    expect(watchers[0]?.close).toHaveBeenCalledTimes(1);
-    expect(watchers[1]?.close).toHaveBeenCalledTimes(1);
+    expect(watchers.get('template.templ')?.close).toHaveBeenCalledTimes(1);
+    expect(watchers.get('data.json')?.close).toHaveBeenCalledTimes(1);
   });
 
   it('re-renders after in-flight render settles when updates arrive during render', async () => {
     let resolveRender: (() => void) | undefined;
+    const capturedErrorMessages: string[] = [];
     const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
     const watchers = new Map<string, FakeWatcher>();
-
-    const deps = {
-      fileExists: vi.fn(() => true),
+    const deps = createMockDeps(capturedErrorMessages, signalHandlers, watchers, {
       render: vi.fn(
         () =>
           new Promise<string>((resolve) => {
             resolveRender = () => resolve('delayed-render');
           })
       ),
-      watchFile: vi.fn((path: string, listener: () => void) => {
-        const watcher = createFakeWatcher(listener);
-        watchers.set(path, watcher);
-        return watcher as unknown as ReturnType<typeof deps.watchFile>;
-      }),
-      writeOutput: vi.fn(),
-      writeStdout: vi.fn(() => true),
-      writeStderr: vi.fn(() => true),
-      addSignalListener: vi.fn((signal: NodeJS.Signals, handler: () => void) => {
-        signalHandlers[signal] = handler;
-      }),
-      removeSignalListener: vi.fn(),
-      setProcessExitCode: vi.fn(),
-    };
+    });
 
     const runPromise = startRenderWatchMode(
       {
@@ -243,35 +361,23 @@ describe('watch-mode', () => {
     await vi.waitFor(() => {
       expect(signalHandlers.SIGINT).toBeTypeOf('function');
     });
-
-    signalHandlers.SIGINT?.();
+    // First SIGINT triggers cleanup: both signal listeners are removed (SIGINT + SIGTERM = 2)
     signalHandlers.SIGINT?.();
     await runPromise;
+    expect(deps.removeSignalListener).toHaveBeenCalledTimes(2);
 
+    // Second SIGINT must be a no-op: the removal count must not increase
+    signalHandlers.SIGINT?.();
     expect(deps.removeSignalListener).toHaveBeenCalledTimes(2);
   });
 
   it('reports render errors and ignores queued timers after cleanup', async () => {
+    const capturedErrorMessages: string[] = [];
     const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
     const watchers = new Map<string, FakeWatcher>();
-
-    const deps = {
-      fileExists: vi.fn(() => true),
+    const deps = createMockDeps(capturedErrorMessages, signalHandlers, watchers, {
       render: vi.fn().mockRejectedValue(new Error('boom')),
-      watchFile: vi.fn((path: string, listener: () => void) => {
-        const watcher = createFakeWatcher(listener);
-        watchers.set(path, watcher);
-        return watcher as unknown as ReturnType<typeof deps.watchFile>;
-      }),
-      writeOutput: vi.fn(),
-      writeStdout: vi.fn(() => true),
-      writeStderr: vi.fn(() => true),
-      addSignalListener: vi.fn((signal: NodeJS.Signals, handler: () => void) => {
-        signalHandlers[signal] = handler;
-      }),
-      removeSignalListener: vi.fn(),
-      setProcessExitCode: vi.fn(),
-    };
+    });
 
     const runPromise = startRenderWatchMode(
       {
@@ -297,11 +403,10 @@ describe('watch-mode', () => {
 
   it('continues watch mode when rerender error logging throws', async () => {
     let resolveRender: (() => void) | undefined;
+    const capturedErrorMessages: string[] = [];
     const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
     const watchers = new Map<string, FakeWatcher>();
-
-    const deps = {
-      fileExists: vi.fn(() => true),
+    const deps = createMockDeps(capturedErrorMessages, signalHandlers, watchers, {
       render: vi
         .fn()
         .mockImplementationOnce(
@@ -311,25 +416,13 @@ describe('watch-mode', () => {
             })
         )
         .mockRejectedValueOnce(new Error('boom')),
-      watchFile: vi.fn((path: string, listener: () => void) => {
-        const watcher = createFakeWatcher(listener);
-        watchers.set(path, watcher);
-        return watcher as unknown as ReturnType<typeof deps.watchFile>;
-      }),
-      writeOutput: vi.fn(),
-      writeStdout: vi.fn(() => true),
       writeStderr: vi.fn((data: string) => {
         if (data === 'Error: boom\n') {
           throw new Error('stderr exploded');
         }
         return true;
       }),
-      addSignalListener: vi.fn((signal: NodeJS.Signals, handler: () => void) => {
-        signalHandlers[signal] = handler;
-      }),
-      removeSignalListener: vi.fn(),
-      setProcessExitCode: vi.fn(),
-    };
+    });
 
     const runPromise = startRenderWatchMode(
       {
@@ -368,23 +461,20 @@ describe('watch-mode', () => {
 
   it('cleans up the first watcher if subsequent watcher setup fails', async () => {
     const firstWatcher = createFakeWatcher(() => undefined);
-
-    const deps = {
-      fileExists: vi.fn(() => true),
+    const capturedErrorMessages: string[] = [];
+    const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
+    const watchers = new Map<string, FakeWatcher>();
+    const deps = createMockDeps(capturedErrorMessages, signalHandlers, watchers, {
       render: vi.fn().mockResolvedValue('rendered'),
       watchFile: vi
         .fn()
-        .mockReturnValueOnce(firstWatcher as unknown as ReturnType<typeof deps.watchFile>)
+        .mockReturnValueOnce(
+          firstWatcher as unknown as ReturnType<WatchModeDependencies['watchFile']>
+        )
         .mockImplementationOnce(() => {
           throw new Error('watch setup failed');
         }),
-      writeOutput: vi.fn(),
-      writeStdout: vi.fn(() => true),
-      writeStderr: vi.fn(() => true),
-      addSignalListener: vi.fn(),
-      removeSignalListener: vi.fn(),
-      setProcessExitCode: vi.fn(),
-    };
+    });
 
     await expect(
       startRenderWatchMode(
@@ -400,26 +490,12 @@ describe('watch-mode', () => {
   });
 
   it('handles watcher error events with cleanup and exit code 1', async () => {
+    const capturedErrorMessages: string[] = [];
     const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
     const watchers = new Map<string, FakeWatcher>();
-
-    const deps = {
-      fileExists: vi.fn(() => true),
+    const deps = createMockDeps(capturedErrorMessages, signalHandlers, watchers, {
       render: vi.fn().mockResolvedValue('rendered-content'),
-      watchFile: vi.fn((path: string, listener: () => void) => {
-        const watcher = createFakeWatcher(listener);
-        watchers.set(path, watcher);
-        return watcher as unknown as ReturnType<typeof deps.watchFile>;
-      }),
-      writeOutput: vi.fn(),
-      writeStdout: vi.fn(() => true),
-      writeStderr: vi.fn(() => true),
-      addSignalListener: vi.fn((signal: NodeJS.Signals, handler: () => void) => {
-        signalHandlers[signal] = handler;
-      }),
-      removeSignalListener: vi.fn(),
-      setProcessExitCode: vi.fn(),
-    };
+    });
 
     const runPromise = startRenderWatchMode(
       {
@@ -444,28 +520,18 @@ describe('watch-mode', () => {
 
   it('handles watcher errors that occur during the initial render', async () => {
     let resolveRender: (() => void) | undefined;
+    const capturedErrorMessages: string[] = [];
+    const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
     const watchers = new Map<string, FakeWatcher>();
-
-    const deps = {
-      fileExists: vi.fn(() => true),
+    const deps = createMockDeps(capturedErrorMessages, signalHandlers, watchers, {
       render: vi.fn(
         () =>
           new Promise<string>((resolve) => {
             resolveRender = () => resolve('rendered-content');
           })
       ),
-      watchFile: vi.fn((path: string, listener: () => void) => {
-        const watcher = createFakeWatcher(listener);
-        watchers.set(path, watcher);
-        return watcher as unknown as ReturnType<typeof deps.watchFile>;
-      }),
-      writeOutput: vi.fn(),
-      writeStdout: vi.fn(() => true),
-      writeStderr: vi.fn(() => true),
       addSignalListener: vi.fn(),
-      removeSignalListener: vi.fn(),
-      setProcessExitCode: vi.fn(),
-    };
+    });
 
     const runPromise = startRenderWatchMode(
       {
@@ -481,7 +547,7 @@ describe('watch-mode', () => {
 
     watchers.get('template.templ')?.emitError(new Error('watch exploded early'));
     await runPromise;
-    resolveRender?.(); // Resolve dangling promise to avoid unhandled rejection warni
+    resolveRender?.(); // Watcher error triggers cleanup before render completes, so resolve the still-pending render promise to avoid unhandled rejection warnings.
 
     expect(deps.writeStderr).toHaveBeenCalledWith('Watch error: watch exploded early\n');
     expect(deps.setProcessExitCode).toHaveBeenCalledWith(1);
@@ -490,31 +556,18 @@ describe('watch-mode', () => {
   });
 
   it('keeps watcher lifecycle active when initial render error logging throws', async () => {
+    const capturedErrorMessages: string[] = [];
     const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
     const watchers = new Map<string, FakeWatcher>();
-
-    const deps = {
-      fileExists: vi.fn(() => true),
+    const deps = createMockDeps(capturedErrorMessages, signalHandlers, watchers, {
       render: vi.fn().mockRejectedValue(new Error('boom')),
-      watchFile: vi.fn((path: string, listener: () => void) => {
-        const watcher = createFakeWatcher(listener);
-        watchers.set(path, watcher);
-        return watcher as unknown as ReturnType<typeof deps.watchFile>;
-      }),
-      writeOutput: vi.fn(),
-      writeStdout: vi.fn(() => true),
       writeStderr: vi.fn((data: string) => {
         if (data === 'Error: boom\n') {
           throw new Error('stderr exploded');
         }
         return true;
       }),
-      addSignalListener: vi.fn((signal: NodeJS.Signals, handler: () => void) => {
-        signalHandlers[signal] = handler;
-      }),
-      removeSignalListener: vi.fn(),
-      setProcessExitCode: vi.fn(),
-    };
+    });
 
     const runPromise = startRenderWatchMode(
       {
@@ -538,31 +591,17 @@ describe('watch-mode', () => {
 
   it('skips queued rerenders after cleanup while a render is still in flight', async () => {
     let resolveRender: (() => void) | undefined;
+    const capturedErrorMessages: string[] = [];
     const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
     const watchers = new Map<string, FakeWatcher>();
-
-    const deps = {
-      fileExists: vi.fn(() => true),
+    const deps = createMockDeps(capturedErrorMessages, signalHandlers, watchers, {
       render: vi.fn(
         () =>
           new Promise<string>((resolve) => {
             resolveRender = () => resolve('rendered-content');
           })
       ),
-      watchFile: vi.fn((path: string, listener: () => void) => {
-        const watcher = createFakeWatcher(listener);
-        watchers.set(path, watcher);
-        return watcher as unknown as ReturnType<typeof deps.watchFile>;
-      }),
-      writeOutput: vi.fn(),
-      writeStdout: vi.fn(() => true),
-      writeStderr: vi.fn(() => true),
-      addSignalListener: vi.fn((signal: NodeJS.Signals, handler: () => void) => {
-        signalHandlers[signal] = handler;
-      }),
-      removeSignalListener: vi.fn(),
-      setProcessExitCode: vi.fn(),
-    };
+    });
 
     const runPromise = startRenderWatchMode(
       {
@@ -588,18 +627,11 @@ describe('watch-mode', () => {
   });
 
   it('reports startup banner failures and exits cleanly', async () => {
+    const capturedErrorMessages: string[] = [];
+    const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
     const watchers = new Map<string, FakeWatcher>();
-
-    const deps = {
-      fileExists: vi.fn(() => true),
+    const deps = createMockDeps(capturedErrorMessages, signalHandlers, watchers, {
       render: vi.fn().mockResolvedValue('rendered-content'),
-      watchFile: vi.fn((path: string, listener: () => void) => {
-        const watcher = createFakeWatcher(listener);
-        watchers.set(path, watcher);
-        return watcher as unknown as ReturnType<typeof deps.watchFile>;
-      }),
-      writeOutput: vi.fn(),
-      writeStdout: vi.fn(() => true),
       writeStderr: vi.fn((data: string) => {
         if (data.startsWith('Watching ')) {
           throw new Error('stderr exploded');
@@ -607,9 +639,7 @@ describe('watch-mode', () => {
         return true;
       }),
       addSignalListener: vi.fn(),
-      removeSignalListener: vi.fn(),
-      setProcessExitCode: vi.fn(),
-    };
+    });
 
     await startRenderWatchMode(
       {
@@ -670,6 +700,65 @@ describe('watch-mode', () => {
       offSpy.mockRestore();
       stdoutSpy.mockRestore();
       stderrSpy.mockRestore();
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('performs an initial render with real fs and a custom render function', async () => {
+    vi.useRealTimers();
+
+    const tempDir = mkdtempSync(join(tmpdir(), 'templjs-watch-integ-'));
+    const templatePath = join(tempDir, 'template.templ');
+    const dataPath = join(tempDir, 'data.json');
+    const outputPath = join(tempDir, 'output.txt');
+
+    writeFileSync(templatePath, 'Hello {{ name }}', 'utf-8');
+    writeFileSync(dataPath, '{"name":"World"}', 'utf-8');
+
+    const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
+    const stderrLines: string[] = [];
+    const exitCodeSpy = vi.fn();
+
+    const deps: WatchModeDependencies = {
+      ...defaultWatchModeDependencies,
+      render: async (_templatePath: string, inputPath: string) => {
+        return readFileSync(inputPath, 'utf-8');
+      },
+      writeStdout: (data) => {
+        process.stdout.write(data);
+        return true;
+      },
+      writeStderr: (data) => {
+        stderrLines.push(data);
+        return true;
+      },
+      addSignalListener: (signal, handler) => {
+        signalHandlers[signal] = handler;
+      },
+      removeSignalListener: () => {},
+      setProcessExitCode: exitCodeSpy,
+    };
+
+    const runPromise = startRenderWatchMode(
+      { template: templatePath, input: dataPath, output: outputPath, debounceMs: 0 },
+      deps
+    );
+
+    try {
+      await vi.waitFor(
+        () => {
+          expect(signalHandlers.SIGINT).toBeTypeOf('function');
+          expect(readFileSync(outputPath, 'utf-8')).toBe('{"name":"World"}');
+        },
+        { timeout: 2000 }
+      );
+
+      signalHandlers.SIGINT?.();
+      await runPromise;
+
+      expect(stderrLines.some((line) => line.startsWith('Watching '))).toBe(true);
+      expect(exitCodeSpy).toHaveBeenCalledWith(130);
+    } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
   });

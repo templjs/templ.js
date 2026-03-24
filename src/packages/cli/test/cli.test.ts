@@ -25,26 +25,26 @@ vi.mock('../src/commands/validate.js', () => ({
   validateCommand: vi.fn(),
 }));
 
-vi.mock('../src/watch-mode.js', () => ({
-  WATCH_ERROR_PREFIXES: [
-    'Error: ',
-    'Watch error: ',
-    'Unexpected watch render loop error: ',
-    'Unexpected watch mode startup error: ',
-  ],
-  defaultWatchModeDependencies: {
-    fileExists: vi.fn(),
-    render: vi.fn(),
-    watchFile: vi.fn(),
-    writeOutput: vi.fn(),
-    writeStdout: vi.fn(),
-    writeStderr: vi.fn(),
-    addSignalListener: vi.fn(),
-    removeSignalListener: vi.fn(),
-    setProcessExitCode: vi.fn(),
-  },
-  startRenderWatchMode: vi.fn(),
-}));
+vi.mock('../src/watch-mode.js', async () => {
+  const actual =
+    await vi.importActual<typeof import('../src/watch-mode.js')>('../src/watch-mode.js');
+
+  return {
+    WATCH_ERROR_PREFIXES: actual.WATCH_ERROR_PREFIXES,
+    defaultWatchModeDependencies: {
+      fileExists: vi.fn(),
+      render: vi.fn(),
+      watchFile: vi.fn(),
+      writeOutput: vi.fn(),
+      writeStdout: vi.fn(),
+      writeStderr: vi.fn(),
+      addSignalListener: vi.fn(),
+      removeSignalListener: vi.fn(),
+      setProcessExitCode: vi.fn(),
+    },
+    startRenderWatchMode: vi.fn(),
+  };
+});
 
 import { writeFileSync } from 'fs';
 import { main } from '../src/cli.js';
@@ -281,7 +281,7 @@ describe('cli-main', () => {
     );
 
     watchDeps?.writeStderr('odd warning\n');
-    expect(stderrSpy).toHaveBeenCalledWith('Unexpected watch stderr: odd warning\n');
+    expect(stderrSpy).toHaveBeenCalledWith('Error: odd warning\n');
 
     watchDeps?.writeStderr('Error: still loud\n');
     expect(stderrSpy).toHaveBeenCalledWith('Error: still loud\n');

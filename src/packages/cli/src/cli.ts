@@ -194,7 +194,13 @@ function createWatchModeDependencies(
 
       if (mode.quiet) {
         const unexpectedMessage = trimmed || data;
-        return process.stderr.write(`Unexpected watch stderr: ${unexpectedMessage}\n`);
+        writeError(
+          mode,
+          'render',
+          unexpectedMessage,
+          outputPath ? `Output path: ${outputPath}` : undefined
+        );
+        return true;
       }
 
       if (mode.json) {
