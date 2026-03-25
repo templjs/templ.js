@@ -16,16 +16,16 @@ describe('TemplateParser - public extractStatementContent / extractExpressionCon
         delimiterStart: '{%',
         delimiterEnd: '%}',
       };
-      expect(parser.extractStatementContent(token)).toBe('if user.active');
+      expect(parser.extractStatementContent(token).content).toBe('if user.active');
     });
 
     // Case 2: raw string + explicit delimiters config
     it('extracts from a raw string when explicit delimiters are supplied as config', () => {
       const parser = makeParser();
       const delimiters: DelimiterConfig = { start: '{%', end: '%}' };
-      expect(parser.extractStatementContent('{%   for item in items   %}', delimiters)).toBe(
-        'for item in items'
-      );
+      expect(
+        parser.extractStatementContent('{%   for item in items   %}', delimiters).content
+      ).toBe('for item in items');
     });
 
     // Case 3: no metadata and no explicit delimiters → must throw
@@ -56,13 +56,81 @@ describe('TemplateParser - public extractStatementContent / extractExpressionCon
         delimiterStart: '<%',
         delimiterEnd: '%>',
       };
-      expect(parser.extractStatementContent(token)).toBe('set total = price * qty');
+      expect(parser.extractStatementContent(token).content).toBe('set total = price * qty');
     });
 
     it('extracts and trims with custom <% %> delimiters supplied as explicit config', () => {
       const parser = makeParser();
       const delimiters: DelimiterConfig = { start: '<%', end: '%>' };
-      expect(parser.extractStatementContent('<%   set n = 0   %>', delimiters)).toBe('set n = 0');
+      expect(parser.extractStatementContent('<%   set n = 0   %>', delimiters).content).toBe(
+        'set n = 0'
+      );
+    });
+
+    it('returns an empty string when statement content is empty between delimiters', () => {
+      const parser = makeParser();
+      expect(parser.extractStatementContent('{%   %}', { start: '{%', end: '%}' }).content).toBe(
+        ''
+      );
+    });
+
+    it('returns contentStart/contentEnd offsets relative to token start for wrapped statements', () => {
+      const parser = makeParser();
+      const extracted = parser.extractStatementContent('{%   if user.active   %}', {
+        start: '{%',
+        end: '%}',
+      });
+
+      expect(extracted).toEqual({
+        content: 'if user.active',
+        contentStart: 5,
+        contentEnd: 19,
+      });
+    });
+
+    it('returns offsets that span the trimmed plain content when delimiters are absent in text', () => {
+      const parser = makeParser();
+      const extracted = parser.extractStatementContent('   plain_statement   ', {
+        start: '{%',
+        end: '%}',
+      });
+
+      expect(extracted).toEqual({
+        content: 'plain_statement',
+        contentStart: 3,
+        contentEnd: 18,
+      });
+    });
+
+    it('handles minimal whitespace in statements without over-trimming content', () => {
+      const parser = makeParser();
+      expect(parser.extractStatementContent('{% x %}', { start: '{%', end: '%}' }).content).toBe(
+        'x'
+      );
+    });
+
+    it('throws when token metadata provides only delimiterStart', () => {
+      const parser = makeParser();
+      const token: ExtractTokenInput = {
+        content: '{% x %}',
+        delimiterStart: '{%',
+        delimiterEnd: undefined,
+      };
+      expect(() => parser.extractStatementContent(token)).toThrow(
+        'extractStatementContent requires delimiterStart/delimiterEnd in token metadata or explicit delimiters config'
+      );
+    });
+
+    it('throws when token metadata provides only delimiterEnd', () => {
+      const parser = makeParser();
+      const token: ExtractTokenInput = {
+        content: '{% x %}',
+        delimiterStart: undefined,
+        delimiterEnd: '%}',
+      };
+      expect(() => parser.extractStatementContent(token)).toThrow(
+        'extractStatementContent requires delimiterStart/delimiterEnd in token metadata or explicit delimiters config'
+      );
     });
 
     it('token delimiterStart/delimiterEnd takes precedence over explicit delimiters config', () => {
@@ -73,7 +141,9 @@ describe('TemplateParser - public extractStatementContent / extractExpressionCon
         delimiterEnd: '%>',
       };
       // explicit config uses {%/%}, but token metadata <%/%> should win
-      expect(parser.extractStatementContent(token, { start: '{%', end: '%}' })).toBe('set x = 1');
+      expect(parser.extractStatementContent(token, { start: '{%', end: '%}' }).content).toBe(
+        'set x = 1'
+      );
     });
   });
 
@@ -86,16 +156,16 @@ describe('TemplateParser - public extractStatementContent / extractExpressionCon
         delimiterStart: '{{',
         delimiterEnd: '}}',
       };
-      expect(parser.extractExpressionContent(token)).toBe('user.name');
+      expect(parser.extractExpressionContent(token).content).toBe('user.name');
     });
 
     // Case 2: raw string + explicit delimiters config
     it('extracts from a raw string when explicit delimiters are supplied as config', () => {
       const parser = makeParser();
       const delimiters: DelimiterConfig = { start: '{{', end: '}}' };
-      expect(parser.extractExpressionContent('{{   order.total | currency   }}', delimiters)).toBe(
-        'order.total | currency'
-      );
+      expect(
+        parser.extractExpressionContent('{{   order.total | currency   }}', delimiters).content
+      ).toBe('order.total | currency');
     });
 
     // Case 3: no metadata and no explicit delimiters → must throw
@@ -126,14 +196,52 @@ describe('TemplateParser - public extractStatementContent / extractExpressionCon
         delimiterStart: '<%',
         delimiterEnd: '%>',
       };
-      expect(parser.extractExpressionContent(token)).toBe('user.email');
+      expect(parser.extractExpressionContent(token).content).toBe('user.email');
     });
 
     it('extracts and trims with custom <% %> delimiters supplied as explicit config', () => {
       const parser = makeParser();
       const delimiters: DelimiterConfig = { start: '<%', end: '%>' };
-      expect(parser.extractExpressionContent('<%   report.kpi.value   %>', delimiters)).toBe(
-        'report.kpi.value'
+      expect(
+        parser.extractExpressionContent('<%   report.kpi.value   %>', delimiters).content
+      ).toBe('report.kpi.value');
+    });
+
+    it('returns an empty string when expression content is empty between delimiters', () => {
+      const parser = makeParser();
+      expect(parser.extractExpressionContent('{{   }}', { start: '{{', end: '}}' }).content).toBe(
+        ''
+      );
+    });
+
+    it('handles minimal whitespace in expressions without over-trimming content', () => {
+      const parser = makeParser();
+      expect(parser.extractExpressionContent('{{x}}', { start: '{{', end: '}}' }).content).toBe(
+        'x'
+      );
+    });
+
+    it('throws when token metadata provides only delimiterStart', () => {
+      const parser = makeParser();
+      const token: ExtractTokenInput = {
+        content: '{{x}}',
+        delimiterStart: '{{',
+        delimiterEnd: undefined,
+      };
+      expect(() => parser.extractExpressionContent(token)).toThrow(
+        'extractExpressionContent requires delimiterStart/delimiterEnd in token metadata or explicit delimiters config'
+      );
+    });
+
+    it('throws when token metadata provides only delimiterEnd', () => {
+      const parser = makeParser();
+      const token: ExtractTokenInput = {
+        content: '{{x}}',
+        delimiterStart: undefined,
+        delimiterEnd: '}}',
+      };
+      expect(() => parser.extractExpressionContent(token)).toThrow(
+        'extractExpressionContent requires delimiterStart/delimiterEnd in token metadata or explicit delimiters config'
       );
     });
 
@@ -145,9 +253,37 @@ describe('TemplateParser - public extractStatementContent / extractExpressionCon
         delimiterEnd: ']]',
       };
       // explicit config uses {{/}}, but token metadata [[/]] should win
-      expect(parser.extractExpressionContent(token, { start: '{{', end: '}}' })).toBe(
+      expect(parser.extractExpressionContent(token, { start: '{{', end: '}}' }).content).toBe(
         'report.total'
       );
+    });
+
+    it('returns content offsets relative to the original expression token content', () => {
+      const parser = makeParser();
+      const extracted = parser.extractExpressionContent('{{   user.name   }}', {
+        start: '{{',
+        end: '}}',
+      });
+
+      expect(extracted).toEqual({
+        content: 'user.name',
+        contentStart: 5,
+        contentEnd: 14,
+      });
+    });
+
+    it('returns trimmed-span offsets when expression delimiters are absent in input text', () => {
+      const parser = makeParser();
+      const extracted = parser.extractExpressionContent('   plain_expression   ', {
+        start: '{{',
+        end: '}}',
+      });
+
+      expect(extracted).toEqual({
+        content: 'plain_expression',
+        contentStart: 3,
+        contentEnd: 19,
+      });
     });
   });
 });

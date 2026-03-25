@@ -11,7 +11,7 @@ function extractStatementContent(
   delimiters: DelimiterConfig = { start: '{%', end: '%}' }
 ): string {
   const parser = createParser();
-  return parser.extractStatementContent(input, delimiters);
+  return parser.extractStatementContent(input, delimiters).content;
 }
 
 function extractExpressionContent(
@@ -19,7 +19,7 @@ function extractExpressionContent(
   delimiters: DelimiterConfig = { start: '{{', end: '}}' }
 ): string {
   const parser = createParser();
-  return parser.extractExpressionContent(input, delimiters);
+  return parser.extractExpressionContent(input, delimiters).content;
 }
 
 describe('TemplateParser extract content helpers', () => {
@@ -149,6 +149,34 @@ describe('TemplateParser extract content helpers', () => {
 
       expect(extractStatementContent(token)).toBe('plain_statement');
     });
+
+    it('returns offsets for default statement delimiters', () => {
+      const parser = createParser();
+      const extracted = parser.extractStatementContent('{%   if user.active   %}', {
+        start: '{%',
+        end: '%}',
+      });
+
+      expect(extracted).toEqual({
+        content: 'if user.active',
+        contentStart: 5,
+        contentEnd: 19,
+      });
+    });
+
+    it('returns offsets for custom statement delimiters', () => {
+      const parser = createParser();
+      const extracted = parser.extractStatementContent('<<   if x   >>', {
+        start: '<<',
+        end: '>>',
+      });
+
+      expect(extracted).toEqual({
+        content: 'if x',
+        contentStart: 5,
+        contentEnd: 9,
+      });
+    });
   });
 
   describe('extractExpressionContent', () => {
@@ -251,6 +279,34 @@ describe('TemplateParser extract content helpers', () => {
 
     it('trims plain content when no delimiters are present', () => {
       expect(extractExpressionContent('   plain_expression   ')).toBe('plain_expression');
+    });
+
+    it('returns offsets for default expression delimiters', () => {
+      const parser = createParser();
+      const extracted = parser.extractExpressionContent('{{   user.name   }}', {
+        start: '{{',
+        end: '}}',
+      });
+
+      expect(extracted).toEqual({
+        content: 'user.name',
+        contentStart: 5,
+        contentEnd: 14,
+      });
+    });
+
+    it('returns offsets for custom expression delimiters', () => {
+      const parser = createParser();
+      const extracted = parser.extractExpressionContent('[[   user.name   ]]', {
+        start: '[[',
+        end: ']]',
+      });
+
+      expect(extracted).toEqual({
+        content: 'user.name',
+        contentStart: 5,
+        contentEnd: 14,
+      });
     });
   });
 });

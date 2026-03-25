@@ -1345,7 +1345,11 @@ describe('parse', () => {
             delimiterStart: '{%',
             delimiterEnd: '%}',
           })
-        ).toBe('if user.active');
+        ).toEqual(
+          expect.objectContaining({
+            content: 'if user.active',
+          })
+        );
       });
 
       it('extracts statement content from plain strings with explicit delimiters', () => {
@@ -1356,7 +1360,11 @@ describe('parse', () => {
             start: '<%',
             end: '%>',
           })
-        ).toBe('set total = price * qty');
+        ).toEqual(
+          expect.objectContaining({
+            content: 'set total = price * qty',
+          })
+        );
       });
 
       it('throws when statement delimiter metadata and explicit delimiters are both missing', () => {
@@ -1374,7 +1382,7 @@ describe('parse', () => {
           parser.extractExpressionContent('[[   user.email   ]]', {
             start: '[[',
             end: ']]',
-          })
+          }).content
         ).toBe('user.email');
       });
 
@@ -1395,17 +1403,23 @@ describe('parse', () => {
             delimiterStart: '<<',
             delimiterEnd: '>>',
           })
-        ).toBe('if user.active');
+        ).toEqual(
+          expect.objectContaining({
+            content: 'if user.active',
+          })
+        );
 
         expect(
           parser.extractExpressionContent({
             content: '<%   user.email   %>',
             delimiterStart: '<%',
             delimiterEnd: '%>',
-          })
+          }).content
         ).toBe('user.email');
 
-        expect(parser.extractExpressionContent('{{   user.name   }}')).toBe('user.name');
+        expect(
+          parser.extractExpressionContent('{{   user.name   }}', { start: '{{', end: '}}' }).content
+        ).toBe('user.name');
       });
     });
 
@@ -1539,10 +1553,16 @@ describe('parse', () => {
         expect.objectContaining({ type: 'variable', name: '123abc', path: [] })
       );
       expect((parser as any).parsePath('.')).toEqual([]);
-      expect((parser as any).extractStatementContent('if user', { start: '{%', end: '%}' })).toBe(
-        'if user'
+      expect(
+        (parser as any).extractStatementContent('if user', { start: '{%', end: '%}' })
+      ).toEqual(
+        expect.objectContaining({
+          content: 'if user',
+        })
       );
-      expect((parser as any).extractExpressionContent('name')).toBe('name');
+      expect(
+        (parser as any).extractExpressionContent('name', { start: '{{', end: '}}' }).content
+      ).toBe('name');
       expect((parser as any).createErrorVariable('broken')).toEqual(
         expect.objectContaining({ type: 'variable', name: 'broken' })
       );

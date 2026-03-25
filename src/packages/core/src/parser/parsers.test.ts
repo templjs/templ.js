@@ -249,6 +249,26 @@ describe('splitByOperatorFromRight', () => {
 });
 
 describe('createCharContextIterator', () => {
+  it('returns default summary and emits no frames for an empty expression', () => {
+    let frameCount = 0;
+
+    const summary = createCharContextIterator('', () => {
+      frameCount++;
+    });
+
+    expect(frameCount).toBe(0);
+    expect(summary).toEqual({
+      depth: 0,
+      inSingleQuote: false,
+      inDoubleQuote: false,
+      templateLiteralDepth: 0,
+      templateExprDepth: 0,
+      templateContextDepth: 0,
+      inLineComment: false,
+      inBlockComment: false,
+    });
+  });
+
   it('tracks unterminated and terminated single-quoted string state', () => {
     const unterminated = createCharContextIterator("'unterminated", () => {});
     const terminated = createCharContextIterator("'it\\'s done'", () => {});
