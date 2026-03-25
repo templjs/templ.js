@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type {
   BinaryOpNode,
   ErrorNode,
@@ -36,15 +36,21 @@ function literal(value: unknown): LiteralNode {
           ? 'number'
           : typeof value === 'boolean'
             ? 'boolean'
-            : 'string';
+            : typeof value === 'object'
+              ? 'object'
+              : null;
+
+  if (valueType === null) {
+    throw new TypeError(`Unsupported test literal value: ${String(value)}`);
+  }
 
   return {
     type: 'literal',
     valueType,
-    value: value as string | number | boolean | null,
+    value: value as string | number | boolean | object | null,
     start: pos(0),
     end: pos(1),
-  };
+  } as unknown as LiteralNode;
 }
 
 function variable(
@@ -363,7 +369,22 @@ describe('evaluateBinaryOp', () => {
     expect(evaluateBinaryOp(binary('==', literal(1), literal('1')), context)).toBe(true);
     expect(evaluateBinaryOp(binary('===', literal(1), literal('1')), context)).toBe(false);
     expect(evaluateBinaryOp(binary('&&', literal(true), literal(false)), context)).toBe(false);
+    expect(evaluateBinaryOp(binary('&&', literal('x'), literal(3)), context)).toBe(3);
     expect(evaluateBinaryOp(binary('||', literal(false), literal('x')), context)).toBe('x');
+    expect(evaluateBinaryOp(binary('||', literal('x'), literal('y')), context)).toBe('x');
+    expect(context.errors).toHaveLength(0);
+  });
+
+  it('short-circuits logical operators', () => {
+    const context = createRenderContext();
+
+    expect(evaluateBinaryOp(binary('||', literal('left'), variable('missing')), context)).toBe(
+      'left'
+    );
+    expect(evaluateBinaryOp(binary('&&', literal(false), variable('missing')), context)).toBe(
+      false
+    );
+    expect(context.errors).toHaveLength(0);
   });
 
   it('handles edge cases and unknown operators', () => {
@@ -544,7 +565,6 @@ describe('evaluateExpression', () => {
 
   it('warns when expression type has no registered evaluator', () => {
     const context = createRenderContext();
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const expr = {
       type: 'nonexistent',
@@ -552,19 +572,17 @@ describe('evaluateExpression', () => {
       end: pos(1),
     } as unknown as ExpressionNode;
 
-    try {
-      expect(evaluateExpression(expr, context)).toBeUndefined();
-      expect(warnSpy).toHaveBeenCalledWith(
-        'Missing expression evaluator',
-        expect.objectContaining({
-          evaluator: undefined,
-          type: 'nonexistent',
-          expr,
-          context,
-        })
-      );
-    } finally {
-      warnSpy.mockRestore();
-    }
+    expect(evaluateExpression(expr, context)).toBeUndefined();
+    expect(context.errors).toHaveLength(1);
+    expect(context.errors[0]).toEqual(
+      expect.objectContaining({
+        type: 'runtime_error',
+        message: 'Unknown expression type: nonexistent',
+        location: {
+          start: expr.start,
+          end: expr.end,
+        },
+      })
+    );
   });
 });

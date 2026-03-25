@@ -154,6 +154,17 @@ export function evaluateFilter(expr: FilterNode, context: RenderContext): AnyVal
  * Evaluate a binary operation with JavaScript-correct semantics
  */
 export function evaluateBinaryOp(node: BinaryOpNode, context: RenderContext): AnyValue {
+  // Preserve JavaScript short-circuit semantics for logical operators.
+  if (node.operator === '&&') {
+    const left = evaluateExpression(node.left, context);
+    return variableResolver.toBoolean(left) ? evaluateExpression(node.right, context) : left;
+  }
+
+  if (node.operator === '||') {
+    const left = evaluateExpression(node.left, context);
+    return variableResolver.toBoolean(left) ? left : evaluateExpression(node.right, context);
+  }
+
   const left = evaluateExpression(node.left, context);
   const right = evaluateExpression(node.right, context);
 
@@ -197,12 +208,6 @@ export function evaluateBinaryOp(node: BinaryOpNode, context: RenderContext): An
       return (left as number) > (right as number);
     case '>=':
       return (left as number) >= (right as number);
-
-    // Logical
-    case '&&':
-      return variableResolver.toBoolean(left) && variableResolver.toBoolean(right);
-    case '||':
-      return variableResolver.toBoolean(left) || variableResolver.toBoolean(right);
 
     // Array/object access
     case '[':

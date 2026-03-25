@@ -73,10 +73,12 @@ describe('SetNodeRenderer', () => {
 
   it('writes multiple types to context.data when scopes are empty', () => {
     const data: Record<string, unknown> = {};
-    render(
+    const result = render(
       template(setNode('n', lit(42)), setNode('b', lit(true)), setNode('nil', lit(null))),
       data
     );
+    expect(result.success).toBe(true);
+    expect(result.errors).toHaveLength(0);
     expect(data['n']).toBe(42);
     expect(data['b']).toBe(true);
     expect(data['nil']).toBeNull();
