@@ -52,6 +52,14 @@ describe('QueryEngine utility functions', () => {
     expect(numberFunction({})).toBeNull();
   });
 
+  it('supports an optional fallback for number conversion failures', () => {
+    expect(numberFunction('abc', 0)).toBe(0);
+    expect(numberFunction('', 0)).toBe(0);
+    expect(numberFunction(false, 7)).toBe(0);
+    expect(numberFunction(0, 7)).toBe(0);
+    expect(numberFunction({}, undefined)).toBeUndefined();
+  });
+
   it('serializes JSON safely for bigint, circular refs, and unserializable values', () => {
     expect(jsonFunction({ a: 1 })).toBe('{"a":1}');
     expect(jsonFunction({ id: 123n })).toBe('{"id":"123"}');

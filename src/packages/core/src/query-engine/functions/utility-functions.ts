@@ -44,10 +44,17 @@ export const stringSignature: FunctionSignature = {
 export const numberSignature: FunctionSignature = {
   name: 'number',
   category: 'utility',
-  description: 'Convert a value to a number when possible.',
-  parameters: [],
-  returnType: 'number | null',
-  examples: ['number("42") → 42', 'number("abc") → null'],
+  description: 'Convert a value to a number when possible, with an optional fallback.',
+  parameters: [
+    {
+      name: 'fallback',
+      type: 'any',
+      required: false,
+      description: 'Fallback value returned when the input cannot be converted to a number',
+    },
+  ],
+  returnType: 'any',
+  examples: ['number("42") → 42', 'number("abc") → null', 'number("abc", 0) → 0'],
 };
 
 export const jsonSignature: FunctionSignature = {
@@ -93,7 +100,7 @@ export const stringFunction: FilterFunction = (value: unknown): string => {
   return String(value);
 };
 
-export const numberFunction: FilterFunction = (value: unknown): number | null => {
+function toNumberOrNull(value: unknown): number | null {
   if (typeof value === 'number') {
     return value;
   }
@@ -112,6 +119,18 @@ export const numberFunction: FilterFunction = (value: unknown): number | null =>
   }
 
   return null;
+}
+
+export const numberFunction: FilterFunction = function (
+  value: unknown,
+  fallback?: unknown
+): unknown {
+  const numericValue = toNumberOrNull(value);
+  if (numericValue !== null) {
+    return numericValue;
+  }
+
+  return arguments.length > 1 ? fallback : null;
 };
 
 export const jsonFunction: FilterFunction = (value: unknown): string => {

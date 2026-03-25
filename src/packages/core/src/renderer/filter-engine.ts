@@ -281,8 +281,13 @@ const BUILTIN_FILTERS: Record<string, FilterFunction> = {
   /**
    * Convert to number
    */
-  number: (value: AnyValue): number | null => {
-    return toFiniteNumber(value);
+  number: function (value: AnyValue, fallback?: AnyValue): number | null | AnyValue {
+    const numericValue = toFiniteNumber(value);
+    if (numericValue !== null) {
+      return numericValue;
+    }
+
+    return arguments.length > 1 ? fallback : null;
   },
 
   /**

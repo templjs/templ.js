@@ -92,6 +92,16 @@ describe('FilterEngine', () => {
       expect(engine.applyFilter('number', { a: 1 })).toBeNull();
     });
 
+    it('supports an optional fallback for number coercion failures', () => {
+      expect(engine.applyFilter('number', 'invalid', [0])).toBe(0);
+      expect(engine.applyFilter('number', '   ', [0])).toBe(0);
+      expect(engine.applyFilter('number', Number.POSITIVE_INFINITY, [7])).toBe(7);
+      expect(engine.applyFilter('number', false, [7])).toBe(0);
+      expect(engine.applyFilter('number', 0, [7])).toBe(0);
+      expect(engine.applyFilter('number', '10.5', [0])).toBe(10.5);
+      expect(engine.applyFilter('number', { a: 1 }, [undefined])).toBeUndefined();
+    });
+
     it('falls back to String(value) for non-object, non-array unknown string coercions', () => {
       expect(engine.applyFilter('string', Symbol.for('templjs'))).toBe('Symbol(templjs)');
       expect(engine.applyFilter('string', false)).toBe('false');
