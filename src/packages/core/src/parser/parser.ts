@@ -727,38 +727,7 @@ export class TemplateParser {
     delimiters: DelimiterConfig | undefined,
     extractorName: 'extractStatementContent' | 'extractExpressionContent'
   ): ExtractedContent {
-    // Use flat string operations instead of regex to avoid ReDoS
-    const token: ExtractTokenInput =
-      typeof tokenOrContent === 'string'
-        ? { content: tokenOrContent, delimiterStart: undefined, delimiterEnd: undefined }
-        : tokenOrContent;
-    const result = typeof token.content === 'string' ? token.content : '';
-
-    const startDelimiter = token.delimiterStart ?? delimiters?.start;
-    const endDelimiter = token.delimiterEnd ?? delimiters?.end;
-    if (!startDelimiter || !endDelimiter) {
-      throw new Error(
-        `${extractorName} requires delimiterStart/delimiterEnd in token metadata or explicit delimiters config`
-      );
-    }
-
-    const hasWrappedDelimiters = result.startsWith(startDelimiter) && result.endsWith(endDelimiter);
-    const innerStart = hasWrappedDelimiters ? startDelimiter.length : 0;
-    const innerEnd = hasWrappedDelimiters ? result.length - endDelimiter.length : result.length;
-    const inner = result.substring(innerStart, innerEnd);
-
-    const trimmedStart = inner.trimStart();
-    const leadingWhitespace = inner.length - trimmedStart.length;
-    const trailingWhitespace = trimmedStart.length - trimmedStart.trimEnd().length;
-
-    const contentStart = innerStart + leadingWhitespace;
-    const contentEnd = innerEnd - trailingWhitespace;
-
-    return {
-      content: result.substring(contentStart, contentEnd),
-      contentStart,
-      contentEnd,
-    };
+    return extractContentWithDelimiters(tokenOrContent, delimiters, extractorName);
   }
 
   /**
@@ -775,7 +744,7 @@ export class TemplateParser {
     tokenOrContent: string | ExtractTokenInput,
     delimiters?: DelimiterConfig
   ): ExtractedContent {
-    return this.extractContentWithDelimiters(tokenOrContent, delimiters, 'extractStatementContent');
+    return extractStatementContent(tokenOrContent, delimiters);
   }
   /**
    * Extract expression content between delimiters.
@@ -791,11 +760,7 @@ export class TemplateParser {
     tokenOrContent: string | ExtractTokenInput,
     delimiters?: DelimiterConfig
   ): ExtractedContent {
-    return this.extractContentWithDelimiters(
-      tokenOrContent,
-      delimiters,
-      'extractExpressionContent'
-    );
+    return extractExpressionContent(tokenOrContent, delimiters);
   }
 
   /**
@@ -930,4 +895,84 @@ export class TemplateParser {
 export function parse(tokens: Token[]): ParseResult {
   const parser = new TemplateParser(tokens);
   return parser.parse();
+}
+
+// ---------------------------------------------------------------------------
+// Module-level implementation shared by standalone functions and class methods
+// ---------------------------------------------------------------------------
+
+function extractContentWithDelimiters(
+  tokenOrContent: string | ExtractTokenInput,
+  delimiters: DelimiterConfig | undefined,
+  extractorName: 'extractStatementContent' | 'extractExpressionContent'
+): ExtractedContent {
+  // Use flat string operations instead of regex to avoid ReDoS
+  const token: ExtractTokenInput =
+    typeof tokenOrContent === 'string'
+      ? { content: tokenOrContent, delimiterStart: undefined, delimiterEnd: undefined }
+      : tokenOrContent;
+  const result = typeof token.content === 'string' ? token.content : '';
+
+  const startDelimiter = token.delimiterStart ?? delimiters?.start;
+  const endDelimiter = token.delimiterEnd ?? delimiters?.end;
+  if (!startDelimiter || !endDelimiter) {
+    throw new Error(
+      `${extractorName} requires delimiterStart/delimiterEnd in token metadata or explicit delimiters config`
+    );
+  }
+
+  // When the content does not start and end with the resolved delimiters,
+  // hasWrappedDelimiters is false and the entire string is treated as the
+  // inner content (innerStart=0, innerEnd=result.length).  Only leading/
+  // trailing whitespace is removed — no delimiter characters are stripped.
+  // This is intentional fallback behaviour for pre-processed tokens, partial
+  // inputs, or mismatched delimiters; callers should expect the string to be
+  // returned intact (trimmed).  If different extraction semantics are needed,
+  // adjust the hasWrappedDelimiters condition or the innerStart/innerEnd
+  // derivations below.
+  const hasWrappedDelimiters = result.startsWith(startDelimiter) && result.endsWith(endDelimiter);
+  const innerStart = hasWrappedDelimiters ? startDelimiter.length : 0;
+  const innerEnd = hasWrappedDelimiters ? result.length - endDelimiter.length : result.length;
+  const inner = result.substring(innerStart, innerEnd);
+
+  const trimmedStart = inner.trimStart();
+  const leadingWhitespace = inner.length - trimmedStart.length;
+  const trailingWhitespace = trimmedStart.length - trimmedStart.trimEnd().length;
+
+  const contentStart = innerStart + leadingWhitespace;
+  const contentEnd = innerEnd - trailingWhitespace;
+
+  return {
+    content: result.substring(contentStart, contentEnd),
+    contentStart,
+    contentEnd,
+  };
+}
+
+/**
+ * Extract statement content between delimiters without instantiating TemplateParser.
+ *
+ * @param tokenOrContent - Statement token-like input or raw statement content.
+ * @param delimiters - Explicit delimiter configuration; required when token metadata is absent.
+ * @returns Extracted statement text and content bounds relative to token.content start.
+ */
+export function extractStatementContent(
+  tokenOrContent: string | ExtractTokenInput,
+  delimiters?: DelimiterConfig
+): ExtractedContent {
+  return extractContentWithDelimiters(tokenOrContent, delimiters, 'extractStatementContent');
+}
+
+/**
+ * Extract expression content between delimiters without instantiating TemplateParser.
+ *
+ * @param tokenOrContent - Expression token-like input or raw expression content.
+ * @param delimiters - Explicit delimiter configuration; required when token metadata is absent.
+ * @returns Extracted expression text and content bounds relative to token.content start.
+ */
+export function extractExpressionContent(
+  tokenOrContent: string | ExtractTokenInput,
+  delimiters?: DelimiterConfig
+): ExtractedContent {
+  return extractContentWithDelimiters(tokenOrContent, delimiters, 'extractExpressionContent');
 }

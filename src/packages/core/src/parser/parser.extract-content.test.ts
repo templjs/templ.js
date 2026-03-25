@@ -177,6 +177,48 @@ describe('TemplateParser extract content helpers', () => {
         contentEnd: 9,
       });
     });
+
+    it('returns offsets when passing a token-shaped input with custom delimiters', () => {
+      const parser = createParser();
+      const token: ExtractTokenInput = {
+        content: '<%   if x   %>',
+        delimiterStart: '<%',
+        delimiterEnd: '%>',
+      };
+      const extracted = parser.extractStatementContent(token, { start: '<%', end: '%>' });
+
+      expect(extracted).toEqual({
+        content: 'if x',
+        contentStart: 5,
+        contentEnd: 9,
+      });
+    });
+
+    it('returns original content when only delimiterStart metadata is present (end is undefined)', () => {
+      // The function falls back to the default end delimiter '%}' from the config,
+      // but the content ends with '%>' not '%}', so hasWrappedDelimiters is false
+      // and the content is returned as-is (after a simple trim).
+      const token: ExtractTokenInput = {
+        content: '<% if user.active %>',
+        delimiterStart: '<%',
+        delimiterEnd: undefined,
+      };
+
+      expect(extractStatementContent(token)).toBe('<% if user.active %>');
+    });
+
+    it('returns original content when only delimiterEnd metadata is present (start is undefined)', () => {
+      // The function falls back to the default start delimiter '{%' from the config,
+      // but the content starts with '<%' not '{%', so hasWrappedDelimiters is false
+      // and the content is returned as-is (after a simple trim).
+      const token: ExtractTokenInput = {
+        content: '<% if user.active %>',
+        delimiterStart: undefined,
+        delimiterEnd: '%>',
+      };
+
+      expect(extractStatementContent(token)).toBe('<% if user.active %>');
+    });
   });
 
   describe('extractExpressionContent', () => {

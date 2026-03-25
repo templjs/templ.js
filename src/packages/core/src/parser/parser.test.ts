@@ -88,6 +88,9 @@ describe('TemplateParser - public extractStatementContent / extractExpressionCon
       });
     });
 
+    // Edge case: when input lacks the configured delimiters (e.g. pre-processed tokens or
+    // malformed/partial input recovery), extractStatementContent falls back to trimming the
+    // whole input and returns offsets (contentStart, contentEnd) spanning only the trimmed content.
     it('returns offsets that span the trimmed plain content when delimiters are absent in text', () => {
       const parser = makeParser();
       const extracted = parser.extractStatementContent('   plain_statement   ', {

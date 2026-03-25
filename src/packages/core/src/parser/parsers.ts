@@ -143,11 +143,17 @@ export interface CharContextSummary {
  * @param options - Iterator configuration.
  * @param options.allowStructuralInTemplateExpr - When `true`, characters inside template
  * expression segments such as `${...}` are still emitted to `visitor` and can affect structural
- * parsing. When `false`, template-expression contents are tracked for state only and skipped from
- * structural visitation, which is useful when callers want to ignore operators and delimiters
- * nested inside template interpolations.
+ * parsing with one intentional asymmetry: interpolation-control braces (`{` / `}`) are consumed by
+ * template-expression tracking and do not contribute to general `depth`, while structural
+ * parentheses and brackets (`(` / `)` / `[` / `]`) inside `${...}` still contribute to `depth`.
+ * For example, `${ { a: 1 } }` does not increment general structural depth for the interpolation
+ * braces, but `${ (a + b) }` does for the parentheses. When `false`, template-expression contents
+ * are tracked for state only and skipped from structural visitation, which is useful when callers
+ * want to ignore operators and delimiters nested inside template interpolations.
  * @returns {@link CharContextSummary} describing the final scan state after iteration stops or
- * completes. `depth` is the final structural nesting depth for `()`, `[]`, and `{}`; quote flags
+ * completes. `depth` is the final structural nesting depth for `()`, `[]`, and `{}` outside
+ * interpolation-control braces (`${` / `}`) that are handled by template-expression tracking;
+ * quote flags
  * indicate whether scanning ended inside single or double quoted strings; `templateLiteralDepth`
  * and `templateExprDepth` report remaining open template literal and interpolation nesting;
  * `templateContextDepth` reports the total active template-context stack depth; and

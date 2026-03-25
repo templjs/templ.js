@@ -24,6 +24,9 @@ function splitTopLevel(str: string, delimiter: string): string[] {
   let braceDepth = 0;
   let quote: "'" | '"' | '`' | null = null;
   let escaped = false;
+  let inInterpolation = false;
+  let interpolationBraceDepth = 0;
+  let interpolationQuote: "'" | '"' | '`' | null = null;
 
   for (let i = 0; i < str.length; i++) {
     const char = str[i];
@@ -40,6 +43,49 @@ function splitTopLevel(str: string, delimiter: string): string[] {
         escaped = true;
         continue;
       }
+
+      if (quote === '`') {
+        if (inInterpolation) {
+          if (interpolationQuote) {
+            if (char === interpolationQuote) {
+              interpolationQuote = null;
+            }
+            continue;
+          }
+
+          if (char === '"' || char === "'" || char === '`') {
+            interpolationQuote = char;
+            continue;
+          }
+
+          if (char === '{') {
+            interpolationBraceDepth++;
+            continue;
+          }
+
+          if (char === '}') {
+            interpolationBraceDepth--;
+            if (interpolationBraceDepth <= 0) {
+              inInterpolation = false;
+              interpolationBraceDepth = 0;
+              interpolationQuote = null;
+            }
+            continue;
+          }
+
+          continue;
+        }
+
+        if (char === '$' && str[i + 1] === '{') {
+          inInterpolation = true;
+          interpolationBraceDepth = 1;
+          interpolationQuote = null;
+          current += '{';
+          i++;
+          continue;
+        }
+      }
+
       if (char === quote) {
         quote = null;
       }
@@ -2837,7 +2883,9 @@ describe('parse', () => {
       // Deliberately malformed `${...}` interpolation (unbalanced `(`) to assert structural-paren edge behavior.
       const result = parseExpressionWithPriorityList('(`value ${count + (offset}`)', context);
 
-      expect(result.type).not.toBe('paren');
+      // The unbalanced `(` inside ${...} causes isWrappedByOutermostParens to return false (depth ends at 1,
+      // not 0), so no rule matches and the fallback error expression is returned.
+      expect(result.type).toBe('error');
     });
 
     it('handles nested template literals inside template expressions', () => {

@@ -450,37 +450,6 @@ describe('createCharContextIterator', () => {
     expect(summary.templateContextDepth).toBe(0);
   });
 
-  it('skips invalid unary-like left operand matches in binary precedence scanning', () => {
-    expect(matchBinaryOpWithPrecedence('! + a')).toBeNull();
-  });
-
-  it('falls back to error expression when unary operator has no operand', () => {
-    const context = {
-      parseExpression: () => ({ type: 'error' }) as unknown,
-      parseLiteral: () => null,
-      parseFilterExpression: () => ({ type: 'error' }) as unknown,
-      parseVariable: () =>
-        ({
-          type: 'variable',
-          name: 'x',
-          path: [],
-          start: { line: 1, column: 0 },
-          end: { line: 1, column: 1 },
-        }) as unknown,
-      parseObjectProperties: () => [],
-      splitTopLevel: () => ['!'],
-      isVariableStart: () => false,
-      createErrorExpression: (message: string) => ({ type: 'error', message }) as unknown,
-    };
-
-    const result = parseExpressionWithPriorityList('!', context as never) as {
-      type: string;
-      message?: string;
-    };
-    expect(result.type).toBe('error');
-    expect(result.message).toBe('Invalid or missing expression type');
-  });
-
   it('handles deeply nested template literal: outer ${`inner ${x}`}', () => {
     // `outer ${`inner ${x}`}` — two levels of template nesting
     const expr = '`outer ${`inner ${x}`}`';
@@ -564,5 +533,40 @@ describe('createCharContextIterator', () => {
 
     expect(depths).toContain(1); // inside parens
     expect(depths).toContain(0); // after closing paren
+  });
+});
+
+describe('matchBinaryOpWithPrecedence', () => {
+  it('skips invalid unary-like left operand matches in binary precedence scanning', () => {
+    expect(matchBinaryOpWithPrecedence('! + a')).toBeNull();
+  });
+});
+
+describe('parseExpressionWithPriorityList', () => {
+  it('falls back to error expression when unary operator has no operand', () => {
+    const context = {
+      parseExpression: () => ({ type: 'error' }) as unknown,
+      parseLiteral: () => null,
+      parseFilterExpression: () => ({ type: 'error' }) as unknown,
+      parseVariable: () =>
+        ({
+          type: 'variable',
+          name: 'x',
+          path: [],
+          start: { line: 1, column: 0 },
+          end: { line: 1, column: 1 },
+        }) as unknown,
+      parseObjectProperties: () => [],
+      splitTopLevel: () => ['!'],
+      isVariableStart: () => false,
+      createErrorExpression: (message: string) => ({ type: 'error', message }) as unknown,
+    };
+
+    const result = parseExpressionWithPriorityList('!', context as never) as {
+      type: string;
+      message?: string;
+    };
+    expect(result.type).toBe('error');
+    expect(result.message).toBe('Invalid or missing expression type');
   });
 });
