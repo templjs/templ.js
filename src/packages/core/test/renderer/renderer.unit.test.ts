@@ -200,10 +200,10 @@ describe('Evaluators', () => {
       expect(evaluateExpression(binary(op, left, right), context)).toBe(expected);
     });
 
-    it('uses boolean coercion for logical operators', () => {
+    it('returns operand values for logical operators', () => {
       const context = createContext();
-      expect(evaluateExpression(binary('&&', literal(1), literal(0)), context)).toBe(false);
-      expect(evaluateExpression(binary('||', literal(0), literal(1)), context)).toBe(true);
+      expect(evaluateExpression(binary('&&', literal(1), literal(0)), context)).toBe(0);
+      expect(evaluateExpression(binary('||', literal(0), literal(1)), context)).toBe(1);
     });
 
     it('supports bracket access on arrays and objects', () => {
