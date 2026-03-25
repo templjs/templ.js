@@ -12,13 +12,13 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     passWithNoTests: true,
-    include: ['**/test/**/*.test.ts'],
+    include: ['**/*.test.ts'],
     coverage: {
       reportsDirectory: path.resolve(__dirname, 'coverage'),
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
       include: ['src/**/*.ts'],
-      exclude: [...configDefaults.exclude, '**/{test,dist}/**', '**/*.spec.ts'],
+      exclude: [...configDefaults.exclude, '**/{test,dist}/**', '**/*.{test,spec}.ts'],
       thresholds: {
         lines: 90,
         functions: 90,
