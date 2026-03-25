@@ -23,27 +23,40 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
   const statementPair = options?.delimiters?.statement;
   const expressionPair = options?.delimiters?.expression;
   const commentPair = options?.delimiters?.comment;
-  const delimiters: Required<DelimiterConfig> = {
-    ...DEFAULT_DELIMITERS,
-    ...options?.delimiters,
+  const {
+    statement: _statementTuple,
+    expression: _expressionTuple,
+    comment: _commentTuple,
+    ...delimiterOverrides
+  } = options?.delimiters ?? {};
+
+  const delimiters: Required<
+    Pick<
+      DelimiterConfig,
+      | 'statement_start'
+      | 'statement_end'
+      | 'expression_start'
+      | 'expression_end'
+      | 'comment_start'
+      | 'comment_end'
+    >
+  > = {
     statement_start:
       statementPair?.[0] ??
-      options?.delimiters?.statement_start ??
+      delimiterOverrides.statement_start ??
       DEFAULT_DELIMITERS.statement_start,
     statement_end:
-      statementPair?.[1] ?? options?.delimiters?.statement_end ?? DEFAULT_DELIMITERS.statement_end,
+      statementPair?.[1] ?? delimiterOverrides.statement_end ?? DEFAULT_DELIMITERS.statement_end,
     expression_start:
       expressionPair?.[0] ??
-      options?.delimiters?.expression_start ??
+      delimiterOverrides.expression_start ??
       DEFAULT_DELIMITERS.expression_start,
     expression_end:
-      expressionPair?.[1] ??
-      options?.delimiters?.expression_end ??
-      DEFAULT_DELIMITERS.expression_end,
+      expressionPair?.[1] ?? delimiterOverrides.expression_end ?? DEFAULT_DELIMITERS.expression_end,
     comment_start:
-      commentPair?.[0] ?? options?.delimiters?.comment_start ?? DEFAULT_DELIMITERS.comment_start,
+      commentPair?.[0] ?? delimiterOverrides.comment_start ?? DEFAULT_DELIMITERS.comment_start,
     comment_end:
-      commentPair?.[1] ?? options?.delimiters?.comment_end ?? DEFAULT_DELIMITERS.comment_end,
+      commentPair?.[1] ?? delimiterOverrides.comment_end ?? DEFAULT_DELIMITERS.comment_end,
   };
 
   const tokens: Token[] = [];
