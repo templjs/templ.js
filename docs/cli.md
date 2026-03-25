@@ -17,6 +17,8 @@ title: CLI Reference
 
 Global flags:
 
+- `-h, --help`: show usage/help text
+- `--version`: print the CLI version
 - `-q, --quiet`: suppress non-error output
 - `-v, --verbose`: print diagnostic details
 - `--json`: machine-readable output envelopes
@@ -32,8 +34,8 @@ Global flags:
 
 Implementation:
 
-- Command registration/action: [src/packages/cli/src/cli.ts](../src/packages/cli/src/cli.ts#L223)
-- Command implementation: [src/packages/cli/src/commands/render.ts](../src/packages/cli/src/commands/render.ts#L303)
+- Command registration/action: [src/packages/cli/src/cli.ts](../src/packages/cli/src/cli.ts)
+- Command implementation: [src/packages/cli/src/commands/render.ts](../src/packages/cli/src/commands/render.ts)
 
 ```bash
 templjs render --template <path> --input <path|-> [options]

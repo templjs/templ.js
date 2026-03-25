@@ -72,7 +72,7 @@ Generated: {{ generated_at|default('<missing generated_at>', true) }}
 {% elif risk.code is defined and risk.code %}
 {% set _ = ns.valid_risks.append('Code: ' ~ risk.code) %}
 {% else %}
-{% set _ = ns.valid_risks.append('Unstructured risk entry: ' ~ (risk | string)) %}
+{% set _ = ns.valid_risks.append('Unstructured risk entry') %}
 {% endif %}
 {% endif %}
 {% endfor %}

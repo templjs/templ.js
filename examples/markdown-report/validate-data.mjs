@@ -27,25 +27,25 @@ const schema = loadJsonFile(schemaPath);
 const data = loadJsonFile(dataPath);
 
 function validateKpi(kpi, conversionRateFormat) {
-  if (!kpi || typeof kpi !== 'object') {
+  if (!kpi || typeof kpi !== 'object' || Array.isArray(kpi)) {
     throw new Error('Invalid KPI payload: expected kpi to be an object');
   }
 
-  if (typeof kpi.active_users_30d !== 'number' || Number.isNaN(kpi.active_users_30d)) {
+  if (typeof kpi.active_users_30d !== 'number' || !Number.isFinite(kpi.active_users_30d)) {
     throw new Error(
-      `Invalid KPI payload: active_users_30d must be a valid number (received ${String(kpi.active_users_30d)})`
+      `Invalid KPI payload: active_users_30d must be a finite number (received ${String(kpi.active_users_30d)})`
     );
   }
 
-  if (typeof kpi.total_users !== 'number' || Number.isNaN(kpi.total_users)) {
+  if (typeof kpi.total_users !== 'number' || !Number.isFinite(kpi.total_users)) {
     throw new Error(
-      `Invalid KPI payload: total_users must be a valid number (received ${String(kpi.total_users)})`
+      `Invalid KPI payload: total_users must be a finite number (received ${String(kpi.total_users)})`
     );
   }
 
-  if (typeof kpi.conversion_rate !== 'number' || Number.isNaN(kpi.conversion_rate)) {
+  if (typeof kpi.conversion_rate !== 'number' || !Number.isFinite(kpi.conversion_rate)) {
     throw new Error(
-      `Invalid KPI payload: conversion_rate must be a valid number (received ${String(kpi.conversion_rate)})`
+      `Invalid KPI payload: conversion_rate must be a finite number (received ${String(kpi.conversion_rate)})`
     );
   }
 
@@ -125,7 +125,7 @@ function validateFieldFormats(data) {
   return conversionRateFormat;
 }
 
-const ajv = new Ajv2020({ allErrors: true, strict: false });
+const ajv = new Ajv2020({ allErrors: true, strict: true });
 addFormats(ajv);
 
 const validate = ajv.compile(schema);
@@ -170,4 +170,4 @@ try {
   process.exit(1);
 }
 
-console.log('examples/markdown-report/data.json schema validation passed');
+console.log('examples/markdown-report/data.json validation passed');

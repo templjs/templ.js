@@ -41,8 +41,16 @@ title: Getting Started with templjs
 
 5. Render from CLI:
 
+   From monorepo root (development):
+
    ```bash
    pnpm --filter @templjs/cli exec node dist/cli.js render -t hello.md.templ -i data.json
+   ```
+
+   After publishing (end users):
+
+   ```bash
+   npx @templjs/cli render -t hello.md.templ -i data.json
    ```
 
 ## Core Library Quick Start
@@ -98,6 +106,6 @@ Implementation references:
 
 ## Next Steps
 
-- CLI reference: `docs/cli.md`
-- API reference: `docs/api-reference.md`
-- Curated examples: `docs/examples.md`
+- CLI reference: [docs/cli.md](./cli.md)
+- API reference: [docs/api-reference.md](./api-reference.md)
+- Curated examples: [docs/examples.md](./examples.md)

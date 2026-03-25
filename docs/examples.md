@@ -15,17 +15,25 @@ This release slice includes a reduced, high-value example set from WI-021.
 - [html-email/](../examples/html-email/README.md)
 - [json-api/](../examples/json-api/README.md)
 
-Each folder contains:
+## Files in the Examples
 
-- Markdown report template: [markdown-report/template.md.templ](../examples/markdown-report/template.md.templ)
-- Markdown report data: [markdown-report/data.json](../examples/markdown-report/data.json)
-- Markdown report guide: [markdown-report/README.md](../examples/markdown-report/README.md)
-- HTML email template: [html-email/template.html.templ](../examples/html-email/template.html.templ)
-- HTML email data: [html-email/data.json](../examples/html-email/data.json)
-- HTML email guide: [html-email/README.md](../examples/html-email/README.md)
-- JSON API template: [json-api/template.json.templ](../examples/json-api/template.json.templ)
-- JSON API data: [json-api/data.json](../examples/json-api/data.json)
-- JSON API guide: [json-api/README.md](../examples/json-api/README.md)
+### markdown-report/
+
+- [template.md.templ](../examples/markdown-report/template.md.templ)
+- [data.json](../examples/markdown-report/data.json)
+- [README.md](../examples/markdown-report/README.md)
+
+### html-email/
+
+- [template.html.templ](../examples/html-email/template.html.templ)
+- [data.json](../examples/html-email/data.json)
+- [README.md](../examples/html-email/README.md)
+
+### json-api/
+
+- [template.json.templ](../examples/json-api/template.json.templ)
+- [data.json](../examples/json-api/data.json)
+- [README.md](../examples/json-api/README.md)
 
 ## Implementation Links
 
