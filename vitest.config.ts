@@ -12,7 +12,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     passWithNoTests: true,
-    include: ['**/test/**/*.test.ts'],
+    include: ['**/*.test.ts'],
     coverage: {
       reportsDirectory: path.resolve(__dirname, 'coverage'),
       provider: 'v8',

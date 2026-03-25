@@ -1269,6 +1269,63 @@ describe('language-server-bootstrap', () => {
     );
   });
 
+  it('appends ranged changes that target lines beyond a single-line document', async () => {
+    await import('../src/server');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({
+      rootUri: 'file:///workspace',
+      initializationOptions: {
+        documentContext: {
+          uri: 'file:///workspace/single-line.md.tpl',
+          content: '{{ user }}',
+        },
+      },
+    });
+
+    const changeHandler = onDidChangeTextDocument.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      contentChanges: Array<{
+        range?: {
+          start: { line: number; character: number };
+          end: { line: number; character: number };
+        };
+        text: string;
+      }>;
+    }) => void;
+
+    changeHandler({
+      textDocument: { uri: 'file:///workspace/single-line.md.tpl' },
+      contentChanges: [
+        {
+          range: {
+            start: { line: 1, character: 0 },
+            end: { line: 1, character: 0 },
+          },
+          text: '\n{{ tail }}',
+        },
+      ],
+    });
+
+    const completionHandler = onCompletion.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      position: { line: number; character: number };
+    }) => unknown[];
+
+    completionHandler({
+      textDocument: { uri: 'file:///workspace/single-line.md.tpl' },
+      position: { line: 1, character: 3 },
+    });
+
+    expect(getCompletions).toHaveBeenCalledWith(
+      '{{ user }}\n{{ tail }}',
+      expect.any(Number),
+      expect.any(Object)
+    );
+  });
+
   it('returns empty completion/null hover/definition when document cache is missing', async () => {
     await import('../src/server');
 
@@ -1424,6 +1481,59 @@ describe('language-server-bootstrap', () => {
     expect(sendDiagnostics).toHaveBeenCalledWith({
       uri: 'file:///workspace/diag-fail.md.tpl',
       diagnostics: [],
+    });
+  });
+
+  it('defaults diagnostic source to templjs when diagnostics omit it', async () => {
+    collectDiagnostics.mockReturnValueOnce([
+      {
+        message: 'missing field',
+        severity: 1,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 0, character: 4 },
+        },
+        source: undefined,
+        code: 'missing-field',
+      },
+    ]);
+
+    await import('../src/server');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({ rootUri: 'file:///workspace' });
+
+    const openHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
+      textDocument: { uri: string; text: string; languageId: string; version: number };
+    }) => void;
+
+    openHandler({
+      textDocument: {
+        uri: 'file:///workspace/default-source.md.tpl',
+        languageId: 'templjs-markdown',
+        version: 1,
+        text: '{{ value }}',
+      },
+    });
+
+    await Promise.resolve();
+
+    expect(sendDiagnostics).toHaveBeenCalledWith({
+      uri: 'file:///workspace/default-source.md.tpl',
+      diagnostics: [
+        {
+          message: 'missing field',
+          severity: 1,
+          range: {
+            start: { line: 0, character: 0 },
+            end: { line: 0, character: 4 },
+          },
+          source: 'templjs',
+          code: 'missing-field',
+        },
+      ],
     });
   });
 
@@ -1591,5 +1701,334 @@ describe('language-server-bootstrap', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('ignores watched-file events when no schema-like files changed', async () => {
+    await import('../src/server');
+
+    const watchedFilesHandler = onDidChangeWatchedFiles.mock.calls[0][0] as (event: {
+      changes: Array<{ uri: string; type: number }>;
+    }) => void;
+
+    sendDiagnostics.mockClear();
+    consoleLog.mockClear();
+
+    watchedFilesHandler({
+      changes: [{ uri: 'file:///workspace/readme.txt', type: FILE_CHANGE_TYPE_CHANGED }],
+    });
+
+    expect(sendDiagnostics).not.toHaveBeenCalled();
+    expect(consoleLog).not.toHaveBeenCalledWith(
+      expect.stringContaining('schema-like file change detected')
+    );
+  });
+
+  it('treats missing watched-file changes as a no-op', async () => {
+    await import('../src/server');
+
+    const watchedFilesHandler = onDidChangeWatchedFiles.mock.calls[0][0] as (event: {
+      changes?: Array<{ uri: string; type: number }>;
+    }) => void;
+
+    sendDiagnostics.mockClear();
+    consoleLog.mockClear();
+
+    watchedFilesHandler({});
+
+    expect(sendDiagnostics).not.toHaveBeenCalled();
+    expect(consoleLog).not.toHaveBeenCalledWith(
+      expect.stringContaining('schema-like file change detected')
+    );
+  });
+
+  it('re-runs diagnostics without reloading schemas when schema references are unchanged', async () => {
+    await import('../src/server');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({
+      rootUri: 'file:///workspace',
+      initializationOptions: {
+        documentContext: {
+          uri: 'file:///workspace/unchanged-schema.md.tpl',
+          content: '---\n$schema: ./schema.json\n---\n{{ value }}',
+        },
+      },
+    });
+
+    readFileSync.mockClear();
+    sendDiagnostics.mockClear();
+
+    const changeHandler = onDidChangeTextDocument.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      contentChanges: Array<{ text: string }>;
+    }) => void;
+
+    changeHandler({
+      textDocument: { uri: 'file:///workspace/unchanged-schema.md.tpl' },
+      contentChanges: [{ text: '---\n$schema: ./schema.json\n---\n{{ seeded }}' }],
+    });
+
+    await Promise.resolve();
+
+    readFileSync.mockClear();
+    sendDiagnostics.mockClear();
+
+    changeHandler({
+      textDocument: { uri: 'file:///workspace/unchanged-schema.md.tpl' },
+      contentChanges: [{ text: '---\n$schema: ./schema.json\n---\n{{ updated }}' }],
+    });
+
+    expect(readFileSync).not.toHaveBeenCalled();
+    expect(sendDiagnostics).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips diagnostics publishing when an opened document has undefined text', async () => {
+    await import('../src/server');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({
+      rootUri: 'file:///workspace',
+      initializationOptions: {},
+    });
+
+    const openHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
+      textDocument: { uri: string; text?: string; languageId: string; version: number };
+    }) => void;
+
+    sendDiagnostics.mockClear();
+
+    openHandler({
+      textDocument: {
+        uri: 'file:///workspace/undefined-open.md.tpl',
+        languageId: 'templjs-markdown',
+        version: 1,
+        text: undefined,
+      },
+    });
+
+    await Promise.resolve();
+
+    expect(sendDiagnostics).not.toHaveBeenCalled();
+  });
+
+  it('traces schema load failures for document changes', async () => {
+    let loadCount = 0;
+
+    vi.doMock('../src/schema-loading.js', async () => {
+      const real = await vi.importActual<typeof import('../src/schema-loading.js')>(
+        '../src/schema-loading.js'
+      );
+      return {
+        ...real,
+        loadSchemaSource: vi.fn(async (...args: Parameters<typeof real.loadSchemaSource>) => {
+          loadCount += 1;
+          if (loadCount > 1) {
+            throw new Error('change load exploded');
+          }
+          return real.loadSchemaSource(...args);
+        }),
+      };
+    });
+
+    try {
+      await import('../src/server');
+
+      const initializeHandler = onInitialize.mock.calls[0][0] as (
+        params: unknown
+      ) => Promise<unknown>;
+      await initializeHandler({
+        rootUri: 'file:///workspace',
+        initializationOptions: {
+          traceMode: 'messages',
+          documentContext: {
+            uri: 'file:///workspace/change-failure.md.tpl',
+            content: '---\n$schema: ./schema-a.json\n---\n{{ value }}',
+          },
+        },
+      });
+
+      consoleLog.mockClear();
+
+      const changeHandler = onDidChangeTextDocument.mock.calls[0][0] as (params: {
+        textDocument: { uri: string };
+        contentChanges: Array<{ text: string }>;
+      }) => void;
+
+      changeHandler({
+        textDocument: { uri: 'file:///workspace/change-failure.md.tpl' },
+        contentChanges: [{ text: '---\n$schema: ./schema-b.json\n---\n{{ value }}' }],
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(consoleLog).toHaveBeenCalledWith(
+        expect.stringContaining('schema load failed for file:///workspace/change-failure.md.tpl')
+      );
+    } finally {
+      vi.doUnmock('../src/schema-loading.js');
+    }
+  });
+
+  it('drops stale watched-file reload generations when a newer reload is queued', async () => {
+    let resolveFirstLoad: (() => void) | undefined;
+    const firstLoad = new Promise<void>((resolve) => {
+      resolveFirstLoad = resolve;
+    });
+    let loadCount = 0;
+
+    vi.doMock('../src/schema-loading.js', async () => {
+      const real = await vi.importActual<typeof import('../src/schema-loading.js')>(
+        '../src/schema-loading.js'
+      );
+      return {
+        ...real,
+        loadSchemaSource: vi.fn(async (...args: Parameters<typeof real.loadSchemaSource>) => {
+          loadCount += 1;
+          if (loadCount === 2) {
+            await firstLoad;
+          }
+          return real.loadSchemaSource(...args);
+        }),
+      };
+    });
+
+    try {
+      await import('../src/server');
+
+      const initializeHandler = onInitialize.mock.calls[0][0] as (
+        params: unknown
+      ) => Promise<unknown>;
+      await initializeHandler({
+        rootUri: 'file:///workspace',
+        initializationOptions: {
+          documentContext: {
+            uri: 'file:///workspace/watched-stale.md.tpl',
+            content: '---\n$schema: ./schema.json\n---\n{{ value }}',
+          },
+        },
+      });
+
+      const watchedFilesHandler = onDidChangeWatchedFiles.mock.calls[0][0] as (event: {
+        changes: Array<{ uri: string; type: number }>;
+      }) => void;
+
+      sendDiagnostics.mockClear();
+
+      watchedFilesHandler({
+        changes: [{ uri: 'file:///workspace/schema.json', type: FILE_CHANGE_TYPE_CHANGED }],
+      });
+
+      watchedFilesHandler({
+        changes: [{ uri: 'file:///workspace/schema.json', type: FILE_CHANGE_TYPE_CHANGED }],
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      resolveFirstLoad?.();
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(sendDiagnostics).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.doUnmock('../src/schema-loading.js');
+    }
+  });
+
+  it('traces schema reload failures for watched schema changes', async () => {
+    let loadCount = 0;
+
+    vi.doMock('../src/schema-loading.js', async () => {
+      const real = await vi.importActual<typeof import('../src/schema-loading.js')>(
+        '../src/schema-loading.js'
+      );
+      return {
+        ...real,
+        loadSchemaSource: vi.fn(async (...args: Parameters<typeof real.loadSchemaSource>) => {
+          loadCount += 1;
+          if (loadCount > 1) {
+            throw new Error('watch reload exploded');
+          }
+          return real.loadSchemaSource(...args);
+        }),
+      };
+    });
+
+    try {
+      await import('../src/server');
+
+      const initializeHandler = onInitialize.mock.calls[0][0] as (
+        params: unknown
+      ) => Promise<unknown>;
+      await initializeHandler({
+        rootUri: 'file:///workspace',
+        initializationOptions: {
+          traceMode: 'messages',
+          documentContext: {
+            uri: 'file:///workspace/watch-failure.md.tpl',
+            content: '---\n$schema: ./schema.json\n---\n{{ value }}',
+          },
+        },
+      });
+
+      consoleLog.mockClear();
+
+      const watchedFilesHandler = onDidChangeWatchedFiles.mock.calls[0][0] as (event: {
+        changes: Array<{ uri: string; type: number }>;
+      }) => void;
+
+      watchedFilesHandler({
+        changes: [{ uri: 'file:///workspace/schema.json', type: FILE_CHANGE_TYPE_CHANGED }],
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(consoleLog).toHaveBeenCalledWith(
+        expect.stringContaining('schema reload failed for file:///workspace/watch-failure.md.tpl')
+      );
+    } finally {
+      vi.doUnmock('../src/schema-loading.js');
+    }
+  });
+
+  it('returns hover results without verbose markdown tracing when value is absent', async () => {
+    getHover.mockReturnValueOnce({ contents: { kind: 'markdown' } });
+
+    await import('../src/server');
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({
+      rootUri: 'file:///workspace',
+      initializationOptions: {
+        traceMode: 'verbose',
+        documentContext: {
+          uri: 'file:///workspace/no-hover-value.md.tpl',
+          content: '{{ value }}',
+        },
+      },
+    });
+
+    consoleLog.mockClear();
+
+    const hoverHandler = onHover.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      position: { line: number; character: number };
+    }) => unknown;
+
+    const result = hoverHandler({
+      textDocument: { uri: 'file:///workspace/no-hover-value.md.tpl' },
+      position: { line: 0, character: 3 },
+    });
+
+    expect(result).toEqual({ contents: { kind: 'markdown' } });
+    expect(consoleLog).toHaveBeenCalledWith(expect.stringContaining('hover result=present'));
+    expect(consoleLog).not.toHaveBeenCalledWith(expect.stringContaining('hover markdown length='));
   });
 });

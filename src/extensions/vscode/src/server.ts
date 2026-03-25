@@ -164,9 +164,6 @@ const serverOptions = {
   getServicePlugins() {
     return [];
   },
-  getLanguagePlugins() {
-    return [createTempljsLanguagePlugin()];
-  },
 };
 
 /** Shared across all loadSchemaSource/loadSchemaSourceSync calls to avoid re-parsing files. */
