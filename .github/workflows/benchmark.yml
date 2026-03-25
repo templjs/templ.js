@@ -1,6 +1,6 @@
 name: Benchmark
 env:
-  NODE_VERSION: 22
+  NODE_VERSION: 24
 on:
   workflow_dispatch:
   push:

@@ -1,6 +1,6 @@
 name: CodeQL Security Analysis
 env:
-  NODE_VERSION: 22
+  NODE_VERSION: 24
 on:
   push:
     branches:

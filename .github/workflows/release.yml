@@ -1,5 +1,7 @@
 name: Release
 
+env:
+  NODE_VERSION: 24
 on:
   workflow_dispatch:
     inputs:
@@ -76,20 +78,29 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Create GitHub Release
+      - name: Parse published version
+        id: parsed
         if: steps.changesets.outputs.published == 'true'
-        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUBLISHED_PACKAGES: ${{ steps.changesets.outputs.publishedPackages }}
+        run: |
+          VERSION=$(echo "$PUBLISHED_PACKAGES" | jq -r '.[0].version')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Publish GitHub Release
+        if: steps.changesets.outputs.published == 'true'
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.changesets.outputs.publishedPackages[0].version }}
-          release_name: Release ${{ steps.changesets.outputs.publishedPackages[0].version }}
+          tag_name: ${{ steps.parsed.outputs.version }}
+          name: Release ${{ steps.parsed.outputs.version }}
           body: |
-            Release ${{ steps.changesets.outputs.publishedPackages[0].version }}
+            Release ${{ steps.parsed.outputs.version }}
 
             See CHANGELOG.md for details.
           draft: false
           prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish-vscode-extension:
     name: Publish VS Code Extension

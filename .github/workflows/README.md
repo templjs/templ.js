@@ -132,6 +132,18 @@ See [SECRETS.md](./SECRETS.md) for detailed setup instructions.
 
 ### Running CI Locally
 
+> **Node.js versions**: CI runs against **Node 22** and **Node 24** (see `engines` in `package.json`).
+> To match CI locally, pin your version with [nvm](https://github.com/nvm-sh/nvm) or [fnm](https://github.com/Schniz/fnm):
+>
+> ```bash
+> # nvm
+> nvm install 22 && nvm use 22
+> # fnm
+> fnm use 22
+> ```
+>
+> A `.nvmrc` file with `22` at the repo root is also recognised automatically by both tools.
+
 ```bash
 # Install dependencies
 pnpm install
