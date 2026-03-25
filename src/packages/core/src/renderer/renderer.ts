@@ -240,7 +240,40 @@ class ForNodeRenderer extends BaseNodeRenderer<ForNode> {
 
 class SetNodeRenderer extends BaseNodeRenderer<SetNode> {
   render(node: SetNode, context: RenderContext): string {
-    const value = this.evaluateExpression(node.value, context);
+    if (
+      !node.name ||
+      typeof node.name !== 'string' ||
+      !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(node.name)
+    ) {
+      const error: RenderError = {
+        message: `Invalid or missing variable name for set statement: ${JSON.stringify(node.name)}`,
+        path: 'set.name',
+        type: 'runtime_error',
+        location: { start: node.start, end: node.end },
+      };
+      context.errors.push(error);
+      if (context.options.throwOnError) {
+        throw new Error(error.message);
+      }
+      return '';
+    }
+
+    let value: AnyValue;
+    try {
+      value = this.evaluateExpression(node.value, context);
+    } catch (err) {
+      const error: RenderError = {
+        message: `Error evaluating set value for "${node.name}": ${err instanceof Error ? err.message : String(err)}`,
+        path: 'set.value',
+        type: 'runtime_error',
+        location: { start: node.start, end: node.end },
+      };
+      context.errors.push(error);
+      if (context.options.throwOnError) {
+        throw err;
+      }
+      return '';
+    }
 
     for (let i = context.scopes.length - 1; i >= 0; i--) {
       const scope = context.scopes[i];

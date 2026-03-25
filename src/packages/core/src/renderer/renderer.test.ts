@@ -168,4 +168,28 @@ describe('SetNodeRenderer', () => {
     render(template(setNode('v', lit('first')), setNode('v', lit('second'))), data);
     expect(data['v']).toBe('second');
   });
+
+  // Error boundary: variable reference that cannot be resolved
+  it('records an undefined_variable error and assigns undefined when the value is a nonexistent variable', () => {
+    const data: Record<string, unknown> = {};
+    const result = render(template(setNode('x', varRef('nonexistent'))), data);
+    // undefined_variable is not a runtime_error, so the render is still considered successful
+    expect(result.success).toBe(true);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].type).toBe('undefined_variable');
+    expect(result.errors[0].message).toContain('nonexistent');
+    expect(result.output).toBe('');
+    expect(data['x']).toBeUndefined();
+  });
+});
+
+describe('ForNodeRenderer', () => {
+  // Empty-iterable boundary: forEach iterates zero times → no output, no errors
+  it('produces no output and no errors when iterating over an empty array', () => {
+    const ast = template(forNode('item', varRef('items'), [exprStmt(varRef('item'))]));
+    const result = render(ast, { items: [] });
+    expect(result.success).toBe(true);
+    expect(result.errors).toHaveLength(0);
+    expect(result.output).toBe('');
+  });
 });

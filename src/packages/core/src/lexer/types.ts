@@ -44,21 +44,21 @@ export interface Token {
  * Configuration for custom template delimiters
  */
 export interface DelimiterConfig {
-  /** Statement start delimiter (default: "{% ") */
+  /** Statement start delimiter (default: "{%") */
   statement_start?: string;
-  /** Statement end delimiter (default: " %}") */
+  /** Statement end delimiter (default: "%}") */
   statement_end?: string;
   /** Statement delimiter pair shorthand (start, end); when provided, this takes precedence over statement_start/statement_end. */
   statement?: [string, string];
-  /** Expression start delimiter (default: "{{ ") */
+  /** Expression start delimiter (default: "{{") */
   expression_start?: string;
-  /** Expression end delimiter (default: " }}") */
+  /** Expression end delimiter (default: "}}") */
   expression_end?: string;
   /** Expression delimiter pair shorthand (start, end); when provided, this takes precedence over expression_start/expression_end. */
   expression?: [string, string];
-  /** Comment start delimiter (default: "{# ") */
+  /** Comment start delimiter (default: "{#") */
   comment_start?: string;
-  /** Comment end delimiter (default: " #}") */
+  /** Comment end delimiter (default: "#}") */
   comment_end?: string;
   /** Comment delimiter pair shorthand (start, end); when provided, this takes precedence over comment_start/comment_end. */
   comment?: [string, string];
@@ -72,7 +72,7 @@ export interface LexerOptions {
   delimiters?: DelimiterConfig;
 }
 
-type DelimiterBoundaries = Pick<
+export type DelimiterBoundaries = Pick<
   Required<DelimiterConfig>,
   | 'statement_start'
   | 'statement_end'
@@ -82,7 +82,7 @@ type DelimiterBoundaries = Pick<
   | 'comment_end'
 >;
 
-function buildDefaultDelimiters(boundaries: DelimiterBoundaries): Required<DelimiterConfig> {
+export function buildDefaultDelimiters(boundaries: DelimiterBoundaries): Required<DelimiterConfig> {
   return {
     ...boundaries,
     statement: [boundaries.statement_start, boundaries.statement_end],
@@ -102,3 +102,39 @@ export const DEFAULT_DELIMITERS: Required<DelimiterConfig> = buildDefaultDelimit
   comment_start: '{#',
   comment_end: '#}',
 });
+
+/**
+ * Merge a partial delimiter config with the defaults, returning a fully
+ * resolved `Required<DelimiterConfig>`.  Tuple fields (`statement`,
+ * `expression`, `comment`) take precedence over the matching scalar
+ * `_start`/`_end` fields, matching the lexer's own resolution order.
+ *
+ * @example
+ * const config = mergeDelimiterConfig({ expression: ['[[', ']]'] });
+ * // config.expression        → ['[[', ']]']
+ * // config.expression_start  → '[['
+ * // config.expression_end    → ']]'
+ * // config.statement_start   → '{%'  (default)
+ */
+export function mergeDelimiterConfig(partial: DelimiterConfig): Required<DelimiterConfig> {
+  const statementStart =
+    partial.statement?.[0] ?? partial.statement_start ?? DEFAULT_DELIMITERS.statement_start;
+  const statementEnd =
+    partial.statement?.[1] ?? partial.statement_end ?? DEFAULT_DELIMITERS.statement_end;
+  const expressionStart =
+    partial.expression?.[0] ?? partial.expression_start ?? DEFAULT_DELIMITERS.expression_start;
+  const expressionEnd =
+    partial.expression?.[1] ?? partial.expression_end ?? DEFAULT_DELIMITERS.expression_end;
+  const commentStart =
+    partial.comment?.[0] ?? partial.comment_start ?? DEFAULT_DELIMITERS.comment_start;
+  const commentEnd = partial.comment?.[1] ?? partial.comment_end ?? DEFAULT_DELIMITERS.comment_end;
+
+  return buildDefaultDelimiters({
+    statement_start: statementStart,
+    statement_end: statementEnd,
+    expression_start: expressionStart,
+    expression_end: expressionEnd,
+    comment_start: commentStart,
+    comment_end: commentEnd,
+  });
+}

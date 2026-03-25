@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   BinaryOpNode,
   ErrorNode,
@@ -122,6 +122,14 @@ describe('evaluateLiteral', () => {
     expect(evaluateLiteral(literal(null), context)).toBeNull();
     expect(context.errors).toHaveLength(0);
   });
+
+  it('returns object literals as-is and records no errors', () => {
+    const context = createRenderContext();
+    const obj = { a: 1, b: 'x' };
+
+    expect(evaluateLiteral(literal(obj), context)).toEqual({ a: 1, b: 'x' });
+    expect(context.errors).toHaveLength(0);
+  });
 });
 
 describe('evaluateVariable', () => {
@@ -222,6 +230,10 @@ describe('evaluateVariable', () => {
 });
 
 describe('evaluateFilter', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('applies context filters with evaluated args', () => {
     const context = createRenderContext();
     context.filters.set(
@@ -297,8 +309,6 @@ describe('evaluateFilter', () => {
   it('uses currency-specific fraction digits in the final format_currency fallback', () => {
     const context = createRenderContext();
     const expr = filter(literal(1234.5), 'format_currency', [literal('JPY'), literal('ja-JP')]);
-    const originalNumberFormat = Intl.NumberFormat;
-
     class MockNumberFormat {
       constructor(locale?: string, options?: Intl.NumberFormatOptions) {
         if (options?.style === 'currency' && options.currency === 'JPY') {
@@ -334,15 +344,14 @@ describe('evaluateFilter', () => {
       }
     }
 
-    try {
-      clearFormatterCaches();
-      Intl.NumberFormat = MockNumberFormat as unknown as typeof Intl.NumberFormat;
+    clearFormatterCaches();
+    vi.stubGlobal('Intl', {
+      ...Intl,
+      NumberFormat: MockNumberFormat as unknown as typeof Intl.NumberFormat,
+    });
 
-      expect(evaluateFilter(expr, context)).toBe('JPY 1235');
-    } finally {
-      Intl.NumberFormat = originalNumberFormat;
-      clearFormatterCaches();
-    }
+    expect(evaluateFilter(expr, context)).toBe('JPY 1235');
+    clearFormatterCaches();
   });
 
   it('returns source value when no filters are present', () => {

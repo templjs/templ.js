@@ -305,14 +305,19 @@ const BUILTIN_FILTERS: Record<string, FilterFunction> = {
     }
 
     const resolvedLocale = typeof locale === 'string' && locale.trim() ? locale.trim() : 'en-US';
-    const minDigits =
+    const MAX_FRACTION_DIGITS = 100;
+    const minDigits = Math.min(
+      MAX_FRACTION_DIGITS,
       typeof minimumFractionDigits === 'number' && Number.isFinite(minimumFractionDigits)
         ? Math.max(0, Math.floor(minimumFractionDigits))
-        : 0;
-    const maxDigitsCandidate =
+        : 0
+    );
+    const maxDigitsCandidate = Math.min(
+      MAX_FRACTION_DIGITS,
       typeof maximumFractionDigits === 'number' && Number.isFinite(maximumFractionDigits)
         ? Math.max(0, Math.floor(maximumFractionDigits))
-        : minDigits;
+        : minDigits
+    );
     const maxDigits = Math.max(minDigits, maxDigitsCandidate);
 
     try {

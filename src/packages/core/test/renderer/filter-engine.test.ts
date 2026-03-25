@@ -107,7 +107,7 @@ describe('FilterEngine', () => {
       expect(engine.applyFilter('string', false)).toBe('false');
     });
 
-    it('formats numbers and currencies with fallback-safe behavior', () => {
+    it('format_number caches formatters', () => {
       clearFormatterCaches();
 
       const numberFormatted = engine.applyFilter('format_number', 1234.567, ['en-US', 2, 2]);
@@ -117,11 +117,15 @@ describe('FilterEngine', () => {
       // Repeated call exercises formatter cache retrieval path.
       const numberFormattedAgain = engine.applyFilter('format_number', 1234.567, ['en-US', 2, 2]);
       expect(numberFormattedAgain).toBe(numberFormatted);
+    });
 
+    it('format_number returns invalid input unchanged', () => {
       expect(engine.applyFilter('format_number', 'not-a-number', ['en-US', 2, 2])).toBe(
         'not-a-number'
       );
+    });
 
+    it('format_currency caches formatters', () => {
       const currencyFormatted = engine.applyFilter('format_currency', 25, ['USD', 'en-US']);
       expect(typeof currencyFormatted).toBe('string');
       expect(currencyFormatted).toContain('25');
@@ -129,14 +133,18 @@ describe('FilterEngine', () => {
       // Repeated call exercises currency formatter cache retrieval path.
       const currencyFormattedAgain = engine.applyFilter('format_currency', 25, ['USD', 'en-US']);
       expect(currencyFormattedAgain).toBe(currencyFormatted);
+    });
 
+    it('format_currency returns invalid inputs unchanged', () => {
       expect(engine.applyFilter('format_currency', 'bad-value', ['USD', 'en-US'])).toBe(
         'bad-value'
       );
       expect(engine.applyFilter('format_currency', 25, [123, 'en-US'])).toBe(25);
       expect(engine.applyFilter('format_currency', 25, ['   ', 'en-US'])).toBe(25);
       expect(engine.applyFilter('format_currency', 25, ['USD', '   '])).toContain('25');
+    });
 
+    it('format_number edge case empty locale', () => {
       expect(engine.applyFilter('format_number', 12.3, ['', 'x', 'y'])).toBe('12');
     });
 

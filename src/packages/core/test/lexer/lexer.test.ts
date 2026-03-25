@@ -508,7 +508,7 @@ describe('Lexer', () => {
         });
 
         it('should prefer tuple delimiters over separate start/end fields', () => {
-          const tokens = tokenize('<% if x %> [[ note ]]', {
+          const tokens = tokenize('<% if x %> [[ note ]] (( val ))', {
             delimiters: {
               statement: ['<%', '%>'],
               statement_start: '{%',
@@ -516,14 +516,19 @@ describe('Lexer', () => {
               comment: ['[[', ']]'],
               comment_start: '{#',
               comment_end: '#}',
+              expression: ['((', '))'],
+              expression_start: '{{',
+              expression_end: '}}',
             },
           });
 
-          expect(tokens).toHaveLength(3);
+          expect(tokens).toHaveLength(5);
           expect(tokens[0].type).toBe(TokenType.STATEMENT);
           expect(tokens[0].content).toBe('<% if x %>');
           expect(tokens[2].type).toBe(TokenType.COMMENT);
           expect(tokens[2].content).toBe('[[ note ]]');
+          expect(tokens[4].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[4].content).toBe('(( val ))');
         });
       });
 
