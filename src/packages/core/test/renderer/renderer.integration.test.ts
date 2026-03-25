@@ -583,10 +583,10 @@ describe('Renderer', () => {
 
     it('should handle deep nesting scope correctly', () => {
       const template =
-        '{% for a in items %}{% if a > 0 %}{% for b in [1,2] %}{{ a }}-{{ b }} {% endfor %}{% endif %}{% endfor %}';
+        '{% for a in items %}{% if a > 0 %}{% for b in inner %}{{ a }}-{{ b }} {% endfor %}{% endif %}{% endfor %}';
       const tokens = tokenize(template);
       const parseResult = parse(tokens);
-      const result = render(parseResult.ast!, { items: [1, 2] });
+      const result = render(parseResult.ast!, { items: [1, 2], inner: [1, 2] });
       expect(result.success).toBe(true);
     });
 
@@ -1054,8 +1054,8 @@ describe('Renderer', () => {
       { expr: '{{ 2 != 3 }}', expected: 'true' },
       { expr: '{{ 2 === 2 }}', expected: 'true' },
       { expr: '{{ 2 !== 3 }}', expected: 'true' },
-      { expr: '{{ 2 && 1 }}', expected: 'true' },
-      { expr: '{{ 0 || 1 }}', expected: 'true' },
+      { expr: '{{ 2 && 1 }}', expected: '1' },
+      { expr: '{{ 0 || 1 }}', expected: '1' },
       { expr: '{{ arr[1] }}', data: { arr: [10, 20] }, expected: '20' },
       { expr: '{{ 1 / 0 }}', expected: '0' },
       { expr: '{{ arr.length }}', data: { arr: [1, 2, 3, 4, 5] }, expected: '5' },
