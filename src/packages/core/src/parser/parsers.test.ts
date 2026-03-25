@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   createCharContextIterator,
   isWrappedByOutermostParens,
+  matchBinaryOpWithPrecedence,
+  parseExpressionWithPriorityList,
   splitByOperatorFromLeft,
   splitByOperatorFromRight,
 } from './parsers.js';
@@ -33,6 +35,7 @@ describe('isWrappedByOutermostParens', () => {
     expect(isWrappedByOutermostParens('(x')).toBe(false);
     expect(isWrappedByOutermostParens('x)')).toBe(false);
     expect(isWrappedByOutermostParens(')x(')).toBe(false);
+    expect(isWrappedByOutermostParens('())')).toBe(false);
   });
 
   it('handles wrapped expressions containing comment text', () => {
@@ -412,6 +415,70 @@ describe('createCharContextIterator', () => {
     // With allowStructuralInTemplateExpr=true, chars inside ${} reach the visitor
     expect(visitedChars.length).toBeGreaterThan(0);
     expect(visitedChars).toContain('+');
+  });
+
+  it('tracks escaped quotes and comment sections inside template expressions', () => {
+    const summaryWithEscapedQuotes = createCharContextIterator('`${"a\\\\b" + 1}`', () => {}, {
+      allowStructuralInTemplateExpr: true,
+    });
+    const summaryWithLineComment = createCharContextIterator('`${a // c\n + b}`', () => {}, {
+      allowStructuralInTemplateExpr: true,
+    });
+    const summaryWithBlockComment = createCharContextIterator('`${a /* c */ + b}`', () => {}, {
+      allowStructuralInTemplateExpr: true,
+    });
+
+    expect(summaryWithEscapedQuotes.inSingleQuote).toBe(false);
+    expect(summaryWithEscapedQuotes.inDoubleQuote).toBe(false);
+    expect(summaryWithEscapedQuotes.templateLiteralDepth).toBe(0);
+    expect(summaryWithEscapedQuotes.templateExprDepth).toBe(0);
+
+    expect(summaryWithLineComment.inLineComment).toBe(false);
+    expect(summaryWithLineComment.inBlockComment).toBe(false);
+
+    expect(summaryWithBlockComment.inLineComment).toBe(false);
+    expect(summaryWithBlockComment.inBlockComment).toBe(false);
+  });
+
+  it('tracks nested braces inside template expressions', () => {
+    const summary = createCharContextIterator('`${{a: {b: 1}}}`', () => {}, {
+      allowStructuralInTemplateExpr: true,
+    });
+
+    expect(summary.templateLiteralDepth).toBe(0);
+    expect(summary.templateExprDepth).toBe(0);
+    expect(summary.templateContextDepth).toBe(0);
+  });
+
+  it('skips invalid unary-like left operand matches in binary precedence scanning', () => {
+    expect(matchBinaryOpWithPrecedence('! + a')).toBeNull();
+  });
+
+  it('falls back to error expression when unary operator has no operand', () => {
+    const context = {
+      parseExpression: () => ({ type: 'error' }) as unknown,
+      parseLiteral: () => null,
+      parseFilterExpression: () => ({ type: 'error' }) as unknown,
+      parseVariable: () =>
+        ({
+          type: 'variable',
+          name: 'x',
+          path: [],
+          start: { line: 1, column: 0 },
+          end: { line: 1, column: 1 },
+        }) as unknown,
+      parseObjectProperties: () => [],
+      splitTopLevel: () => ['!'],
+      isVariableStart: () => false,
+      createErrorExpression: (message: string) => ({ type: 'error', message }) as unknown,
+    };
+
+    const result = parseExpressionWithPriorityList('!', context as never) as {
+      type: string;
+      message?: string;
+    };
+    expect(result.type).toBe('error');
+    expect(result.message).toBe('Invalid or missing expression type');
   });
 
   it('handles deeply nested template literal: outer ${`inner ${x}`}', () => {

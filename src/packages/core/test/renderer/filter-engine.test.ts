@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FilterEngine } from '../../src/renderer/filter-engine.js';
+import { clearFormatterCaches, FilterEngine } from '../../src/renderer/filter-engine.js';
 
 describe('FilterEngine', () => {
   describe('built-in filters', () => {
@@ -83,11 +83,177 @@ describe('FilterEngine', () => {
 
     it('coerces values with number filter', () => {
       expect(engine.applyFilter('number', 10)).toBe(10);
+      expect(engine.applyFilter('number', Number.POSITIVE_INFINITY)).toBeNull();
       expect(engine.applyFilter('number', '10.5')).toBe(10.5);
+      expect(engine.applyFilter('number', '   ')).toBeNull();
       expect(engine.applyFilter('number', 'invalid')).toBeNull();
       expect(engine.applyFilter('number', true)).toBe(1);
       expect(engine.applyFilter('number', false)).toBe(0);
       expect(engine.applyFilter('number', { a: 1 })).toBeNull();
+    });
+
+    it('falls back to String(value) for non-object, non-array unknown string coercions', () => {
+      expect(engine.applyFilter('string', Symbol.for('templjs'))).toBe('Symbol(templjs)');
+      expect(engine.applyFilter('string', false)).toBe('false');
+    });
+
+    it('formats numbers and currencies with fallback-safe behavior', () => {
+      clearFormatterCaches();
+
+      const numberFormatted = engine.applyFilter('format_number', 1234.567, ['en-US', 2, 2]);
+      expect(typeof numberFormatted).toBe('string');
+      expect(numberFormatted).toContain('1,234');
+
+      // Repeated call exercises formatter cache retrieval path.
+      const numberFormattedAgain = engine.applyFilter('format_number', 1234.567, ['en-US', 2, 2]);
+      expect(numberFormattedAgain).toBe(numberFormatted);
+
+      expect(engine.applyFilter('format_number', 'not-a-number', ['en-US', 2, 2])).toBe(
+        'not-a-number'
+      );
+
+      const currencyFormatted = engine.applyFilter('format_currency', 25, ['USD', 'en-US']);
+      expect(typeof currencyFormatted).toBe('string');
+      expect(currencyFormatted).toContain('25');
+
+      // Repeated call exercises currency formatter cache retrieval path.
+      const currencyFormattedAgain = engine.applyFilter('format_currency', 25, ['USD', 'en-US']);
+      expect(currencyFormattedAgain).toBe(currencyFormatted);
+
+      expect(engine.applyFilter('format_currency', 'bad-value', ['USD', 'en-US'])).toBe(
+        'bad-value'
+      );
+      expect(engine.applyFilter('format_currency', 25, [123, 'en-US'])).toBe(25);
+      expect(engine.applyFilter('format_currency', 25, ['   ', 'en-US'])).toBe(25);
+      expect(engine.applyFilter('format_currency', 25, ['USD', '   '])).toContain('25');
+
+      expect(engine.applyFilter('format_number', 12.3, ['', 'x', 'y'])).toBe('12');
+    });
+
+    it('falls back to en-US when locale-specific number formatting throws', () => {
+      const originalNumberFormat = Intl.NumberFormat;
+
+      try {
+        Intl.NumberFormat = function NumberFormat(
+          this: Intl.NumberFormat,
+          locale?: string | string[],
+          options?: Intl.NumberFormatOptions
+        ) {
+          const localeValue = Array.isArray(locale) ? locale[0] : locale;
+          if (localeValue !== 'en-US') {
+            throw new Error('locale init failed');
+          }
+          return new originalNumberFormat('en-US', options);
+        } as unknown as typeof Intl.NumberFormat;
+
+        const fallback = engine.applyFilter('format_number', 1234.5, ['fr-FR', 1, 1]);
+        expect(String(fallback)).toContain('1,234.5');
+      } finally {
+        Intl.NumberFormat = originalNumberFormat;
+        clearFormatterCaches();
+      }
+    });
+
+    it('evicts oldest cached number formatters when cache exceeds LRU size', () => {
+      clearFormatterCaches();
+
+      const locales = [
+        'en-US',
+        'de-DE',
+        'fr-FR',
+        'es-ES',
+        'it-IT',
+        'pt-BR',
+        'nl-NL',
+        'sv-SE',
+        'ja-JP',
+        'ko-KR',
+        'zh-CN',
+        'zh-TW',
+        'pl-PL',
+      ];
+
+      for (const locale of locales) {
+        for (let minDigits = 0; minDigits <= 20; minDigits++) {
+          engine.applyFilter('format_number', 1234.5, [locale, minDigits, minDigits]);
+        }
+      }
+
+      // Re-accessing the oldest key would throw if formatter cache state were corrupted.
+      expect(engine.applyFilter('format_number', 1234.5, ['en-US', 0, 0])).toBe('1,235');
+    });
+
+    it('replaces an existing cache key when formatter lookup reports a miss', () => {
+      clearFormatterCaches();
+      expect(engine.applyFilter('format_number', 10, ['en-US', 0, 0])).toBe('10');
+
+      const originalMapGet = Map.prototype.get;
+      try {
+        Map.prototype.get = function patchedGet(this: Map<unknown, unknown>, key: unknown) {
+          if (typeof key === 'string' && key === 'en-US|0|0') {
+            return undefined;
+          }
+          return originalMapGet.call(this, key);
+        };
+
+        expect(engine.applyFilter('format_number', 10, ['en-US', 0, 0])).toBe('10');
+      } finally {
+        Map.prototype.get = originalMapGet;
+        clearFormatterCaches();
+      }
+    });
+
+    it('falls back to USD-like plain formatting when Intl currency formatting throws', () => {
+      const originalNumberFormat = Intl.NumberFormat;
+      clearFormatterCaches();
+
+      try {
+        Intl.NumberFormat = function NumberFormat(this: Intl.NumberFormat) {
+          throw new Error('Intl unavailable');
+        } as unknown as typeof Intl.NumberFormat;
+
+        const fallback = engine.applyFilter('format_currency', 25, ['USD', 'en-US']);
+        expect(fallback).toBe('USD 25.00');
+      } finally {
+        Intl.NumberFormat = originalNumberFormat;
+        clearFormatterCaches();
+      }
+    });
+
+    it('uses two decimal places when fallback fraction digits are unavailable', () => {
+      const originalNumberFormat = Intl.NumberFormat;
+      clearFormatterCaches();
+
+      try {
+        Intl.NumberFormat = function NumberFormat(
+          this: Intl.NumberFormat,
+          locale?: string | string[],
+          _options?: Intl.NumberFormatOptions
+        ) {
+          const localeValue = Array.isArray(locale) ? locale[0] : locale;
+          if (localeValue === undefined) {
+            return {
+              resolvedOptions: () => ({}),
+              format: () => '$0.00',
+            } as unknown as Intl.NumberFormat;
+          }
+          throw new Error('currency formatter unavailable');
+        } as unknown as typeof Intl.NumberFormat;
+
+        const fallback = engine.applyFilter('format_currency', 12.3, ['USD', 'fr-FR']);
+        expect(fallback).toBe('USD 12.30');
+      } finally {
+        Intl.NumberFormat = originalNumberFormat;
+        clearFormatterCaches();
+      }
+    });
+
+    it('escapes HTML values and supports the e alias', () => {
+      expect(engine.applyFilter('escape', '<div>"x" & y</div>')).toBe(
+        '&lt;div&gt;&quot;x&quot; &amp; y&lt;/div&gt;'
+      );
+      expect(engine.applyFilter('escape', null)).toBe('');
+      expect(engine.applyFilter('e', '<span>ok</span>')).toBe('&lt;span&gt;ok&lt;/span&gt;');
     });
 
     it('applies default filter only for null/undefined/empty/false', () => {
@@ -164,6 +330,15 @@ describe('FilterEngine', () => {
         },
       });
       expect(() => engine.applyFilter('boom', 'x')).toThrow("Filter 'boom' failed: bad news");
+    });
+
+    it('wraps non-Error thrown values from filters', () => {
+      const engine = new FilterEngine({
+        boom: () => {
+          throw 'bad string';
+        },
+      });
+      expect(() => engine.applyFilter('boom', 'x')).toThrow("Filter 'boom' failed: bad string");
     });
 
     it('handles applyFilter argument dispatch paths', () => {
