@@ -40,12 +40,12 @@ function createFakeWatcher(listener: () => void): FakeWatcher {
   return watcher;
 }
 
-const EXPECTED_WATCH_ERROR_PREFIXES = [
-  'Error: ',
-  'Watch error: ',
-  'Unexpected watch render loop error: ',
-  'Unexpected watch mode startup error: ',
-] as const;
+const EXPECTED_WATCH_ERROR_PREFIXES = {
+  RENDER_ERROR_PREFIX: 'Error: ',
+  WATCHER_ERROR_PREFIX: 'Watch error: ',
+  RENDER_LOOP_ERROR_PREFIX: 'Unexpected watch render loop error: ',
+  STARTUP_ERROR_PREFIX: 'Unexpected watch mode startup error: ',
+} as const;
 
 function createMockDeps(
   capturedErrorMessages: string[],
@@ -204,7 +204,7 @@ describe('watch-mode', () => {
     await runPromise4;
 
     const emittedErrors = capturedErrorMessages.filter((message) =>
-      EXPECTED_WATCH_ERROR_PREFIXES.some((prefix) => message.startsWith(prefix))
+      Object.values(EXPECTED_WATCH_ERROR_PREFIXES).some((prefix) => message.startsWith(prefix))
     );
 
     expect(emittedErrors).toEqual(

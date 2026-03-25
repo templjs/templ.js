@@ -175,7 +175,7 @@ function createWatchModeDependencies(
         return process.stderr.write(data);
       }
 
-      for (const prefix of WATCH_ERROR_PREFIXES) {
+      for (const prefix of Object.values(WATCH_ERROR_PREFIXES)) {
         if (trimmed.startsWith(prefix)) {
           if (mode.quiet || mode.json) {
             const message = trimmed.slice(prefix.length) || trimmed;
@@ -192,8 +192,9 @@ function createWatchModeDependencies(
         }
       }
 
+      const unexpectedMessage = trimmed || data;
+
       if (mode.quiet) {
-        const unexpectedMessage = trimmed || data;
         writeError(
           mode,
           'render',
@@ -204,7 +205,12 @@ function createWatchModeDependencies(
       }
 
       if (mode.json) {
-        writeError(mode, 'render', trimmed, outputPath ? `Output path: ${outputPath}` : undefined);
+        writeError(
+          mode,
+          'render',
+          unexpectedMessage,
+          outputPath ? `Output path: ${outputPath}` : undefined
+        );
         return true;
       }
 

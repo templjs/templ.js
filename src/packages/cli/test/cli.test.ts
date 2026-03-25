@@ -214,7 +214,8 @@ describe('cli-main', () => {
     const watchDeps = vi.mocked(startRenderWatchMode).mock.calls[0]?.[1];
     expect(watchDeps?.fileExists).toBe(defaultWatchModeDependencies.fileExists);
     expect(watchDeps?.watchFile).toBe(defaultWatchModeDependencies.watchFile);
-    expect(typeof watchDeps?.writeOutput).toBe('function');
+    watchDeps?.writeOutput('watch-output.txt', 'watch-rendered', 'utf-8');
+    expect(writeFileSync).toHaveBeenCalledWith('watch-output.txt', 'watch-rendered', 'utf-8');
     expect(typeof watchDeps?.render).toBe('function');
     expect(renderCommand).not.toHaveBeenCalled();
 
@@ -250,6 +251,13 @@ describe('cli-main', () => {
     expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"watch":true/));
     expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"output":"rendered-output"/));
 
+    watchDeps?.writeOutput('json-watch-output.txt', 'watch-rendered', 'utf-8');
+    expect(writeFileSync).toHaveBeenCalledWith('json-watch-output.txt', 'watch-rendered', 'utf-8');
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"wroteFile":true/));
+    expect(stdoutSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/"outputPath":"json-watch-output.txt"/)
+    );
+
     watchDeps?.writeStderr('Error: watch exploded\n');
     expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/"ok":false/));
     expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/"command":"render"/));
@@ -275,6 +283,8 @@ describe('cli-main', () => {
     expect(watchDeps).toBeDefined();
     watchDeps?.writeStdout('rendered-output\n');
     watchDeps?.writeStderr('Watching template.templ and data.json. Press Ctrl+C to stop.\n');
+    watchDeps?.writeOutput('quiet-watch-output.txt', 'watch-rendered', 'utf-8');
+    expect(writeFileSync).toHaveBeenCalledWith('quiet-watch-output.txt', 'watch-rendered', 'utf-8');
     expect(stdoutSpy).not.toHaveBeenCalledWith('rendered-output\n');
     expect(stderrSpy).not.toHaveBeenCalledWith(
       'Watching template.templ and data.json. Press Ctrl+C to stop.\n'
