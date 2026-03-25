@@ -59,6 +59,6 @@ WI-055 delivered the core parity fixes (`.tpl.` marker inclusion, regression tes
 
 ## References
 
-- [backlog/055_bug_no_md_lang_server_support.md](055_bug_no_md_lang_server_support.md)
+- [055_bug_no_md_lang_server_support.md](055_bug_no_md_lang_server_support.md)
 - [src/packages/volar/src/index.ts](../src/packages/volar/src/index.ts)
 - [src/extensions/vscode/test/server.test.ts](../src/extensions/vscode/test/server.test.ts)
