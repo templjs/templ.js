@@ -225,6 +225,14 @@ describe('cli-main', () => {
       'data.json',
       expect.objectContaining({ outputFormat: 'text' })
     );
+
+    watchDeps?.writeStderr('Watching template.templ and data.json. Press Ctrl+C to stop.\n');
+    expect(stderrSpy).toHaveBeenCalledWith(
+      'Watching template.templ and data.json. Press Ctrl+C to stop.\n'
+    );
+
+    watchDeps?.writeStderr('Watch error: exploded\n');
+    expect(stderrSpy).toHaveBeenCalledWith('Watch error: exploded\n');
   });
 
   it('emits json envelopes for watch render output in json mode', async () => {
@@ -262,6 +270,9 @@ describe('cli-main', () => {
     expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/"ok":false/));
     expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/"command":"render"/));
     expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/"error":"watch exploded"/));
+
+    watchDeps?.writeStderr('\n');
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/"error":"\\n"/));
   });
 
   it('suppresses non-error watch output in quiet mode', async () => {
