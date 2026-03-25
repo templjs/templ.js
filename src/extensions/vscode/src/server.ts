@@ -581,17 +581,17 @@ connection.onDidChangeTextDocument((event) => {
   const generation = (schemaLoadGenerationByUri.get(uri) ?? 0) + 1;
   schemaLoadGenerationByUri.set(uri, generation);
 
-  void loadSchemasForDocumentContext(
-    uri,
-    updated,
-    storedWorkspaceRoot,
-    storedInitializationOptions
-  ).then(() => {
-    if (schemaLoadGenerationByUri.get(uri) !== generation) {
-      return; // A newer load was scheduled while this one was in-flight; discard its result.
-    }
-    publishDiagnosticsForDocument(uri);
-  });
+  void loadSchemasForDocumentContext(uri, updated, storedWorkspaceRoot, storedInitializationOptions)
+    .then(() => {
+      if (schemaLoadGenerationByUri.get(uri) !== generation) {
+        return; // A newer load was scheduled while this one was in-flight; discard its result.
+      }
+      publishDiagnosticsForDocument(uri);
+    })
+    .catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      trace(`schema load failed for ${uri} (generation ${generation}): ${message}`);
+    });
 });
 
 connection.onDidChangeWatchedFiles((event) => {
@@ -610,17 +610,17 @@ connection.onDidChangeWatchedFiles((event) => {
     const generation = (schemaLoadGenerationByUri.get(uri) ?? 0) + 1;
     schemaLoadGenerationByUri.set(uri, generation);
 
-    void loadSchemasForDocumentContext(
-      uri,
-      text,
-      storedWorkspaceRoot,
-      storedInitializationOptions
-    ).then(() => {
-      if (schemaLoadGenerationByUri.get(uri) !== generation) {
-        return;
-      }
-      publishDiagnosticsForDocument(uri);
-    });
+    void loadSchemasForDocumentContext(uri, text, storedWorkspaceRoot, storedInitializationOptions)
+      .then(() => {
+        if (schemaLoadGenerationByUri.get(uri) !== generation) {
+          return;
+        }
+        publishDiagnosticsForDocument(uri);
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        trace(`schema reload failed for ${uri} (generation ${generation}): ${message}`);
+      });
   }
 });
 

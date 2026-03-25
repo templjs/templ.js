@@ -102,53 +102,68 @@ describe('watch-mode', () => {
     vi.clearAllMocks();
   });
 
-  it('keeps WATCH_ERROR_PREFIXES aligned with emitted watch-mode errors', async () => {
+  it('WATCH_ERROR_PREFIXES matches EXPECTED_WATCH_ERROR_PREFIXES', () => {
     expect(WATCH_ERROR_PREFIXES).toEqual(EXPECTED_WATCH_ERROR_PREFIXES);
+  });
 
+  it('reports "Error: " prefix when render rejects', async () => {
     const capturedErrorMessages: string[] = [];
-
-    const signalHandlers1: Partial<Record<NodeJS.Signals, () => void>> = {};
-    const watchers1 = new Map<string, FakeWatcher>();
-    const deps1 = createMockDeps(capturedErrorMessages, signalHandlers1, watchers1, {
+    const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
+    const watchers = new Map<string, FakeWatcher>();
+    const deps = createMockDeps(capturedErrorMessages, signalHandlers, watchers, {
       render: vi.fn().mockRejectedValue(new Error('boom')),
     });
 
-    const runPromise1 = startRenderWatchMode(
+    const runPromise = startRenderWatchMode(
       {
         template: 'template.templ',
         input: 'data.json',
       },
-      deps1
+      deps
     );
 
     await vi.waitFor(() => {
-      expect(deps1.writeStderr).toHaveBeenCalledWith('Error: boom\n');
-      expect(signalHandlers1.SIGINT).toBeTypeOf('function');
+      expect(deps.writeStderr).toHaveBeenCalledWith('Error: boom\n');
+      expect(signalHandlers.SIGINT).toBeTypeOf('function');
     });
-    signalHandlers1.SIGINT?.();
-    await runPromise1;
+    signalHandlers.SIGINT?.();
+    await runPromise;
 
-    const signalHandlers2: Partial<Record<NodeJS.Signals, () => void>> = {};
-    const watchers2 = new Map<string, FakeWatcher>();
-    const deps2 = createMockDeps(capturedErrorMessages, signalHandlers2, watchers2);
+    expect(capturedErrorMessages).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^Error: /)])
+    );
+  });
 
-    const runPromise2 = startRenderWatchMode(
+  it('reports "Watch error: " prefix when watcher emits error', async () => {
+    const capturedErrorMessages: string[] = [];
+    const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
+    const watchers = new Map<string, FakeWatcher>();
+    const deps = createMockDeps(capturedErrorMessages, signalHandlers, watchers);
+
+    const runPromise = startRenderWatchMode(
       {
         template: 'template.templ',
         input: 'data.json',
       },
-      deps2
+      deps
     );
 
     await vi.waitFor(() => {
-      expect(watchers2.get('template.templ')).toBeDefined();
+      expect(watchers.get('template.templ')).toBeDefined();
     });
-    watchers2.get('template.templ')?.emitError(new Error('watch exploded'));
-    await runPromise2;
+    watchers.get('template.templ')?.emitError(new Error('watch exploded'));
+    await runPromise;
 
-    const signalHandlers3: Partial<Record<NodeJS.Signals, () => void>> = {};
-    const watchers3 = new Map<string, FakeWatcher>();
-    const deps3 = createMockDeps(capturedErrorMessages, signalHandlers3, watchers3, {
+    expect(capturedErrorMessages).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^Watch error: /)])
+    );
+  });
+
+  it('reports "Unexpected watch mode startup error: " prefix when stderr throws during startup', async () => {
+    const capturedErrorMessages: string[] = [];
+    const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
+    const watchers = new Map<string, FakeWatcher>();
+    const deps = createMockDeps(capturedErrorMessages, signalHandlers, watchers, {
       writeStderr: vi.fn((data: string) => {
         capturedErrorMessages.push(data);
         if (data.startsWith('Watching ')) {
@@ -164,12 +179,19 @@ describe('watch-mode', () => {
         template: 'template.templ',
         input: 'data.json',
       },
-      deps3
+      deps
     );
 
-    const signalHandlers4: Partial<Record<NodeJS.Signals, () => void>> = {};
-    const watchers4 = new Map<string, FakeWatcher>();
-    const deps4 = createMockDeps(capturedErrorMessages, signalHandlers4, watchers4, {
+    expect(capturedErrorMessages).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^Unexpected watch mode startup error: /)])
+    );
+  });
+
+  it('reports "Unexpected watch render loop error: " prefix when render loop stringify fails', async () => {
+    const capturedErrorMessages: string[] = [];
+    const signalHandlers: Partial<Record<NodeJS.Signals, () => void>> = {};
+    const watchers = new Map<string, FakeWatcher>();
+    const deps = createMockDeps(capturedErrorMessages, signalHandlers, watchers, {
       render: vi
         .fn()
         .mockResolvedValueOnce('rendered-content')
@@ -180,40 +202,31 @@ describe('watch-mode', () => {
         }),
     });
 
-    const runPromise4 = startRenderWatchMode(
+    const runPromise = startRenderWatchMode(
       {
         template: 'template.templ',
         input: 'data.json',
         debounceMs: 1,
       },
-      deps4
+      deps
     );
 
     await vi.waitFor(() => {
-      expect(watchers4.get('template.templ')).toBeDefined();
-      expect(signalHandlers4.SIGINT).toBeTypeOf('function');
+      expect(watchers.get('template.templ')).toBeDefined();
+      expect(signalHandlers.SIGINT).toBeTypeOf('function');
     });
-    watchers4.get('template.templ')?.emit();
+    watchers.get('template.templ')?.emit();
     await vi.advanceTimersByTimeAsync(1);
     await vi.waitFor(() => {
       expect(capturedErrorMessages).toEqual(
         expect.arrayContaining([expect.stringMatching(/^Unexpected watch render loop error: /)])
       );
     });
-    signalHandlers4.SIGINT?.();
-    await runPromise4;
+    signalHandlers.SIGINT?.();
+    await runPromise;
 
-    const emittedErrors = capturedErrorMessages.filter((message) =>
-      Object.values(EXPECTED_WATCH_ERROR_PREFIXES).some((prefix) => message.startsWith(prefix))
-    );
-
-    expect(emittedErrors).toEqual(
-      expect.arrayContaining([
-        expect.stringMatching(/^Error: /),
-        expect.stringMatching(/^Watch error: /),
-        expect.stringMatching(/^Unexpected watch render loop error: /),
-        expect.stringMatching(/^Unexpected watch mode startup error: /),
-      ])
+    expect(capturedErrorMessages).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^Unexpected watch render loop error: /)])
     );
   });
 

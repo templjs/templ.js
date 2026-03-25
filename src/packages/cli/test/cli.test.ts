@@ -253,26 +253,42 @@ describe('cli-main', () => {
     const watchDeps = vi.mocked(startRenderWatchMode).mock.calls[0]?.[1];
     expect(watchDeps).toBeDefined();
 
+    // success envelope
     watchDeps?.writeStdout('rendered-output\n');
-    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"ok":true/));
-    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"command":"render"/));
-    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"watch":true/));
-    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"output":"rendered-output"/));
+    const successRaw = stdoutSpy.mock.calls.at(-1)?.[0];
+    if (typeof successRaw !== 'string') throw new Error('No stdout output written');
+    expect(JSON.parse(successRaw)).toMatchObject({
+      ok: true,
+      command: 'render',
+      watch: true,
+      output: 'rendered-output',
+    });
 
+    // file-write envelope
     watchDeps?.writeOutput('json-watch-output.txt', 'watch-rendered', 'utf-8');
     expect(writeFileSync).toHaveBeenCalledWith('json-watch-output.txt', 'watch-rendered', 'utf-8');
-    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/"wroteFile":true/));
-    expect(stdoutSpy).toHaveBeenCalledWith(
-      expect.stringMatching(/"outputPath":"json-watch-output.txt"/)
-    );
+    const wroteFileRaw = stdoutSpy.mock.calls.at(-1)?.[0];
+    if (typeof wroteFileRaw !== 'string') throw new Error('No stdout output written');
+    expect(JSON.parse(wroteFileRaw)).toMatchObject({
+      wroteFile: true,
+      outputPath: 'json-watch-output.txt',
+    });
 
+    // error envelope
     watchDeps?.writeStderr('Error: watch exploded\n');
-    expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/"ok":false/));
-    expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/"command":"render"/));
-    expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/"error":"watch exploded"/));
+    const errorRaw = stderrSpy.mock.calls.at(-1)?.[0];
+    if (typeof errorRaw !== 'string') throw new Error('No stderr output written');
+    expect(JSON.parse(errorRaw)).toMatchObject({
+      ok: false,
+      command: 'render',
+      error: 'watch exploded',
+    });
 
+    // trailing newline envelope
     watchDeps?.writeStderr('\n');
-    expect(stderrSpy).toHaveBeenCalledWith(expect.stringMatching(/"error":"\\n"/));
+    const newlineRaw = stderrSpy.mock.calls.at(-1)?.[0];
+    if (typeof newlineRaw !== 'string') throw new Error('No stderr output written');
+    expect(JSON.parse(newlineRaw)).toMatchObject({ error: '\n' });
   });
 
   it('suppresses non-error watch output in quiet mode', async () => {

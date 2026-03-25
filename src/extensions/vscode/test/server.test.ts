@@ -1,6 +1,7 @@
 import * as path from 'path';
 import { pathToFileURL } from 'url';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { FileChangeType } from '@volar/language-server';
 
 const onInitialize = vi.fn();
 const onInitialized = vi.fn();
@@ -15,7 +16,7 @@ const onDefinition = vi.fn();
 const sendDiagnostics = vi.fn();
 const consoleLog = vi.fn();
 const consoleWarn = vi.fn();
-const FILE_CHANGE_TYPE_CHANGED = 2;
+const FILE_CHANGE_TYPE_CHANGED = FileChangeType.Changed;
 
 const initialize = vi.fn(async () => ({ capabilities: {} }));
 const initialized = vi.fn();

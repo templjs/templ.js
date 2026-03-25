@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os';
 import path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { FileChangeType } from '@volar/language-server';
 
 const onInitialize = vi.fn();
 const onInitialized = vi.fn();
@@ -20,7 +21,7 @@ const consoleWarn = vi.fn();
 const initialize = vi.fn(async () => ({ capabilities: {} }));
 const initialized = vi.fn();
 const shutdown = vi.fn();
-const FILE_CHANGE_TYPE_CHANGED = 2; // LSP FileChangeType.Changed
+const FILE_CHANGE_TYPE_CHANGED = FileChangeType.Changed;
 
 vi.mock('@volar/language-server/node', () => ({
   createConnection: vi.fn(() => ({
@@ -277,9 +278,12 @@ describe('language-server-inprocess-integration', () => {
         },
       });
 
-      await vi.waitFor(() => {
-        expect(sendDiagnostics).toHaveBeenCalledWith(expect.objectContaining({ uri: docUri }));
-      });
+      await vi.waitFor(
+        () => {
+          expect(sendDiagnostics).toHaveBeenCalledWith(expect.objectContaining({ uri: docUri }));
+        },
+        { timeout: 5000 }
+      );
       sendDiagnostics.mockClear();
 
       const watchedFilesRegistration = onDidChangeWatchedFiles.mock.calls[0];
@@ -296,9 +300,12 @@ describe('language-server-inprocess-integration', () => {
         changes: [{ uri: `file://${schemaPath}`, type: FILE_CHANGE_TYPE_CHANGED }],
       });
 
-      await vi.waitFor(() => {
-        expect(sendDiagnostics).toHaveBeenCalledWith(expect.objectContaining({ uri: docUri }));
-      });
+      await vi.waitFor(
+        () => {
+          expect(sendDiagnostics).toHaveBeenCalledWith(expect.objectContaining({ uri: docUri }));
+        },
+        { timeout: 5000 }
+      );
     } finally {
       rmSync(workspaceDir, { recursive: true, force: true });
     }

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterAll, describe, expect, it, vi } from 'vitest';
 
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
@@ -71,11 +71,20 @@ describe('cli-main', () => {
     vi.clearAllMocks();
     process.exitCode = undefined;
   });
+  afterAll(() => {
+    stdoutSpy.mockRestore();
+    stderrSpy.mockRestore();
+  });
 
   function parseLastStdoutEnvelope(): JsonEnvelope {
+    if (stdoutSpy.mock.calls.length === 0) {
+      throw new Error('No stdout output written');
+    }
     const lastStdoutCall = stdoutSpy.mock.calls.at(-1)?.[0];
-    expect(typeof lastStdoutCall).toBe('string');
-    const raw = lastStdoutCall as string;
+    if (typeof lastStdoutCall !== 'string') {
+      throw new Error('stdout spy was not called or returned non-string');
+    }
+    const raw = lastStdoutCall;
 
     try {
       return JSON.parse(raw) as JsonEnvelope;
@@ -88,9 +97,14 @@ describe('cli-main', () => {
   }
 
   function parseLastStderrEnvelope(): JsonEnvelope {
+    if (stderrSpy.mock.calls.length === 0) {
+      throw new Error('No stderr output written');
+    }
     const lastStderrCall = stderrSpy.mock.calls.at(-1)?.[0];
-    expect(typeof lastStderrCall).toBe('string');
-    const raw = lastStderrCall as string;
+    if (typeof lastStderrCall !== 'string') {
+      throw new Error('stderr spy was not called or returned non-string');
+    }
+    const raw = lastStderrCall;
 
     try {
       return JSON.parse(raw) as JsonEnvelope;
