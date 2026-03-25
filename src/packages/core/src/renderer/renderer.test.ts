@@ -193,3 +193,133 @@ describe('ForNodeRenderer', () => {
     expect(result.output).toBe('');
   });
 });
+
+describe('Renderer edge cases', () => {
+  it('records runtime error for unknown or invalid AST node input', () => {
+    const result = render(null as unknown as ASTNode, {});
+
+    expect(result.success).toBe(false);
+    expect(result.output).toBe('');
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'runtime_error',
+          message: 'Unknown or invalid AST node',
+        }),
+      ])
+    );
+  });
+
+  it('records type error for non-array for iterable when throwOnError is false', () => {
+    const ast = template(forNode('item', varRef('items'), [exprStmt(varRef('item'))]));
+    const result = render(ast, { items: 'not-an-array' });
+
+    expect(result.success).toBe(true);
+    expect(result.output).toBe('');
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'type_error',
+          path: 'for.iterable',
+        }),
+      ])
+    );
+  });
+
+  it('throws for non-array for iterable when throwOnError is true', () => {
+    const ast = template(forNode('item', varRef('items'), [exprStmt(varRef('item'))]));
+
+    expect(() => render(ast, { items: 'not-an-array' }, { throwOnError: true })).toThrow(
+      'Cannot iterate over non-array value: string'
+    );
+  });
+
+  it('records max-depth runtime error when loop nesting exceeds maxDepth', () => {
+    const ast = template(forNode('item', varRef('items'), [exprStmt(varRef('item'))]));
+    const result = render(ast, { items: [1] }, { maxDepth: 0 });
+
+    expect(result.success).toBe(false);
+    expect(result.output).toBe('');
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'runtime_error',
+          path: 'for',
+          message: 'Maximum nesting depth exceeded',
+        }),
+      ])
+    );
+  });
+
+  it('records runtime error for invalid set variable name when throwOnError is false', () => {
+    const invalidSet = {
+      type: 'set',
+      name: '1notValid',
+      value: lit(1),
+      start: POS,
+      end: POS,
+    } as unknown as ASTNode;
+    const result = render(template(invalidSet), {});
+
+    expect(result.success).toBe(false);
+    expect(result.output).toBe('');
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'runtime_error',
+          path: 'set.name',
+          message: expect.stringContaining('Invalid or missing variable name for set statement'),
+        }),
+      ])
+    );
+  });
+
+  it('throws for invalid set variable name when throwOnError is true', () => {
+    const invalidSet = {
+      type: 'set',
+      name: '1notValid',
+      value: lit(1),
+      start: POS,
+      end: POS,
+    } as unknown as ASTNode;
+
+    expect(() => render(template(invalidSet), {}, { throwOnError: true })).toThrow(
+      'Invalid or missing variable name for set statement'
+    );
+  });
+
+  it('records runtime error when evaluating set value throws unexpectedly', () => {
+    const badValueExpr = {
+      get type() {
+        throw new Error('set value exploded');
+      },
+      start: POS,
+      end: POS,
+    } as unknown;
+
+    const badSet = {
+      type: 'set',
+      name: 'safeName',
+      value: badValueExpr,
+      start: POS,
+      end: POS,
+    } as unknown as ASTNode;
+
+    const result = render(template(badSet), {});
+    expect(result.success).toBe(false);
+    expect(result.output).toBe('');
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'runtime_error',
+          path: 'set.value',
+          message: 'Error evaluating set value for "safeName": set value exploded',
+        }),
+      ])
+    );
+
+    expect(() => render(template(badSet), {}, { throwOnError: true })).toThrow(
+      'set value exploded'
+    );
+  });
+});

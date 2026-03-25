@@ -126,6 +126,8 @@ describe('FilterEngine', () => {
     });
 
     it('format_currency caches formatters', () => {
+      clearFormatterCaches();
+
       const currencyFormatted = engine.applyFilter('format_currency', 25, ['USD', 'en-US']);
       expect(typeof currencyFormatted).toBe('string');
       expect(currencyFormatted).toContain('25');
