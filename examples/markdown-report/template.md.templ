@@ -17,6 +17,7 @@ Generated: {{ generated_at|default('<missing generated_at>', true) }}
 {% set has_kpi = kpi is defined and kpi is not none %}
 {% set has_conversion = has_kpi and kpi.conversion_rate is defined and kpi.conversion_rate is not none and kpi.conversion_rate is number %}
 {% set has_field_formats = field_formats is defined and field_formats is not none %}
+{# conversion_rate_format "decimal" means stored value is a proportion (0.25 -> 25%), while "percentage" means stored value is already a percent number (25 -> 25%). #}
 {% set conversion_rate_format = 'decimal' %}
 {% if has_field_formats and field_formats.kpi is defined and field_formats.kpi is not none and field_formats.kpi.conversion_rate is defined and field_formats.kpi.conversion_rate is string %}
 {% set conversion_rate_format = field_formats.kpi.conversion_rate %}
@@ -37,7 +38,7 @@ Generated: {{ generated_at|default('<missing generated_at>', true) }}
 
 ## Top Regions
 
-{% if active_users_by_region %}
+{% if active_users_by_region is defined and active_users_by_region %}
 {% for region in active_users_by_region %}
 {% if region and region.name is defined and region.name and region.users is defined and region.users is number %}
 - {{ region.name }}: {{ region.users }} users
@@ -52,10 +53,10 @@ Generated: {{ generated_at|default('<missing generated_at>', true) }}
 ## Risks
 
 {% set ns = namespace(valid_risks=[]) %}
-{% if risks %}
+{% if risks is defined and risks %}
 {% for risk in risks %}
 {% if risk %}
-{# Only non-empty strings are appended to valid_risks; empty/none values are skipped to avoid blank bullet items. #}
+{# Jinja2 list mutation uses assignment: `set _ = ns.valid_risks.append(risk)` stores append's return in `_` while mutating `ns.valid_risks`; empty/none risks are intentionally skipped by surrounding `if risk`. #}
 {% if risk is string %}
 {% set _ = ns.valid_risks.append(risk) %}
 {% elif risk.message is defined and risk.message %}

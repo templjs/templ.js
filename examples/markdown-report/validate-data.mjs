@@ -79,6 +79,19 @@ function validateActiveUsersByRegion(activeUsersByRegion) {
       );
     }
 
+    const regionUsers = region?.users;
+    if (typeof regionUsers !== 'number' || !Number.isFinite(regionUsers)) {
+      throw new Error(
+        `Invalid active_users_by_region payload: region at index ${index} has invalid users value (${String(regionUsers)}); expected a finite number`
+      );
+    }
+
+    if (!Number.isInteger(regionUsers) || regionUsers < 0) {
+      throw new Error(
+        `Invalid active_users_by_region payload: region at index ${index} has invalid users value (${String(regionUsers)}); expected an integer >= 0`
+      );
+    }
+
     if (seenRegionNames.has(regionName)) {
       throw new Error(
         `Invalid active_users_by_region payload: duplicate region name "${regionName}"`
