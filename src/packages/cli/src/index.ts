@@ -5,8 +5,11 @@
  * validating syntax, and generating output files.
  */
 
-import packageJson from '../package.json';
+import { createRequire } from 'node:module';
 import { renderTemplate, validateTemplate as validateTemplateCore } from '@templjs/core';
+
+const require = createRequire(import.meta.url);
+const packageJson = require('../package.json') as { version: string };
 
 export const version = packageJson.version;
 
