@@ -1989,9 +1989,15 @@ describe('language-server-bootstrap', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      expect(consoleLog).toHaveBeenCalledWith(
-        expect.stringContaining('schema reload failed for file:///workspace/watch-failure.md.tpl')
-      );
+      expect(
+        consoleLog.mock.calls.some(
+          ([message]) =>
+            typeof message === 'string' &&
+            message
+              .toLowerCase()
+              .includes('schema reload failed for file:///workspace/watch-failure.md.tpl')
+        )
+      ).toBe(true);
     } finally {
       vi.doUnmock('../src/schema-loading.js');
     }

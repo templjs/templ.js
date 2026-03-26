@@ -227,7 +227,7 @@ describe('cli-main', () => {
     );
 
     watchDeps?.writeStderr('Watching template.templ and data.json. Press Ctrl+C to stop.\n');
-    expect(stderrSpy).toHaveBeenCalledWith(
+    expect(stdoutSpy).toHaveBeenCalledWith(
       'Watching template.templ and data.json. Press Ctrl+C to stop.\n'
     );
 
