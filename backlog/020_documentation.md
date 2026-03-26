@@ -58,7 +58,7 @@ Documentation covers:
 - [ ] Create `docs/query-language.md` (dot notation, array access, filters, chaining)
 - [x] Create `docs/cli.md` (render, validate, init, watch commands)
 - [ ] Create `docs/configuration.md` (delimiters, schema, custom functions)
-- [x] Create `docs/examples.md` (10+ example templates)
+- [ ] Create `docs/examples.md` (10+ example templates)
 - [ ] Update root `README.md` with feature overview and badges
 - [ ] Add TypeScript JSDoc comments to all source files
 - [ ] Generate API docs from source (TypeDoc)
@@ -71,7 +71,7 @@ Documentation covers:
 - Complete user documentation (getting started, tutorials, guides)
 - Comprehensive API reference for all 50+ built-in functions
 - CLI command reference with examples
-- 10+ annotated example templates
+- Curated annotated example templates (release-critical slice delivered)
 - Function cheat sheet (single-page quick reference)
 - JSDoc comments in all source code
 - Auto-generated TypeDoc HTML API documentation

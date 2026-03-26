@@ -28,7 +28,7 @@ proposed → ready → in-progress → ready-for-review → closed
 
 ## Validation Rules (Enforced by CI)
 
-1. **`in-progress` status**: All dependencies in `depends_on` must be `closed`
+1. **`in-progress` status**: All dependencies in `depends_on` must be `in-progress`, `ready-for-review`, or `closed`
 2. **`closed` status** requires:
    - Merged PR in `links.pull_requests` with passing CI
    - All tasks marked `[x]` completed

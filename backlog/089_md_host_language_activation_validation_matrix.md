@@ -13,7 +13,7 @@ links:
   depends_on:
     - '[[055_bug_no_md_lang_server_support]]'
   pull_requests:
-    - 'https://github.com/templjs/templ.js/pulls?q=wi-089'
+    - 'https://github.com/templjs/templ.js/pull/32'
 ---
 
 ## Goal

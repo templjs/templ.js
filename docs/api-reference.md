@@ -112,5 +112,5 @@ templjs init -f markdown [-o starter.md.templ]
 
 ## Stability Notes
 
-- Current package versions in this repo are pre-1.0 (`0.1.0`).
+- Current package releases are pre-1.0 and move in a shared monorepo release train.
 - Public APIs listed above are the recommended integration surface.

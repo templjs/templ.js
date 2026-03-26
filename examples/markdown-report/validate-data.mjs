@@ -23,8 +23,21 @@ function loadJsonFile(filePath) {
   }
 }
 
-const schema = loadJsonFile(schemaPath);
-const data = loadJsonFile(dataPath);
+let data;
+let validate;
+
+try {
+  const schema = loadJsonFile(schemaPath);
+  data = loadJsonFile(dataPath);
+
+  const ajv = new Ajv2020({ allErrors: true, strict: true });
+  addFormats(ajv);
+  validate = ajv.compile(schema);
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`Failed to initialize markdown-report validation: ${message}`);
+  process.exit(1);
+}
 
 function validateKpi(kpi, conversionRateFormat) {
   if (!kpi || typeof kpi !== 'object' || Array.isArray(kpi)) {
@@ -124,11 +137,6 @@ function validateFieldFormats(data) {
 
   return conversionRateFormat;
 }
-
-const ajv = new Ajv2020({ allErrors: true, strict: true });
-addFormats(ajv);
-
-const validate = ajv.compile(schema);
 
 if (!validate(data)) {
   console.error('Invalid markdown-report example data at examples/markdown-report/data.json');

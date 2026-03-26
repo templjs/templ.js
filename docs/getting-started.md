@@ -10,11 +10,13 @@ title: Getting Started with templjs
 ## 5-Minute Setup
 
 1. Install prerequisites:
-   - Node.js 18+
-   - pnpm 8+
+   - Node.js 22.12+ or 24.x
+   - pnpm 8.15.0
 2. Clone and install dependencies:
 
    ```bash
+   corepack enable
+   corepack prepare pnpm@8.15.0 --activate
    pnpm install
    pnpm build
    ```
@@ -44,7 +46,7 @@ title: Getting Started with templjs
    From monorepo root (development):
 
    ```bash
-   pnpm --filter @templjs/cli exec node dist/cli.js render -t hello.md.templ -i data.json
+   node src/packages/cli/dist/cli.js render -t hello.md.templ -i data.json
    ```
 
    After publishing (end users):
@@ -106,6 +108,6 @@ Implementation references:
 
 ## Next Steps
 
-- CLI reference: [docs/cli.md](./cli.md)
-- API reference: [docs/api-reference.md](./api-reference.md)
-- Curated examples: [docs/examples.md](./examples.md)
+- CLI reference: [cli.md](./cli.md)
+- API reference: [api-reference.md](./api-reference.md)
+- Curated examples: [examples.md](./examples.md)

@@ -14,6 +14,8 @@ links:
     - '[[085_structured_expression_parser_ast_migration_epic]]'
     - '[[086_expression_ast_contract_and_semantic_ir]]'
     - '[[087_token_driven_expression_parser_cutover]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/32'
 ---
 
 ## Goal

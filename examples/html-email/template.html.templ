@@ -2,15 +2,7 @@
 
 {% set locale = order.locale | default('en-US') %}
 {% set lang_code = locale | split('-') | first | default('en') %}
-{% set labels_by_lang = {
-  'en': {'unit': 'Unit', 'subtotal': 'Subtotal'},
-  'de': {'unit': 'Einzelpreis', 'subtotal': 'Zwischensumme'},
-  'es': {'unit': 'Precio unitario', 'subtotal': 'Subtotal'},
-  'fr': {'unit': 'Prix unitaire', 'subtotal': 'Sous-total'},
-  'it': {'unit': 'Prezzo unitario', 'subtotal': 'Subtotale'},
-  'pt': {'unit': 'Preço unitário', 'subtotal': 'Subtotal'},
-  'nl': {'unit': 'Stukprijs', 'subtotal': 'Subtotaal'}
-} %}
+{% set labels_by_lang = {'en': {'unit': 'Unit', 'subtotal': 'Subtotal'}, 'de': {'unit': 'Einzelpreis', 'subtotal': 'Zwischensumme'}, 'es': {'unit': 'Precio unitario', 'subtotal': 'Subtotal'}, 'fr': {'unit': 'Prix unitaire', 'subtotal': 'Sous-total'}, 'it': {'unit': 'Prezzo unitario', 'subtotal': 'Subtotale'}, 'pt': {'unit': 'Preço unitário', 'subtotal': 'Subtotal'}, 'nl': {'unit': 'Stukprijs', 'subtotal': 'Subtotaal'}} %}
 {% set labels = labels_by_lang[lang_code] | default(labels_by_lang.en, true) %}
 <html
   lang="{{ lang_code }}"
@@ -121,7 +113,7 @@
                       class="text line"
                       style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; font-size: 15px; line-height: 1.5; color: #374151;"
                     >
-                      {% set quantity = item.quantity | number(0) %}
+                      {% set quantity = item.quantity | round(0) | number(0) %}
                       {% set item_price = item.price | number(0) %}
                       {% set item_subtotal = item.subtotal | default(item_price * quantity) | number(0) %}
                       <p style="margin: 0;">

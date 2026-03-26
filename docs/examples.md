@@ -51,7 +51,7 @@ This release slice includes a reduced, high-value example set from WI-021.
 ## Run an Example
 
 ```bash
-pnpm --filter @templjs/cli exec node dist/cli.js render \
+node src/packages/cli/dist/cli.js render \
   -t examples/markdown-report/template.md.templ \
   -i examples/markdown-report/data.json
 ```

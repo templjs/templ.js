@@ -52,35 +52,27 @@ Generated: {{ generated_at|default('<missing generated_at>', true) }}
 
 ## Risks
 
-{% set ns = namespace(valid_risks=[]) %}
 {% if risks is defined and risks %}
 {% for risk in risks %}
 {% if risk %}
-{# Jinja2 list mutation uses assignment: `set _ = ns.valid_risks.append(risk)` stores append's return in `_` while mutating `ns.valid_risks`; empty/none risks are intentionally skipped by surrounding `if risk`. #}
 {% if risk is string %}
-{% set _ = ns.valid_risks.append(risk) %}
-{% elif risk.message is defined and risk.message %}
-{% set _ = ns.valid_risks.append(risk.message) %}
-{% elif risk.description is defined and risk.description %}
-{% set _ = ns.valid_risks.append(risk.description) %}
-{% elif risk.summary is defined and risk.summary %}
-{% set _ = ns.valid_risks.append(risk.summary) %}
-{% elif risk.severity is defined and risk.code is defined and risk.severity and risk.code %}
-{% set _ = ns.valid_risks.append('[' ~ risk.severity ~ '] ' ~ risk.code) %}
-{% elif risk.severity is defined and risk.severity %}
-{% set _ = ns.valid_risks.append('Severity: ' ~ risk.severity) %}
-{% elif risk.code is defined and risk.code %}
-{% set _ = ns.valid_risks.append('Code: ' ~ risk.code) %}
-{% else %}
-{% set _ = ns.valid_risks.append('Unstructured risk entry') %}
-{% endif %}
-{% endif %}
-{% endfor %}
-{% endif %}
-
-{% if ns.valid_risks %}
-{% for risk in ns.valid_risks %}
 - {{ risk }}
+{% elif risk.message is defined and risk.message %}
+- {{ risk.message }}
+{% elif risk.description is defined and risk.description %}
+- {{ risk.description }}
+{% elif risk.summary is defined and risk.summary %}
+- {{ risk.summary }}
+{% elif risk.severity is defined and risk.code is defined and risk.severity and risk.code %}
+- [{{ risk.severity }}] {{ risk.code }}
+{% elif risk.severity is defined and risk.severity %}
+- Severity: {{ risk.severity }}
+{% elif risk.code is defined and risk.code %}
+- Code: {{ risk.code }}
+{% else %}
+- Unstructured risk entry
+{% endif %}
+{% endif %}
 {% endfor %}
 {% else %}
 - None
