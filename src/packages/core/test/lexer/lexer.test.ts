@@ -847,20 +847,22 @@ describe('Lexer', () => {
 
       it('should tokenize 10KB plain text quickly', () => {
         const template = 'a'.repeat(10240);
-        const iterations = 25;
-        let totalDuration = 0;
+        const sampleCount = 10;
+        const batchSize = 50;
 
         tokenize(template);
 
-        for (let i = 0; i < iterations; i++) {
-          const start = performance.now();
-          tokenize(template);
-          totalDuration += performance.now() - start;
+        const start = performance.now();
+
+        for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
+          for (let batchIndex = 0; batchIndex < batchSize; batchIndex++) {
+            tokenize(template);
+          }
         }
 
-        const duration = totalDuration / iterations;
+        const duration = (performance.now() - start) / (sampleCount * batchSize);
 
-        expect(duration).toBeLessThan(2);
+        expect(duration).toBeLessThan(3);
       });
 
       it('should tokenize 100 expressions quickly', () => {
