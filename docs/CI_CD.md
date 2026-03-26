@@ -1,4 +1,13 @@
-# CI/CD Infrastructure
+---
+id: cicd-001
+type: document
+subtype: guide
+lifecycle: active
+status: ready
+title: CI/CD Infrastructure
+---
+
+## CI/CD Infrastructure
 
 Comprehensive documentation for templjs continuous integration and deployment workflows.
 
@@ -46,7 +55,7 @@ templjs uses GitHub Actions for automated testing, linting, security analysis, b
 
 ### 1. CI Workflow (`ci.yml`)
 
-**Trigger**: Push to `main`/`develop`, pull requests, nightly scheduled run
+**Trigger**: Manual dispatch (`workflow_dispatch`), push to `main`/`develop`, pull requests, nightly scheduled run
 
 **Purpose**: Validate code quality, tests, and builds for every change.
 

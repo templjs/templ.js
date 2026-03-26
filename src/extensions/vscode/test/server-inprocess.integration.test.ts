@@ -3,6 +3,7 @@ import { tmpdir } from 'os';
 import path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FileChangeType } from '@volar/language-server';
+import { pathToFileURL } from 'url';
 
 const onInitialize = vi.fn();
 const onInitialized = vi.fn();
@@ -297,7 +298,7 @@ describe('language-server-inprocess-integration', () => {
         changes: Array<{ uri: string; type: number }>;
       }) => void;
       watchedFilesHandler({
-        changes: [{ uri: `file://${schemaPath}`, type: FILE_CHANGE_TYPE_CHANGED }],
+        changes: [{ uri: pathToFileURL(schemaPath).href, type: FILE_CHANGE_TYPE_CHANGED }],
       });
 
       await vi.waitFor(

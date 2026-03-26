@@ -440,6 +440,7 @@ describe('cli-main', () => {
         expect.objectContaining({ outputFormat: 'text' })
       );
 
+      // CLI routes watch status messages (non-error) to stdout for cleaner output separation
       watchDeps?.writeStderr('Watching template.templ and data.json. Press Ctrl+C to stop.\n');
       expect(stdoutSpy).toHaveBeenCalledWith(
         'Watching template.templ and data.json. Press Ctrl+C to stop.\n'

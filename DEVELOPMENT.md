@@ -1,4 +1,13 @@
-# Development Guide
+---
+id: development-001
+type: document
+subtype: guide
+lifecycle: active
+status: ready
+title: Development Guide
+---
+
+## Development Guide
 
 Complete guide for setting up and contributing to templjs.
 

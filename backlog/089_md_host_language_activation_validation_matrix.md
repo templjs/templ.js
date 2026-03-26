@@ -12,8 +12,6 @@ assignee: ''
 links:
   depends_on:
     - '[[055_bug_no_md_lang_server_support]]'
-  pull_requests:
-    - 'https://github.com/templjs/templ.js/pull/32'
 ---
 
 ## Goal

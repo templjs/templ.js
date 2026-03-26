@@ -4,10 +4,10 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import {
   WATCH_ERROR_PREFIXES,
-  WatchModeDependencies,
   defaultWatchModeDependencies,
   startRenderWatchMode,
 } from './watch-mode.js';
+import type { WatchModeDependencies } from './watch-mode.js';
 
 interface FakeWatcher {
   close: ReturnType<typeof vi.fn>;
