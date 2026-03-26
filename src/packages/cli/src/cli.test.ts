@@ -82,7 +82,7 @@ describe('cli-main', () => {
     }
     const lastStdoutCall = stdoutSpy.mock.calls.at(-1)?.[0];
     if (typeof lastStdoutCall !== 'string') {
-      throw new Error('stdout spy was not called or returned non-string');
+      throw new Error('Last stdout write argument was undefined or non-string');
     }
     const raw = lastStdoutCall;
 
@@ -102,7 +102,7 @@ describe('cli-main', () => {
     }
     const lastStderrCall = stderrSpy.mock.calls.at(-1)?.[0];
     if (typeof lastStderrCall !== 'string') {
-      throw new Error('stderr spy was not called or returned non-string');
+      throw new Error('Last stderr write argument was undefined or non-string');
     }
     const raw = lastStderrCall;
 
@@ -441,7 +441,7 @@ describe('cli-main', () => {
       );
 
       watchDeps?.writeStderr('Watching template.templ and data.json. Press Ctrl+C to stop.\n');
-      expect(stderrSpy).toHaveBeenCalledWith(
+      expect(stdoutSpy).toHaveBeenCalledWith(
         'Watching template.templ and data.json. Press Ctrl+C to stop.\n'
       );
 

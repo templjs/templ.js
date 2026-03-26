@@ -587,7 +587,7 @@ connection.onDidChangeTextDocument((event) => {
     })
     .catch((err: unknown) => {
       const message = err instanceof Error ? err.message : String(err);
-      trace(`schema load failed for ${uri} (generation ${generation}): ${message}`);
+      connection.console.log(`[templjs] Schema load failed for ${uri}: ${message}`);
     });
 });
 
@@ -616,7 +616,7 @@ connection.onDidChangeWatchedFiles((event) => {
       })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : String(err);
-        trace(`schema reload failed for ${uri} (generation ${generation}): ${message}`);
+        connection.console.log(`[templjs] Schema reload failed for ${uri}: ${message}`);
       });
   }
 });

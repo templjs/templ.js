@@ -5,9 +5,10 @@
  * validating syntax, and generating output files.
  */
 
+import packageJson from '../package.json';
 import { renderTemplate, validateTemplate as validateTemplateCore } from '@templjs/core';
 
-export const version = '0.1.0';
+export const version = packageJson.version;
 
 /**
  * Process a template with data

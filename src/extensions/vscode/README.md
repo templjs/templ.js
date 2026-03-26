@@ -84,7 +84,7 @@ When schema files change on disk (`.json`, `.yaml`, `.yml`), the server invalida
 Install from VS Code marketplace (coming soon) or build from source:
 
 ```bash
-cd extensions/vscode
+cd src/extensions/vscode
 pnpm install
 pnpm run build
 ```

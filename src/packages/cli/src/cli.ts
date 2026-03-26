@@ -172,7 +172,7 @@ function createWatchModeDependencies(
         if (mode.quiet || mode.json) {
           return true;
         }
-        return process.stderr.write(data);
+        return process.stdout.write(data);
       }
 
       for (const prefix of Object.values(WATCH_ERROR_PREFIXES)) {

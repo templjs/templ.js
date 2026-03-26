@@ -1867,7 +1867,7 @@ describe('language-server-bootstrap', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(consoleLog).toHaveBeenCalledWith(
-        expect.stringContaining('schema load failed for file:///workspace/change-failure.md.tpl')
+        expect.stringContaining('Schema resolution for file:///workspace/change-failure.md.tpl')
       );
     } finally {
       vi.doUnmock('../src/schema-loading.js');

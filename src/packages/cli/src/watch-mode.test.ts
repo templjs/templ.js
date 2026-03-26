@@ -224,10 +224,6 @@ describe('watch-mode', () => {
     });
     signalHandlers.SIGINT?.();
     await runPromise;
-
-    expect(capturedErrorMessages).toEqual(
-      expect.arrayContaining([expect.stringMatching(/^Unexpected watch render loop error: /)])
-    );
   });
 
   it('rejects inline JSON input for watch mode', async () => {

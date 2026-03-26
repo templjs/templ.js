@@ -8,6 +8,7 @@
  * - Virtual code mapping for base format delegation
  */
 
+import packageJson from '../package.json';
 import type { CodeInformation, LanguagePlugin, VirtualCode } from '@volar/language-core';
 import type * as ts from 'typescript';
 import {
@@ -585,7 +586,7 @@ class TempljsVirtualCode implements VirtualCode {
   }
 }
 
-export const version = '0.1.0';
+export const version = packageJson.version;
 
 class TempljsLanguagePlugin implements LanguagePlugin {
   private readonly virtualCodeByUri = new Map<string, TempljsVirtualCode>();
