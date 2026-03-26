@@ -6,6 +6,21 @@ type Mode = 'ci' | 'pre-push' | 'local';
 const VALID_MODES = new Set<Mode>(['ci', 'pre-push', 'local']);
 const pnpmCmd = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 
+function getSpawnOptions(): {
+  stdio: 'inherit';
+  env: NodeJS.ProcessEnv;
+  detached: boolean;
+  shell?: boolean;
+} {
+  return {
+    stdio: 'inherit',
+    env: process.env,
+    detached: process.platform !== 'win32',
+    // Windows frequently rejects direct .cmd spawns in CI; route through the shell there.
+    ...(process.platform === 'win32' ? { shell: true } : {}),
+  };
+}
+
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   if (!value) return fallback;
   const parsed = Number.parseInt(value, 10);
@@ -128,11 +143,7 @@ function main(): void {
     defaultWatchdogMs
   );
 
-  const child = spawn(pnpmCmd, args, {
-    stdio: 'inherit',
-    env: process.env,
-    detached: process.platform !== 'win32',
-  });
+  const child = spawn(pnpmCmd, args, getSpawnOptions());
 
   let timedOut = false;
   let forceKillTimer: NodeJS.Timeout | undefined;
