@@ -146,12 +146,13 @@ describe('FilterEngine', () => {
       expect(engine.applyFilter('format_currency', 25, ['USD', '   '])).toContain('25');
     });
 
-    it('format_number edge case empty locale', () => {
+    it('format_number handles empty locale and invalid digit params', () => {
       expect(engine.applyFilter('format_number', 12.3, ['', 'x', 'y'])).toBe('12');
     });
 
     it('falls back to en-US when locale-specific number formatting throws', () => {
       const originalNumberFormat = Intl.NumberFormat;
+      clearFormatterCaches();
 
       try {
         Intl.NumberFormat = function NumberFormat(

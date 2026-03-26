@@ -6,7 +6,9 @@
  * and querying structured data.
  */
 
-export const version = '0.1.0';
+import packageJson from '../package.json';
+
+export const version = packageJson.version;
 
 // Export types
 export type * from './lexer/types.js';

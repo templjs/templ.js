@@ -83,6 +83,12 @@ export type DelimiterBoundaries = Pick<
 >;
 
 export function buildDefaultDelimiters(boundaries: DelimiterBoundaries): Required<DelimiterConfig> {
+  for (const [key, value] of Object.entries(boundaries)) {
+    if (typeof value !== 'string' || value.length === 0) {
+      throw new Error(`Delimiter "${key}" must be a non-empty string`);
+    }
+  }
+
   return {
     ...boundaries,
     statement: [boundaries.statement_start, boundaries.statement_end],

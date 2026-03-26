@@ -31,10 +31,10 @@ export const UNKNOWN_POSITION = { line: -1, column: -1 } as const;
  * values. Consumer-facing helper for IDE/Volar integration.
  */
 export function isHighlightablePosition(
-  position: Partial<{ line: number; column: number }> | undefined
+  position: Partial<{ line: number; column: number }> | null | undefined
 ): position is { line: number; column: number } {
   return (
-    position !== undefined &&
+    position != null &&
     typeof position.line === 'number' &&
     typeof position.column === 'number' &&
     position.line >= 1 &&

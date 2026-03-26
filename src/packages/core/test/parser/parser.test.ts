@@ -264,6 +264,12 @@ describe('splitTopLevel', () => {
 
     expect(result).toEqual([`'a\\'|b'`, 'next']);
   });
+
+  it('keeps interpolation quote context when interpolation string contains escaped quotes', () => {
+    const result = splitTopLevel("head|`tmpl ${'a\\'|b'}`|tail", '|');
+
+    expect(result).toEqual(['head', "`tmpl ${'a\\'|b'}`", 'tail']);
+  });
 });
 
 describe('parse', () => {
@@ -1413,11 +1419,13 @@ describe('parse', () => {
         );
       });
 
-      it('throws when statement delimiter metadata and explicit delimiters are both missing', () => {
+      it('returns trimmed statement content when delimiter metadata and explicit delimiters are both missing', () => {
         const parser = new TemplateParser([] as any);
 
-        expect(() => parser.extractStatementContent('if user.active')).toThrow(
-          'extractStatementContent requires delimiterStart/delimiterEnd in token metadata or explicit delimiters config'
+        expect(parser.extractStatementContent('  if user.active  ')).toEqual(
+          expect.objectContaining({
+            content: 'if user.active',
+          })
         );
       });
 
@@ -1432,11 +1440,13 @@ describe('parse', () => {
         ).toBe('user.email');
       });
 
-      it('throws when expression delimiter metadata and explicit delimiters are both missing', () => {
+      it('returns trimmed expression content when delimiter metadata and explicit delimiters are both missing', () => {
         const parser = new TemplateParser([] as any);
 
-        expect(() => parser.extractExpressionContent('user.email')).toThrow(
-          'extractExpressionContent requires delimiterStart/delimiterEnd in token metadata or explicit delimiters config'
+        expect(parser.extractExpressionContent('  user.email  ')).toEqual(
+          expect.objectContaining({
+            content: 'user.email',
+          })
         );
       });
 

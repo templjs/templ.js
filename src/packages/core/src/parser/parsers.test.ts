@@ -7,6 +7,7 @@ import {
   splitByOperatorFromLeft,
   splitByOperatorFromRight,
 } from './parsers.js';
+import type { ErrorNode, ExpressionNode, FilterNode, LiteralNode, VariableNode } from './types.js';
 
 describe('isWrappedByOutermostParens', () => {
   it('returns true for simple wrapped expressions', () => {
@@ -537,36 +538,150 @@ describe('createCharContextIterator', () => {
 });
 
 describe('matchBinaryOpWithPrecedence', () => {
+  it.each([
+    ['a + b', { operator: '+', left: 'a ', right: ' b' }],
+    ['a+b', { operator: '+', left: 'a', right: 'b' }],
+    ['a + b * c', { operator: '+', left: 'a ', right: ' b * c' }],
+    ['a * b + c', { operator: '+', left: 'a * b ', right: ' c' }],
+    ['a || b || c', { operator: '||', left: 'a || b ', right: ' c' }],
+    ['a && b && c', { operator: '&&', left: 'a && b ', right: ' c' }],
+    ['a\t+\tb', { operator: '+', left: 'a\t', right: '\tb' }],
+  ])('matches valid binary expression %j with expected precedence', (expr, expected) => {
+    expect(matchBinaryOpWithPrecedence(expr)).toEqual(expected);
+  });
+
+  it.each(['', 'a', '+ a', 'a +', '|| b', 'a &&', '! + a', '- + b'])(
+    'returns null for invalid operand shape: %j',
+    (expr) => {
+      expect(matchBinaryOpWithPrecedence(expr)).toBeNull();
+    }
+  );
+
+  it.each([
+    // Default moustache-style wrappers: braces increase depth, so inner operators are ignored.
+    ['{{ a + b }}', null],
+    ['{% a && b %}', null],
+    // Bracket-based custom wrappers similarly keep operators nested.
+    ['BEGIN[a + b]END', null],
+    ['<% a && b %>', { operator: '&&', left: '<% a ', right: ' b %>' }],
+  ])('handles delimiter-shaped input %j as expected', (expr, expected) => {
+    expect(matchBinaryOpWithPrecedence(expr)).toEqual(expected);
+  });
+
   it('skips invalid unary-like left operand matches in binary precedence scanning', () => {
     expect(matchBinaryOpWithPrecedence('! + a')).toBeNull();
   });
 });
 
 describe('parseExpressionWithPriorityList', () => {
-  it('falls back to error expression when unary operator has no operand', () => {
-    const context = {
-      parseExpression: () => ({ type: 'error' }) as unknown,
-      parseLiteral: () => null,
-      parseFilterExpression: () => ({ type: 'error' }) as unknown,
-      parseVariable: () =>
-        ({
-          type: 'variable',
-          name: 'x',
-          path: [],
-          start: { line: 1, column: 0 },
-          end: { line: 1, column: 1 },
-        }) as unknown,
-      parseObjectProperties: () => [],
-      splitTopLevel: () => ['!'],
-      isVariableStart: () => false,
-      createErrorExpression: (message: string) => ({ type: 'error', message }) as unknown,
+  type TestParserContext = Parameters<typeof parseExpressionWithPriorityList>[1];
+
+  const makeLiteral = (value: string): LiteralNode => ({
+    type: 'literal',
+    valueType: 'string',
+    value,
+    start: { line: 1, column: 0 },
+    end: { line: 1, column: value.length },
+  });
+
+  const makeVariable = (name: string): VariableNode => ({
+    type: 'variable',
+    name,
+    path: [],
+    start: { line: 1, column: 0 },
+    end: { line: 1, column: name.length },
+  });
+
+  const makeError = (message: string): ErrorNode => ({
+    type: 'error',
+    message,
+    recovered: false,
+    start: { line: 1, column: 0 },
+    end: { line: 1, column: message.length },
+  });
+
+  const makeFilter = (sourceName: string, filterName: string): FilterNode => ({
+    type: 'filter',
+    source: makeVariable(sourceName),
+    filters: [{ name: filterName, args: [] }],
+    start: { line: 1, column: 0 },
+    end: { line: 1, column: `${sourceName}|${filterName}`.length },
+  });
+
+  const createTestContext = (delimiterConfig?: {
+    start: string;
+    end: string;
+  }): TestParserContext => {
+    const normalizeInput = (value: string): string => {
+      const trimmed = value.trim();
+      if (
+        delimiterConfig &&
+        trimmed.startsWith(delimiterConfig.start) &&
+        trimmed.endsWith(delimiterConfig.end)
+      ) {
+        return trimmed
+          .slice(delimiterConfig.start.length, trimmed.length - delimiterConfig.end.length)
+          .trim();
+      }
+      return value;
     };
 
-    const result = parseExpressionWithPriorityList('!', context as never) as {
-      type: string;
-      message?: string;
+    return {
+      parseExpression: (expr: string): ExpressionNode => makeLiteral(expr.trim()),
+      parseLiteral: (_expr: string): LiteralNode | null => null,
+      parseFilterExpression: (expr: string): FilterNode => {
+        const normalized = normalizeInput(expr).trim();
+        const [sourceRaw, filterRaw] = normalized.split('|').map((part) => part.trim());
+        return makeFilter(sourceRaw, filterRaw ?? 'unknown_filter');
+      },
+      parseVariable: (expr: string): VariableNode => makeVariable(expr.trim()),
+      parseObjectProperties: (_inner: string) => [],
+      splitTopLevel: (str: string, delimiter: string): string[] => {
+        const normalized = normalizeInput(str);
+        return normalized.includes(delimiter)
+          ? normalized.split(delimiter).map((part) => part.trim())
+          : [normalized];
+      },
+      isVariableStart: (char: string): boolean => /[a-zA-Z_]/.test(char),
+      createErrorExpression: (message: string): ExpressionNode => makeError(message),
     };
+  };
+
+  it('falls back to error expression when unary operator has no operand', () => {
+    const context: TestParserContext = {
+      ...createTestContext(),
+      splitTopLevel: () => ['!'],
+      isVariableStart: () => false,
+      parseExpression: () => makeError('missing operand'),
+      createErrorExpression: (message: string) => makeError(message),
+    };
+
+    const result = parseExpressionWithPriorityList('!', context);
     expect(result.type).toBe('error');
-    expect(result.message).toBe('Invalid or missing expression type');
+    if (result.type === 'error') {
+      expect(result.message).toBe('Invalid or missing expression type');
+    }
+  });
+
+  it('parses filter expressions using default delimiters', () => {
+    const result = parseExpressionWithPriorityList('value | upper', createTestContext());
+
+    expect(result.type).toBe('filter');
+    if (result.type === 'filter') {
+      expect(result.filters[0]?.name).toBe('upper');
+    }
+  });
+
+  it('parses filter expressions when source text uses custom wrapper delimiters', () => {
+    const customDelimiterContext = createTestContext({ start: 'BEGIN[', end: ']END' });
+    const result = parseExpressionWithPriorityList(
+      'BEGIN[value | upper]END',
+      customDelimiterContext
+    );
+
+    expect(result.type).toBe('filter');
+    if (result.type === 'filter') {
+      expect(result.filters[0]?.name).toBe('upper');
+    }
   });
 });

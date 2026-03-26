@@ -232,6 +232,24 @@ describe('Evaluators', () => {
       expect(evaluateExpression(binary('||', literal('hello'), literal('')), ctx)).toBe('hello');
     });
 
+    it('does not evaluate right operand when logical short-circuit applies', () => {
+      const andCtx = createContext();
+      const andResult = evaluateExpression(
+        binary('&&', literal(0), binary('/', literal(10), literal(0))),
+        andCtx
+      );
+      expect(andResult).toBe(0);
+      expect(andCtx.errors).toHaveLength(0);
+
+      const orCtx = createContext({ left: { ok: true } });
+      const orResult = evaluateExpression(
+        binary('||', variable('left'), variable('missing')),
+        orCtx
+      );
+      expect(orResult).toEqual({ ok: true });
+      expect(orCtx.errors).toHaveLength(0);
+    });
+
     it('supports bracket access on arrays and objects', () => {
       const context = createContext({ arr: ['x', 'y'], obj: { key: 'ok' } });
       expect(evaluateExpression(binary('[', variable('arr'), literal(1)), context)).toBe('y');

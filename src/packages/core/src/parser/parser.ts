@@ -696,14 +696,56 @@ export class TemplateParser {
     const parts: string[] = [];
     let current = '';
     let depth = 0;
+    let inSingleQuote = false;
+    let inDoubleQuote = false;
+    let inTemplateString = false;
+    let escaped = false;
 
     for (let i = 0; i < str.length; i++) {
       const char = str[i];
 
-      if (char === '(' || char === '[' || char === '{') depth++;
-      if (char === ')' || char === ']' || char === '}') depth--;
+      if (escaped) {
+        current += char;
+        escaped = false;
+        continue;
+      }
 
-      if (depth === 0 && char === delimiter) {
+      if ((inSingleQuote || inDoubleQuote || inTemplateString) && char === '\\') {
+        current += char;
+        escaped = true;
+        continue;
+      }
+
+      if (!inDoubleQuote && !inTemplateString && char === "'") {
+        inSingleQuote = !inSingleQuote;
+        current += char;
+        continue;
+      }
+
+      if (!inSingleQuote && !inTemplateString && char === '"') {
+        inDoubleQuote = !inDoubleQuote;
+        current += char;
+        continue;
+      }
+
+      if (!inSingleQuote && !inDoubleQuote && char === '`') {
+        inTemplateString = !inTemplateString;
+        current += char;
+        continue;
+      }
+
+      if (!inSingleQuote && !inDoubleQuote && !inTemplateString) {
+        if (char === '(' || char === '[' || char === '{') depth++;
+        if (char === ')' || char === ']' || char === '}') depth--;
+      }
+
+      if (
+        !inSingleQuote &&
+        !inDoubleQuote &&
+        !inTemplateString &&
+        depth === 0 &&
+        char === delimiter
+      ) {
         parts.push(current);
         current = '';
       } else {
@@ -904,7 +946,7 @@ export function parse(tokens: Token[]): ParseResult {
 function extractContentWithDelimiters(
   tokenOrContent: string | ExtractTokenInput,
   delimiters: DelimiterConfig | undefined,
-  extractorName: 'extractStatementContent' | 'extractExpressionContent'
+  _extractorName: 'extractStatementContent' | 'extractExpressionContent'
 ): ExtractedContent {
   // Use flat string operations instead of regex to avoid ReDoS
   const token: ExtractTokenInput =
@@ -916,9 +958,17 @@ function extractContentWithDelimiters(
   const startDelimiter = token.delimiterStart ?? delimiters?.start;
   const endDelimiter = token.delimiterEnd ?? delimiters?.end;
   if (!startDelimiter || !endDelimiter) {
-    throw new Error(
-      `${extractorName} requires delimiterStart/delimiterEnd in token metadata or explicit delimiters config`
-    );
+    const trimmedStart = result.trimStart();
+    const leadingWhitespace = result.length - trimmedStart.length;
+    const trailingWhitespace = trimmedStart.length - trimmedStart.trimEnd().length;
+    const contentStart = leadingWhitespace;
+    const contentEnd = result.length - trailingWhitespace;
+
+    return {
+      content: result.substring(contentStart, contentEnd),
+      contentStart,
+      contentEnd,
+    };
   }
 
   // When the content does not start and end with the resolved delimiters,
