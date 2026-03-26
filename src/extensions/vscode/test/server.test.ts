@@ -17,6 +17,31 @@ const sendDiagnostics = vi.fn();
 const consoleLog = vi.fn();
 const consoleWarn = vi.fn();
 const FILE_CHANGE_TYPE_CHANGED = FileChangeType.Changed;
+const testWorkspaceRoot = path.join(process.cwd(), 'workspace');
+
+function toTestWorkspacePath(fixturePath: string): string {
+  if (fixturePath === '/workspace') {
+    return testWorkspaceRoot;
+  }
+
+  if (fixturePath.startsWith('/workspace/')) {
+    return path.join(testWorkspaceRoot, fixturePath.slice('/workspace/'.length));
+  }
+
+  return fixturePath;
+}
+
+function toTestWorkspaceUri(fixtureUri: string): string {
+  if (fixtureUri === 'file:///workspace') {
+    return pathToFileURL(testWorkspaceRoot).href;
+  }
+
+  if (fixtureUri.startsWith('file:///workspace/')) {
+    return pathToFileURL(toTestWorkspacePath(fixtureUri.replace('file://', ''))).href;
+  }
+
+  return fixtureUri;
+}
 
 const initialize = vi.fn(async () => ({ capabilities: {} }));
 const initialized = vi.fn();
@@ -225,7 +250,7 @@ describe('language-server-bootstrap', () => {
     const initializeHandler = onInitialize.mock.calls[0][0] as (
       params: unknown
     ) => Promise<unknown>;
-    await initializeHandler({ rootUri: 'file:///workspace' });
+    await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
 
     expect(onCompletion).toHaveBeenCalledWith(expect.any(Function));
     expect(onHover).toHaveBeenCalledWith(expect.any(Function));
@@ -235,7 +260,7 @@ describe('language-server-bootstrap', () => {
   it('registers templjs language plugin provider', async () => {
     await import('../src/server');
     const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => unknown;
-    await initializeHandler({ rootUri: 'file:///workspace' });
+    await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
 
     const initializeCalls = initialize.mock.calls as unknown as Array<
       [
@@ -254,7 +279,7 @@ describe('language-server-bootstrap', () => {
   it('registers expected templated file extensions in server options', async () => {
     await import('../src/server');
     const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => unknown;
-    await initializeHandler({ rootUri: 'file:///workspace' });
+    await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
 
     const initializeCalls = initialize.mock.calls as unknown as Array<
       [
@@ -294,7 +319,7 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: { schemaPath: '.templjs/schema.json' },
     });
 
@@ -305,14 +330,16 @@ describe('language-server-bootstrap', () => {
       }) => void;
       didOpenHandler({
         textDocument: {
-          uri: 'file:///workspace/templates/sample.md.tpl',
+          uri: toTestWorkspaceUri('file:///workspace/templates/sample.md.tpl'),
           text: '{{ user.name }}',
         },
       });
 
       await vi.runAllTimersAsync();
       expect(sendDiagnostics).toHaveBeenCalledWith(
-        expect.objectContaining({ uri: 'file:///workspace/templates/sample.md.tpl' })
+        expect.objectContaining({
+          uri: toTestWorkspaceUri('file:///workspace/templates/sample.md.tpl'),
+        })
       );
       sendDiagnostics.mockClear();
       const schemaReadsAfterInitialOpen = readFileSync.mock.calls.length;
@@ -322,7 +349,10 @@ describe('language-server-bootstrap', () => {
       }) => void;
       watchedFilesHandler({
         changes: [
-          { uri: 'file:///workspace/.templjs/schema.json', type: FILE_CHANGE_TYPE_CHANGED },
+          {
+            uri: toTestWorkspaceUri('file:///workspace/.templjs/schema.json'),
+            type: FILE_CHANGE_TYPE_CHANGED,
+          },
         ],
       });
 
@@ -331,11 +361,19 @@ describe('language-server-bootstrap', () => {
       expect(readFileSync.mock.calls.length).toBeGreaterThan(schemaReadsAfterInitialOpen);
       const schemaReadCallIndexAfterCheckpoint = readFileSync.mock.calls
         .slice(schemaReadsAfterInitialOpen)
-        .findIndex((args) => args[0] === '/workspace/.templjs/schema.json' && args[1] === 'utf-8');
+        .findIndex((args) => {
+          const [filePath, encoding] = args as unknown as [string, string];
+          return (
+            filePath === toTestWorkspacePath('/workspace/.templjs/schema.json') &&
+            encoding === 'utf-8'
+          );
+        });
       expect(schemaReadCallIndexAfterCheckpoint).toBeGreaterThanOrEqual(0);
 
       expect(sendDiagnostics).toHaveBeenCalledWith(
-        expect.objectContaining({ uri: 'file:///workspace/templates/sample.md.tpl' })
+        expect.objectContaining({
+          uri: toTestWorkspaceUri('file:///workspace/templates/sample.md.tpl'),
+        })
       );
     } finally {
       vi.useRealTimers();
@@ -355,7 +393,7 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: { schemaPath: '.templjs/schema.json' },
     });
 
@@ -365,7 +403,10 @@ describe('language-server-bootstrap', () => {
     const serverOptions = initializeCalls[0][2];
     serverOptions.getLanguagePlugins();
 
-    expect(readFileSync).toHaveBeenCalledWith('/workspace/.templjs/schema.json', 'utf-8');
+    expect(readFileSync).toHaveBeenCalledWith(
+      toTestWorkspacePath('/workspace/.templjs/schema.json'),
+      'utf-8'
+    );
     expect(createTempljsLanguagePlugin).toHaveBeenCalledWith({
       schema: {
         type: 'object',
@@ -375,7 +416,7 @@ describe('language-server-bootstrap', () => {
           },
         },
       },
-      schemaUri: 'file:///workspace/.templjs/schema.json',
+      schemaUri: toTestWorkspaceUri('file:///workspace/.templjs/schema.json'),
     });
   });
 
@@ -389,7 +430,7 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: { schemaPath: '.templjs/missing.json' },
     });
 
@@ -408,7 +449,7 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         schemaPath: '.templjs/schema.json',
         contentSchemaPath: '.templjs/content-schema.json',
@@ -421,8 +462,14 @@ describe('language-server-bootstrap', () => {
     const serverOptions = initializeCalls[0][2];
     serverOptions.getLanguagePlugins();
 
-    expect(readFileSync).toHaveBeenCalledWith('/workspace/.templjs/schema.json', 'utf-8');
-    expect(readFileSync).toHaveBeenCalledWith('/workspace/.templjs/content-schema.json', 'utf-8');
+    expect(readFileSync).toHaveBeenCalledWith(
+      toTestWorkspacePath('/workspace/.templjs/schema.json'),
+      'utf-8'
+    );
+    expect(readFileSync).toHaveBeenCalledWith(
+      toTestWorkspacePath('/workspace/.templjs/content-schema.json'),
+      'utf-8'
+    );
     expect(createTempljsLanguagePlugin).toHaveBeenCalledWith({
       schema: {
         type: 'object',
@@ -432,7 +479,7 @@ describe('language-server-bootstrap', () => {
           },
         },
       },
-      schemaUri: 'file:///workspace/.templjs/schema.json',
+      schemaUri: toTestWorkspaceUri('file:///workspace/.templjs/schema.json'),
       contentSchema: {
         type: 'object',
         properties: {
@@ -441,7 +488,7 @@ describe('language-server-bootstrap', () => {
           },
         },
       },
-      contentSchemaUri: 'file:///workspace/.templjs/content-schema.json',
+      contentSchemaUri: toTestWorkspaceUri('file:///workspace/.templjs/content-schema.json'),
     });
   });
 
@@ -465,7 +512,7 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: { schemaPath: '.templjs/common.json#/$defs/relationship' },
     });
 
@@ -475,7 +522,10 @@ describe('language-server-bootstrap', () => {
     const serverOptions = initializeCalls[0][2];
     serverOptions.getLanguagePlugins();
 
-    expect(readFileSync).toHaveBeenCalledWith('/workspace/.templjs/common.json', 'utf-8');
+    expect(readFileSync).toHaveBeenCalledWith(
+      toTestWorkspacePath('/workspace/.templjs/common.json'),
+      'utf-8'
+    );
     expect(createTempljsLanguagePlugin).toHaveBeenCalledWith({
       schema: {
         type: 'object',
@@ -484,7 +534,7 @@ describe('language-server-bootstrap', () => {
           type: { type: 'string' },
         },
       },
-      schemaUri: 'file:///workspace/.templjs/common.json',
+      schemaUri: toTestWorkspaceUri('file:///workspace/.templjs/common.json'),
     });
   });
 
@@ -500,7 +550,7 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         schemaPath: 'https://schemas.example.com/schema.json',
       },
@@ -535,12 +585,12 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         schemaPath: '.templjs/setting-schema.json',
         contentSchemaPath: '.templjs/setting-content.json',
         documentContext: {
-          uri: 'file:///workspace/backlog/item.md.templ',
+          uri: toTestWorkspaceUri('file:///workspace/backlog/item.md.templ'),
           content:
             '---\n$templ-schema: .templjs/root-schema.json\n$content-schema: .templjs/root-content.json\n---\n{{# schema: .templjs/inline-schema.json }}\n{{# content-schema: .templjs/inline-content.json }}',
         },
@@ -553,12 +603,18 @@ describe('language-server-bootstrap', () => {
     const serverOptions = initializeCalls[0][2];
     serverOptions.getLanguagePlugins();
 
-    expect(readFileSync).toHaveBeenCalledWith('/workspace/.templjs/inline-schema.json', 'utf-8');
-    expect(readFileSync).toHaveBeenCalledWith('/workspace/.templjs/inline-content.json', 'utf-8');
+    expect(readFileSync).toHaveBeenCalledWith(
+      toTestWorkspacePath('/workspace/.templjs/inline-schema.json'),
+      'utf-8'
+    );
+    expect(readFileSync).toHaveBeenCalledWith(
+      toTestWorkspacePath('/workspace/.templjs/inline-content.json'),
+      'utf-8'
+    );
     expect(createTempljsLanguagePlugin).toHaveBeenCalledWith(
       expect.objectContaining({
-        schemaUri: 'file:///workspace/.templjs/inline-schema.json',
-        contentSchemaUri: 'file:///workspace/.templjs/inline-content.json',
+        schemaUri: toTestWorkspaceUri('file:///workspace/.templjs/inline-schema.json'),
+        contentSchemaUri: toTestWorkspaceUri('file:///workspace/.templjs/inline-content.json'),
       })
     );
   });
@@ -569,12 +625,12 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         schemaPath: '.templjs/setting-schema.json',
         contentSchemaPath: '.templjs/setting-content.json',
         documentContext: {
-          uri: 'file:///workspace/docs/page.md.templ',
+          uri: toTestWorkspaceUri('file:///workspace/docs/page.md.templ'),
           content:
             '---\n$templ-schema: .templjs/root-schema.json\n$content-schema: .templjs/root-content.json\n---\n# body',
         },
@@ -587,12 +643,18 @@ describe('language-server-bootstrap', () => {
     const serverOptions = initializeCalls[0][2];
     serverOptions.getLanguagePlugins();
 
-    expect(readFileSync).toHaveBeenCalledWith('/workspace/.templjs/root-schema.json', 'utf-8');
-    expect(readFileSync).toHaveBeenCalledWith('/workspace/.templjs/root-content.json', 'utf-8');
+    expect(readFileSync).toHaveBeenCalledWith(
+      toTestWorkspacePath('/workspace/.templjs/root-schema.json'),
+      'utf-8'
+    );
+    expect(readFileSync).toHaveBeenCalledWith(
+      toTestWorkspacePath('/workspace/.templjs/root-content.json'),
+      'utf-8'
+    );
     expect(createTempljsLanguagePlugin).toHaveBeenCalledWith(
       expect.objectContaining({
-        schemaUri: 'file:///workspace/.templjs/root-schema.json',
-        contentSchemaUri: 'file:///workspace/.templjs/root-content.json',
+        schemaUri: toTestWorkspaceUri('file:///workspace/.templjs/root-schema.json'),
+        contentSchemaUri: toTestWorkspaceUri('file:///workspace/.templjs/root-content.json'),
       })
     );
   });
@@ -603,7 +665,7 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         schemaPath: '.templjs/default-schema.json',
         contentSchemaPath: '.templjs/default-content.json',
@@ -614,7 +676,7 @@ describe('language-server-bootstrap', () => {
           },
         },
         documentContext: {
-          uri: 'file:///workspace/backlog/work-item.md.templ',
+          uri: toTestWorkspaceUri('file:///workspace/backlog/work-item.md.templ'),
           content: 'plain content',
         },
       },
@@ -626,12 +688,18 @@ describe('language-server-bootstrap', () => {
     const serverOptions = initializeCalls[0][2];
     serverOptions.getLanguagePlugins();
 
-    expect(readFileSync).toHaveBeenCalledWith('/workspace/.templjs/backlog-schema.json', 'utf-8');
-    expect(readFileSync).toHaveBeenCalledWith('/workspace/.templjs/backlog-content.json', 'utf-8');
+    expect(readFileSync).toHaveBeenCalledWith(
+      toTestWorkspacePath('/workspace/.templjs/backlog-schema.json'),
+      'utf-8'
+    );
+    expect(readFileSync).toHaveBeenCalledWith(
+      toTestWorkspacePath('/workspace/.templjs/backlog-content.json'),
+      'utf-8'
+    );
     expect(createTempljsLanguagePlugin).toHaveBeenCalledWith(
       expect.objectContaining({
-        schemaUri: 'file:///workspace/.templjs/backlog-schema.json',
-        contentSchemaUri: 'file:///workspace/.templjs/backlog-content.json',
+        schemaUri: toTestWorkspaceUri('file:///workspace/.templjs/backlog-schema.json'),
+        contentSchemaUri: toTestWorkspaceUri('file:///workspace/.templjs/backlog-content.json'),
       })
     );
   });
@@ -643,10 +711,10 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         documentContext: {
-          uri: 'file:///workspace/sample.md.templ',
+          uri: toTestWorkspaceUri('file:///workspace/sample.md.templ'),
           content: '{{ user.n }}',
         },
         schemaPath: '.templjs/schema.json',
@@ -659,7 +727,7 @@ describe('language-server-bootstrap', () => {
     }) => unknown[];
 
     const completions = completionHandler({
-      textDocument: { uri: 'file:///workspace/sample.md.templ' },
+      textDocument: { uri: toTestWorkspaceUri('file:///workspace/sample.md.templ') },
       position: { line: 0, character: 9 },
     });
 
@@ -672,7 +740,7 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<{ capabilities: Record<string, unknown> }>;
 
-    const result = await initializeHandler({ rootUri: 'file:///workspace' });
+    const result = await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
 
     expect(result.capabilities.completionProvider).toEqual({ triggerCharacters: ['.', '|'] });
     expect(result.capabilities.hoverProvider).toBe(true);
@@ -695,10 +763,10 @@ describe('language-server-bootstrap', () => {
     ].join('\n');
 
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         documentContext: {
-          uri: 'file:///workspace/templates/milestone.md.tpl',
+          uri: toTestWorkspaceUri('file:///workspace/templates/milestone.md.tpl'),
           content: documentText,
         },
       },
@@ -710,13 +778,13 @@ describe('language-server-bootstrap', () => {
     }) => { uri: string } | null;
 
     const result = definitionHandler({
-      textDocument: { uri: 'file:///workspace/templates/milestone.md.tpl' },
+      textDocument: { uri: toTestWorkspaceUri('file:///workspace/templates/milestone.md.tpl') },
       position: { line: 2, character: 18 },
     });
 
     expect(result).toBeTruthy();
     expect(result?.uri).toBe(
-      'file:///workspace/schemas/work-management/frontmatter/milestone.json'
+      toTestWorkspaceUri('file:///workspace/schemas/work-management/frontmatter/milestone.json')
     );
   });
 
@@ -734,10 +802,10 @@ describe('language-server-bootstrap', () => {
     ].join('\n');
 
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         documentContext: {
-          uri: 'file:///workspace/templates/project.md.tpl',
+          uri: toTestWorkspaceUri('file:///workspace/templates/project.md.tpl'),
           content: documentText,
         },
       },
@@ -749,11 +817,13 @@ describe('language-server-bootstrap', () => {
     }) => { uri: string } | null;
 
     const result = definitionHandler({
-      textDocument: { uri: 'file:///workspace/templates/project.md.tpl' },
+      textDocument: { uri: toTestWorkspaceUri('file:///workspace/templates/project.md.tpl') },
       position: { line: 1, character: 30 },
     });
 
-    expect(result?.uri).toBe('file:///workspace/schemas/work-management/frontmatter/project.json');
+    expect(result?.uri).toBe(
+      toTestWorkspaceUri('file:///workspace/schemas/work-management/frontmatter/project.json')
+    );
   });
 
   it('returns frontmatter schema definition for plain YAML field values', async () => {
@@ -771,10 +841,10 @@ describe('language-server-bootstrap', () => {
     ].join('\n');
 
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         documentContext: {
-          uri: 'file:///workspace/templates/project.md.tpl',
+          uri: toTestWorkspaceUri('file:///workspace/templates/project.md.tpl'),
           content: documentText,
         },
       },
@@ -786,11 +856,13 @@ describe('language-server-bootstrap', () => {
     }) => { uri: string } | null;
 
     const result = definitionHandler({
-      textDocument: { uri: 'file:///workspace/templates/project.md.tpl' },
+      textDocument: { uri: toTestWorkspaceUri('file:///workspace/templates/project.md.tpl') },
       position: { line: 2, character: 9 },
     });
 
-    expect(result?.uri).toBe('file:///workspace/schemas/work-management/frontmatter/project.json');
+    expect(result?.uri).toBe(
+      toTestWorkspaceUri('file:///workspace/schemas/work-management/frontmatter/project.json')
+    );
   });
 
   it('resolves path-like frontmatter values to referenced file definitions', async () => {
@@ -808,10 +880,10 @@ describe('language-server-bootstrap', () => {
     ].join('\n');
 
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         documentContext: {
-          uri: 'file:///workspace/templates/project.md.tpl',
+          uri: toTestWorkspaceUri('file:///workspace/templates/project.md.tpl'),
           content: documentText,
         },
       },
@@ -823,11 +895,13 @@ describe('language-server-bootstrap', () => {
     }) => { uri: string } | null;
 
     const result = definitionHandler({
-      textDocument: { uri: 'file:///workspace/templates/project.md.tpl' },
+      textDocument: { uri: toTestWorkspaceUri('file:///workspace/templates/project.md.tpl') },
       position: { line: 2, character: 30 },
     });
 
-    expect(result?.uri).toBe('file:///workspace/schemas/work-management/content/project.json');
+    expect(result?.uri).toBe(
+      toTestWorkspaceUri('file:///workspace/schemas/work-management/content/project.json')
+    );
   });
 
   // ── $schema / $content_schema alias recognition ──────────────────────────
@@ -838,10 +912,10 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         documentContext: {
-          uri: 'file:///workspace/templates/page.md.tpl',
+          uri: toTestWorkspaceUri('file:///workspace/templates/page.md.tpl'),
           content: '---\ntype: page\n"$schema": schemas/page/frontmatter.json\n---\n{{ title }}',
         },
       },
@@ -852,10 +926,13 @@ describe('language-server-bootstrap', () => {
     >;
     initializeCalls[0][2].getLanguagePlugins();
 
-    expect(readFileSync).toHaveBeenCalledWith('/workspace/schemas/page/frontmatter.json', 'utf-8');
+    expect(readFileSync).toHaveBeenCalledWith(
+      toTestWorkspacePath('/workspace/schemas/page/frontmatter.json'),
+      'utf-8'
+    );
     expect(createTempljsLanguagePlugin).toHaveBeenCalledWith(
       expect.objectContaining({
-        schemaUri: 'file:///workspace/schemas/page/frontmatter.json',
+        schemaUri: toTestWorkspaceUri('file:///workspace/schemas/page/frontmatter.json'),
       })
     );
   });
@@ -866,10 +943,10 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         documentContext: {
-          uri: 'file:///workspace/templates/page.md.tpl',
+          uri: toTestWorkspaceUri('file:///workspace/templates/page.md.tpl'),
           content:
             '---\ntype: page\n"$content_schema": schemas/page/content.json\n---\n{{ title }}',
         },
@@ -881,10 +958,13 @@ describe('language-server-bootstrap', () => {
     >;
     initializeCalls[0][2].getLanguagePlugins();
 
-    expect(readFileSync).toHaveBeenCalledWith('/workspace/schemas/page/content.json', 'utf-8');
+    expect(readFileSync).toHaveBeenCalledWith(
+      toTestWorkspacePath('/workspace/schemas/page/content.json'),
+      'utf-8'
+    );
     expect(createTempljsLanguagePlugin).toHaveBeenCalledWith(
       expect.objectContaining({
-        contentSchemaUri: 'file:///workspace/schemas/page/content.json',
+        contentSchemaUri: toTestWorkspaceUri('file:///workspace/schemas/page/content.json'),
       })
     );
   });
@@ -895,10 +975,12 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         documentContext: {
-          uri: 'file:///workspace/templates/reference/work-management/project.md.tpl',
+          uri: toTestWorkspaceUri(
+            'file:///workspace/templates/reference/work-management/project.md.tpl'
+          ),
           content: [
             '---',
             'type: project',
@@ -917,19 +999,25 @@ describe('language-server-bootstrap', () => {
     initializeCalls[0][2].getLanguagePlugins();
 
     expect(readFileSync).toHaveBeenCalledWith(
-      '/workspace/templates/reference/work-management/schemas/work-management/frontmatter/project.json',
+      toTestWorkspacePath(
+        '/workspace/templates/reference/work-management/schemas/work-management/frontmatter/project.json'
+      ),
       'utf-8'
     );
     expect(readFileSync).toHaveBeenCalledWith(
-      '/workspace/templates/reference/work-management/schemas/work-management/content/project.json',
+      toTestWorkspacePath(
+        '/workspace/templates/reference/work-management/schemas/work-management/content/project.json'
+      ),
       'utf-8'
     );
     expect(createTempljsLanguagePlugin).toHaveBeenCalledWith(
       expect.objectContaining({
-        schemaUri:
-          'file:///workspace/templates/reference/work-management/schemas/work-management/frontmatter/project.json',
-        contentSchemaUri:
-          'file:///workspace/templates/reference/work-management/schemas/work-management/content/project.json',
+        schemaUri: toTestWorkspaceUri(
+          'file:///workspace/templates/reference/work-management/schemas/work-management/frontmatter/project.json'
+        ),
+        contentSchemaUri: toTestWorkspaceUri(
+          'file:///workspace/templates/reference/work-management/schemas/work-management/content/project.json'
+        ),
       })
     );
   });
@@ -940,10 +1028,12 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         documentContext: {
-          uri: 'file:///workspace/templates/reference/work-management/project.md.tpl',
+          uri: toTestWorkspaceUri(
+            'file:///workspace/templates/reference/work-management/project.md.tpl'
+          ),
           content: [
             '---',
             'type: project',
@@ -962,17 +1052,21 @@ describe('language-server-bootstrap', () => {
     initializeCalls[0][2].getLanguagePlugins();
 
     expect(readFileSync).toHaveBeenCalledWith(
-      '/workspace/schemas/work-management/frontmatter/project.json',
+      toTestWorkspacePath('/workspace/schemas/work-management/frontmatter/project.json'),
       'utf-8'
     );
     expect(readFileSync).toHaveBeenCalledWith(
-      '/workspace/schemas/work-management/content/project.json',
+      toTestWorkspacePath('/workspace/schemas/work-management/content/project.json'),
       'utf-8'
     );
     expect(createTempljsLanguagePlugin).toHaveBeenCalledWith(
       expect.objectContaining({
-        schemaUri: 'file:///workspace/schemas/work-management/frontmatter/project.json',
-        contentSchemaUri: 'file:///workspace/schemas/work-management/content/project.json',
+        schemaUri: toTestWorkspaceUri(
+          'file:///workspace/schemas/work-management/frontmatter/project.json'
+        ),
+        contentSchemaUri: toTestWorkspaceUri(
+          'file:///workspace/schemas/work-management/content/project.json'
+        ),
       })
     );
   });
@@ -983,10 +1077,12 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         documentContext: {
-          uri: 'file:///workspace/templates/reference/work-management/milestone.md.tpl',
+          uri: toTestWorkspaceUri(
+            'file:///workspace/templates/reference/work-management/milestone.md.tpl'
+          ),
           content: [
             '---',
             'type: milestone',
@@ -1005,17 +1101,21 @@ describe('language-server-bootstrap', () => {
     initializeCalls[0][2].getLanguagePlugins();
 
     expect(readFileSync).toHaveBeenCalledWith(
-      '/workspace/schemas/work-management/frontmatter/milestone.json',
+      toTestWorkspacePath('/workspace/schemas/work-management/frontmatter/milestone.json'),
       'utf-8'
     );
     expect(readFileSync).toHaveBeenCalledWith(
-      '/workspace/schemas/work-management/content/milestone.json',
+      toTestWorkspacePath('/workspace/schemas/work-management/content/milestone.json'),
       'utf-8'
     );
     expect(createTempljsLanguagePlugin).toHaveBeenCalledWith(
       expect.objectContaining({
-        schemaUri: 'file:///workspace/schemas/work-management/frontmatter/milestone.json',
-        contentSchemaUri: 'file:///workspace/schemas/work-management/content/milestone.json',
+        schemaUri: toTestWorkspaceUri(
+          'file:///workspace/schemas/work-management/frontmatter/milestone.json'
+        ),
+        contentSchemaUri: toTestWorkspaceUri(
+          'file:///workspace/schemas/work-management/content/milestone.json'
+        ),
       })
     );
   });
@@ -1026,10 +1126,10 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         documentContext: {
-          uri: 'file:///workspace/templates/page.md.tpl',
+          uri: toTestWorkspaceUri('file:///workspace/templates/page.md.tpl'),
           content: [
             '---',
             '"$templ-schema": schemas/templ-specific.json',
@@ -1045,8 +1145,14 @@ describe('language-server-bootstrap', () => {
     >;
     initializeCalls[0][2].getLanguagePlugins();
 
-    expect(readFileSync).toHaveBeenCalledWith('/workspace/schemas/templ-specific.json', 'utf-8');
-    expect(readFileSync).not.toHaveBeenCalledWith('/workspace/schemas/generic.json', 'utf-8');
+    expect(readFileSync).toHaveBeenCalledWith(
+      toTestWorkspacePath('/workspace/schemas/templ-specific.json'),
+      'utf-8'
+    );
+    expect(readFileSync).not.toHaveBeenCalledWith(
+      toTestWorkspacePath('/workspace/schemas/generic.json'),
+      'utf-8'
+    );
   });
 
   // ── Schema load logging ───────────────────────────────────────────────────
@@ -1057,7 +1163,7 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: { schemaPath: '.templjs/schema.json' },
     });
 
@@ -1075,7 +1181,7 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: { schemaPath: '.templjs/missing.json' },
     });
 
@@ -1093,7 +1199,7 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: { schemaPath: 'https://schemas.example.com/missing.json' },
     });
 
@@ -1107,7 +1213,7 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {},
     });
 
@@ -1120,12 +1226,12 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         schemaPath: '.templjs/schema.json',
         contentSchemaPath: '.templjs/content.json',
         documentContext: {
-          uri: 'file:///workspace/templates/page.md.tpl',
+          uri: toTestWorkspaceUri('file:///workspace/templates/page.md.tpl'),
           content: 'plain content',
         },
       },
@@ -1146,7 +1252,7 @@ describe('language-server-bootstrap', () => {
     ) => Promise<unknown>;
     // Initialize with no schema context
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {},
     });
 
@@ -1159,7 +1265,7 @@ describe('language-server-bootstrap', () => {
     vi.useFakeTimers();
     openHandler({
       textDocument: {
-        uri: 'file:///workspace/templates/project.md.tpl',
+        uri: toTestWorkspaceUri('file:///workspace/templates/project.md.tpl'),
         languageId: 'templjs-markdown',
         version: 1,
         text: ['---', '"$schema": schemas/project.json', '---', '{{ narrative }}'].join('\n'),
@@ -1169,7 +1275,10 @@ describe('language-server-bootstrap', () => {
     await vi.runAllTimersAsync();
     vi.useRealTimers();
 
-    expect(readFileSync).toHaveBeenCalledWith('/workspace/schemas/project.json', 'utf-8');
+    expect(readFileSync).toHaveBeenCalledWith(
+      toTestWorkspacePath('/workspace/schemas/project.json'),
+      'utf-8'
+    );
   });
 
   it('per-document reload also picks up $content_schema from newly opened document', async () => {
@@ -1179,7 +1288,7 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {},
     });
 
@@ -1192,7 +1301,7 @@ describe('language-server-bootstrap', () => {
     vi.useFakeTimers();
     openHandler({
       textDocument: {
-        uri: 'file:///workspace/templates/record.md.tpl',
+        uri: toTestWorkspaceUri('file:///workspace/templates/record.md.tpl'),
         languageId: 'templjs-markdown',
         version: 1,
         text: [
@@ -1208,8 +1317,14 @@ describe('language-server-bootstrap', () => {
     await vi.runAllTimersAsync();
     vi.useRealTimers();
 
-    expect(readFileSync).toHaveBeenCalledWith('/workspace/schemas/fm/record.json', 'utf-8');
-    expect(readFileSync).toHaveBeenCalledWith('/workspace/schemas/content/record.json', 'utf-8');
+    expect(readFileSync).toHaveBeenCalledWith(
+      toTestWorkspacePath('/workspace/schemas/fm/record.json'),
+      'utf-8'
+    );
+    expect(readFileSync).toHaveBeenCalledWith(
+      toTestWorkspacePath('/workspace/schemas/content/record.json'),
+      'utf-8'
+    );
   });
 
   it('applies incremental document changes before completion requests', async () => {
@@ -1219,10 +1334,10 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         documentContext: {
-          uri: 'file:///workspace/sample.md.templ',
+          uri: toTestWorkspaceUri('file:///workspace/sample.md.templ'),
           content: '{{ user. }}',
         },
       },
@@ -1240,7 +1355,7 @@ describe('language-server-bootstrap', () => {
     }) => void;
 
     changeHandler({
-      textDocument: { uri: 'file:///workspace/sample.md.templ' },
+      textDocument: { uri: toTestWorkspaceUri('file:///workspace/sample.md.templ') },
       contentChanges: [
         {
           range: {
@@ -1258,7 +1373,7 @@ describe('language-server-bootstrap', () => {
     }) => unknown[];
 
     completionHandler({
-      textDocument: { uri: 'file:///workspace/sample.md.templ' },
+      textDocument: { uri: toTestWorkspaceUri('file:///workspace/sample.md.templ') },
       position: { line: 0, character: 9 },
     });
 
@@ -1276,10 +1391,10 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         documentContext: {
-          uri: 'file:///workspace/single-line.md.tpl',
+          uri: toTestWorkspaceUri('file:///workspace/single-line.md.tpl'),
           content: '{{ user }}',
         },
       },
@@ -1297,7 +1412,7 @@ describe('language-server-bootstrap', () => {
     }) => void;
 
     changeHandler({
-      textDocument: { uri: 'file:///workspace/single-line.md.tpl' },
+      textDocument: { uri: toTestWorkspaceUri('file:///workspace/single-line.md.tpl') },
       contentChanges: [
         {
           range: {
@@ -1315,7 +1430,7 @@ describe('language-server-bootstrap', () => {
     }) => unknown[];
 
     completionHandler({
-      textDocument: { uri: 'file:///workspace/single-line.md.tpl' },
+      textDocument: { uri: toTestWorkspaceUri('file:///workspace/single-line.md.tpl') },
       position: { line: 1, character: 3 },
     });
 
@@ -1332,7 +1447,7 @@ describe('language-server-bootstrap', () => {
     const initializeHandler = onInitialize.mock.calls[0][0] as (
       params: unknown
     ) => Promise<unknown>;
-    await initializeHandler({ rootUri: 'file:///workspace' });
+    await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
 
     const completionHandler = onCompletion.mock.calls[0][0] as (params: {
       textDocument: { uri: string };
@@ -1349,19 +1464,19 @@ describe('language-server-bootstrap', () => {
 
     expect(
       completionHandler({
-        textDocument: { uri: 'file:///workspace/missing.md.tpl' },
+        textDocument: { uri: toTestWorkspaceUri('file:///workspace/missing.md.tpl') },
         position: { line: 0, character: 0 },
       })
     ).toEqual([]);
     expect(
       hoverHandler({
-        textDocument: { uri: 'file:///workspace/missing.md.tpl' },
+        textDocument: { uri: toTestWorkspaceUri('file:///workspace/missing.md.tpl') },
         position: { line: 0, character: 0 },
       })
     ).toBeNull();
     expect(
       definitionHandler({
-        textDocument: { uri: 'file:///workspace/missing.md.tpl' },
+        textDocument: { uri: toTestWorkspaceUri('file:///workspace/missing.md.tpl') },
         position: { line: 0, character: 0 },
       })
     ).toBeNull();
@@ -1382,11 +1497,11 @@ describe('language-server-bootstrap', () => {
     ) => Promise<unknown>;
 
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         traceMode: 'messages',
         documentContext: {
-          uri: 'file:///workspace/sample.md.tpl',
+          uri: toTestWorkspaceUri('file:///workspace/sample.md.tpl'),
           content: '{{ user.name }}',
         },
       },
@@ -1398,7 +1513,7 @@ describe('language-server-bootstrap', () => {
     }) => Array<{ label: string; kind: number }>;
 
     const result = completionHandler({
-      textDocument: { uri: 'file:///workspace/sample.md.tpl' },
+      textDocument: { uri: toTestWorkspaceUri('file:///workspace/sample.md.tpl') },
       position: { line: 0, character: 3 },
     });
 
@@ -1420,11 +1535,11 @@ describe('language-server-bootstrap', () => {
     ) => Promise<unknown>;
 
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         traceMode: 'off',
         documentContext: {
-          uri: 'file:///workspace/sample.md.tpl',
+          uri: toTestWorkspaceUri('file:///workspace/sample.md.tpl'),
           content: '{{ user.name }}',
         },
       },
@@ -1436,7 +1551,7 @@ describe('language-server-bootstrap', () => {
     }) => unknown[];
 
     completionHandler({
-      textDocument: { uri: 'file:///workspace/sample.md.tpl' },
+      textDocument: { uri: toTestWorkspaceUri('file:///workspace/sample.md.tpl') },
       position: { line: 0, character: 3 },
     });
 
@@ -1455,7 +1570,7 @@ describe('language-server-bootstrap', () => {
     const initializeHandler = onInitialize.mock.calls[0][0] as (
       params: unknown
     ) => Promise<unknown>;
-    await initializeHandler({ rootUri: 'file:///workspace' });
+    await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
 
     const openHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
       textDocument: { uri: string; text: string; languageId: string; version: number };
@@ -1464,7 +1579,7 @@ describe('language-server-bootstrap', () => {
     vi.useFakeTimers();
     openHandler({
       textDocument: {
-        uri: 'file:///workspace/diag-fail.md.tpl',
+        uri: toTestWorkspaceUri('file:///workspace/diag-fail.md.tpl'),
         languageId: 'templjs-markdown',
         version: 1,
         text: '{{ user.name }}',
@@ -1475,11 +1590,11 @@ describe('language-server-bootstrap', () => {
 
     expect(consoleLog).toHaveBeenCalledWith(
       expect.stringContaining(
-        'Diagnostics skipped for file:///workspace/diag-fail.md.tpl: diagnostics exploded'
+        `Diagnostics skipped for ${toTestWorkspaceUri('file:///workspace/diag-fail.md.tpl')}: diagnostics exploded`
       )
     );
     expect(sendDiagnostics).toHaveBeenCalledWith({
-      uri: 'file:///workspace/diag-fail.md.tpl',
+      uri: toTestWorkspaceUri('file:///workspace/diag-fail.md.tpl'),
       diagnostics: [],
     });
   });
@@ -1503,7 +1618,7 @@ describe('language-server-bootstrap', () => {
     const initializeHandler = onInitialize.mock.calls[0][0] as (
       params: unknown
     ) => Promise<unknown>;
-    await initializeHandler({ rootUri: 'file:///workspace' });
+    await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
 
     const openHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
       textDocument: { uri: string; text: string; languageId: string; version: number };
@@ -1511,7 +1626,7 @@ describe('language-server-bootstrap', () => {
 
     openHandler({
       textDocument: {
-        uri: 'file:///workspace/default-source.md.tpl',
+        uri: toTestWorkspaceUri('file:///workspace/default-source.md.tpl'),
         languageId: 'templjs-markdown',
         version: 1,
         text: '{{ value }}',
@@ -1521,7 +1636,7 @@ describe('language-server-bootstrap', () => {
     await Promise.resolve();
 
     expect(sendDiagnostics).toHaveBeenCalledWith({
-      uri: 'file:///workspace/default-source.md.tpl',
+      uri: toTestWorkspaceUri('file:///workspace/default-source.md.tpl'),
       diagnostics: [
         {
           message: 'missing field',
@@ -1544,10 +1659,10 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         documentContext: {
-          uri: 'file:///workspace/single-line.md.tpl',
+          uri: toTestWorkspaceUri('file:///workspace/single-line.md.tpl'),
           content: '{{ user.name }}',
         },
       },
@@ -1559,7 +1674,7 @@ describe('language-server-bootstrap', () => {
     }) => unknown[];
 
     const result = completionHandler({
-      textDocument: { uri: 'file:///workspace/single-line.md.tpl' },
+      textDocument: { uri: toTestWorkspaceUri('file:///workspace/single-line.md.tpl') },
       position: { line: 10, character: 0 },
     });
 
@@ -1575,11 +1690,11 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         traceMode: 'messages',
         documentContext: {
-          uri: 'file:///workspace/sample.md.tpl',
+          uri: toTestWorkspaceUri('file:///workspace/sample.md.tpl'),
           content: '{{ user.name }}',
         },
       },
@@ -1591,7 +1706,7 @@ describe('language-server-bootstrap', () => {
     }) => unknown;
 
     const result = definitionHandler({
-      textDocument: { uri: 'file:///workspace/sample.md.tpl' },
+      textDocument: { uri: toTestWorkspaceUri('file:///workspace/sample.md.tpl') },
       position: { line: 0, character: 3 },
     });
 
@@ -1612,11 +1727,11 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         traceMode: 'messages',
         documentContext: {
-          uri: 'file:///workspace/sort.md.tpl',
+          uri: toTestWorkspaceUri('file:///workspace/sort.md.tpl'),
           content: '{{ user.name }}',
         },
       },
@@ -1628,7 +1743,7 @@ describe('language-server-bootstrap', () => {
     }) => unknown[];
 
     completionHandler({
-      textDocument: { uri: 'file:///workspace/sort.md.tpl' },
+      textDocument: { uri: toTestWorkspaceUri('file:///workspace/sort.md.tpl') },
       position: { line: 0, character: 3 },
     });
 
@@ -1642,10 +1757,10 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         documentContext: {
-          uri: 'file:///workspace/stale.md.tpl',
+          uri: toTestWorkspaceUri('file:///workspace/stale.md.tpl'),
           content: '{{ user.name }}',
         },
       },
@@ -1668,7 +1783,7 @@ describe('language-server-bootstrap', () => {
     vi.useFakeTimers();
     try {
       changeHandler({
-        textDocument: { uri: 'file:///workspace/stale.md.tpl' },
+        textDocument: { uri: toTestWorkspaceUri('file:///workspace/stale.md.tpl') },
         contentChanges: [
           {
             range: {
@@ -1681,7 +1796,7 @@ describe('language-server-bootstrap', () => {
       });
 
       changeHandler({
-        textDocument: { uri: 'file:///workspace/stale.md.tpl' },
+        textDocument: { uri: toTestWorkspaceUri('file:///workspace/stale.md.tpl') },
         contentChanges: [
           {
             range: {
@@ -1714,7 +1829,9 @@ describe('language-server-bootstrap', () => {
     consoleLog.mockClear();
 
     watchedFilesHandler({
-      changes: [{ uri: 'file:///workspace/readme.txt', type: FILE_CHANGE_TYPE_CHANGED }],
+      changes: [
+        { uri: toTestWorkspaceUri('file:///workspace/readme.txt'), type: FILE_CHANGE_TYPE_CHANGED },
+      ],
     });
 
     expect(sendDiagnostics).not.toHaveBeenCalled();
@@ -1748,10 +1865,10 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         documentContext: {
-          uri: 'file:///workspace/unchanged-schema.md.tpl',
+          uri: toTestWorkspaceUri('file:///workspace/unchanged-schema.md.tpl'),
           content: '---\n$schema: ./schema.json\n---\n{{ value }}',
         },
       },
@@ -1766,7 +1883,7 @@ describe('language-server-bootstrap', () => {
     }) => void;
 
     changeHandler({
-      textDocument: { uri: 'file:///workspace/unchanged-schema.md.tpl' },
+      textDocument: { uri: toTestWorkspaceUri('file:///workspace/unchanged-schema.md.tpl') },
       contentChanges: [{ text: '---\n$schema: ./schema.json\n---\n{{ seeded }}' }],
     });
 
@@ -1776,7 +1893,7 @@ describe('language-server-bootstrap', () => {
     sendDiagnostics.mockClear();
 
     changeHandler({
-      textDocument: { uri: 'file:///workspace/unchanged-schema.md.tpl' },
+      textDocument: { uri: toTestWorkspaceUri('file:///workspace/unchanged-schema.md.tpl') },
       contentChanges: [{ text: '---\n$schema: ./schema.json\n---\n{{ updated }}' }],
     });
 
@@ -1791,7 +1908,7 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {},
     });
 
@@ -1803,7 +1920,7 @@ describe('language-server-bootstrap', () => {
 
     openHandler({
       textDocument: {
-        uri: 'file:///workspace/undefined-open.md.tpl',
+        uri: toTestWorkspaceUri('file:///workspace/undefined-open.md.tpl'),
         languageId: 'templjs-markdown',
         version: 1,
         text: undefined,
@@ -1841,11 +1958,11 @@ describe('language-server-bootstrap', () => {
         params: unknown
       ) => Promise<unknown>;
       await initializeHandler({
-        rootUri: 'file:///workspace',
+        rootUri: toTestWorkspaceUri('file:///workspace'),
         initializationOptions: {
           traceMode: 'messages',
           documentContext: {
-            uri: 'file:///workspace/change-failure.md.tpl',
+            uri: toTestWorkspaceUri('file:///workspace/change-failure.md.tpl'),
             content: '---\n$schema: ./schema-a.json\n---\n{{ value }}',
           },
         },
@@ -1859,7 +1976,7 @@ describe('language-server-bootstrap', () => {
       }) => void;
 
       changeHandler({
-        textDocument: { uri: 'file:///workspace/change-failure.md.tpl' },
+        textDocument: { uri: toTestWorkspaceUri('file:///workspace/change-failure.md.tpl') },
         contentChanges: [{ text: '---\n$schema: ./schema-b.json\n---\n{{ value }}' }],
       });
 
@@ -1867,7 +1984,9 @@ describe('language-server-bootstrap', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(consoleLog).toHaveBeenCalledWith(
-        expect.stringContaining('Schema resolution for file:///workspace/change-failure.md.tpl')
+        expect.stringContaining(
+          `Schema resolution for ${toTestWorkspaceUri('file:///workspace/change-failure.md.tpl')}`
+        )
       );
     } finally {
       vi.doUnmock('../src/schema-loading.js');
@@ -1904,10 +2023,10 @@ describe('language-server-bootstrap', () => {
         params: unknown
       ) => Promise<unknown>;
       await initializeHandler({
-        rootUri: 'file:///workspace',
+        rootUri: toTestWorkspaceUri('file:///workspace'),
         initializationOptions: {
           documentContext: {
-            uri: 'file:///workspace/watched-stale.md.tpl',
+            uri: toTestWorkspaceUri('file:///workspace/watched-stale.md.tpl'),
             content: '---\n$schema: ./schema.json\n---\n{{ value }}',
           },
         },
@@ -1920,11 +2039,21 @@ describe('language-server-bootstrap', () => {
       sendDiagnostics.mockClear();
 
       watchedFilesHandler({
-        changes: [{ uri: 'file:///workspace/schema.json', type: FILE_CHANGE_TYPE_CHANGED }],
+        changes: [
+          {
+            uri: toTestWorkspaceUri('file:///workspace/schema.json'),
+            type: FILE_CHANGE_TYPE_CHANGED,
+          },
+        ],
       });
 
       watchedFilesHandler({
-        changes: [{ uri: 'file:///workspace/schema.json', type: FILE_CHANGE_TYPE_CHANGED }],
+        changes: [
+          {
+            uri: toTestWorkspaceUri('file:///workspace/schema.json'),
+            type: FILE_CHANGE_TYPE_CHANGED,
+          },
+        ],
       });
 
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -1966,11 +2095,11 @@ describe('language-server-bootstrap', () => {
         params: unknown
       ) => Promise<unknown>;
       await initializeHandler({
-        rootUri: 'file:///workspace',
+        rootUri: toTestWorkspaceUri('file:///workspace'),
         initializationOptions: {
           traceMode: 'messages',
           documentContext: {
-            uri: 'file:///workspace/watch-failure.md.tpl',
+            uri: toTestWorkspaceUri('file:///workspace/watch-failure.md.tpl'),
             content: '---\n$schema: ./schema.json\n---\n{{ value }}',
           },
         },
@@ -1983,7 +2112,12 @@ describe('language-server-bootstrap', () => {
       }) => void;
 
       watchedFilesHandler({
-        changes: [{ uri: 'file:///workspace/schema.json', type: FILE_CHANGE_TYPE_CHANGED }],
+        changes: [
+          {
+            uri: toTestWorkspaceUri('file:///workspace/schema.json'),
+            type: FILE_CHANGE_TYPE_CHANGED,
+          },
+        ],
       });
 
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -1995,7 +2129,9 @@ describe('language-server-bootstrap', () => {
             typeof message === 'string' &&
             message
               .toLowerCase()
-              .includes('schema reload failed for file:///workspace/watch-failure.md.tpl')
+              .includes(
+                `schema reload failed for ${toTestWorkspaceUri('file:///workspace/watch-failure.md.tpl')}`.toLowerCase()
+              )
         )
       ).toBe(true);
     } finally {
@@ -2011,11 +2147,11 @@ describe('language-server-bootstrap', () => {
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({
-      rootUri: 'file:///workspace',
+      rootUri: toTestWorkspaceUri('file:///workspace'),
       initializationOptions: {
         traceMode: 'verbose',
         documentContext: {
-          uri: 'file:///workspace/no-hover-value.md.tpl',
+          uri: toTestWorkspaceUri('file:///workspace/no-hover-value.md.tpl'),
           content: '{{ value }}',
         },
       },
@@ -2029,7 +2165,7 @@ describe('language-server-bootstrap', () => {
     }) => unknown;
 
     const result = hoverHandler({
-      textDocument: { uri: 'file:///workspace/no-hover-value.md.tpl' },
+      textDocument: { uri: toTestWorkspaceUri('file:///workspace/no-hover-value.md.tpl') },
       position: { line: 0, character: 3 },
     });
 
