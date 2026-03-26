@@ -9,85 +9,85 @@ importers:
   .:
     devDependencies:
       '@changesets/cli':
-        specifier: latest
+        specifier: ^2.29.8
         version: 2.29.8(@types/node@22.19.15)
       '@commitlint/cli':
-        specifier: latest
+        specifier: ^20.4.2
         version: 20.4.2(@types/node@22.19.15)(typescript@5.9.3)
       '@commitlint/config-conventional':
-        specifier: latest
+        specifier: ^20.4.2
         version: 20.4.2
       '@eslint/js':
-        specifier: latest
+        specifier: ^10.0.1
         version: 10.0.1(eslint@10.0.0)
       '@nx/js':
-        specifier: latest
+        specifier: ^22.5.1
         version: 22.5.1(nx@22.5.1)
       '@nx/vitest':
         specifier: 22.5.1
         version: 22.5.1(nx@22.5.1)(typescript@5.9.3)(vite@7.3.1)(vitest@4.0.18)
       '@types/node':
-        specifier: ^22.0.0
+        specifier: ^22.0.0 || ^24.0.0
         version: 22.19.15
       '@typescript-eslint/eslint-plugin':
-        specifier: latest
+        specifier: ^8.56.0
         version: 8.56.0(@typescript-eslint/parser@8.56.0)(eslint@10.0.0)(typescript@5.9.3)
       '@typescript-eslint/parser':
-        specifier: latest
+        specifier: ^8.56.0
         version: 8.56.0(eslint@10.0.0)(typescript@5.9.3)
       '@vitest/coverage-v8':
-        specifier: ^4.0.18
+        specifier: 4.0.18
         version: 4.0.18(vitest@4.0.18)
       ajv:
-        specifier: latest
+        specifier: ^8.18.0
         version: 8.18.0
       ajv-formats:
-        specifier: latest
+        specifier: ^3.0.1
         version: 3.0.1(ajv@8.18.0)
       eslint:
-        specifier: latest
+        specifier: ^10.0.0
         version: 10.0.0
       eslint-config-prettier:
-        specifier: latest
+        specifier: ^10.1.8
         version: 10.1.8(eslint@10.0.0)
       eslint-plugin-prettier:
-        specifier: latest
+        specifier: ^5.5.5
         version: 5.5.5(eslint-config-prettier@10.1.8)(eslint@10.0.0)(prettier@3.8.1)
       husky:
-        specifier: latest
+        specifier: ^9.1.7
         version: 9.1.7
       lint-staged:
-        specifier: latest
+        specifier: ^16.2.7
         version: 16.2.7
       markdownlint-shell:
-        specifier: latest
+        specifier: ^0.2.0
         version: 0.2.0
       nx:
-        specifier: latest
+        specifier: ^22.5.1
         version: 22.5.1
       prettier:
-        specifier: latest
+        specifier: ^3.8.1
         version: 3.8.1
       ts-node:
-        specifier: latest
+        specifier: ^10.9.2
         version: 10.9.2(@types/node@22.19.15)(typescript@5.9.3)
       tsx:
-        specifier: ^4.21.0
+        specifier: 4.21.0
         version: 4.21.0
       typescript:
-        specifier: latest
+        specifier: 5.9.3
         version: 5.9.3
       typescript-eslint:
-        specifier: latest
+        specifier: ^8.56.0
         version: 8.56.0(eslint@10.0.0)(typescript@5.9.3)
       vite:
         specifier: ^7.0.0
         version: 7.3.1(@types/node@22.19.15)(tsx@4.21.0)(yaml@2.8.2)
       vitest:
-        specifier: ^4.0.18
+        specifier: 4.0.18
         version: 4.0.18(@types/node@22.19.15)(tsx@4.21.0)(yaml@2.8.2)
       yaml:
-        specifier: latest
+        specifier: ^2.8.2
         version: 2.8.2
 
   src/extensions/vscode:
@@ -114,21 +114,9 @@ importers:
         specifier: ^9.0.0
         version: 9.0.1
     devDependencies:
-      '@types/node':
-        specifier: ^20.11.0
-        version: 20.19.33
       '@types/vscode':
         specifier: ^1.85.0
         version: 1.109.0
-      '@vitest/coverage-v8':
-        specifier: ^4.0.2
-        version: 4.0.18(vitest@4.0.18)
-      typescript:
-        specifier: ^5.3.0
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.18
-        version: 4.0.18(@types/node@20.19.33)(tsx@4.21.0)(yaml@2.8.2)
 
   src/packages/cli:
     dependencies:
@@ -154,33 +142,11 @@ importers:
       '@types/js-yaml':
         specifier: ^4.0.5
         version: 4.0.9
-      '@types/node':
-        specifier: ^20.11.0
-        version: 20.19.33
       '@types/xml2js':
         specifier: ^0.4.11
         version: 0.4.14
-      '@vitest/coverage-v8':
-        specifier: ^4.0.2
-        version: 4.0.18(vitest@4.0.18)
-      typescript:
-        specifier: ^5.3.0
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.18
-        version: 4.0.18(@types/node@20.19.33)(tsx@4.21.0)(yaml@2.8.2)
 
-  src/packages/context-graph:
-    devDependencies:
-      '@vitest/coverage-v8':
-        specifier: ^4.0.2
-        version: 4.0.18(vitest@4.0.18)
-      typescript:
-        specifier: ^5.3.0
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.18
-        version: 4.0.18(@types/node@22.19.15)(tsx@4.21.0)(yaml@2.8.2)
+  src/packages/context-graph: {}
 
   src/packages/core:
     dependencies:
@@ -193,16 +159,6 @@ importers:
       chevrotain:
         specifier: ^11.0.3
         version: 11.1.1
-    devDependencies:
-      '@vitest/coverage-v8':
-        specifier: ^4.0.2
-        version: 4.0.18(vitest@4.0.18)
-      typescript:
-        specifier: ^5.3.0
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.18
-        version: 4.0.18(@types/node@22.19.15)(tsx@4.21.0)(yaml@2.8.2)
 
   src/packages/volar:
     dependencies:
@@ -218,19 +174,6 @@ importers:
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
-    devDependencies:
-      '@types/node':
-        specifier: ^20.11.0
-        version: 20.19.33
-      '@vitest/coverage-v8':
-        specifier: ^4.0.2
-        version: 4.0.18(vitest@4.0.18)
-      typescript:
-        specifier: ^5.3.0
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.18
-        version: 4.0.18(@types/node@20.19.33)(tsx@4.21.0)(yaml@2.8.2)
 
 packages:
 
@@ -2708,12 +2651,6 @@ packages:
     resolution: {integrity: sha512-J8xLz7q2OFulZ2cyGTLE1TbbZcjpno7FaN6zdJNrgAdrJ+DZzh/uFR6YrTb4C+nXakvud8Q4+rbhoIWlYQbUFQ==}
     dev: true
 
-  /@types/node@20.19.33:
-    resolution: {integrity: sha512-Rs1bVAIdBs5gbTIKza/tgpMuG1k3U/UMJLWecIMxNdJFDMzcM5LOiLVRYh3PilWEYDIeUDv7bpiHPLPsbydGcw==}
-    dependencies:
-      undici-types: 6.21.0
-    dev: true
-
   /@types/node@22.19.15:
     resolution: {integrity: sha512-F0R/h2+dsy5wJAUe3tAU6oqa2qbWY5TpNfL/RGmo1y38hiyO1w3x2jPtt76wmuaJI4DQnOBu21cNXQ2STIUUWg==}
     dependencies:
@@ -2731,7 +2668,7 @@ packages:
   /@types/xml2js@0.4.14:
     resolution: {integrity: sha512-4YnrRemBShWRO2QjvUin8ESA41rH+9nQGLUGZV/1IDhi3SL9OhdpNC/MrulTWuptXKwhx/aDxE7toV0f/ypIXQ==}
     dependencies:
-      '@types/node': 20.19.33
+      '@types/node': 22.19.15
     dev: true
 
   /@typescript-eslint/eslint-plugin@8.56.0(@typescript-eslint/parser@8.56.0)(eslint@10.0.0)(typescript@5.9.3):
@@ -4166,6 +4103,7 @@ packages:
   /git-raw-commits@4.0.0:
     resolution: {integrity: sha512-ICsMM1Wk8xSGMowkOmPrzo2Fgmfo4bMHLNX6ytHjajRJUqvHOw/TFapQ+QG75c3X/tTDDhOSRPGC52dDbNM8FQ==}
     engines: {node: '>=16'}
+    deprecated: This package is no longer maintained. For the JavaScript API, please use @conventional-changelog/git-client instead.
     hasBin: true
     dependencies:
       dargs: 8.1.0
@@ -5667,59 +5605,6 @@ packages:
     resolution: {integrity: sha512-wa7YjyUGfNZngI/vtK0UHAN+lgDCxBPCylVXGp0zu59Fz5aiGtNXaq3DhIov063MorB+VfufLh3JlF2KdTK3xg==}
     dev: true
 
-  /vite@7.3.1(@types/node@20.19.33)(tsx@4.21.0)(yaml@2.8.2):
-    resolution: {integrity: sha512-w+N7Hifpc3gRjZ63vYBXA56dvvRlNWRczTdmCBBa+CotUzAPf5b7YMdMR/8CQoeYE5LX3W4wj6RYTgonm1b9DA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    hasBin: true
-    peerDependencies:
-      '@types/node': ^20.19.0 || >=22.12.0
-      jiti: '>=1.21.0'
-      less: ^4.0.0
-      lightningcss: ^1.21.0
-      sass: ^1.70.0
-      sass-embedded: ^1.70.0
-      stylus: '>=0.54.8'
-      sugarss: ^5.0.0
-      terser: ^5.16.0
-      tsx: ^4.8.1
-      yaml: ^2.4.2
-    peerDependenciesMeta:
-      '@types/node':
-        optional: true
-      jiti:
-        optional: true
-      less:
-        optional: true
-      lightningcss:
-        optional: true
-      sass:
-        optional: true
-      sass-embedded:
-        optional: true
-      stylus:
-        optional: true
-      sugarss:
-        optional: true
-      terser:
-        optional: true
-      tsx:
-        optional: true
-      yaml:
-        optional: true
-    dependencies:
-      '@types/node': 20.19.33
-      esbuild: 0.27.3
-      fdir: 6.5.0(picomatch@4.0.3)
-      picomatch: 4.0.3
-      postcss: 8.5.6
-      rollup: 4.57.1
-      tinyglobby: 0.2.15
-      tsx: 4.21.0
-      yaml: 2.8.2
-    optionalDependencies:
-      fsevents: 2.3.3
-    dev: true
-
   /vite@7.3.1(@types/node@22.19.15)(tsx@4.21.0)(yaml@2.8.2):
     resolution: {integrity: sha512-w+N7Hifpc3gRjZ63vYBXA56dvvRlNWRczTdmCBBa+CotUzAPf5b7YMdMR/8CQoeYE5LX3W4wj6RYTgonm1b9DA==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -5771,75 +5656,6 @@ packages:
       yaml: 2.8.2
     optionalDependencies:
       fsevents: 2.3.3
-    dev: true
-
-  /vitest@4.0.18(@types/node@20.19.33)(tsx@4.21.0)(yaml@2.8.2):
-    resolution: {integrity: sha512-hOQuK7h0FGKgBAas7v0mSAsnvrIgAvWmRFjmzpJ7SwFHH3g1k2u37JtYwOwmEKhK6ZO3v9ggDBBm0La1LCK4uQ==}
-    engines: {node: ^20.0.0 || ^22.0.0 || >=24.0.0}
-    hasBin: true
-    peerDependencies:
-      '@edge-runtime/vm': '*'
-      '@opentelemetry/api': ^1.9.0
-      '@types/node': ^20.0.0 || ^22.0.0 || >=24.0.0
-      '@vitest/browser-playwright': 4.0.18
-      '@vitest/browser-preview': 4.0.18
-      '@vitest/browser-webdriverio': 4.0.18
-      '@vitest/ui': 4.0.18
-      happy-dom: '*'
-      jsdom: '*'
-    peerDependenciesMeta:
-      '@edge-runtime/vm':
-        optional: true
-      '@opentelemetry/api':
-        optional: true
-      '@types/node':
-        optional: true
-      '@vitest/browser-playwright':
-        optional: true
-      '@vitest/browser-preview':
-        optional: true
-      '@vitest/browser-webdriverio':
-        optional: true
-      '@vitest/ui':
-        optional: true
-      happy-dom:
-        optional: true
-      jsdom:
-        optional: true
-    dependencies:
-      '@types/node': 20.19.33
-      '@vitest/expect': 4.0.18
-      '@vitest/mocker': 4.0.18(vite@7.3.1)
-      '@vitest/pretty-format': 4.0.18
-      '@vitest/runner': 4.0.18
-      '@vitest/snapshot': 4.0.18
-      '@vitest/spy': 4.0.18
-      '@vitest/utils': 4.0.18
-      es-module-lexer: 1.7.0
-      expect-type: 1.3.0
-      magic-string: 0.30.21
-      obug: 2.1.1
-      pathe: 2.0.3
-      picomatch: 4.0.3
-      std-env: 3.10.0
-      tinybench: 2.9.0
-      tinyexec: 1.0.2
-      tinyglobby: 0.2.15
-      tinyrainbow: 3.0.3
-      vite: 7.3.1(@types/node@20.19.33)(tsx@4.21.0)(yaml@2.8.2)
-      why-is-node-running: 2.3.0
-    transitivePeerDependencies:
-      - jiti
-      - less
-      - lightningcss
-      - msw
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - terser
-      - tsx
-      - yaml
     dev: true
 
   /vitest@4.0.18(@types/node@22.19.15)(tsx@4.21.0)(yaml@2.8.2):

@@ -4,7 +4,7 @@ Comprehensive documentation for templjs continuous integration and deployment wo
 
 ## Overview
 
-templjs uses GitHub Actions for automated testing, linting, security scanning, and releases. All workflows are defined in `.github/workflows/` and leverage Nx for efficient caching and affected project detection.
+templjs uses GitHub Actions for automated testing, linting, security analysis, benchmarking, and releases. All workflows are defined in `.github/workflows/`, use Nx for affected-project execution, and share a centrally pinned Node.js and pnpm toolchain from the root `package.json`.
 
 ## Architecture
 
@@ -14,7 +14,7 @@ templjs uses GitHub Actions for automated testing, linting, security scanning, a
 ├─────────────────────────────────────────────────────┤
 │                                                      │
 │  ci.yml                                              │
-│  ├─ Install Dependencies (pnpm + cache)             │
+│  ├─ Setup Workspace Toolchain                        │
 │  ├─ Lint (ESLint, Prettier, Nx affected)            │
 │  ├─ Type Check (TypeScript tsc)                     │
 │  ├─ Test (Vitest, Nx affected)                      │
@@ -31,8 +31,9 @@ templjs uses GitHub Actions for automated testing, linting, security scanning, a
 │  ├─ Build for Analysis                              │
 │  └─ Perform Security Scan                           │
 │                                                      │
-│  test-secret-scanning.yml                           │
-│  └─ TruffleHog Secret Scan (weekly)                 │
+│  benchmark.yml                                      │
+│  ├─ Run CI Benchmark Harness                        │
+│  └─ Publish Artifacts and PR Comparison             │
 │                                                      │
 └─────────────────────────────────────────────────────┘
          │              │                │
@@ -45,18 +46,24 @@ templjs uses GitHub Actions for automated testing, linting, security scanning, a
 
 ### 1. CI Workflow (`ci.yml`)
 
-**Trigger**: Push to main/develop, PRs, nightly scheduled run
+**Trigger**: Push to `main`/`develop`, pull requests, nightly scheduled run
 
 **Purpose**: Validate code quality, tests, and builds for every change.
 
 **Jobs**:
 
-#### Install Dependencies
+#### Setup Workspace Toolchain
 
-- Sets up Node.js 20, pnpm 8
-- Caches pnpm store for faster installs
-- Runs `pnpm install --frozen-lockfile`
-- Caches Nx computation cache
+- Reads Node.js and pnpm pins from the root `package.json`
+- Uses the shared `.github/actions/setup-workspace` composite action
+- Installs dependencies with `pnpm install --frozen-lockfile`
+- Restores pnpm store cache for faster installs
+
+#### Matrix Coverage
+
+- Tests run on Node.js 22 and 24
+- Default local development version is Node.js 24
+- pnpm is pinned to 8.15.0 everywhere
 
 #### Lint
 
@@ -111,7 +118,8 @@ templjs uses GitHub Actions for automated testing, linting, security scanning, a
 2. Build all packages
 3. Run `changesets/action`:
    - Reads changesets from `.changeset/`
-   - Versions packages according to semver
+   - Applies semver updates from committed changesets
+   - Keeps the npm packages and VS Code extension on a fixed-version release train
    - Updates CHANGELOG.md files
    - Creates/updates PR with version changes
    - Publishes to npm on merge to main
@@ -124,15 +132,19 @@ templjs uses GitHub Actions for automated testing, linting, security scanning, a
 
 #### Publish VS Code Extension
 
-- Runs after version job completes
+- Runs only for pushes to `release/**` after the version job completes
+- Uses the version already written into `src/extensions/vscode/package.json`
+- The extension package is marked `private` to prevent npm publication
 - Packages extension with `vsce package`
 - Publishes to VS Code Marketplace
+- Optionally publishes to Open VSX
 
 **Required Secrets**:
 
 - `VSCODE_PUBLISHER_TOKEN`: Personal Access Token for VS Code Marketplace
+- `OPEN_VSX_TOKEN`: Optional token for Open VSX publishing
 
-**Status**: Manual trigger, not required
+**Status**: Push-triggered for release branches, not required
 
 ### 3. CodeQL Security Analysis (`codeql.yml`)
 
@@ -157,21 +169,19 @@ templjs uses GitHub Actions for automated testing, linting, security scanning, a
 - Use of insecure dependencies
 - Other OWASP top 10 issues
 
-### 4. Secret Scanning (`test-secret-scanning.yml`)
+### 4. Benchmark Workflow (`benchmark.yml`)
 
-**Trigger**: Manual workflow dispatch, weekly scheduled (Sunday 12 AM UTC)
+**Trigger**: Pull requests, pushes to `main`, pushes to `release/**`, nightly schedule, manual dispatch
 
-**Purpose**: Detect accidentally committed secrets using TruffleHog.
+**Purpose**: Track deterministic benchmark performance and compare PRs against the latest successful `main` baseline when available.
 
 **Configuration**:
 
-- Scans entire repository history
-- Detects API keys, tokens, passwords, private keys
-- Reports findings in GitHub Security tab
+- Uses the same centrally pinned Node.js/pnpm toolchain as the rest of CI
+- Uploads raw JSON and markdown summaries as workflow artifacts
+- Posts comparison output to the PR when a baseline is available
 
 **Status**: Informational, not required
-
-**Local Pre-commit**: Uses `detect-secrets` hook (see `.detect-secrets`)
 
 ## Nx Affected Strategy
 
@@ -197,7 +207,7 @@ nx affected:graph --base=origin/main
 - Cache key based on inputs (source files, deps, config)
 - Restores cache across CI runs
 
-**Example**: Changing only `packages/core/src/lexer.ts`:
+**Example**: Changing only `src/packages/core/src/lexer.ts`:
 
 - Runs tests for: `@templjs/core`, `@templjs/cli` (depends on core), `@templjs/volar` (depends on core)
 - Skips tests for: Unaffected packages
@@ -215,8 +225,8 @@ nx affected:graph --base=origin/main
 ### Informational (Don't Block PRs)
 
 - ℹ️ CodeQL Analysis
-- ℹ️ Secret Scanning
 - ℹ️ Coverage Report (informational, but tracks trends)
+- ℹ️ Benchmark comparison
 
 **Branch Protection Rules**:
 
@@ -284,6 +294,13 @@ Configure in GitHub Settings → Secrets and variables → Actions:
   2. Add repository
   3. Copy token and add to GitHub secrets
 
+#### OPEN_VSX_TOKEN
+
+- **Purpose**: Publish the VS Code extension to Open VSX
+- **Type**: Open VSX access token
+- **Scope**: Publish access for the extension namespace
+- **Required**: No, the workflow continues if this publish step fails
+
 ### Automatic Secrets
 
 #### GITHUB_TOKEN
@@ -315,12 +332,14 @@ git commit -m "chore: add changeset for vX.Y.Z"
 
 1. **Merge PR with changeset** to main
 2. **Changesets bot** creates/updates a "Version Packages" PR
-3. **Review Version PR**: Check updated versions and CHANGELOGs
+3. **Review Version PR**: Check updated versions and CHANGELOGs for the full fixed-version release train
 4. **Merge Version PR**: Triggers release workflow
 5. **Automated publishing**:
    - Publishes packages to npm
    - Creates GitHub release
-   - Publishes VS Code extension (if changed)
+   - Publishes the VS Code extension from `src/extensions/vscode` on `release/**` pushes
+
+The VS Code extension participates in shared versioning, but npm publication is disabled via its manifest because it is released through the Marketplace/Open VSX flow instead.
 
 ### Manual Release (Emergency)
 
@@ -330,6 +349,8 @@ pnpm changeset version
 
 # Build and publish
 pnpm build
+
+# Maintainership note: CI normally runs the publish step
 pnpm changeset publish
 
 # Push tags
@@ -366,15 +387,19 @@ coverage:
 ### Tests Fail in CI but Pass Locally
 
 1. **Check environment differences**:
-   - Node.js version (CI uses 20, check local with `node --version`)
+   - Node.js version (CI tests Node.js 22 and 24, check local with `node --version`)
    - Timezone differences
    - File system case sensitivity (Linux vs macOS/Windows)
 
 2. **Reproduce CI environment locally**:
 
    ```bash
-   # Use same Node.js version
-   nvm use 20
+   # Use a supported Node.js version
+   nvm use 24
+
+   # Ensure the pinned pnpm version
+   corepack enable
+   corepack prepare pnpm@8.15.0 --activate
 
    # Clear caches
    pnpm nx reset
@@ -411,32 +436,6 @@ coverage:
 key: ${{ runner.os }}-pnpm-store-v2-${{ hashFiles('**/pnpm-lock.yaml') }}
 ```
 
-### Secret Scanning False Positives
-
-**Problem**: Pre-commit hook fails with false positive
-
-**Solution**:
-
-1. Add to `.detect-secrets`:
-
-   ```yaml
-   exclude_files: path/to/file\.ts
-   ```
-
-2. Mark test data explicitly:
-
-   ```typescript
-   // detect-secrets-disable-next-line
-   const testApiKey = 'not-a-real-key-12345';
-   ```
-
-3. Update baseline:
-
-   ```bash
-   detect-secrets scan --baseline .secrets.baseline
-   git add .secrets.baseline
-   ```
-
 ### Dependency Installation Failures
 
 **Problem**: pnpm install fails in CI
@@ -458,7 +457,7 @@ key: ${{ runner.os }}-pnpm-store-v2-${{ hashFiles('**/pnpm-lock.yaml') }}
    ```
 
 3. **Check pnpm version matches**:
-   - CI uses pnpm 8 (see workflow)
+   - CI uses pnpm 8.15.0 (from root `package.json`)
    - Local: `pnpm --version`
 
 ## Local Pre-commit Hooks
@@ -481,23 +480,13 @@ Husky runs these checks before each commit:
 
 **Configuration**: `.commitlintrc.json`
 
-### 3. Detect-secrets (Future)
+### 3. Repo Hook Runner
 
-- Scans staged files for secrets
-- Detects API keys, tokens, passwords
-- Prevents accidental commits
+- Executes the current repo-defined pre-commit flow from `scripts/ci/hook-runner.ts`
+- Keeps pre-commit and pre-push checks aligned with root scripts
+- Secret scanning is not currently enforced by a dedicated hook or standalone workflow
 
-**Configuration**: `.detect-secrets`
-
-### Bypassing Pre-commit Hooks
-
-```bash
-# Skip all hooks (use sparingly!)
-git commit --no-verify
-
-# Or disable Husky temporarily
-HUSKY=0 git commit -m "message"
-```
+Fix failing hooks instead of bypassing them so local validation stays aligned with CI.
 
 ## Future Enhancements
 
@@ -541,7 +530,7 @@ HUSKY=0 git commit -m "message"
 
 - **GitHub Actions**: Workflow run history
 - **Codecov**: Coverage trends and reports
-- **GitHub Security**: CodeQL and secret scanning results
+- **GitHub Security**: CodeQL results and repository security alerts
 
 ## Reference
 
@@ -550,4 +539,3 @@ HUSKY=0 git commit -m "message"
 - **Nx Configuration**: `nx.json`
 - **Changesets Configuration**: `.changeset/config.json`
 - **Codecov Configuration**: `codecov.yml`
-- **Secret Scanning**: `.detect-secrets`

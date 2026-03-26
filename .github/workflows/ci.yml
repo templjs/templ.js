@@ -1,7 +1,4 @@
 name: CI
-env:
-  NODE_VERSION: 24
-  NODE_VERSIONS: '[22, 24]'
 on:
   workflow_dispatch:
   push:
@@ -21,50 +18,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  gen-matrix:
+  toolchain:
     runs-on: ubuntu-latest
-    steps:
-      - name: Generate Matrix
-        id: gen-matrix
-        run: |
-          echo "versions=${{ env.NODE_VERSIONS }}" >> $GITHUB_OUTPUT
     outputs:
-      versions: ${{ steps.gen-matrix.outputs.versions }}
+      node-default: ${{ steps.toolchain.outputs.node_default }}
+      node-supported: ${{ steps.toolchain.outputs.node_supported }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Read toolchain versions
+        id: toolchain
+        shell: bash
+        run: |
+          node_default="$(node -e 'const fs = require("node:fs"); const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")); process.stdout.write(pkg.toolchain.node.default);')"
+          node_supported="$(node -e 'const fs = require("node:fs"); const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")); process.stdout.write(JSON.stringify(pkg.toolchain.node.supported));')"
+          echo "node_default=$node_default" >> "$GITHUB_OUTPUT"
+          echo "node_supported=$node_supported" >> "$GITHUB_OUTPUT"
 
   install:
     name: Install Dependencies
     runs-on: ubuntu-latest
+    needs: toolchain
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Needed for Nx affected commands
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup workspace toolchain
+        uses: ./.github/actions/setup-workspace
         with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-node-${{ env.NODE_VERSION }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          node-version: ${{ needs.toolchain.outputs.node-default }}
 
       - name: Cache Nx
         uses: actions/cache@v4
@@ -78,38 +63,17 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    needs: install
+    needs: [install, toolchain]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup workspace toolchain
+        uses: ./.github/actions/setup-workspace
         with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: Restore pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-node-${{ env.NODE_VERSION }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          node-version: ${{ needs.toolchain.outputs.node-default }}
 
       - name: Restore Nx cache
         uses: actions/cache@v4
@@ -129,38 +93,17 @@ jobs:
   type-check:
     name: Type Check
     runs-on: ubuntu-latest
-    needs: install
+    needs: [install, toolchain]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup workspace toolchain
+        uses: ./.github/actions/setup-workspace
         with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: Restore pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-node-${{ env.NODE_VERSION }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          node-version: ${{ needs.toolchain.outputs.node-default }}
 
       - name: Type check
         run: pnpm run ci:type-check
@@ -168,49 +111,28 @@ jobs:
   lint-work-item-frontmatter:
     name: Lint Work Item Frontmatter
     runs-on: ubuntu-latest
-    needs: install
+    needs: [install, toolchain]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup workspace toolchain
+        uses: ./.github/actions/setup-workspace
         with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: Restore pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-node-${{ env.NODE_VERSION }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          node-version: ${{ needs.toolchain.outputs.node-default }}
 
       - name: Validate work items
         run: pnpm run ci:frontmatter
 
   test:
-    name: Test (Node ${{ matrix.node-version }})
+    name: Test (Node ${{ matrix.node-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    needs: [install, gen-matrix]
+    needs: [install, toolchain]
     strategy:
       matrix:
-        node-version: ${{ fromJson(needs.gen-matrix.outputs.versions) }}
+        node-version: ${{ fromJson(needs.toolchain.outputs.node-supported) }}
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - name: Checkout code
@@ -218,31 +140,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup workspace toolchain
+        uses: ./.github/actions/setup-workspace
         with:
           node-version: ${{ matrix.node-version }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: Restore pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-node-${{ matrix.node-version }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-node-${{ matrix.node-version }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Restore Nx cache
         uses: actions/cache@v4
@@ -265,7 +166,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
-        if: format('{0}', matrix.node-version) == format('{0}', env.NODE_VERSION) && matrix.os == 'ubuntu-latest'
+        if: format('{0}', matrix.node-version) == format('{0}', needs.toolchain.outputs.node-default) && matrix.os == 'ubuntu-latest'
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
@@ -276,38 +177,17 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint, test, lint-work-item-frontmatter]
+    needs: [lint, test, lint-work-item-frontmatter, toolchain]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup workspace toolchain
+        uses: ./.github/actions/setup-workspace
         with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: Restore pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-node-${{ env.NODE_VERSION }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          node-version: ${{ needs.toolchain.outputs.node-default }}
 
       - name: Restore Nx cache
         uses: actions/cache@v4
@@ -326,6 +206,6 @@ jobs:
         with:
           name: build-artifacts
           path: |
-            packages/*/dist
-            extensions/*/dist
+            src/packages/*/dist
+            src/extensions/*/dist
           retention-days: 7

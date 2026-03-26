@@ -11,7 +11,9 @@ Get from clone to first commit in under 15 minutes:
 git clone https://github.com/yourusername/templjs.git
 cd templjs
 
-# 2. Install dependencies (2-3 minutes)
+# 2. Activate the pinned package manager and install dependencies
+corepack enable
+corepack prepare pnpm@8.15.0 --activate
 pnpm install
 
 # 3. Run tests to verify setup
@@ -30,8 +32,8 @@ git commit -m "feat: my awesome feature"
 
 ## Prerequisites
 
-- **Node.js**: 18.0.0 or later
-- **pnpm**: 8.0.0 or later
+- **Node.js**: 22.12+ or 24.x
+- **pnpm**: 8.15.0
 - **Git**: 2.x or later
 - **VS Code** (recommended): Latest stable version
 
@@ -41,8 +43,8 @@ git commit -m "feat: my awesome feature"
 
 ```bash
 # Using nvm (recommended)
-nvm install 18
-nvm use 18
+nvm install 24
+nvm use 24
 
 # Or download from https://nodejs.org/
 ```
@@ -50,9 +52,6 @@ nvm use 18
 #### pnpm
 
 ```bash
-npm install -g pnpm@8
-
-# Or using corepack (Node.js 16.13+)
 corepack enable
 corepack prepare pnpm@8.15.0 --activate
 ```
@@ -62,6 +61,10 @@ corepack prepare pnpm@8.15.0 --activate
 ### First-Time Setup
 
 ```bash
+# Activate the pinned package manager
+corepack enable
+corepack prepare pnpm@8.15.0 --activate
+
 # Install all dependencies
 pnpm install
 
@@ -163,7 +166,7 @@ Husky runs these checks automatically before each commit:
 
 1. **Lint-staged**: Formats and lints changed files
 2. **Commitlint**: Validates commit message format (conventional commits)
-3. **Secret scanning**: Detects accidentally committed secrets
+3. **Repo hook runner**: Executes the current repo-defined pre-commit flow from `scripts/ci/hook-runner.ts`
 
 ### Commit Message Format
 
@@ -220,7 +223,7 @@ test(lexer): add edge case for empty templates
 
    ```bash
    # Write tests first (TDD)
-   cd packages/core
+   cd src/packages/core
    # Edit src/__tests__/feature.test.ts
 
    # Implement feature
@@ -255,19 +258,19 @@ test(lexer): add edge case for empty templates
 
 Example: Adding a `capitalize` filter function
 
-1. **Update lexer** (packages/core/src/lexer/):
+1. **Update lexer** (`src/packages/core/src/lexer/`):
 
    ```typescript
    // Add CAPITALIZE token if needed
    ```
 
-2. **Update parser** (packages/core/src/parser/):
+2. **Update parser** (`src/packages/core/src/parser/`):
 
    ```typescript
    // Add capitalize production rule
    ```
 
-3. **Update renderer** (packages/core/src/renderer/):
+3. **Update renderer** (`src/packages/core/src/renderer/`):
 
    ```typescript
    // Implement capitalize function
@@ -276,7 +279,7 @@ Example: Adding a `capitalize` filter function
    }
    ```
 
-4. **Add tests** (`packages/core/src/__tests__/`):
+4. **Add tests** (`src/packages/core/src/` or `src/packages/core/test/`):
 
    ```typescript
    describe('capitalize filter', () => {
@@ -358,17 +361,12 @@ git commit -m "chore: add changeset for vX.Y.Z"
 
 **Problem**: Pre-commit hook fails and prevents commit.
 
-**Solutions**:
+**Recommended workflow**:
 
 ```bash
-# Bypass hooks (use sparingly!)
-git commit --no-verify
-
-# Or disable Husky temporarily
-HUSKY=0 git commit -m "message"
-
-# Fix the actual issue (recommended)
+# Fix the actual issue
 pnpm lint:fix
+pnpm test
 ```
 
 ### Test Timeouts
@@ -406,34 +404,9 @@ open coverage/index.html
 
 # Add tests for uncovered lines
 # Run specific package coverage
-cd packages/core
+cd src/packages/core
 pnpm test:coverage
 ```
-
-### Secret Scanning False Positives
-
-**Problem**: Pre-commit hook fails with false positive secrets.
-
-**Solutions**:
-
-1. **If it's a false positive**, add to `.detect-secrets`:
-
-   ```yaml
-   exclude_files: path/to/file\.ts
-   ```
-
-2. **If it's test data**, mark explicitly:
-
-   ```typescript
-   // detect-secrets-disable-next-line
-   const testSecret = 'not-a-real-secret-12345';
-   ```
-
-3. **Update baseline**:
-
-   ```bash
-   detect-secrets scan --baseline .secrets.baseline
-   ```
 
 ### Nx Cache Issues
 
@@ -550,8 +523,8 @@ pnpm nx reset                      # Clear Nx cache
 
 # Testing
 pnpm test                          # Run all tests
-pnpm test:coverage                 # Run with coverage
-cd packages/core && pnpm test     # Test specific package
+pnpm test:coverage                 # Run with coverage when available in package scope
+pnpm --filter @templjs/core test   # Test specific package
 
 # Linting & Formatting
 pnpm lint                          # Lint all packages
@@ -566,7 +539,7 @@ pnpm clean                         # Clean all build outputs
 # Changesets
 pnpm changeset                     # Create a changeset
 pnpm changeset version             # Version packages
-pnpm changeset publish             # Publish packages
+pnpm changeset publish             # Publish packages (typically handled by CI)
 ```
 
 ### Environment Variables
