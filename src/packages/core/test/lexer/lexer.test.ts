@@ -1,6 +1,54 @@
 import { describe, it, expect } from 'vitest';
 import { tokenize } from '../../src/lexer/lexer.js';
-import { TokenType } from '../../src/lexer/types.js';
+import {
+  buildDefaultDelimiters,
+  DEFAULT_DELIMITERS,
+  mergeDelimiterConfig,
+  TokenType,
+} from '../../src/lexer/types.js';
+
+describe('Delimiter Utilities', () => {
+  it('buildDefaultDelimiters returns pair shorthands from boundary fields', () => {
+    const delimiters = buildDefaultDelimiters({
+      statement_start: '<%',
+      statement_end: '%>',
+      expression_start: '[[',
+      expression_end: ']]',
+      comment_start: '<#',
+      comment_end: '#>',
+    });
+
+    expect(delimiters.statement).toEqual(['<%', '%>']);
+    expect(delimiters.expression).toEqual(['[[', ']]']);
+    expect(delimiters.comment).toEqual(['<#', '#>']);
+  });
+
+  it('buildDefaultDelimiters throws for empty delimiter boundaries', () => {
+    expect(() =>
+      buildDefaultDelimiters({
+        statement_start: '',
+        statement_end: '%>',
+        expression_start: '{{',
+        expression_end: '}}',
+        comment_start: '{#',
+        comment_end: '#}',
+      })
+    ).toThrow('Delimiter "statement_start" must be a non-empty string');
+  });
+
+  it('mergeDelimiterConfig prefers tuple shorthand over scalar start/end overrides', () => {
+    const merged = mergeDelimiterConfig({
+      expression: ['[[', ']]'],
+      expression_start: '<<',
+      expression_end: '>>',
+    });
+
+    expect(merged.expression).toEqual(['[[', ']]']);
+    expect(merged.expression_start).toBe('[[');
+    expect(merged.expression_end).toBe(']]');
+    expect(merged.statement_start).toBe(DEFAULT_DELIMITERS.statement_start);
+  });
+});
 
 describe('Lexer', () => {
   describe('Tokenization', () => {
