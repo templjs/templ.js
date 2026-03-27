@@ -27,7 +27,9 @@ test_results:
       WI-034 closure validation in `feature/wi-034-coverage-gate-finalize` worktree:
       - `pnpm test:affected:ci` returned `NX   No tasks were run` (expected for metadata-only WI finalization update)
       - `pnpm run lint:frontmatter` passed: all backlog frontmatter files schema-valid
-      - Verified linked implementation PR merged: https://github.com/templjs/templ.js/pull/31
+      - Verified linked implementation PRs merged with green CI:
+        - https://github.com/templjs/templ.js/pull/31
+        - https://github.com/templjs/templ.js/pull/32
   - timestamp: 2026-03-17T00:00:00Z
     note: |
       Coverage remediation branch follow-up:
@@ -86,7 +88,6 @@ links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/31
     - https://github.com/templjs/templ.js/pull/32
-    - https://github.com/templjs/templ.js/pull/33
 ---
 
 ## Goal
