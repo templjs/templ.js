@@ -1166,6 +1166,22 @@ describe('LanguagePlugin', () => {
       expect(virtualCode?.languageId).toBe('markdown');
     });
 
+    it('should detect markdown from .md.templ extension', () => {
+      const mockSnapshot = {
+        getText: () => '# Title',
+        getLength: () => 7,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///doc.md.templ',
+        'templjs-markdown',
+        mockSnapshot
+      );
+
+      expect(virtualCode?.languageId).toBe('markdown');
+    });
+
     it('should detect markdown from .templ.md extension', () => {
       const mockSnapshot = {
         getText: () => '# Templated',

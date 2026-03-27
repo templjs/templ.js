@@ -240,6 +240,105 @@ describe('language-server-inprocess-integration', () => {
     }
   });
 
+  it('validates markdown host-language activation for .md.templ, .md.tmpl, and .md.tpl', async () => {
+    const workspaceDir = mkdtempSync(path.join(tmpdir(), 'templjs-server-md-variants-'));
+
+    try {
+      const schemaPath = path.join(workspaceDir, 'schema.json');
+      writeFileSync(
+        schemaPath,
+        JSON.stringify({
+          type: 'object',
+          properties: {
+            contentData: {
+              type: 'object',
+              properties: {
+                heading: { type: 'string' },
+              },
+            },
+          },
+        })
+      );
+
+      await import('../src/server');
+
+      const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => Promise<{
+        capabilities: {
+          completionProvider?: unknown;
+          hoverProvider?: boolean;
+        };
+      }>;
+
+      const init = await initializeHandler({
+        rootUri: toFileUri(workspaceDir),
+        initializationOptions: {
+          schemaPath,
+        },
+      });
+
+      expect(init.capabilities.completionProvider).toBeDefined();
+      expect(init.capabilities.hoverProvider).toBe(true);
+
+      const didOpenHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
+        textDocument: { uri: string; text: string };
+      }) => void;
+      const didChangeHandler = onDidChangeTextDocument.mock.calls[0][0] as (params: {
+        textDocument: { uri: string };
+        contentChanges: Array<{
+          range?: {
+            start: { line: number; character: number };
+            end: { line: number; character: number };
+          };
+          text: string;
+        }>;
+      }) => void;
+      const completionHandler = onCompletion.mock.calls[0][0] as (params: {
+        textDocument: { uri: string };
+        position: { line: number; character: number };
+      }) => Array<{ label: string }>;
+
+      for (const variant of ['templ', 'tmpl', 'tpl']) {
+        const docUri = toFileUri(path.join(workspaceDir, `matrix.md.${variant}`));
+
+        sendDiagnostics.mockClear();
+        didOpenHandler({
+          textDocument: {
+            uri: docUri,
+            text: '{{ contentData.missing }}',
+          },
+        });
+
+        await vi.waitFor(() => {
+          expect(sendDiagnostics).toHaveBeenCalledWith(expect.objectContaining({ uri: docUri }));
+        });
+
+        const lastDiagnosticsForDoc = [...sendDiagnostics.mock.calls]
+          .reverse()
+          .map((call) => call[0] as { uri: string; diagnostics: Array<{ code?: string }> })
+          .find((payload) => payload.uri === docUri);
+        expect(lastDiagnosticsForDoc).toBeDefined();
+        expect(
+          lastDiagnosticsForDoc?.diagnostics.some(
+            (diag) => diag.code === 'templjs.undefinedVariable'
+          )
+        ).toBe(true);
+
+        didChangeHandler({
+          textDocument: { uri: docUri },
+          contentChanges: [{ text: '{{ contentData.h }}' }],
+        });
+
+        const completionItems = completionHandler({
+          textDocument: { uri: docUri },
+          position: { line: 0, character: '{{ contentData.h'.length },
+        });
+        expect(completionItems.some((item) => item.label === 'heading')).toBe(true);
+      }
+    } finally {
+      rmSync(workspaceDir, { recursive: true, force: true });
+    }
+  });
+
   it('re-publishes diagnostics for open documents when watched schema files change', async () => {
     const workspaceDir = mkdtempSync(path.join(tmpdir(), 'templjs-server-watch-'));
 
