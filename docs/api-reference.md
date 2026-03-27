@@ -9,6 +9,14 @@ title: Core and CLI API Reference
 
 ## `@templjs/core`
 
+### Function References
+
+- [String functions](./functions/string-functions.md)
+- [Number functions](./functions/number-functions.md)
+- [Datetime functions](./functions/datetime-functions.md)
+- [Array functions](./functions/array-functions.md)
+- [Object functions](./functions/object-functions.md)
+
 ### [`renderTemplate(template, data, options?)`](../src/packages/core/src/index.ts#L155)
 
 Renders a template string with structured input data.
@@ -63,6 +71,8 @@ const validator = new SchemaValidator({
 ### [`createQueryEngine()`](../src/packages/core/src/index.ts#L107)
 
 Returns a query engine instance with built-in filter metadata.
+
+- Function catalog tests: [src/packages/core/test/query-engine/query-engine.catalog.test.ts](../src/packages/core/test/query-engine/query-engine.catalog.test.ts)
 
 - Source: [src/packages/core/src/index.ts](../src/packages/core/src/index.ts#L107)
 - Examples/Tests: [src/packages/core/test/index.test.ts](../src/packages/core/test/index.test.ts#L54)
