@@ -17,7 +17,7 @@ This directory contains CI/CD workflows for the templjs monorepo.
 - **Install**: Sets up pnpm with caching
 - **Lint**: Runs ESLint and Prettier checks on affected packages
 - **Type Check**: Validates TypeScript compilation
-- **Test**: Runs tests with coverage on Node 18 and 20
+- **Test**: Runs tests with coverage on Node 22 and 24
 - **Build**: Builds all affected packages
 
 **Features:**
@@ -33,18 +33,20 @@ This directory contains CI/CD workflows for the templjs monorepo.
 
 **Triggers:**
 
-- Manual workflow dispatch with release type selection
+- Manual workflow dispatch
 - Push to `release/**` branches
 
 **Jobs:**
 
 - **Version and Publish**:
   - Uses Changesets for version management
+  - Applies a fixed-version release train across the npm packages and VS Code extension
   - Publishes packages to npm (@templjs scope)
   - Creates GitHub releases with changelog
 - **Publish VS Code Extension**:
   - Packages and publishes to VS Code Marketplace
   - Optionally publishes to Open VSX Registry
+  - Uses the extension package version, but does not publish the extension to npm
 
 **Features:**
 
@@ -116,6 +118,7 @@ Changesets configuration for release automation:
 - Public access for all packages
 - Main branch as base
 - Automatic peer dependency updates
+- Fixed-version monorepo releases across the npm packages and VS Code extension
 
 ## Required Secrets
 
@@ -132,8 +135,22 @@ See [SECRETS.md](./SECRETS.md) for detailed setup instructions.
 
 ### Running CI Locally
 
+> **Node.js versions**: CI runs against **Node 22** and **Node 24** (see `engines` and `toolchain` in `package.json`).
+> To match CI locally, pin your version with [nvm](https://github.com/nvm-sh/nvm) or [fnm](https://github.com/Schniz/fnm):
+>
+> ```bash
+> # nvm
+> nvm install 24 && nvm use 24
+> # fnm
+> fnm use 24
+> ```
+>
+> A `.nvmrc` file with `24` at the repo root is also recognised automatically by both tools.
+
 ```bash
 # Install dependencies
+corepack enable
+corepack prepare pnpm@8.15.0 --activate
 pnpm install
 
 # Run linting (affected)
@@ -165,9 +182,10 @@ pnpm nx affected -t build
 
 4. Workflow will:
    - Create a PR with version bumps
+   - Keep the npm packages and VS Code extension on the same version
    - Merge PR to publish packages
    - Create GitHub release
-   - Publish VS Code extension
+   - Publish the VS Code extension on `release/**` pushes
 
 ### Viewing Coverage
 
@@ -219,7 +237,9 @@ nx affected -t test --parallel=3
 
 - Verify NPM_TOKEN has publish permissions
 - Check package names aren't already taken on npm
-- Ensure @templjs scope is registered
+- Ensure the `@templjs` npm scope is registered
+- Confirm the release PR includes the expected fixed-version bump for every published package
+- Remember that `vscode-templjs` is versioned with Changesets but published via `vsce`, not npm
 
 ### Security Scan Fails
 

@@ -11,11 +11,11 @@ VS Code extension for templjs meta-template language support.
 
 ## Supported File Extensions
 
-- `.yaml.templ` / `.yml.templ` / `.yaml.tpl` / `.yml.tpl` - YAML templates
-- `.json.templ` / `.json.tpl` - JSON templates
-- `.md.templ` / `.md.tpl` - Markdown templates
-- `.html.templ` / `.html.tpl` - HTML templates
-- `.xml.templ` / `.xml.tpl` - XML templates
+- `.yaml.templ` / `.yml.templ` / `.yaml.tmpl` / `.yml.tmpl` / `.yaml.tpl` / `.yml.tpl` - YAML templates
+- `.json.templ` / `.json.tmpl` / `.json.tpl` - JSON templates
+- `.md.templ` / `.md.tmpl` / `.md.tpl` - Markdown templates
+- `.html.templ` / `.html.tmpl` / `.html.tpl` - HTML templates
+- `.xml.templ` / `.xml.tmpl` / `.xml.tpl` - XML templates
 
 ## Architecture
 
@@ -30,9 +30,25 @@ This extension uses Volar language server to provide IDE features:
 
 ```json
 {
-  "templjs.trace.server": "off" // or "messages" or "verbose"
+  "templjs.trace.server": "off", // or "messages" or "verbose"
+  "templjs.schemaPath": ".templjs/frontmatter.schema.json",
+  "templjs.contentSchemaPath": ".templjs/content.schema.json",
+  "templjs.schemas": {
+    "backlog/**": {
+      "schemaPath": ".templjs/work-item.frontmatter.schema.json",
+      "contentSchemaPath": ".templjs/work-item.content.schema.json"
+    }
+  }
 }
 ```
+
+Schema precedence is resolved per document as:
+
+1. Inline directives (`{{# schema: ... }}` / `{{# content-schema: ... }}`)
+2. Root/frontmatter aliases (`$templ-schema`, `$content-schema`)
+3. Workspace settings (`templjs.schemas`, `templjs.schemaPath`, `templjs.contentSchemaPath`)
+
+When schema files change on disk (`.json`, `.yaml`, `.yml`), the server invalidates its schema cache and refreshes diagnostics for open templjs documents.
 
 ## Triage Logs
 
@@ -68,7 +84,7 @@ This extension uses Volar language server to provide IDE features:
 Install from VS Code marketplace (coming soon) or build from source:
 
 ```bash
-cd extensions/vscode
+cd src/extensions/vscode
 pnpm install
 pnpm run build
 ```

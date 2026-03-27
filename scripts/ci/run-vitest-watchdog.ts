@@ -1,7 +1,22 @@
 #!/usr/bin/env tsx
-import { spawn } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 
 const pnpmCmd = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+
+function getSpawnOptions(): {
+  stdio: 'inherit';
+  env: NodeJS.ProcessEnv;
+  detached: boolean;
+  shell?: boolean;
+} {
+  return {
+    stdio: 'inherit',
+    env: process.env,
+    detached: process.platform !== 'win32',
+    // Windows frequently rejects direct .cmd spawns in CI; route through the shell there.
+    ...(process.platform === 'win32' ? { shell: true } : {}),
+  };
+}
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   if (!value) return fallback;
@@ -30,9 +45,13 @@ function resolveReporters(): string[] {
 function terminateProcessTree(pid: number, signal: NodeJS.Signals): void {
   if (process.platform === 'win32') {
     try {
-      process.kill(pid, signal);
+      execSync(`taskkill /PID ${pid} /T /F`, { stdio: 'ignore' });
     } catch {
-      // Ignore kill errors; process may already have exited.
+      try {
+        process.kill(pid, signal);
+      } catch {
+        // Ignore kill errors; process may already have exited.
+      }
     }
     return;
   }
@@ -80,11 +99,7 @@ function main(): void {
   }
 
   const watchdogTimeoutMs = parsePositiveInt(process.env.TEST_WATCHDOG_TIMEOUT_MS, 10 * 60_000);
-  const child = spawn(pnpmCmd, args, {
-    stdio: 'inherit',
-    env: process.env,
-    detached: process.platform !== 'win32',
-  });
+  const child = spawn(pnpmCmd, args, getSpawnOptions());
 
   let timedOut = false;
   let forceKillTimer: NodeJS.Timeout | undefined;

@@ -2,12 +2,25 @@
 id: wi-020
 type: work-item
 subtype: task
-lifecycle: draft
+lifecycle: active
 title: '20: Write Documentation (Getting Started and API Reference)'
-status: proposed
+status: in-progress
 priority: critical
 estimated: 14
+actual: 4
 assignee: ''
+commits:
+  8418c57: 'docs(release): add critical-path docs and reduced example slice (WI-020, WI-021, WI-022)'
+test_results:
+  - timestamp: 2026-03-22T00:00:00Z
+    note: |
+      Delivered release-critical documentation slice:
+      - Added `docs/getting-started.md`
+      - Added `docs/api-reference.md`
+      - Added `docs/cli.md`
+      - Added `docs/examples.md` (reduced WI-021-backed example set)
+      Validation:
+      - `pnpm run lint:frontmatter` passed after docs additions
 links:
   depends_on:
     - '[[005_chevrotain_lexer]]'
@@ -34,8 +47,8 @@ Documentation covers:
 
 ## Tasks
 
-- [ ] Create `docs/getting-started.md` (5-minute setup, hello world example)
-- [ ] Create `docs/api-reference.md` (auto-generated from JSDoc + manual sections)
+- [x] Create `docs/getting-started.md` (5-minute setup, hello world example)
+- [x] Create `docs/api-reference.md` (auto-generated from JSDoc + manual sections)
 - [ ] Create comprehensive function reference:
   - [ ] `docs/functions/string-functions.md` - All 19 string functions with examples
   - [ ] `docs/functions/number-functions.md` - All 15 number functions with examples
@@ -43,7 +56,7 @@ Documentation covers:
   - [ ] `docs/functions/array-functions.md` - All 16 array functions with examples
   - [ ] `docs/functions/object-functions.md` - All 9 object functions with examples
 - [ ] Create `docs/query-language.md` (dot notation, array access, filters, chaining)
-- [ ] Create `docs/cli.md` (render, validate, init, watch commands)
+- [x] Create `docs/cli.md` (render, validate, init, watch commands)
 - [ ] Create `docs/configuration.md` (delimiters, schema, custom functions)
 - [ ] Create `docs/examples.md` (10+ example templates)
 - [ ] Update root `README.md` with feature overview and badges
@@ -58,7 +71,7 @@ Documentation covers:
 - Complete user documentation (getting started, tutorials, guides)
 - Comprehensive API reference for all 50+ built-in functions
 - CLI command reference with examples
-- 10+ annotated example templates
+- Curated annotated example templates (release-critical slice delivered)
 - Function cheat sheet (single-page quick reference)
 - JSDoc comments in all source code
 - Auto-generated TypeDoc HTML API documentation

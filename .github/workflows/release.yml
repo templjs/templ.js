@@ -2,16 +2,6 @@ name: Release
 
 on:
   workflow_dispatch:
-    inputs:
-      release-type:
-        description: 'Release type (major, minor, patch)'
-        required: true
-        default: 'patch'
-        type: choice
-        options:
-          - major
-          - minor
-          - patch
   push:
     branches:
       - release/**
@@ -25,6 +15,9 @@ jobs:
   version:
     name: Version and Publish
     runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
+      version: ${{ steps.parsed.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,32 +26,9 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: ./.github/actions/setup-workspace
         with:
-          node-version: 20
           registry-url: 'https://registry.npmjs.org'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 8
-          run_install: false
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Build all packages
         run: pnpm build
@@ -76,75 +46,64 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Create GitHub Release
+      - name: Parse published version
+        id: parsed
         if: steps.changesets.outputs.published == 'true'
-        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUBLISHED_PACKAGES: ${{ steps.changesets.outputs.publishedPackages }}
+        run: |
+          VERSION=$(echo "$PUBLISHED_PACKAGES" | jq -r '.[0].version')
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            echo "::error::Failed to parse version from publishedPackages"
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Publish GitHub Release
+        if: steps.changesets.outputs.published == 'true'
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.changesets.outputs.publishedPackages[0].version }}
-          release_name: Release ${{ steps.changesets.outputs.publishedPackages[0].version }}
+          tag_name: v${{ steps.parsed.outputs.version }}
+          name: Release v${{ steps.parsed.outputs.version }}
           body: |
-            Release ${{ steps.changesets.outputs.publishedPackages[0].version }}
+            Release v${{ steps.parsed.outputs.version }}
 
             See CHANGELOG.md for details.
           draft: false
           prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish-vscode-extension:
     name: Publish VS Code Extension
     runs-on: ubuntu-latest
     needs: version
-    if: github.event_name == 'push' && contains(github.ref, 'release/')
+    if: github.event_name == 'push' && contains(github.ref, 'release/') && needs.version.outputs.published == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 8
-          run_install: false
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup workspace toolchain
+        uses: ./.github/actions/setup-workspace
 
       - name: Build VS Code extension
-        run: pnpm nx build vscode
+        run: pnpm --filter vscode-templjs build
 
-      - name: Package extension
+      - name: Package VS Code extension
         run: |
-          cd extensions/vscode
+          cd src/extensions/vscode
           npx vsce package
 
       - name: Publish to VS Code Marketplace
         run: |
-          cd extensions/vscode
+          cd src/extensions/vscode
           npx vsce publish -p ${{ secrets.VSCODE_PUBLISHER_TOKEN }}
         env:
           VSCE_PAT: ${{ secrets.VSCODE_PUBLISHER_TOKEN }}
 
       - name: Publish to Open VSX Registry
         run: |
-          cd extensions/vscode
+          cd src/extensions/vscode
           npx ovsx publish -p ${{ secrets.OPEN_VSX_TOKEN }}
         continue-on-error: true
         env:

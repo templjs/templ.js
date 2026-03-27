@@ -24,6 +24,19 @@ import type {
 } from './types.js';
 import { parseExpressionWithPriorityList } from './parsers.js';
 
+export type ExtractTokenInput = Pick<Token, 'content' | 'delimiterStart' | 'delimiterEnd'>;
+
+export interface DelimiterConfig {
+  start: string;
+  end: string;
+}
+
+export interface ExtractedContent {
+  content: string;
+  contentStart: number;
+  contentEnd: number;
+}
+
 /**
  * Parser for converting token stream into AST
  * Handles statements (if, for, set, block) and expressions
@@ -110,7 +123,7 @@ export class TemplateParser {
     const token = this.peek();
     if (!token || token.type !== TokenType.STATEMENT) return null;
 
-    const content = this.extractStatementContent(token.content).trim();
+    const content = this.extractStatementContent(token).content;
 
     if (content.match(/^if\s+/)) {
       return this.parseIfStatement();
@@ -134,7 +147,7 @@ export class TemplateParser {
     const startToken = this.peek();
     if (!startToken) throw new Error('Expected statement token');
 
-    const content = this.extractStatementContent(startToken.content);
+    const content = this.extractStatementContent(startToken).content;
     const conditionMatch = content.match(/^if\s+(.+?)$/is);
     if (!conditionMatch) {
       this.addError(
@@ -164,7 +177,7 @@ export class TemplateParser {
     if (
       nextToken &&
       nextToken.type === TokenType.STATEMENT &&
-      this.extractStatementContent(nextToken.content).trim().startsWith('else')
+      this.extractStatementContent(nextToken).content.startsWith('else')
     ) {
       this.advance();
       elseBody = this.parseStatementBody(['endif']);
@@ -175,7 +188,7 @@ export class TemplateParser {
     if (
       endToken &&
       endToken.type === TokenType.STATEMENT &&
-      this.extractStatementContent(endToken.content).startsWith('endif')
+      this.extractStatementContent(endToken).content.startsWith('endif')
     ) {
       this.advance();
     } else {
@@ -206,7 +219,7 @@ export class TemplateParser {
     const startToken = this.peek();
     if (!startToken) throw new Error('Expected statement token');
 
-    const content = this.extractStatementContent(startToken.content);
+    const content = this.extractStatementContent(startToken).content;
     const match = content.match(/^for\s+(\w+)\s+in\s+(.+?)$/);
 
     if (!match) {
@@ -231,7 +244,7 @@ export class TemplateParser {
     if (
       endToken &&
       endToken.type === TokenType.STATEMENT &&
-      this.extractStatementContent(endToken.content).startsWith('endfor')
+      this.extractStatementContent(endToken).content.startsWith('endfor')
     ) {
       this.advance();
     } else {
@@ -262,7 +275,7 @@ export class TemplateParser {
     const startToken = this.peek();
     if (!startToken) throw new Error('Expected statement token');
 
-    const content = this.extractStatementContent(startToken.content);
+    const content = this.extractStatementContent(startToken).content;
     const match = content.match(/^set\s+(\w+)\s*=\s*(.+?)$/);
 
     if (!match) {
@@ -299,7 +312,7 @@ export class TemplateParser {
     const startToken = this.peek();
     if (!startToken) throw new Error('Expected statement token');
 
-    const content = this.extractStatementContent(startToken.content);
+    const content = this.extractStatementContent(startToken).content;
     const match = content.match(/^block\s+(\w+)$/);
 
     if (!match) {
@@ -322,7 +335,7 @@ export class TemplateParser {
     if (
       endToken &&
       endToken.type === TokenType.STATEMENT &&
-      this.extractStatementContent(endToken.content).startsWith('endblock')
+      this.extractStatementContent(endToken).content.startsWith('endblock')
     ) {
       this.advance();
     } else {
@@ -349,7 +362,7 @@ export class TemplateParser {
    */
   private parseExpressionStatement(): ExpressionStatementNode {
     const token = this.advance();
-    const content = this.extractExpressionContent(token.content);
+    const content = this.extractExpressionContent(token).content;
     const value = this.parseExpression(content);
 
     return {
@@ -371,11 +384,11 @@ export class TemplateParser {
       if (!token) break;
 
       // Check if we've reached a closing keyword
-      if (
-        token.type === TokenType.STATEMENT &&
-        closeKeywords.some((kw) => this.extractStatementContent(token.content).startsWith(kw))
-      ) {
-        break;
+      if (token.type === TokenType.STATEMENT) {
+        const stmtContent = this.extractStatementContent(token).content;
+        if (closeKeywords.some((kw) => stmtContent.startsWith(kw))) {
+          break;
+        }
       }
 
       if (token.type === TokenType.TEXT) {
@@ -683,14 +696,92 @@ export class TemplateParser {
     const parts: string[] = [];
     let current = '';
     let depth = 0;
+    let inSingleQuote = false;
+    let inDoubleQuote = false;
+    let inTemplateString = false;
+    let inLineComment = false;
+    let inBlockComment = false;
+    let escaped = false;
 
     for (let i = 0; i < str.length; i++) {
       const char = str[i];
 
-      if (char === '(' || char === '[' || char === '{') depth++;
-      if (char === ')' || char === ']' || char === '}') depth--;
+      if (escaped) {
+        current += char;
+        escaped = false;
+        continue;
+      }
 
-      if (depth === 0 && char === delimiter) {
+      if (inLineComment) {
+        current += char;
+        if (char === '\n') {
+          inLineComment = false;
+        }
+        continue;
+      }
+
+      if (inBlockComment) {
+        current += char;
+        if (char === '*' && str[i + 1] === '/') {
+          current += '/';
+          i++;
+          inBlockComment = false;
+        }
+        continue;
+      }
+
+      if ((inSingleQuote || inDoubleQuote || inTemplateString) && char === '\\') {
+        current += char;
+        escaped = true;
+        continue;
+      }
+
+      if (!inSingleQuote && !inDoubleQuote && !inTemplateString && char === '/') {
+        const nextChar = str[i + 1];
+        if (nextChar === '/') {
+          current += '//';
+          i++;
+          inLineComment = true;
+          continue;
+        }
+        if (nextChar === '*') {
+          current += '/*';
+          i++;
+          inBlockComment = true;
+          continue;
+        }
+      }
+
+      if (!inDoubleQuote && !inTemplateString && char === "'") {
+        inSingleQuote = !inSingleQuote;
+        current += char;
+        continue;
+      }
+
+      if (!inSingleQuote && !inTemplateString && char === '"') {
+        inDoubleQuote = !inDoubleQuote;
+        current += char;
+        continue;
+      }
+
+      if (!inSingleQuote && !inDoubleQuote && char === '`') {
+        inTemplateString = !inTemplateString;
+        current += char;
+        continue;
+      }
+
+      if (!inSingleQuote && !inDoubleQuote && !inTemplateString) {
+        if (char === '(' || char === '[' || char === '{') depth++;
+        if (char === ')' || char === ']' || char === '}') depth--;
+      }
+
+      if (
+        !inSingleQuote &&
+        !inDoubleQuote &&
+        !inTemplateString &&
+        depth === 0 &&
+        char === delimiter
+      ) {
         parts.push(current);
         current = '';
       } else {
@@ -710,33 +801,36 @@ export class TemplateParser {
   }
 
   /**
-   * Extract statement content between delimiters
+   * Extract statement content between delimiters.
+   *
+   * Callers must provide delimiter information either via token metadata
+   * (`delimiterStart`/`delimiterEnd`) or through `delimiters`.
+   *
+   * @param tokenOrContent - Statement token-like input or raw statement content.
+   * @param delimiters - Optional explicit delimiter configuration used when input metadata is missing.
+   * @returns Extracted statement text and content bounds relative to token.content start.
    */
-  private extractStatementContent(content: string): string {
-    // Use flat string operations instead of regex to avoid ReDoS
-    let result = content;
-    if (result.startsWith('{%')) {
-      result = result.substring(2);
-    }
-    if (result.endsWith('%}')) {
-      result = result.substring(0, result.length - 2);
-    }
-    return result.trim();
+  public extractStatementContent(
+    tokenOrContent: string | ExtractTokenInput,
+    delimiters?: DelimiterConfig
+  ): ExtractedContent {
+    return extractStatementContent(tokenOrContent, delimiters);
   }
-
   /**
-   * Extract expression content between delimiters
+   * Extract expression content between delimiters.
+   *
+   * Callers must provide delimiter information either via token metadata
+   * (`delimiterStart`/`delimiterEnd`) or through `delimiters`.
+   *
+   * @param tokenOrContent - Expression token-like input or raw expression content.
+   * @param delimiters - Optional explicit delimiter configuration used when input metadata is missing.
+   * @returns Extracted expression text and content bounds relative to token.content start.
    */
-  private extractExpressionContent(content: string): string {
-    // Use flat string operations instead of regex to avoid ReDoS
-    let result = content;
-    if (result.startsWith('{{')) {
-      result = result.substring(2);
-    }
-    if (result.endsWith('}}')) {
-      result = result.substring(0, result.length - 2);
-    }
-    return result.trim();
+  public extractExpressionContent(
+    tokenOrContent: string | ExtractTokenInput,
+    delimiters?: DelimiterConfig
+  ): ExtractedContent {
+    return extractExpressionContent(tokenOrContent, delimiters);
   }
 
   /**
@@ -871,4 +965,92 @@ export class TemplateParser {
 export function parse(tokens: Token[]): ParseResult {
   const parser = new TemplateParser(tokens);
   return parser.parse();
+}
+
+// ---------------------------------------------------------------------------
+// Module-level implementation shared by standalone functions and class methods
+// ---------------------------------------------------------------------------
+
+function extractContentWithDelimiters(
+  tokenOrContent: string | ExtractTokenInput,
+  delimiters: DelimiterConfig | undefined,
+  _extractorName: 'extractStatementContent' | 'extractExpressionContent'
+): ExtractedContent {
+  // Use flat string operations instead of regex to avoid ReDoS
+  const token: ExtractTokenInput =
+    typeof tokenOrContent === 'string'
+      ? { content: tokenOrContent, delimiterStart: undefined, delimiterEnd: undefined }
+      : tokenOrContent;
+  const result = typeof token.content === 'string' ? token.content : '';
+
+  const startDelimiter = token.delimiterStart ?? delimiters?.start;
+  const endDelimiter = token.delimiterEnd ?? delimiters?.end;
+  if (!startDelimiter || !endDelimiter) {
+    const trimmedStart = result.trimStart();
+    const leadingWhitespace = result.length - trimmedStart.length;
+    const trailingWhitespace = trimmedStart.length - trimmedStart.trimEnd().length;
+    const contentStart = leadingWhitespace;
+    const contentEnd = result.length - trailingWhitespace;
+
+    return {
+      content: result.substring(contentStart, contentEnd),
+      contentStart,
+      contentEnd,
+    };
+  }
+
+  // When the content does not start and end with the resolved delimiters,
+  // hasWrappedDelimiters is false and the entire string is treated as the
+  // inner content (innerStart=0, innerEnd=result.length).  Only leading/
+  // trailing whitespace is removed — no delimiter characters are stripped.
+  // This is intentional fallback behaviour for pre-processed tokens, partial
+  // inputs, or mismatched delimiters; callers should expect the string to be
+  // returned intact (trimmed).  If different extraction semantics are needed,
+  // adjust the hasWrappedDelimiters condition or the innerStart/innerEnd
+  // derivations below.
+  const hasWrappedDelimiters = result.startsWith(startDelimiter) && result.endsWith(endDelimiter);
+  const innerStart = hasWrappedDelimiters ? startDelimiter.length : 0;
+  const innerEnd = hasWrappedDelimiters ? result.length - endDelimiter.length : result.length;
+  const inner = result.substring(innerStart, innerEnd);
+
+  const trimmedStart = inner.trimStart();
+  const leadingWhitespace = inner.length - trimmedStart.length;
+  const trailingWhitespace = trimmedStart.length - trimmedStart.trimEnd().length;
+
+  const contentStart = innerStart + leadingWhitespace;
+  const contentEnd = innerEnd - trailingWhitespace;
+
+  return {
+    content: result.substring(contentStart, contentEnd),
+    contentStart,
+    contentEnd,
+  };
+}
+
+/**
+ * Extract statement content between delimiters without instantiating TemplateParser.
+ *
+ * @param tokenOrContent - Statement token-like input or raw statement content.
+ * @param delimiters - Explicit delimiter configuration; required when token metadata is absent.
+ * @returns Extracted statement text and content bounds relative to token.content start.
+ */
+export function extractStatementContent(
+  tokenOrContent: string | ExtractTokenInput,
+  delimiters?: DelimiterConfig
+): ExtractedContent {
+  return extractContentWithDelimiters(tokenOrContent, delimiters, 'extractStatementContent');
+}
+
+/**
+ * Extract expression content between delimiters without instantiating TemplateParser.
+ *
+ * @param tokenOrContent - Expression token-like input or raw expression content.
+ * @param delimiters - Explicit delimiter configuration; required when token metadata is absent.
+ * @returns Extracted expression text and content bounds relative to token.content start.
+ */
+export function extractExpressionContent(
+  tokenOrContent: string | ExtractTokenInput,
+  delimiters?: DelimiterConfig
+): ExtractedContent {
+  return extractContentWithDelimiters(tokenOrContent, delimiters, 'extractExpressionContent');
 }

@@ -31,10 +31,5 @@
     "graph",
     "lsp"
   ],
-  "license": "Apache-2.0",
-  "devDependencies": {
-    "@vitest/coverage-v8": "^4.0.2",
-    "typescript": "^5.3.0",
-    "vitest": "^4.0.18"
-  }
+  "license": "Apache-2.0"
 }

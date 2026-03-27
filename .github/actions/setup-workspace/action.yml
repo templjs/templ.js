@@ -1,0 +1,76 @@
+name: Setup Workspace Toolchain
+description: Set up the repo's pinned Node.js and pnpm toolchain, restore the pnpm cache, and install dependencies.
+
+inputs:
+  node-version:
+    description: Optional Node.js version override. Defaults to package.json toolchain.node.default.
+    required: false
+    default: ''
+  registry-url:
+    description: Optional npm registry URL passed to actions/setup-node.
+    required: false
+    default: ''
+
+outputs:
+  node-version:
+    description: Resolved Node.js version.
+    value: ${{ steps.toolchain.outputs.node_version }}
+  pnpm-version:
+    description: Resolved pnpm version.
+    value: ${{ steps.toolchain.outputs.pnpm_version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve toolchain versions
+      id: toolchain
+      shell: bash
+      env:
+        INPUT_NODE_VERSION: ${{ inputs.node-version }}
+        PACKAGE_JSON: ${{ github.workspace }}/package.json
+      run: |
+        node_version="$INPUT_NODE_VERSION"
+        if [ -z "$node_version" ]; then
+          node_version="$(node -e "const fs = require('node:fs'); const pkg = JSON.parse(fs.readFileSync(process.env.PACKAGE_JSON, 'utf8')); process.stdout.write(pkg.toolchain.node.default);")"
+        fi
+
+        pnpm_version="$(node -e "const fs = require('node:fs'); const pkg = JSON.parse(fs.readFileSync(process.env.PACKAGE_JSON, 'utf8')); process.stdout.write(pkg.toolchain.pnpm);")"
+
+        echo "node_version=$node_version" >> "$GITHUB_OUTPUT"
+        echo "pnpm_version=$pnpm_version" >> "$GITHUB_OUTPUT"
+
+    - name: Setup Node.js
+      if: ${{ inputs.registry-url == '' }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ steps.toolchain.outputs.node_version }}
+
+    - name: Setup Node.js with registry
+      if: ${{ inputs.registry-url != '' }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ steps.toolchain.outputs.node_version }}
+        registry-url: ${{ inputs.registry-url }}
+
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: ${{ steps.toolchain.outputs.pnpm_version }}
+        run_install: false
+
+    - name: Get pnpm store directory
+      id: pnpm-cache
+      shell: bash
+      run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+
+    - name: Restore pnpm cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+        key: ${{ runner.os }}-node-${{ steps.toolchain.outputs.node_version }}-pnpm-${{ steps.toolchain.outputs.pnpm_version }}-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-node-${{ steps.toolchain.outputs.node_version }}-pnpm-${{ steps.toolchain.outputs.pnpm_version }}-store-
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile

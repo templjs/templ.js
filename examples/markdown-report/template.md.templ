@@ -1,0 +1,79 @@
+# Analytics Report for {{ (company|default({})).name|default('<missing company.name>', true) }}
+
+Generated: {{ generated_at|default('<missing generated_at>', true) }}
+
+## KPI Summary
+
+{% if kpi is defined and kpi is not none and kpi.total_users is defined and kpi.total_users is not none %}
+- Total Users: {{ kpi.total_users }}
+{% else %}
+- Total Users: N/A
+{% endif %}
+{% if kpi is defined and kpi is not none and kpi.active_users_30d is defined and kpi.active_users_30d is not none %}
+- Active Users (30d): {{ kpi.active_users_30d }}
+{% else %}
+- Active Users (30d): N/A
+{% endif %}
+{% set has_kpi = kpi is defined and kpi is not none %}
+{% set has_conversion = has_kpi and kpi.conversion_rate is defined and kpi.conversion_rate is not none and kpi.conversion_rate is number %}
+{% set has_field_formats = field_formats is defined and field_formats is not none %}
+{# conversion_rate_format "decimal" means stored value is a proportion (0.25 -> 25%), while "percentage" means stored value is already a percent number (25 -> 25%). #}
+{% set conversion_rate_format = 'decimal' %}
+{% if has_field_formats and field_formats.kpi is defined and field_formats.kpi is not none and field_formats.kpi.conversion_rate is defined and field_formats.kpi.conversion_rate is string %}
+{% set conversion_rate_format = field_formats.kpi.conversion_rate %}
+{% elif has_field_formats and field_formats.conversion_rate is defined and field_formats.conversion_rate is not none and field_formats.conversion_rate is string %}
+{% set conversion_rate_format = field_formats.conversion_rate %}
+{% endif %}
+{% set has_format = conversion_rate_format in ("decimal", "percentage") %}
+{% set has_valid_conversion = has_conversion and has_format %}
+{% if has_valid_conversion %}
+{% if conversion_rate_format == "percentage" %}
+- Conversion Rate: {{ kpi.conversion_rate | round(1) }}%
+{% elif conversion_rate_format == "decimal" %}
+- Conversion Rate: {{ (kpi.conversion_rate * 100) | round(1) }}%
+{% endif %}
+{% else %}
+- Conversion Rate: N/A
+{% endif %}
+
+## Top Regions
+
+{% if active_users_by_region is defined and active_users_by_region %}
+{% for region in active_users_by_region %}
+{% if region and region.name is defined and region.name and region.users is defined and region.users is number %}
+- {{ region.name }}: {{ region.users }} users
+{% else %}
+- Unknown: data unavailable
+{% endif %}
+{% endfor %}
+{% else %}
+- None
+{% endif %}
+
+## Risks
+
+{% if risks is defined and risks %}
+{% for risk in risks %}
+{% if risk %}
+{% if risk is string %}
+- {{ risk }}
+{% elif risk.message is defined and risk.message %}
+- {{ risk.message }}
+{% elif risk.description is defined and risk.description %}
+- {{ risk.description }}
+{% elif risk.summary is defined and risk.summary %}
+- {{ risk.summary }}
+{% elif risk.severity is defined and risk.code is defined and risk.severity and risk.code %}
+- [{{ risk.severity }}] {{ risk.code }}
+{% elif risk.severity is defined and risk.severity %}
+- Severity: {{ risk.severity }}
+{% elif risk.code is defined and risk.code %}
+- Code: {{ risk.code }}
+{% else %}
+- Unstructured risk entry
+{% endif %}
+{% endif %}
+{% endfor %}
+{% else %}
+- None
+{% endif %}

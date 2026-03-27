@@ -906,7 +906,7 @@ describe('ContextGraphSemanticReadAdapter branch coverage', () => {
     let refReadCount = 0;
     const adapter = createContextGraphSemanticReadAdapter({
       readTextFile: (filePath) => {
-        if (filePath.endsWith('/ref.json')) {
+        if (/[\\/]ref\.json$/.test(filePath)) {
           // The first read comes from resolvePathDefinitionAcrossRefs ($ref traversal).
           // The second read comes from resolveDefinitionLocation after the ref is resolved.
           // We let the traversal succeed and simulate failure only on the subsequent read.

@@ -8,6 +8,7 @@
  * - Virtual code mapping for base format delegation
  */
 
+import { createRequire } from 'node:module';
 import type { CodeInformation, LanguagePlugin, VirtualCode } from '@volar/language-core';
 import type * as ts from 'typescript';
 import {
@@ -27,6 +28,9 @@ export {
   type TokenInfo,
   type DelimiterConfig,
 } from './semantic-token-provider.js';
+
+const require = createRequire(import.meta.url);
+const packageJson = require('../package.json') as { version: string };
 
 /**
  * Base format types that templates can embed
@@ -585,7 +589,7 @@ class TempljsVirtualCode implements VirtualCode {
   }
 }
 
-export const version = '0.1.0';
+export const version = packageJson.version;
 
 class TempljsLanguagePlugin implements LanguagePlugin {
   private readonly virtualCodeByUri = new Map<string, TempljsVirtualCode>();

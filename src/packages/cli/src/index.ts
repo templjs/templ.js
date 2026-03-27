@@ -5,9 +5,13 @@
  * validating syntax, and generating output files.
  */
 
+import { createRequire } from 'node:module';
 import { renderTemplate, validateTemplate as validateTemplateCore } from '@templjs/core';
 
-export const version = '0.1.0';
+const require = createRequire(import.meta.url);
+const packageJson = require('../package.json') as { version: string };
+
+export const version = packageJson.version;
 
 /**
  * Process a template with data

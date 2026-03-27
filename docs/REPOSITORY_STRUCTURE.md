@@ -20,8 +20,8 @@ templjs/
 │   ├── workflows/              # GitHub Actions workflows
 │   │   ├── ci.yml              # CI workflow (tests, lint, build)
 │   │   ├── release.yml         # Release workflow (publish)
-│   │   ├── codeql.yml          # Security scanning
-│   │   └── test-secret-scanning.yml  # Secret detection
+│   │   ├── codeql.yml          # Security analysis
+│   │   └── benchmark.yml       # Benchmark publishing/comparison
 │   ├── ISSUE_TEMPLATE/         # Issue templates
 │   ├── PULL_REQUEST_TEMPLATE.md  # PR template
 │   └── copilot-instructions.md  # Copilot agent instructions
@@ -41,39 +41,40 @@ templjs/
 ├── examples/                   # Example templates and usage
 │   ├── README.md               # Examples overview
 │   └── *.templ                 # Example template files
-├── extensions/                 # IDE extensions
-│   └── vscode/                 # VS Code extension
-│       ├── src/
-│       ├── syntaxes/           # TextMate grammars
-│       ├── package.json        # Extension manifest
-│       └── tsconfig.json
-├── packages/                   # Published packages
-│   ├── core/                   # @templjs/core
-│   │   ├── src/
-│   │   │   ├── lexer/          # Tokenization
-│   │   │   ├── parser/         # AST generation
-│   │   │   ├── renderer/       # Template rendering
-│   │   │   ├── query/          # Query engine
-│   │   │   └── __tests__/      # Tests (co-located)
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   ├── vitest.config.ts
-│   │   └── README.md
-│   ├── cli/                    # @templjs/cli
-│   │   ├── src/
-│   │   │   ├── commands/       # CLI commands
-│   │   │   ├── utils/          # Utilities
-│   │   │   └── __tests__/
-│   │   ├── bin/                # CLI entry point
-│   │   ├── package.json
-│   │   └── README.md
-│   └── volar/                  # @templjs/volar
-│       ├── src/
-│       │   ├── language-service/  # Language features
-│       │   ├── utils/
-│       │   └── __tests__/
-│       ├── package.json
-│       └── README.md
+├── src/
+│   ├── extensions/             # IDE extensions
+│   │   └── vscode/             # VS Code extension
+│   │       ├── src/
+│   │       ├── syntaxes/       # TextMate grammars
+│   │       ├── package.json    # Extension manifest
+│   │       └── tsconfig.json
+│   └── packages/               # Published packages
+│       ├── core/               # @templjs/core
+│       │   ├── src/
+│       │   │   ├── lexer/      # Tokenization
+│       │   │   ├── parser/     # AST generation
+│       │   │   ├── renderer/   # Template rendering
+│       │   │   ├── query/      # Query engine
+│       │   │   └── __tests__/  # Tests (co-located)
+│       │   ├── package.json
+│       │   ├── tsconfig.json
+│       │   ├── vitest.config.ts
+│       │   └── README.md
+│       ├── cli/                # @templjs/cli
+│       │   ├── src/
+│       │   │   ├── commands/   # CLI commands
+│       │   │   ├── utils/      # Utilities
+│       │   │   └── __tests__/
+│       │   ├── bin/            # CLI entry point
+│       │   ├── package.json
+│       │   └── README.md
+│       └── volar/              # @templjs/volar
+│           ├── src/
+│           │   ├── language-service/  # Language features
+│           │   ├── utils/
+│           │   └── __tests__/
+│           ├── package.json
+│           └── README.md
 ├── schemas/                    # JSON schemas
 │   └── frontmatter/            # Document frontmatter schemas
 │       ├── by-type/            # Schemas selected by frontmatter `type`
@@ -91,7 +92,6 @@ templjs/
 │       │   ├── overlays/
 │       │   └── payloads/
 │       └── schema-map.json     # Type -> schema routing map
-├── .detect-secrets             # Secret scanning configuration
 ├── .editorconfig               # Editor configuration
 ├── .eslintrc.json              # ESLint configuration
 ├── .gitignore                  # Git ignore rules
@@ -420,7 +420,7 @@ Non-scoped:
 - **`.gitignore`**: Git ignore patterns
 - **`.npmrc`**: npm configuration (registry, scope)
 - **`codecov.yml`**: Codecov coverage thresholds
-- **`.detect-secrets`**: Secret scanning configuration
+- **`package.json` toolchain fields**: Canonical Node.js/pnpm pins used locally and in CI
 
 ### Package Level
 

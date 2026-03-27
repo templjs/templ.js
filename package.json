@@ -6,7 +6,7 @@
   "description": "Project monorepo - Description goes here",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/project.git"
+    "url": "https://github.com/templjs/templ.js.git"
   },
   "license": "Apache-2.0",
   "author": "Chris Caldwell",
@@ -28,7 +28,7 @@
     "ci:lint": "pnpm run lint:ci",
     "ci:test": "pnpm run test:affected:ci",
     "ci:type-check": "pnpm run type-check",
-    "clean": "nx reset && rm -rf node_modules packages/*/node_modules extensions/*/node_modules packages/*/dist extensions/*/dist",
+    "clean": "nx reset && rm -rf node_modules src/packages/*/node_modules src/extensions/*/node_modules src/packages/*/dist src/extensions/*/dist",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "graph": "nx graph",
@@ -62,33 +62,33 @@
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
-    "@changesets/cli": "latest",
-    "@commitlint/cli": "latest",
-    "@commitlint/config-conventional": "latest",
-    "@eslint/js": "latest",
-    "@nx/js": "latest",
+    "@changesets/cli": "^2.29.8",
+    "@commitlint/cli": "^20.4.2",
+    "@commitlint/config-conventional": "^20.4.2",
+    "@eslint/js": "^10.0.1",
+    "@nx/js": "^22.5.1",
     "@nx/vitest": "22.5.1",
-    "@types/node": "latest",
-    "@typescript-eslint/eslint-plugin": "latest",
-    "@typescript-eslint/parser": "latest",
-    "@vitest/coverage-v8": "^4.0.18",
-    "ajv": "latest",
-    "ajv-formats": "latest",
-    "eslint": "latest",
-    "eslint-config-prettier": "latest",
-    "eslint-plugin-prettier": "latest",
-    "husky": "latest",
-    "lint-staged": "latest",
-    "markdownlint-shell": "latest",
-    "nx": "latest",
-    "prettier": "latest",
-    "ts-node": "latest",
-    "tsx": "^4.21.0",
-    "typescript": "latest",
-    "typescript-eslint": "latest",
+    "@types/node": "^22.0.0 || ^24.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.56.0",
+    "@typescript-eslint/parser": "^8.56.0",
+    "@vitest/coverage-v8": "4.0.18",
+    "ajv": "^8.18.0",
+    "ajv-formats": "^3.0.1",
+    "eslint": "^10.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "markdownlint-shell": "^0.2.0",
+    "nx": "^22.5.1",
+    "prettier": "^3.8.1",
+    "ts-node": "^10.9.2",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.56.0",
     "vite": "^7.0.0",
-    "vitest": "^4.0.18",
-    "yaml": "latest"
+    "vitest": "4.0.18",
+    "yaml": "^2.8.2"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
@@ -107,8 +107,18 @@
       "pnpm run lint:markdown:fix --"
     ]
   },
+  "toolchain": {
+    "node": {
+      "default": "24",
+      "supported": [
+        "22",
+        "24"
+      ]
+    },
+    "pnpm": "8.15.0"
+  },
   "engines": {
-    "node": "25.6.1",
+    "node": ">=22.12.0 <23 || >=24.0.0 <25",
     "pnpm": "8.15.0"
   },
   "packageManager": "pnpm@8.15.0"

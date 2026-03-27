@@ -260,6 +260,28 @@ describe('Renderer', () => {
       expect(result.output).toBe('empty');
     });
 
+    it('should keep loop-local set variables scoped when not predeclared', () => {
+      const template =
+        '{% for item in items %}{% set local = item %}{{ local }}{% endfor %}{{ local }}';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { items: ['a', 'b'] });
+
+      expect(result.output).toBe('ab');
+      expect(result.errors.some((error) => error.type === 'undefined_variable')).toBe(true);
+    });
+
+    it('should update predeclared outer variables from inside loops', () => {
+      const template =
+        '{% set total = 0 %}{% for item in items %}{% set total = total + item %}{% endfor %}{{ total }}';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { items: [1, 2, 3] });
+
+      expect(result.output).toBe('6');
+      expect(result.errors).toHaveLength(0);
+    });
+
     it('should handle for-if combination', () => {
       const template = '{% for item in items %}{% if item > 2 %}{{ item }},{% endif %}{% endfor %}';
       const tokens = tokenize(template);
@@ -318,6 +340,37 @@ describe('Renderer', () => {
       const result = render(parseResult.ast!, { items: ['a', 'b', 'c'] });
       expect(result.output).toContain('Fa');
       expect(result.output).toContain('cL');
+    });
+  });
+
+  describe('set statement', () => {
+    it('should assign and read variables via set in root scope', () => {
+      const template = '{% set greeting = "Hello" %}{{ greeting }}';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, {});
+
+      expect(result.output).toBe('Hello');
+      expect(result.success).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('should assign and read variables via set with custom delimiters', () => {
+      const template = '<% set greeting = "Hello" %><= greeting =>';
+      const tokens = tokenize(template, {
+        delimiters: {
+          statement_start: '<%',
+          statement_end: '%>',
+          expression_start: '<=',
+          expression_end: '=>',
+        },
+      });
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, {});
+
+      expect(result.output).toBe('Hello');
+      expect(result.success).toBe(true);
+      expect(result.errors).toHaveLength(0);
     });
   });
 
@@ -530,10 +583,10 @@ describe('Renderer', () => {
 
     it('should handle deep nesting scope correctly', () => {
       const template =
-        '{% for a in items %}{% if a > 0 %}{% for b in [1,2] %}{{ a }}-{{ b }} {% endfor %}{% endif %}{% endfor %}';
+        '{% for a in items %}{% if a > 0 %}{% for b in inner %}{{ a }}-{{ b }} {% endfor %}{% endif %}{% endfor %}';
       const tokens = tokenize(template);
       const parseResult = parse(tokens);
-      const result = render(parseResult.ast!, { items: [1, 2] });
+      const result = render(parseResult.ast!, { items: [1, 2], inner: [1, 2] });
       expect(result.success).toBe(true);
     });
 
@@ -1001,8 +1054,8 @@ describe('Renderer', () => {
       { expr: '{{ 2 != 3 }}', expected: 'true' },
       { expr: '{{ 2 === 2 }}', expected: 'true' },
       { expr: '{{ 2 !== 3 }}', expected: 'true' },
-      { expr: '{{ 2 && 1 }}', expected: 'true' },
-      { expr: '{{ 0 || 1 }}', expected: 'true' },
+      { expr: '{{ 2 && 1 }}', expected: '1' },
+      { expr: '{{ 0 || 1 }}', expected: '1' },
       { expr: '{{ arr[1] }}', data: { arr: [10, 20] }, expected: '20' },
       { expr: '{{ 1 / 0 }}', expected: '0' },
       { expr: '{{ arr.length }}', data: { arr: [1, 2, 3, 4, 5] }, expected: '5' },
@@ -1155,6 +1208,33 @@ describe('Renderer', () => {
           const result = render(parseResult.ast!, { price: -123.456 });
           expect(result.success).toBe(true);
         });
+
+        it('applies filters to parenthesized arithmetic expressions', () => {
+          const template = '{{ (value * 100) | round(1) }}';
+          const tokens = tokenize(template);
+          const parseResult = parse(tokens);
+          const result = render(parseResult.ast!, { value: 0.062 });
+
+          expect(result.success).toBe(true);
+          expect(result.errors).toHaveLength(0);
+          expect(result.output).toBe('6.2');
+        });
+
+        it('applies filters to parenthesized arithmetic expressions with custom delimiters', () => {
+          const template = '<% (value * 100) | round(1) %>';
+          const tokens = tokenize(template, {
+            delimiters: {
+              expression_start: '<%',
+              expression_end: '%>',
+            },
+          });
+          const parseResult = parse(tokens);
+          const result = render(parseResult.ast!, { value: 0.062 });
+
+          expect(result.success).toBe(true);
+          expect(result.errors).toHaveLength(0);
+          expect(result.output).toBe('6.2');
+        });
       });
 
       describe('default and multi-type filter combinations', () => {
@@ -1215,6 +1295,22 @@ describe('Renderer', () => {
         const parseResult = parse(tokens);
         const result = render(parseResult.ast!, { text: '  spaces  ' });
         expect(result.output).toBe('spaces');
+      });
+
+      it('should escape html-sensitive characters with escape filter', () => {
+        const template = '{{ text | escape }}';
+        const tokens = tokenize(template);
+        const parseResult = parse(tokens);
+        const result = render(parseResult.ast!, { text: `<b>Tom & "Jerry"'s</b>` });
+        expect(result.output).toBe('&lt;b&gt;Tom &amp; &quot;Jerry&quot;&#39;s&lt;/b&gt;');
+      });
+
+      it('should support e alias for html escaping', () => {
+        const template = '{{ text | e }}';
+        const tokens = tokenize(template);
+        const parseResult = parse(tokens);
+        const result = render(parseResult.ast!, { text: "O'Malley <admin>" });
+        expect(result.output).toBe('O&#39;Malley &lt;admin&gt;');
       });
 
       it('should chain multiple filters', () => {

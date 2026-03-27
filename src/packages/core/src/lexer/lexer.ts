@@ -1,5 +1,5 @@
-import type { Token, Position, DelimiterConfig, LexerOptions } from './types.js';
-import { TokenType, DEFAULT_DELIMITERS } from './types.js';
+import type { Token, Position, LexerOptions } from './types.js';
+import { TokenType, mergeDelimiterConfig } from './types.js';
 
 /**
  * Tokenize a template string into structured tokens
@@ -19,11 +19,7 @@ import { TokenType, DEFAULT_DELIMITERS } from './types.js';
  * ```
  */
 export function tokenize(template: string, options?: LexerOptions): Token[] {
-  // Merge delimiters with defaults
-  const delimiters: Required<DelimiterConfig> = {
-    ...DEFAULT_DELIMITERS,
-    ...options?.delimiters,
-  };
+  const delimiters = mergeDelimiterConfig(options?.delimiters ?? {});
 
   const tokens: Token[] = [];
   let position = 0;
@@ -39,8 +35,17 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
     start: number;
     end: number;
     content: string;
+    delimiterStart: string;
+    delimiterEnd: string;
   } | null {
-    let earliest: { type: TokenType; start: number; end: number; content: string } | null = null;
+    let earliest: {
+      type: TokenType;
+      start: number;
+      end: number;
+      content: string;
+      delimiterStart: string;
+      delimiterEnd: string;
+    } | null = null;
 
     // Check each delimiter type
     const checks = [
@@ -76,12 +81,18 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
         );
       }
 
-      if (earliest === null || startPos < earliest.start) {
+      if (
+        earliest === null ||
+        startPos < earliest.start ||
+        (startPos === earliest.start && check.start.length > earliest.delimiterStart.length)
+      ) {
         earliest = {
           type: check.type,
           start: startPos,
           end: endPos + check.end.length,
           content: text.substring(startPos, endPos + check.end.length),
+          delimiterStart: check.start,
+          delimiterEnd: check.end,
         };
       }
     }
@@ -139,6 +150,8 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
       tokens.push({
         type: nextDelim.type,
         content: nextDelim.content,
+        delimiterStart: nextDelim.delimiterStart,
+        delimiterEnd: nextDelim.delimiterEnd,
         start,
         end: { line, column },
       });

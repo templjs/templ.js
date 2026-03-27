@@ -77,6 +77,368 @@ interface ExpressionParserRule {
   parse: (expr: string, context: ExpressionParserContext) => ExpressionNode | null;
 }
 
+type TemplateContext = 'template' | 'template-expr';
+
+/**
+ * Snapshot emitted by createCharContextIterator for each visited character.
+ *
+ * Because the iterator skips characters inside quoted string literals and template-literal body
+ * segments before invoking the visitor, emitted CharContextFrame values will have
+ * inSingleQuote, inDoubleQuote, and inTemplateBody set to false.
+ *
+ * To reason about template-literal/interpolation nesting in emitted frames, use
+ * inTemplateExpr, templateLiteralDepth, and templateExprDepth. The inTemplateBody field is
+ * retained for API compatibility and is always false for emitted frames.
+ */
+export interface CharContextFrame {
+  index: number;
+  ch: string;
+  nextCh: string | undefined;
+  depthBefore: number;
+  depthAfter: number;
+  /**
+   * Always false for emitted frames.
+   *
+   * createCharContextIterator does not invoke the visitor while scanning template literal body
+   * content. This field is retained as a compatibility marker for existing consumers.
+   */
+  inTemplateBody: boolean;
+  inTemplateExpr: boolean;
+  inSingleQuote: boolean;
+  inDoubleQuote: boolean;
+  templateLiteralDepth: number;
+  templateExprDepth: number;
+}
+
+export interface CharContextSummary {
+  depth: number;
+  inSingleQuote: boolean;
+  inDoubleQuote: boolean;
+  templateLiteralDepth: number;
+  templateExprDepth: number;
+  templateContextDepth: number;
+  inLineComment: boolean;
+  inBlockComment: boolean;
+}
+
+/**
+ * Consumer-facing character iterator for expression scanning and structural analysis.
+ *
+ * Walks each character in `expr`, tracks nesting, string-literal, comment, and template-literal
+ * state, and emits {@link CharContextFrame} snapshots to `visitor` for characters that are
+ * structurally relevant to downstream parsing helpers.
+ *
+ * Note: characters inside template literal bodies (outside `${...}` interpolation segments) are
+ * not emitted to `visitor`. As a result, emitted {@link CharContextFrame}.inTemplateBody is
+ * always false.
+ *
+ * This is primarily used by parser utilities that need quote-aware and template-aware traversal
+ * without re-implementing state management. Consumers can inspect each emitted
+ * {@link CharContextFrame} to determine whether a character should be treated as structural at the
+ * current point in the scan.
+ *
+ * @param expr - Expression source to scan character by character.
+ * @param visitor - Callback invoked with each emitted {@link CharContextFrame}. Returning `false`
+ * stops iteration immediately; returning `void` or any other value continues scanning.
+ * @param options - Iterator configuration.
+ * @param options.allowStructuralInTemplateExpr - When `true`, characters inside template
+ * expression segments such as `${...}` are still emitted to `visitor` and can affect structural
+ * parsing with one intentional asymmetry: interpolation-control braces (`{` / `}`) are consumed by
+ * template-expression tracking and do not contribute to general `depth`, while structural
+ * parentheses and brackets (`(` / `)` / `[` / `]`) inside `${...}` still contribute to `depth`.
+ * For example, `${ { a: 1 } }` does not increment general structural depth for the interpolation
+ * braces, but `${ (a + b) }` does for the parentheses. When `false`, template-expression contents
+ * are tracked for state only and skipped from structural visitation, which is useful when callers
+ * want to ignore operators and delimiters nested inside template interpolations.
+ * @returns {@link CharContextSummary} describing the final scan state after iteration stops or
+ * completes. `depth` is the final structural nesting depth for `()`, `[]`, and `{}` outside
+ * interpolation-control braces (`${` / `}`) that are handled by template-expression tracking;
+ * quote flags
+ * indicate whether scanning ended inside single or double quoted strings; `templateLiteralDepth`
+ * and `templateExprDepth` report remaining open template literal and interpolation nesting;
+ * `templateContextDepth` reports the total active template-context stack depth; and
+ * `inLineComment` / `inBlockComment` indicate whether scanning ended inside an unterminated line
+ * or block comment. Consumers should use the returned {@link CharContextSummary} to detect
+ * unbalanced or unterminated constructs after visiting frames.
+ */
+export function createCharContextIterator(
+  expr: string,
+  visitor: (frame: CharContextFrame) => boolean | void,
+  options: {
+    allowStructuralInTemplateExpr?: boolean;
+  } = {}
+): CharContextSummary {
+  const allowStructuralInTemplateExpr = options.allowStructuralInTemplateExpr === true;
+  let depth = 0;
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let escaped = false;
+  let templateLiteralDepth = 0;
+  let inLineComment = false;
+  let inBlockComment = false;
+  const templateContextStack: TemplateContext[] = [];
+  const templateExprDepthStack: number[] = [];
+
+  for (let i = 0; i < expr.length; i++) {
+    const ch = expr[i];
+    const nextCh = expr[i + 1];
+    const templateContext = templateContextStack[templateContextStack.length - 1];
+    const inTemplateBody = templateContext === 'template';
+    const inTemplateExpr = templateContext === 'template-expr';
+
+    if (inTemplateBody) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (ch === '\\') {
+        escaped = true;
+        continue;
+      }
+
+      if (ch === '`') {
+        templateContextStack.pop();
+        templateLiteralDepth--;
+        continue;
+      }
+
+      if (ch === '$' && nextCh === '{') {
+        templateContextStack.push('template-expr');
+        templateExprDepthStack.push(1);
+        i++;
+        continue;
+      }
+
+      continue;
+    }
+
+    if (inLineComment) {
+      if (ch === '\n' || ch === '\r') {
+        inLineComment = false;
+      }
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (ch === '*' && nextCh === '/') {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+
+    if (inTemplateExpr) {
+      if ((inSingleQuote || inDoubleQuote) && ch === '\\' && !escaped) {
+        escaped = true;
+        continue;
+      }
+
+      if (!escaped && ch === "'" && !inDoubleQuote) {
+        inSingleQuote = !inSingleQuote;
+        continue;
+      }
+
+      if (!escaped && ch === '"' && !inSingleQuote) {
+        inDoubleQuote = !inDoubleQuote;
+        continue;
+      }
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (inSingleQuote || inDoubleQuote) {
+        continue;
+      }
+
+      if (ch === '/' && nextCh === '/') {
+        inLineComment = true;
+        i++;
+        continue;
+      }
+
+      if (ch === '/' && nextCh === '*') {
+        inBlockComment = true;
+        i++;
+        continue;
+      }
+
+      if (ch === '`') {
+        templateContextStack.push('template');
+        templateLiteralDepth++;
+        continue;
+      }
+
+      if (ch === '{') {
+        if (templateExprDepthStack.length > 0) {
+          templateExprDepthStack[templateExprDepthStack.length - 1]++;
+        }
+        continue;
+      }
+
+      if (ch === '}') {
+        const currentDepth = templateExprDepthStack[templateExprDepthStack.length - 1];
+        if (currentDepth === undefined) {
+          continue;
+        }
+        const nextDepth = currentDepth - 1;
+        if (nextDepth <= 0) {
+          templateExprDepthStack.pop();
+          templateContextStack.pop();
+        } else {
+          templateExprDepthStack[templateExprDepthStack.length - 1] = nextDepth;
+        }
+        continue;
+      }
+
+      if (!allowStructuralInTemplateExpr) {
+        continue;
+      }
+    }
+
+    if ((inSingleQuote || inDoubleQuote) && ch === '\\' && !escaped) {
+      escaped = true;
+      continue;
+    }
+
+    if (!escaped && ch === "'" && !inDoubleQuote) {
+      inSingleQuote = !inSingleQuote;
+      continue;
+    }
+
+    if (!escaped && ch === '"' && !inSingleQuote) {
+      inDoubleQuote = !inDoubleQuote;
+      continue;
+    }
+
+    if (!escaped && ch === '`' && !inSingleQuote && !inDoubleQuote) {
+      templateContextStack.push('template');
+      templateLiteralDepth++;
+      continue;
+    }
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    if (inSingleQuote || inDoubleQuote) {
+      continue;
+    }
+
+    if (ch === '/' && nextCh === '/') {
+      inLineComment = true;
+      i++;
+      continue;
+    }
+
+    if (ch === '/' && nextCh === '*') {
+      inBlockComment = true;
+      i++;
+      continue;
+    }
+
+    const depthBefore = depth;
+    if (ch === '(' || ch === '[' || ch === '{') {
+      depth++;
+    }
+    if (ch === ')' || ch === ']' || ch === '}') {
+      depth--;
+    }
+
+    // Visitor is never invoked for template body characters because the inTemplateBody branch
+    // above always continues before this point.
+    const shouldContinue = visitor({
+      index: i,
+      ch,
+      nextCh,
+      depthBefore,
+      depthAfter: depth,
+      inTemplateBody,
+      inTemplateExpr,
+      inSingleQuote,
+      inDoubleQuote,
+      templateLiteralDepth,
+      templateExprDepth: templateExprDepthStack[templateExprDepthStack.length - 1] ?? 0,
+    });
+
+    if (shouldContinue === false) {
+      break;
+    }
+  }
+
+  return {
+    depth,
+    inSingleQuote,
+    inDoubleQuote,
+    templateLiteralDepth,
+    templateExprDepth: templateExprDepthStack[templateExprDepthStack.length - 1] ?? 0,
+    templateContextDepth: templateContextStack.length,
+    inLineComment,
+    inBlockComment,
+  };
+}
+
+/**
+ * Check whether an expression is wrapped by exactly one outermost pair of parentheses.
+ *
+ * The expression must begin with `(` and end with `)`, and no closing parenthesis may
+ * bring nesting back to depth 0 before the final character. This helper also tracks
+ * template literal and interpolation state so that parentheses inside template literals
+ * are treated as non-structural, while parentheses inside `${...}` expressions remain
+ * structural.
+ *
+ * @param expr - Expression text to inspect.
+ * @returns `true` when the entire expression is enclosed by a single outer pair of
+ * parentheses; otherwise `false`.
+ *
+ * @example
+ * isWrappedByOutermostParens('(x + y)'); // true
+ * isWrappedByOutermostParens('(x) + (y)'); // false
+ * isWrappedByOutermostParens('(`${a}`)'); // true
+ */
+export function isWrappedByOutermostParens(expr: string): boolean {
+  if (!(expr.startsWith('(') && expr.endsWith(')'))) {
+    return false;
+  }
+
+  let invalidWrap = false;
+  const summary = createCharContextIterator(
+    expr,
+    (frame) => {
+      if (frame.ch !== ')') {
+        return;
+      }
+
+      if (frame.depthAfter < 0) {
+        invalidWrap = true;
+        return false;
+      }
+
+      if (frame.depthAfter === 0 && frame.index < expr.length - 1) {
+        invalidWrap = true;
+        return false;
+      }
+    },
+    {
+      allowStructuralInTemplateExpr: true,
+    }
+  );
+
+  if (invalidWrap) {
+    return false;
+  }
+
+  return (
+    summary.depth === 0 &&
+    summary.templateLiteralDepth === 0 &&
+    summary.templateExprDepth === 0 &&
+    summary.templateContextDepth === 0
+  );
+}
+
 /**
  * Priority-ordered expression parser rules
  * Rules are evaluated in order of priority, and the first match wins
@@ -147,7 +509,7 @@ const expressionParserRules: ExpressionParserRule[] = [
     name: 'paren',
     priority: 40,
     parse: (expr, context) => {
-      if (!(expr.startsWith('(') && expr.endsWith(')'))) return null;
+      if (!isWrappedByOutermostParens(expr)) return null;
       const inner = expr.substring(1, expr.length - 1);
       return {
         type: 'paren',
@@ -200,7 +562,8 @@ const expressionParserRules: ExpressionParserRule[] = [
   {
     name: 'filter',
     priority: 80,
-    parse: (expr, context) => (expr.includes('|') ? context.parseFilterExpression(expr) : null),
+    parse: (expr, context) =>
+      context.splitTopLevel(expr, '|').length > 1 ? context.parseFilterExpression(expr) : null,
   },
   {
     name: 'variable',
@@ -351,50 +714,23 @@ export function splitByOperatorFromLeft(
   expr: string,
   op: string
 ): { left: string; right: string } | null {
-  let depth = 0;
-  let inSingleQuote = false;
-  let inDoubleQuote = false;
-  let escaped = false;
+  let match: { left: string; right: string } | null = null;
 
-  for (let i = 0; i < expr.length; i++) {
-    const ch = expr[i];
-
-    if ((inSingleQuote || inDoubleQuote) && ch === '\\' && !escaped) {
-      escaped = true;
-      continue;
-    }
-
-    if (!escaped && ch === "'" && !inDoubleQuote) {
-      inSingleQuote = !inSingleQuote;
-      continue;
-    }
-
-    if (!escaped && ch === '"' && !inSingleQuote) {
-      inDoubleQuote = !inDoubleQuote;
-      continue;
-    }
-
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-
-    if (inSingleQuote || inDoubleQuote) {
-      continue;
-    }
-
-    if (ch === '(' || ch === '[' || ch === '{') depth++;
-    if (ch === ')' || ch === ']' || ch === '}') depth--;
-
-    if (depth === 0 && expr.substring(i, i + op.length) === op) {
-      return {
-        left: expr.substring(0, i),
-        right: expr.substring(i + op.length),
+  createCharContextIterator(expr, (frame) => {
+    if (
+      frame.depthAfter === 0 &&
+      frame.templateLiteralDepth === 0 &&
+      expr.substring(frame.index, frame.index + op.length) === op
+    ) {
+      match = {
+        left: expr.substring(0, frame.index),
+        right: expr.substring(frame.index + op.length),
       };
+      return false;
     }
-  }
+  });
 
-  return null;
+  return match;
 }
 
 /**
@@ -426,46 +762,17 @@ export function splitByOperatorFromRight(
   expr: string,
   op: string
 ): { left: string; right: string } | null {
-  let depth = 0;
-  let inSingleQuote = false;
-  let inDoubleQuote = false;
-  let escaped = false;
   let splitIndex = -1;
 
-  for (let i = 0; i < expr.length; i++) {
-    const ch = expr[i];
-
-    if ((inSingleQuote || inDoubleQuote) && ch === '\\' && !escaped) {
-      escaped = true;
-      continue;
+  createCharContextIterator(expr, (frame) => {
+    if (
+      frame.depthAfter === 0 &&
+      frame.templateLiteralDepth === 0 &&
+      expr.substring(frame.index, frame.index + op.length) === op
+    ) {
+      splitIndex = frame.index;
     }
-
-    if (!escaped && ch === "'" && !inDoubleQuote) {
-      inSingleQuote = !inSingleQuote;
-      continue;
-    }
-
-    if (!escaped && ch === '"' && !inSingleQuote) {
-      inDoubleQuote = !inDoubleQuote;
-      continue;
-    }
-
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-
-    if (inSingleQuote || inDoubleQuote) {
-      continue;
-    }
-
-    if (ch === '(' || ch === '[' || ch === '{') depth++;
-    if (ch === ')' || ch === ']' || ch === '}') depth--;
-
-    if (depth === 0 && expr.substring(i, i + op.length) === op) {
-      splitIndex = i;
-    }
-  }
+  });
 
   if (splitIndex >= 0) {
     return {

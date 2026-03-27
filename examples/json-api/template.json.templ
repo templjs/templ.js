@@ -1,0 +1,13 @@
+{
+  "request_id": "{{ request.id }}",
+  "timestamp": "{{ request.timestamp }}",
+  "customer": {
+    "id": "{{ customer.id }}",
+    "tier": "{{ customer.tier }}"
+  },
+  "features": [
+    {% for feature in features %}
+    "{{ feature }}"{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+}

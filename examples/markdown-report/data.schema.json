@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "./data.schema.json",
+  "title": "Markdown Report Example Data",
+  "description": "Schema for markdown-report example input data used to render company KPIs, regional activity, and risk notes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "company",
+    "generated_at",
+    "kpi",
+    "field_formats",
+    "active_users_by_region",
+    "risks"
+  ],
+  "properties": {
+    "$schema": {
+      "description": "Optional JSON Schema identifier for the data document itself.",
+      "type": "string"
+    },
+    "company": {
+      "description": "Company metadata displayed in the report header.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "description": "Display name of the company the report summarizes.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "generated_at": {
+      "description": "ISO 8601 timestamp indicating when the report data was generated.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "kpi": {
+      "description": "Top-level KPI metrics shown in the report summary section; consumers should enforce active_users_30d <= total_users.",
+      "x-validation": "Consumers must ensure active_users_30d <= total_users.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total_users", "active_users_30d", "conversion_rate"],
+      "properties": {
+        "total_users": {
+          "description": "Total number of users in the measured population.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "active_users_30d": {
+          "description": "Number of users active during the last 30 days.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "conversion_rate": {
+          "description": "Conversion rate value whose scale is defined by field_formats.kpi.conversion_rate: \"decimal\" uses a ratio in [0,1], while \"percentage\" uses a percentage in [0,100].",
+          "type": "number"
+        }
+      }
+    },
+    "field_formats": {
+      "description": "Canonical numeric field format map used to keep formatting metadata consistent across report metrics.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kpi"],
+      "properties": {
+        "kpi": {
+          "description": "Format metadata for KPI fields.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["conversion_rate"],
+          "properties": {
+            "conversion_rate": {
+              "description": "Format for kpi.conversion_rate.",
+              "type": "string",
+              "enum": ["decimal", "percentage"]
+            }
+          }
+        }
+      }
+    },
+    "active_users_by_region": {
+      "description": "Breakdown of active users by region for regional report sections. Each region object in this array should have a unique name, but JSON Schema cannot enforce uniqueness of one property across objects; data consumers must validate this constraint.",
+      "x-uniqueBy": "name",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "description": "A single regional active-user aggregate.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "users"],
+        "properties": {
+          "name": {
+            "description": "Region name label used in report tables or bullet lists.",
+            "type": "string",
+            "minLength": 1
+          },
+          "users": {
+            "description": "Active user count for the region.",
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "risks": {
+      "description": "List of risk statements to include in the report's risk section.",
+      "type": "array",
+      "items": {
+        "description": "A single concise risk statement or structured risk payload.",
+        "oneOf": [
+          {
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "minProperties": 1,
+            "properties": {
+              "message": { "type": "string", "minLength": 1 },
+              "description": { "type": "string", "minLength": 1 },
+              "summary": { "type": "string", "minLength": 1 },
+              "severity": { "type": "string", "minLength": 1 },
+              "code": { "type": "string", "minLength": 1 }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "field_formats": {
+            "type": "object",
+            "properties": {
+              "kpi": {
+                "type": "object",
+                "properties": {
+                  "conversion_rate": {
+                    "const": "decimal"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "kpi": {
+            "type": "object",
+            "properties": {
+              "conversion_rate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "field_formats": {
+            "type": "object",
+            "properties": {
+              "kpi": {
+                "type": "object",
+                "properties": {
+                  "conversion_rate": {
+                    "const": "percentage"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "kpi": {
+            "type": "object",
+            "properties": {
+              "conversion_rate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

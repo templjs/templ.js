@@ -18,7 +18,11 @@ import { renderCommand } from './commands/render.js';
 import { validateCommand } from './commands/validate.js';
 import { version } from './index.js';
 import { loadConfig, applyConfig } from './config/index.js';
-import { defaultWatchModeDependencies, startRenderWatchMode } from './watch-mode.js';
+import {
+  defaultWatchModeDependencies,
+  startRenderWatchMode,
+  WATCH_ERROR_PREFIXES,
+} from './watch-mode.js';
 import { registerSignalHandlers } from './signal-handler.js';
 import { detectTTY } from './tty-detection.js';
 import { provideErrorSuggestion } from './error-formatter.js';
@@ -109,6 +113,102 @@ function normalizeCommanderErrorMessage(error: CommanderError): string {
   return error.message.replace(/^error:\s*/i, '').trim();
 }
 
+function trimTrailingNewline(value: string): string {
+  return value.replace(/\r?\n$/, '');
+}
+
+function createWatchModeDependencies(
+  mode: ReturnType<typeof resolveOutputModeFromCommand>,
+  outputFormat: string,
+  outputPath: string | undefined
+): typeof defaultWatchModeDependencies {
+  return {
+    ...defaultWatchModeDependencies,
+    writeOutput: (path: string, data: string, encoding: BufferEncoding): void => {
+      writeFileSync(path, data, encoding);
+      if (mode.quiet) {
+        return;
+      }
+
+      if (mode.json) {
+        writeSuccess(mode, {
+          command: 'render',
+          data: {
+            watch: true,
+            wroteFile: true,
+            outputPath: path,
+            outputFormat,
+          },
+        });
+        return;
+      }
+
+      writeVerbose(mode, `Watch render wrote output to "${path}"`);
+    },
+    writeStdout: (data: string): boolean => {
+      if (mode.quiet) {
+        return true;
+      }
+
+      if (mode.json) {
+        writeSuccess(mode, {
+          command: 'render',
+          data: {
+            watch: true,
+            wroteFile: false,
+            output: trimTrailingNewline(data),
+            outputFormat,
+          },
+        });
+        return true;
+      }
+
+      return process.stdout.write(data);
+    },
+    writeStderr: (data: string): boolean => {
+      const trimmed = trimTrailingNewline(data);
+
+      if (trimmed.startsWith('Watching ')) {
+        if (mode.quiet || mode.json) {
+          return true;
+        }
+        return process.stdout.write(data);
+      }
+
+      for (const prefix of Object.values(WATCH_ERROR_PREFIXES)) {
+        if (trimmed.startsWith(prefix)) {
+          if (mode.quiet || mode.json) {
+            const message = trimmed.slice(prefix.length) || trimmed;
+            writeError(
+              mode,
+              'render',
+              message,
+              outputPath ? `Output path: ${outputPath}` : undefined
+            );
+            return true;
+          }
+
+          return process.stderr.write(data);
+        }
+      }
+
+      const unexpectedMessage = trimmed || data;
+
+      if (mode.quiet || mode.json) {
+        writeError(
+          mode,
+          'render',
+          unexpectedMessage,
+          outputPath ? `Output path: ${outputPath}` : undefined
+        );
+        return true;
+      }
+
+      return process.stderr.write(data);
+    },
+  };
+}
+
 function createProgram(): Command {
   const program = new Command();
 
@@ -167,7 +267,7 @@ function createProgram(): Command {
             output: finalOptions.output,
           },
           {
-            ...defaultWatchModeDependencies,
+            ...createWatchModeDependencies(mode, outputFormat, finalOptions.output),
             render: (watchTemplatePath: string, watchInputPath: string) =>
               renderCommand(watchTemplatePath, watchInputPath, {
                 experimentalStreamJson:

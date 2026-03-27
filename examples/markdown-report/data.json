@@ -1,0 +1,21 @@
+{
+  "$schema": "./data.schema.json",
+  "company": { "name": "Acme Labs" },
+  "generated_at": "2026-03-23T08:30:55Z",
+  "kpi": {
+    "total_users": 12040,
+    "active_users_30d": 8432,
+    "conversion_rate": 0.062
+  },
+  "field_formats": {
+    "kpi": {
+      "conversion_rate": "decimal"
+    }
+  },
+  "active_users_by_region": [
+    { "name": "North America", "users": 4200 },
+    { "name": "EMEA", "users": 2700 },
+    { "name": "APAC", "users": 1532 }
+  ],
+  "risks": ["Signup drop in mobile funnel", "Payment retries above baseline"]
+}

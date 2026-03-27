@@ -21,6 +21,13 @@ export interface WatchModeDependencies {
 
 export const DEFAULT_DEBOUNCE_MS = 75;
 
+export const WATCH_ERROR_PREFIXES = {
+  RENDER_ERROR_PREFIX: 'Error: ',
+  WATCHER_ERROR_PREFIX: 'Watch error: ',
+  RENDER_LOOP_ERROR_PREFIX: 'Unexpected watch render loop error: ',
+  STARTUP_ERROR_PREFIX: 'Unexpected watch mode startup error: ',
+} as const;
+
 export const defaultWatchModeDependencies: WatchModeDependencies = {
   fileExists: existsSync,
   render: async () => {
@@ -80,7 +87,7 @@ export async function startRenderWatchMode(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       try {
-        deps.writeStderr(`Error: ${message}\n`);
+        deps.writeStderr(`${WATCH_ERROR_PREFIXES.RENDER_ERROR_PREFIX}${message}\n`);
       } catch {
         // Best effort only; avoid surfacing unhandled rejection from logging.
       }
@@ -100,7 +107,7 @@ export async function startRenderWatchMode(
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         try {
-          deps.writeStderr(`Unexpected watch render loop error: ${message}\n`);
+          deps.writeStderr(`${WATCH_ERROR_PREFIXES.RENDER_LOOP_ERROR_PREFIX}${message}\n`);
         } catch {
           // Best effort only; avoid surfacing unhandled rejection from logging.
         }
@@ -156,7 +163,7 @@ export async function startRenderWatchMode(
     const onSigTerm = (): void => cleanup(143);
     const onWatcherError = (error: Error): void => {
       try {
-        deps.writeStderr(`Watch error: ${error.message}\n`);
+        deps.writeStderr(`${WATCH_ERROR_PREFIXES.WATCHER_ERROR_PREFIX}${error.message}\n`);
       } catch {
         // Best effort only; avoid surfacing unhandled rejection from logging.
       }
@@ -179,7 +186,7 @@ export async function startRenderWatchMode(
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         try {
-          deps.writeStderr(`Unexpected watch mode startup error: ${message}\n`);
+          deps.writeStderr(`${WATCH_ERROR_PREFIXES.STARTUP_ERROR_PREFIX}${message}\n`);
         } catch {
           // Best effort only; avoid surfacing unhandled rejection from logging.
         }

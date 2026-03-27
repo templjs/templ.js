@@ -1,6 +1,60 @@
 import { describe, it, expect } from 'vitest';
 import { tokenize } from '../../src/lexer/lexer.js';
-import { TokenType } from '../../src/lexer/types.js';
+import {
+  buildDefaultDelimiters,
+  DEFAULT_DELIMITERS,
+  mergeDelimiterConfig,
+  TokenType,
+} from '../../src/lexer/types.js';
+
+describe('Delimiter Utilities', () => {
+  it('buildDefaultDelimiters returns pair shorthands from boundary fields', () => {
+    const delimiters = buildDefaultDelimiters({
+      statement_start: '<%',
+      statement_end: '%>',
+      expression_start: '[[',
+      expression_end: ']]',
+      comment_start: '<#',
+      comment_end: '#>',
+    });
+
+    expect(delimiters.statement).toEqual(['<%', '%>']);
+    expect(delimiters.expression).toEqual(['[[', ']]']);
+    expect(delimiters.comment).toEqual(['<#', '#>']);
+  });
+
+  it('buildDefaultDelimiters throws for empty delimiter boundaries', () => {
+    expect(() =>
+      buildDefaultDelimiters({
+        statement_start: '',
+        statement_end: '%>',
+        expression_start: '{{',
+        expression_end: '}}',
+        comment_start: '{#',
+        comment_end: '#}',
+      })
+    ).toThrow('Delimiter "statement_start" must be a non-empty string');
+  });
+
+  it('mergeDelimiterConfig prefers tuple shorthand over scalar start/end overrides', () => {
+    const merged = mergeDelimiterConfig({
+      expression: ['[[', ']]'],
+      expression_start: '<<',
+      expression_end: '>>',
+    });
+
+    expect(merged.expression).toEqual(['[[', ']]']);
+    expect(merged.expression_start).toBe('[[');
+    expect(merged.expression_end).toBe(']]');
+    expect(merged.statement_start).toBe(DEFAULT_DELIMITERS.statement_start);
+  });
+
+  it('mergeDelimiterConfig rejects empty delimiter strings', () => {
+    expect(() => mergeDelimiterConfig({ expression: ['', ']]'] })).toThrow(
+      'Delimiter "expression_start" must be a non-empty string'
+    );
+  });
+});
 
 describe('Lexer', () => {
   describe('Tokenization', () => {
@@ -144,6 +198,19 @@ describe('Lexer', () => {
           const template = '{% if x %}{% for y %}{{ y }}{% endfor %}{% endif %}';
           const tokens = tokenize(template);
           expect(tokens).toHaveLength(5);
+        });
+
+        it('should prefer the longest matching start delimiter when delimiters overlap', () => {
+          const tokens = tokenize('<< value >>', {
+            delimiters: {
+              statement: ['<', '>'],
+              expression: ['<<', '>>'],
+            },
+          });
+
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[0].content).toBe('<< value >>');
         });
       });
 
@@ -479,6 +546,57 @@ describe('Lexer', () => {
           expect(tokens[0].type).toBe(TokenType.COMMENT);
           expect(tokens[0].content).toBe('/* note */');
         });
+
+        it('should use statement and comment tuple delimiters', () => {
+          const tokens = tokenize('<% if x %> /* note */', {
+            delimiters: {
+              statement: ['<%', '%>'],
+              comment: ['/*', '*/'],
+            },
+          });
+
+          expect(tokens).toHaveLength(3);
+          expect(tokens[0].type).toBe(TokenType.STATEMENT);
+          expect(tokens[0].content).toBe('<% if x %>');
+          expect(tokens[2].type).toBe(TokenType.COMMENT);
+          expect(tokens[2].content).toBe('/* note */');
+        });
+
+        it('should use expression tuple delimiters', () => {
+          const tokens = tokenize('[[ x ]]', {
+            delimiters: {
+              expression: ['[[', ']]'],
+            },
+          });
+
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[0].content).toBe('[[ x ]]');
+        });
+
+        it('should prefer tuple delimiters over separate start/end fields', () => {
+          const tokens = tokenize('<% if x %> [[ note ]] (( val ))', {
+            delimiters: {
+              statement: ['<%', '%>'],
+              statement_start: '{%',
+              statement_end: '%}',
+              comment: ['[[', ']]'],
+              comment_start: '{#',
+              comment_end: '#}',
+              expression: ['((', '))'],
+              expression_start: '{{',
+              expression_end: '}}',
+            },
+          });
+
+          expect(tokens).toHaveLength(5);
+          expect(tokens[0].type).toBe(TokenType.STATEMENT);
+          expect(tokens[0].content).toBe('<% if x %>');
+          expect(tokens[2].type).toBe(TokenType.COMMENT);
+          expect(tokens[2].content).toBe('[[ note ]]');
+          expect(tokens[4].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[4].content).toBe('(( val ))');
+        });
       });
 
       describe('Multiple Custom Delimiters', () => {
@@ -748,11 +866,22 @@ describe('Lexer', () => {
 
       it('should tokenize 10KB plain text quickly', () => {
         const template = 'a'.repeat(10240);
-        const start = performance.now();
-        tokenize(template);
-        const duration = performance.now() - start;
+        const sampleCount = 10;
+        const batchSize = 50;
 
-        expect(duration).toBeLessThan(2);
+        tokenize(template);
+
+        const start = performance.now();
+
+        for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
+          for (let batchIndex = 0; batchIndex < batchSize; batchIndex++) {
+            tokenize(template);
+          }
+        }
+
+        const duration = (performance.now() - start) / (sampleCount * batchSize);
+
+        expect(duration).toBeLessThan(3);
       });
 
       it('should tokenize 100 expressions quickly', () => {

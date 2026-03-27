@@ -7,6 +7,130 @@ import type { FilterFunction } from './types.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyValue = any;
 
+const HTML_ESCAPE_PATTERN = /[&<>"']/g;
+const HTML_ESCAPE_ENTITIES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
+
+export const MAX_FORMATTER_CACHE_SIZE = 256;
+
+const NUMBER_FORMATTER_CACHE = new Map<string, Intl.NumberFormat>();
+const CURRENCY_FORMATTER_CACHE = new Map<string, Intl.NumberFormat>();
+const MAX_INTL_FRACTION_DIGITS = 20;
+
+function getLruCacheValue(
+  cache: Map<string, Intl.NumberFormat>,
+  key: string
+): Intl.NumberFormat | undefined {
+  const value = cache.get(key);
+  if (!value) {
+    return undefined;
+  }
+
+  // Promote accessed entry to most-recently-used position.
+  cache.delete(key);
+  cache.set(key, value);
+  return value;
+}
+
+function setLruCacheValue(
+  cache: Map<string, Intl.NumberFormat>,
+  key: string,
+  value: Intl.NumberFormat
+) {
+  if (cache.has(key)) {
+    cache.delete(key);
+  }
+
+  cache.set(key, value);
+
+  if (cache.size > MAX_FORMATTER_CACHE_SIZE) {
+    const oldestKey = cache.keys().next().value;
+    if (typeof oldestKey === 'string') {
+      cache.delete(oldestKey);
+    }
+  }
+}
+
+function getCachedNumberFormatter(
+  locale: string,
+  minimumFractionDigits: number,
+  maximumFractionDigits: number
+): Intl.NumberFormat {
+  const cacheKey = `${locale}|${minimumFractionDigits}|${maximumFractionDigits}`;
+  const cachedFormatter = getLruCacheValue(NUMBER_FORMATTER_CACHE, cacheKey);
+  if (cachedFormatter) {
+    return cachedFormatter;
+  }
+
+  const formatter = new Intl.NumberFormat(locale, {
+    useGrouping: true,
+    minimumFractionDigits,
+    maximumFractionDigits,
+  });
+  setLruCacheValue(NUMBER_FORMATTER_CACHE, cacheKey, formatter);
+  return formatter;
+}
+
+function getCachedCurrencyFormatter(locale: string, currencyCode: string): Intl.NumberFormat {
+  const cacheKey = `${locale}|${currencyCode}`;
+  const cachedFormatter = getLruCacheValue(CURRENCY_FORMATTER_CACHE, cacheKey);
+  if (cachedFormatter) {
+    return cachedFormatter;
+  }
+
+  const formatter = new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: currencyCode,
+  });
+  setLruCacheValue(CURRENCY_FORMATTER_CACHE, cacheKey, formatter);
+  return formatter;
+}
+
+function getCurrencyFractionDigits(resolvedCurrencyCode: string, resolvedLocale: string): number {
+  const localesToTry = [resolvedLocale, 'en-US', undefined] as const;
+
+  for (const locale of localesToTry) {
+    try {
+      const formatter = new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: resolvedCurrencyCode,
+      });
+      return formatter.resolvedOptions().maximumFractionDigits ?? 2;
+    } catch {
+      continue;
+    }
+  }
+
+  return 2;
+}
+
+function toFiniteNumber(value: AnyValue): number | null {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed === '') {
+      return null;
+    }
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  if (typeof value === 'boolean') {
+    return value ? 1 : 0;
+  }
+  return null;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(HTML_ESCAPE_PATTERN, (char) => HTML_ESCAPE_ENTITIES[char] ?? char);
+}
+
 function getLength(value: AnyValue): number {
   if (typeof value === 'string' || Array.isArray(value)) {
     return value.length;
@@ -158,18 +282,85 @@ const BUILTIN_FILTERS: Record<string, FilterFunction> = {
   /**
    * Convert to number
    */
-  number: (value: AnyValue): number | null => {
-    if (typeof value === 'number') {
+  number: function (value: AnyValue, fallback?: AnyValue): number | null | AnyValue {
+    const numericValue = toFiniteNumber(value);
+    if (numericValue !== null) {
+      return numericValue;
+    }
+
+    return arguments.length > 1 ? fallback : null;
+  },
+
+  /**
+   * Locale-aware number formatting using Intl.NumberFormat
+   */
+  format_number: (
+    value: AnyValue,
+    locale: AnyValue = 'en-US',
+    minimumFractionDigits: AnyValue = 0,
+    maximumFractionDigits: AnyValue = minimumFractionDigits
+  ): AnyValue => {
+    const numericValue = toFiniteNumber(value);
+    if (numericValue === null) {
       return value;
     }
-    if (typeof value === 'string') {
-      const num = Number.parseFloat(value);
-      return Number.isNaN(num) ? null : num;
+
+    const resolvedLocale = typeof locale === 'string' && locale.trim() ? locale.trim() : 'en-US';
+    const minDigits = Math.min(
+      MAX_INTL_FRACTION_DIGITS,
+      typeof minimumFractionDigits === 'number' && Number.isFinite(minimumFractionDigits)
+        ? Math.max(0, Math.floor(minimumFractionDigits))
+        : 0
+    );
+    const maxDigitsCandidate = Math.min(
+      MAX_INTL_FRACTION_DIGITS,
+      typeof maximumFractionDigits === 'number' && Number.isFinite(maximumFractionDigits)
+        ? Math.max(0, Math.floor(maximumFractionDigits))
+        : minDigits
+    );
+    const maxDigits = Math.max(minDigits, maxDigitsCandidate);
+
+    try {
+      return getCachedNumberFormatter(resolvedLocale, minDigits, maxDigits).format(numericValue);
+    } catch {
+      return getCachedNumberFormatter('en-US', minDigits, maxDigits).format(numericValue);
     }
-    if (typeof value === 'boolean') {
-      return value ? 1 : 0;
+  },
+
+  /**
+   * Locale-aware currency formatting using Intl.NumberFormat
+   */
+  format_currency: (
+    value: AnyValue,
+    currencyCode: AnyValue,
+    locale: AnyValue = 'en-US'
+  ): AnyValue => {
+    const numericValue = toFiniteNumber(value);
+    if (numericValue === null) {
+      return value;
     }
-    return null;
+
+    if (typeof currencyCode !== 'string') {
+      return value;
+    }
+
+    const resolvedCurrencyCode = currencyCode.trim().toUpperCase();
+    if (!resolvedCurrencyCode) {
+      return value;
+    }
+
+    const resolvedLocale = typeof locale === 'string' && locale.trim() ? locale.trim() : 'en-US';
+
+    try {
+      return getCachedCurrencyFormatter(resolvedLocale, resolvedCurrencyCode).format(numericValue);
+    } catch {
+      try {
+        return getCachedCurrencyFormatter('en-US', resolvedCurrencyCode).format(numericValue);
+      } catch {
+        const fractionDigits = getCurrencyFractionDigits(resolvedCurrencyCode, resolvedLocale);
+        return `${resolvedCurrencyCode} ${numericValue.toFixed(fractionDigits)}`;
+      }
+    }
   },
 
   /**
@@ -255,6 +446,23 @@ const BUILTIN_FILTERS: Record<string, FilterFunction> = {
   },
 
   /**
+   * Escape HTML-sensitive characters
+   */
+  escape: (value: AnyValue): AnyValue => {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    return escapeHtml(String(value));
+  },
+
+  /**
+   * Alias for HTML escape
+   */
+  e: (value: AnyValue): AnyValue => {
+    return BUILTIN_FILTERS.escape(value);
+  },
+
+  /**
    * JavaScript-like type inspection with null/array handling
    */
   typeof: (value: AnyValue): string => {
@@ -273,6 +481,16 @@ export function getBuiltinFilterNames(): string[] {
 }
 
 export const BUILTIN_FILTER_NAMES = getBuiltinFilterNames();
+
+/**
+ * Clears the module-level Intl.NumberFormat caches for number and currency
+ * formatters. Call this in long-running or dynamic-locale scenarios to free
+ * memory accumulated from many distinct locale/currency combinations.
+ */
+export function clearFormatterCaches(): void {
+  NUMBER_FORMATTER_CACHE.clear();
+  CURRENCY_FORMATTER_CACHE.clear();
+}
 
 /**
  * Filter application engine

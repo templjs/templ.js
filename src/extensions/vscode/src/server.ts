@@ -155,12 +155,14 @@ const serverOptions = {
     '.tmpl.yaml',
     '.tmpl.yml',
     '.tmpl.html',
+    '.tpl.md',
+    '.tpl.json',
+    '.tpl.yaml',
+    '.tpl.yml',
+    '.tpl.html',
   ],
   getServicePlugins() {
     return [];
-  },
-  getLanguagePlugins() {
-    return [createTempljsLanguagePlugin()];
   },
 };
 
@@ -206,6 +208,16 @@ function applyContentChanges(
 
 function getSchemaOptionsForUri(uri: string): SchemaRuntimeOptions {
   return schemaOptionsByUri.get(uri) ?? runtimeSchemaOptions;
+}
+
+function isLikelySchemaUri(uri: string): boolean {
+  const normalized = uri.split(/[?#]/, 1)[0].toLowerCase();
+  if (!/\.(json|ya?ml)$/.test(normalized)) {
+    return false;
+  }
+
+  const fileName = normalized.split('/').pop() ?? normalized;
+  return !/\.(templ|template|tpl|tmpl)\.(json|ya?ml)$/.test(fileName);
 }
 
 function ensureSchemaOptionsForUri(uri: string, text: string): SchemaRuntimeOptions {
@@ -566,17 +578,47 @@ connection.onDidChangeTextDocument((event) => {
   const generation = (schemaLoadGenerationByUri.get(uri) ?? 0) + 1;
   schemaLoadGenerationByUri.set(uri, generation);
 
-  void loadSchemasForDocumentContext(
-    uri,
-    updated,
-    storedWorkspaceRoot,
-    storedInitializationOptions
-  ).then(() => {
-    if (schemaLoadGenerationByUri.get(uri) !== generation) {
-      return; // A newer load was scheduled while this one was in-flight; discard its result.
-    }
-    publishDiagnosticsForDocument(uri);
-  });
+  void loadSchemasForDocumentContext(uri, updated, storedWorkspaceRoot, storedInitializationOptions)
+    .then(() => {
+      if (schemaLoadGenerationByUri.get(uri) !== generation) {
+        return; // A newer load was scheduled while this one was in-flight; discard its result.
+      }
+      publishDiagnosticsForDocument(uri);
+    })
+    .catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      connection.console.log(`[templjs] Schema load failed for ${uri}: ${message}`);
+    });
+});
+
+connection.onDidChangeWatchedFiles((event) => {
+  const changes = event.changes ?? [];
+  const schemaChanged = changes.some((change) => isLikelySchemaUri(change.uri));
+  if (!schemaChanged) {
+    return;
+  }
+
+  trace(
+    `schema-like file change detected (${changes.length} file(s)); reloading schemas for ${documentTextByUri.size} cached document(s)`
+  );
+  schemaFileCache.clear();
+
+  for (const [uri, text] of documentTextByUri.entries()) {
+    const generation = (schemaLoadGenerationByUri.get(uri) ?? 0) + 1;
+    schemaLoadGenerationByUri.set(uri, generation);
+
+    void loadSchemasForDocumentContext(uri, text, storedWorkspaceRoot, storedInitializationOptions)
+      .then(() => {
+        if (schemaLoadGenerationByUri.get(uri) !== generation) {
+          return;
+        }
+        publishDiagnosticsForDocument(uri);
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        connection.console.log(`[templjs] Schema reload failed for ${uri}: ${message}`);
+      });
+  }
 });
 
 connection.onInitialized(server.initialized);

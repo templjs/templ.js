@@ -6,6 +6,7 @@ import type {
   ErrorNode,
   FilterNode,
   LiteralNode,
+  ParenNode,
   UnaryOpNode,
   VariableNode,
 } from '../parser/types.js';
@@ -17,6 +18,29 @@ type AnyValue = any;
 
 const variableResolver = new VariableResolver();
 const builtinFilters = createBuiltinFilterMap();
+/**
+ * Sentinel position used when a node has no source-location information.
+ * `line` is 1-based; `column` is 0-based. Consumer-facing helper for IDE/Volar integration.
+ */
+export const UNKNOWN_POSITION = { line: -1, column: -1 } as const;
+
+/**
+ * Type guard for a usable source position.
+ * Accepts an undefined or partial position object and returns `true` only when
+ * both `line` (≥ 1, 1-based) and `column` (≥ 0, 0-based) are present numeric
+ * values. Consumer-facing helper for IDE/Volar integration.
+ */
+export function isHighlightablePosition(
+  position: Partial<{ line: number; column: number }> | null | undefined
+): position is { line: number; column: number } {
+  return (
+    position != null &&
+    typeof position.line === 'number' &&
+    typeof position.column === 'number' &&
+    position.line >= 1 &&
+    position.column >= 0
+  );
+}
 
 /**
  * Evaluate a literal expression
@@ -130,6 +154,17 @@ export function evaluateFilter(expr: FilterNode, context: RenderContext): AnyVal
  * Evaluate a binary operation with JavaScript-correct semantics
  */
 export function evaluateBinaryOp(node: BinaryOpNode, context: RenderContext): AnyValue {
+  // Preserve JavaScript short-circuit semantics for logical operators.
+  if (node.operator === '&&') {
+    const left = evaluateExpression(node.left, context);
+    return variableResolver.toBoolean(left) ? evaluateExpression(node.right, context) : left;
+  }
+
+  if (node.operator === '||') {
+    const left = evaluateExpression(node.left, context);
+    return variableResolver.toBoolean(left) ? left : evaluateExpression(node.right, context);
+  }
+
   const left = evaluateExpression(node.left, context);
   const right = evaluateExpression(node.right, context);
 
@@ -174,12 +209,6 @@ export function evaluateBinaryOp(node: BinaryOpNode, context: RenderContext): An
     case '>=':
       return (left as number) >= (right as number);
 
-    // Logical
-    case '&&':
-      return variableResolver.toBoolean(left) && variableResolver.toBoolean(right);
-    case '||':
-      return variableResolver.toBoolean(left) || variableResolver.toBoolean(right);
-
     // Array/object access
     case '[':
       return left[right];
@@ -208,14 +237,38 @@ export function evaluateUnaryOp(node: UnaryOpNode, context: RenderContext): AnyV
 }
 
 /**
+ * Evaluate a parenthesized expression
+ */
+export function evaluateParen(node: ParenNode, context: RenderContext): AnyValue {
+  return evaluateExpression(node.value, context);
+}
+
+/**
  * Handle parse error expressions
  */
 export function evaluateError(expr: ErrorNode, context: RenderContext): AnyValue {
+  const message = expr.message || 'Invalid or missing expression type';
+  const hasHighlightableLocation =
+    isHighlightablePosition(expr.start) && isHighlightablePosition(expr.end);
+
   context.errors.push({
-    message: expr.message || 'Invalid or missing expression type',
+    message,
     path: '',
     type: 'runtime_error',
+    ...(hasHighlightableLocation
+      ? {
+          location: {
+            start: expr.start,
+            end: expr.end,
+          },
+        }
+      : {}),
   });
+
+  if (context.options.throwOnError) {
+    throw new Error(message);
+  }
+
   return undefined;
 }
 
@@ -226,12 +279,21 @@ export function evaluateError(expr: ErrorNode, context: RenderContext): AnyValue
 export function evaluateExpression(expr: ExpressionNode, context: RenderContext): AnyValue {
   const type = expr?.type;
   if (typeof type !== 'string') {
-    context.errors.push({
-      message: 'Invalid or missing expression type',
-      path: '',
-      type: 'runtime_error',
-    });
-    return undefined;
+    // Unknown expression shape has no reliable source mapping.
+    // Use a sentinel that evaluateError treats as non-highlightable.
+    const fallbackPosition = UNKNOWN_POSITION;
+    const exprLike = expr as Partial<ErrorNode> | undefined;
+
+    return evaluateError(
+      {
+        type: 'error',
+        message: 'Invalid or missing expression type',
+        recovered: true,
+        start: exprLike?.start ?? fallbackPosition,
+        end: exprLike?.end ?? fallbackPosition,
+      },
+      context
+    );
   }
 
   // Dispatch to specific evaluator based on expression type
@@ -241,6 +303,7 @@ export function evaluateExpression(expr: ExpressionNode, context: RenderContext)
     filter: evaluateFilter as any,
     binary_op: evaluateBinaryOp as any,
     unary_op: evaluateUnaryOp as any,
+    paren: evaluateParen as any,
     error: evaluateError as any,
   };
 
@@ -249,5 +312,14 @@ export function evaluateExpression(expr: ExpressionNode, context: RenderContext)
     return evaluator(expr, context);
   }
 
-  return undefined;
+  return evaluateError(
+    {
+      type: 'error',
+      message: `Unknown expression type: ${type}`,
+      recovered: true,
+      start: expr.start,
+      end: expr.end,
+    },
+    context
+  );
 }

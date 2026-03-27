@@ -200,10 +200,54 @@ describe('Evaluators', () => {
       expect(evaluateExpression(binary(op, left, right), context)).toBe(expected);
     });
 
-    it('uses boolean coercion for logical operators', () => {
+    it('returns operand values for logical operators', () => {
       const context = createContext();
-      expect(evaluateExpression(binary('&&', literal(1), literal(0)), context)).toBe(false);
-      expect(evaluateExpression(binary('||', literal(0), literal(1)), context)).toBe(true);
+      expect(evaluateExpression(binary('&&', literal(1), literal(0)), context)).toBe(0);
+      expect(evaluateExpression(binary('||', literal(0), literal(1)), context)).toBe(1);
+    });
+
+    it('returns non-boolean operands from logical short-circuit operators', () => {
+      const ctx = createContext({ obj: { key: 'value' } });
+
+      // && — falsy left: returns left without evaluating right
+      expect(evaluateExpression(binary('&&', literal(''), literal('hello')), ctx)).toBe('');
+      expect(evaluateExpression(binary('&&', literal(null), literal('x')), ctx)).toBeNull();
+
+      // && — truthy left: returns right
+      expect(evaluateExpression(binary('&&', literal('hello'), literal('')), ctx)).toBe('');
+      expect(evaluateExpression(binary('&&', variable('obj'), literal('right')), ctx)).toBe(
+        'right'
+      );
+
+      // || — falsy left: returns right
+      expect(evaluateExpression(binary('||', literal(''), literal('hello')), ctx)).toBe('hello');
+      expect(evaluateExpression(binary('||', literal(null), literal('fallback')), ctx)).toBe(
+        'fallback'
+      );
+
+      // || — truthy left: returns left (the original object, not a boolean)
+      expect(evaluateExpression(binary('||', variable('obj'), literal('unused')), ctx)).toEqual({
+        key: 'value',
+      });
+      expect(evaluateExpression(binary('||', literal('hello'), literal('')), ctx)).toBe('hello');
+    });
+
+    it('does not evaluate right operand when logical short-circuit applies', () => {
+      const andCtx = createContext();
+      const andResult = evaluateExpression(
+        binary('&&', literal(0), binary('/', literal(10), literal(0))),
+        andCtx
+      );
+      expect(andResult).toBe(0);
+      expect(andCtx.errors).toHaveLength(0);
+
+      const orCtx = createContext({ left: { ok: true } });
+      const orResult = evaluateExpression(
+        binary('||', variable('left'), variable('missing')),
+        orCtx
+      );
+      expect(orResult).toEqual({ ok: true });
+      expect(orCtx.errors).toHaveLength(0);
     });
 
     it('supports bracket access on arrays and objects', () => {

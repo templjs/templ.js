@@ -2,12 +2,15 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os';
 import path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { FileChangeType } from '@volar/language-server';
+import { pathToFileURL } from 'url';
 
 const onInitialize = vi.fn();
 const onInitialized = vi.fn();
 const onShutdown = vi.fn();
 const onDidOpenTextDocument = vi.fn();
 const onDidChangeTextDocument = vi.fn();
+const onDidChangeWatchedFiles = vi.fn();
 const onCompletion = vi.fn();
 const onHover = vi.fn();
 const onDefinition = vi.fn();
@@ -19,6 +22,8 @@ const consoleWarn = vi.fn();
 const initialize = vi.fn(async () => ({ capabilities: {} }));
 const initialized = vi.fn();
 const shutdown = vi.fn();
+const FILE_CHANGE_TYPE_CHANGED = FileChangeType.Changed;
+const toFileUri = (filePath: string): string => pathToFileURL(filePath).href;
 
 vi.mock('@volar/language-server/node', () => ({
   createConnection: vi.fn(() => ({
@@ -27,6 +32,7 @@ vi.mock('@volar/language-server/node', () => ({
     onShutdown,
     onDidOpenTextDocument,
     onDidChangeTextDocument,
+    onDidChangeWatchedFiles,
     onCompletion,
     onHover,
     onDefinition,
@@ -53,6 +59,7 @@ describe('language-server-inprocess-integration', () => {
     onShutdown.mockClear();
     onDidOpenTextDocument.mockClear();
     onDidChangeTextDocument.mockClear();
+    onDidChangeWatchedFiles.mockClear();
     onCompletion.mockClear();
     onHover.mockClear();
     onDefinition.mockClear();
@@ -111,7 +118,7 @@ describe('language-server-inprocess-integration', () => {
         };
       }>;
 
-      const docUri = `file://${path.join(workspaceDir, 'sample.md.templ')}`;
+      const docUri = toFileUri(path.join(workspaceDir, 'sample.md.templ'));
       const initialDocumentText = '---\ntitle: "{{ frontData.t }}"\n---\n{{ contentData.h }}';
       let activeLines = initialDocumentText.split('\n');
 
@@ -124,7 +131,7 @@ describe('language-server-inprocess-integration', () => {
       };
 
       const initializeResult = await initializeHandler({
-        rootUri: `file://${workspaceDir}`,
+        rootUri: toFileUri(workspaceDir),
         initializationOptions: {
           schemaPath: frontmatterSchemaPath,
           contentSchemaPath,
@@ -233,6 +240,79 @@ describe('language-server-inprocess-integration', () => {
     }
   });
 
+  it('re-publishes diagnostics for open documents when watched schema files change', async () => {
+    const workspaceDir = mkdtempSync(path.join(tmpdir(), 'templjs-server-watch-'));
+
+    try {
+      const schemaPath = path.join(workspaceDir, 'schema.json');
+      writeFileSync(
+        schemaPath,
+        JSON.stringify({
+          type: 'object',
+          properties: {
+            user: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+              },
+            },
+          },
+        })
+      );
+
+      await import('../src/server');
+      const initializeHandler = onInitialize.mock.calls[0][0] as (
+        params: unknown
+      ) => Promise<unknown>;
+      await initializeHandler({
+        rootUri: toFileUri(workspaceDir),
+        initializationOptions: { schemaPath },
+      });
+
+      const docUri = toFileUri(path.join(workspaceDir, 'sample.md.tpl'));
+      const didOpenHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
+        textDocument: { uri: string; text: string };
+      }) => void;
+      didOpenHandler({
+        textDocument: {
+          uri: docUri,
+          text: '{{ user.name }}',
+        },
+      });
+
+      await vi.waitFor(
+        () => {
+          expect(sendDiagnostics).toHaveBeenCalledWith(expect.objectContaining({ uri: docUri }));
+        },
+        { timeout: 5000 }
+      );
+      sendDiagnostics.mockClear();
+
+      const watchedFilesRegistration = onDidChangeWatchedFiles.mock.calls[0];
+      if (!watchedFilesRegistration || typeof watchedFilesRegistration[0] !== 'function') {
+        throw new Error(
+          'Server did not register onDidChangeWatchedFiles handler during test setup'
+        );
+      }
+
+      const watchedFilesHandler = watchedFilesRegistration[0] as (event: {
+        changes: Array<{ uri: string; type: number }>;
+      }) => void;
+      watchedFilesHandler({
+        changes: [{ uri: toFileUri(schemaPath), type: FILE_CHANGE_TYPE_CHANGED }],
+      });
+
+      await vi.waitFor(
+        () => {
+          expect(sendDiagnostics).toHaveBeenCalledWith(expect.objectContaining({ uri: docUri }));
+        },
+        { timeout: 5000 }
+      );
+    } finally {
+      rmSync(workspaceDir, { recursive: true, force: true });
+    }
+  });
+
   it('supports definition for frontmatter schema paths and template variables', async () => {
     const workspaceDir = mkdtempSync(path.join(tmpdir(), 'templjs-server-def-'));
 
@@ -286,7 +366,7 @@ describe('language-server-inprocess-integration', () => {
         };
       }>;
 
-      const docUri = `file://${path.join(workspaceDir, 'sample.md.templ')}`;
+      const docUri = toFileUri(path.join(workspaceDir, 'sample.md.templ'));
       const text = [
         '---',
         `"$schema": ${path.basename(frontmatterSchemaPath)}`,
@@ -306,7 +386,7 @@ describe('language-server-inprocess-integration', () => {
       };
 
       const initializeResult = await initializeHandler({
-        rootUri: `file://${workspaceDir}`,
+        rootUri: toFileUri(workspaceDir),
         initializationOptions: {
           documentContext: {
             uri: docUri,
@@ -333,26 +413,26 @@ describe('language-server-inprocess-integration', () => {
         textDocument: { uri: docUri },
         position: locate(1, path.basename(frontmatterSchemaPath), 2),
       });
-      expect(schemaPathDefinition?.uri).toBe(`file://${frontmatterSchemaPath}`);
+      expect(schemaPathDefinition?.uri).toBe(toFileUri(frontmatterSchemaPath));
 
       const contentSchemaPathDefinition = definitionHandler({
         textDocument: { uri: docUri },
         position: locate(2, path.basename(contentSchemaPath), 2),
       });
-      expect(contentSchemaPathDefinition?.uri).toBe(`file://${contentSchemaPath}`);
+      expect(contentSchemaPathDefinition?.uri).toBe(toFileUri(contentSchemaPath));
 
       const frontVariableDefinition = definitionHandler({
         textDocument: { uri: docUri },
         position: locate(3, 'frontData.title', 2),
       });
-      expect(frontVariableDefinition?.uri).toBe(`file://${frontmatterSchemaPath}`);
+      expect(frontVariableDefinition?.uri).toBe(toFileUri(frontmatterSchemaPath));
       expect(frontVariableDefinition?.range.start.line).toBeGreaterThanOrEqual(0);
 
       const contentVariableDefinition = definitionHandler({
         textDocument: { uri: docUri },
         position: locate(5, 'contentData.heading', 2),
       });
-      expect(contentVariableDefinition?.uri).toBe(`file://${contentSchemaPath}`);
+      expect(contentVariableDefinition?.uri).toBe(toFileUri(contentSchemaPath));
       expect(contentVariableDefinition?.range.start.line).toBeGreaterThanOrEqual(0);
     } finally {
       rmSync(workspaceDir, { recursive: true, force: true });
@@ -400,7 +480,7 @@ describe('language-server-inprocess-integration', () => {
         };
       }>;
 
-      const docUri = `file://${path.join(workspaceDir, 'sample.md.templ')}`;
+      const docUri = toFileUri(path.join(workspaceDir, 'sample.md.templ'));
       const schemaSource = `${path.basename(commonSchemaPath)}#/$defs/milestone`;
       const text = [
         '---',
@@ -421,7 +501,7 @@ describe('language-server-inprocess-integration', () => {
       };
 
       await initializeHandler({
-        rootUri: `file://${workspaceDir}`,
+        rootUri: toFileUri(workspaceDir),
         initializationOptions: {
           documentContext: {
             uri: docUri,
@@ -446,7 +526,7 @@ describe('language-server-inprocess-integration', () => {
         textDocument: { uri: docUri },
         position: locate(1, schemaSource, schemaSource.length - 'milestone'.length + 2),
       });
-      expect(schemaPathDefinition?.uri).toBe(`file://${commonSchemaPath}`);
+      expect(schemaPathDefinition?.uri).toBe(toFileUri(commonSchemaPath));
 
       const loopAliasDefinition = definitionHandler({
         textDocument: { uri: docUri },
@@ -490,7 +570,7 @@ describe('language-server-inprocess-integration', () => {
         };
       }>;
 
-      const docUri = `file://${path.join(workspaceDir, 'sample.md.templ')}`;
+      const docUri = toFileUri(path.join(workspaceDir, 'sample.md.templ'));
       const text = [
         '---',
         `"$content_schema": ${path.basename(contentSchemaPath)}`,
@@ -508,7 +588,7 @@ describe('language-server-inprocess-integration', () => {
       };
 
       await initializeHandler({
-        rootUri: `file://${workspaceDir}`,
+        rootUri: toFileUri(workspaceDir),
         initializationOptions: {
           documentContext: {
             uri: docUri,
@@ -538,7 +618,7 @@ describe('language-server-inprocess-integration', () => {
         position: locate(3, 'relationships[0].type', 'relationships[0].type'.length - 2),
       });
 
-      expect(definition?.uri).toBe(`file://${contentSchemaPath}`);
+      expect(definition?.uri).toBe(toFileUri(contentSchemaPath));
       expect(definition?.range.start.line).toBe(expectedItemTypeLine);
     } finally {
       rmSync(workspaceDir, { recursive: true, force: true });
@@ -624,7 +704,7 @@ describe('language-server-inprocess-integration', () => {
         };
       }>;
 
-      const docUri = `file://${path.join(workspaceDir, 'milestone.md.tpl')}`;
+      const docUri = toFileUri(path.join(workspaceDir, 'milestone.md.tpl'));
       const text = [
         '---',
         'type: milestone',
@@ -662,7 +742,7 @@ describe('language-server-inprocess-integration', () => {
       };
 
       const init = await initializeHandler({
-        rootUri: `file://${workspaceDir}`,
+        rootUri: toFileUri(workspaceDir),
         initializationOptions: {
           documentContext: {
             uri: docUri,
