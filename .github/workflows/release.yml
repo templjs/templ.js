@@ -63,10 +63,10 @@ jobs:
         if: steps.changesets.outputs.published == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.parsed.outputs.version }}
-          name: Release ${{ steps.parsed.outputs.version }}
+          tag_name: v${{ steps.parsed.outputs.version }}
+          name: Release v${{ steps.parsed.outputs.version }}
           body: |
-            Release ${{ steps.parsed.outputs.version }}
+            Release v${{ steps.parsed.outputs.version }}
 
             See CHANGELOG.md for details.
           draft: false

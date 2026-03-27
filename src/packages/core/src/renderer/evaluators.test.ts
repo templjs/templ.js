@@ -333,21 +333,21 @@ describe('evaluateFilter', () => {
           minimumIntegerDigits: 1,
           minimumFractionDigits: 0,
           maximumFractionDigits: 0,
-          useGrouping: true,
+          useGrouping: 'auto',
           notation: 'standard',
           signDisplay: 'auto',
           roundingIncrement: 1,
           roundingMode: 'halfExpand',
           roundingPriority: 'auto',
           trailingZeroDisplay: 'auto',
-        } as Intl.ResolvedNumberFormatOptions;
+        };
       }
     }
 
     clearFormatterCaches();
     vi.stubGlobal('Intl', {
       ...Intl,
-      NumberFormat: MockNumberFormat as unknown as typeof Intl.NumberFormat,
+      NumberFormat: MockNumberFormat,
     });
 
     expect(evaluateFilter(expr, context)).toBe('JPY 1235');
