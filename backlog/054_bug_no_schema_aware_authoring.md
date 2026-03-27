@@ -7,7 +7,7 @@ title: '054: VS Code extension does not load input schema for schema-aware autho
 status: in-progress
 priority: high
 estimated: 8
-actual: 3
+actual: 4
 assignee: ''
 commits:
   8ab845c: 'perf(ide): optimize schema resolution and semantic caches'
@@ -68,6 +68,20 @@ test_results:
         - `src/extensions/vscode/test/server.test.ts` (41 passed)
         - `src/extensions/vscode/test/server-inprocess.integration.test.ts` (5 passed)
         - Full VS Code extension test set (80 passed)
+  - timestamp: 2026-03-27T00:00:00Z
+    note: |
+      URL cache reuse + directive/docs completion:
+      - Added URL schema root-cache reuse in `schema-loading.ts` so repeated fragment loads from the same URL
+        reuse parsed content and avoid redundant network fetches
+      - Added regression tests for URL cache reuse and first-inline-directive precedence in
+        `src/extensions/vscode/test/schema-loading.test.ts`
+      - Added regression coverage for non-OK HTTP schema responses and error logging
+      - Added regression coverage for missing fetch implementation and sync malformed-schema handling
+      - Removed unreachable non-record guard branches in schema loaders to align behavior and coverage gating
+      - Expanded README coverage for URL schema behavior, multi-root handling, and troubleshooting
+      - Verification:
+        - `pnpm run test:affected:pre-push` for `vscode-templjs` (4 files, 98 tests passed)
+        - Coverage for `src/extensions/vscode/src/schema-loading.ts`: branches 91.25%
 links:
   depends_on:
     - '[[031_language_feature_tests]]'
@@ -153,8 +167,7 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 - [x] Wire schema into completion/hover/diagnostic execution path (create service-plugin if not present)
 - [x] Add file watcher for schema file changes and implement hot reload (cache invalidation, diagnostics refresh)
 - [x] Add/extend tests for all new features: glob patterns, URL loading, directives, frontmatter, precedence rules, content-schema validation
-- [ ] Update extension documentation with setup, glob patterns, content-schema usage, inline directives, root properties, URL schemas, multi-root workspace handling, and troubleshooting
-  - Note: README coverage is partially complete (schema configuration, precedence, and schema hot-reload behavior were documented on 2026-03-22); remaining documentation: inline directives, root properties, URL schema usage details, multi-root workspace handling, and troubleshooting guidance.
+- [x] Update extension documentation with setup, glob patterns, content-schema usage, inline directives, root properties, URL schemas, multi-root workspace handling, and troubleshooting
 
 ## Acceptance Criteria
 
@@ -168,10 +181,10 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 **Phase 2:**
 
 - [x] With configured schema, top-level and nested path completions appear in templjs files
-- [ ] Invalid schema paths in expressions and for-in clauses produce diagnostics with suggestions
+- [x] Invalid schema paths in expressions and for-in clauses produce diagnostics with suggestions
 - [x] Glob-pattern-based settings correctly match documents to different schemas per directory
-- [ ] HTTPS URL schemas are loaded and cached (content reused on reconnect)
-- [ ] Multiple inline directives per document are parsed and first match takes precedence
+- [x] HTTPS URL schemas are loaded and cached (content reused on reconnect)
+- [x] Multiple inline directives per document are parsed and first match takes precedence
 - [x] Root properties (`$templ-schema` and `$content-schema`) are extracted from YAML/JSON frontmatter
 - [x] Three-way precedence (inline > root > setting) is applied independently to each schema type
 - [x] Markdown files with content-schema have Markdown body validated against content-schema (frontmatter against templ-schema)
@@ -179,8 +192,7 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 - [x] Network failures, missing files, and parse errors yield clear, non-crashing diagnostics/logging
 - [x] Backward compatibility: existing `templjs.schemaPath` setting continues to work
 - [ ] All new tests pass in CI for schema-aware extension behavior
-- [ ] Documentation covers: glob patterns, content-schema usage, inline directives, root properties, URL schemas, multi-root workspace handling
-  - Note: README currently covers schema configuration, precedence, and schema hot-reload behavior; remaining acceptance coverage needed for inline directives, root properties, URL schema usage details, multi-root workspace handling, and troubleshooting guidance.
+- [x] Documentation covers: glob patterns, content-schema usage, inline directives, root properties, URL schemas, multi-root workspace handling
 
 ## Evidence / References
 

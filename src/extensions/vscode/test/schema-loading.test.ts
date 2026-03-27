@@ -254,6 +254,73 @@ describe('schema-loading', () => {
     });
   });
 
+  it('reuses cached HTTP schema content across repeated loads', async () => {
+    const cache = new Map<string, unknown>();
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          $defs: {
+            owner: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+              },
+            },
+            meta: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+              },
+            },
+          },
+        }),
+    }));
+
+    await expect(
+      loadSchemaSource(
+        'https://schemas.example.com/work-item.json#/$defs/owner',
+        undefined,
+        undefined,
+        {
+          fetchImpl: fetchImpl as typeof fetch,
+          cache,
+        }
+      )
+    ).resolves.toEqual({
+      schema: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+        },
+      },
+      schemaUri: 'https://schemas.example.com/work-item.json',
+    });
+
+    await expect(
+      loadSchemaSource(
+        'https://schemas.example.com/work-item.json#/$defs/meta',
+        undefined,
+        undefined,
+        {
+          fetchImpl: fetchImpl as typeof fetch,
+          cache,
+        }
+      )
+    ).resolves.toEqual({
+      schema: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+        },
+      },
+      schemaUri: 'https://schemas.example.com/work-item.json',
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
   it('returns empty for unsupported fragment syntax and scalar fragment targets', async () => {
     const fetchImpl = vi.fn(async () => ({
       ok: true,
@@ -293,6 +360,73 @@ describe('schema-loading', () => {
     expect(log).toHaveBeenCalledWith(
       expect.stringContaining(
         "Error loading schema from URL 'https://schemas.example.com/work-item.json': socket hang up"
+      )
+    );
+  });
+
+  it('returns empty and logs for non-OK HTTP responses', async () => {
+    const log = vi.fn();
+    const fetchImpl = vi.fn(async () => ({
+      ok: false,
+      status: 404,
+      text: async () => 'not found',
+    }));
+
+    await expect(
+      loadSchemaSource('https://schemas.example.com/missing.json', undefined, undefined, {
+        fetchImpl: fetchImpl as typeof fetch,
+        log,
+      })
+    ).resolves.toEqual({});
+
+    expect(log).toHaveBeenCalledWith(
+      "[templjs] Failed to load schema from URL 'https://schemas.example.com/missing.json': HTTP 404"
+    );
+  });
+
+  it('returns empty and logs when no fetch implementation is available', async () => {
+    const log = vi.fn();
+    vi.stubGlobal('fetch', undefined);
+
+    await expect(
+      loadSchemaSource('https://schemas.example.com/no-fetch.json', undefined, undefined, {
+        log,
+      })
+    ).resolves.toEqual({});
+
+    expect(log).toHaveBeenCalledWith(
+      "[templjs] No fetch implementation available for schema URL 'https://schemas.example.com/no-fetch.json'"
+    );
+  });
+
+  it('returns empty and logs when cached URL schema processing throws', async () => {
+    const url = 'https://schemas.example.com/cached.json';
+    const cache = new Map<string, unknown>();
+    const log = vi.fn();
+    const fetchImpl = vi.fn();
+
+    const problematicSchema = {} as Record<string, unknown>;
+    Object.defineProperty(problematicSchema, '$ref', {
+      enumerable: true,
+      get() {
+        throw new Error('explosive-ref');
+      },
+    });
+
+    cache.set(url, problematicSchema);
+
+    await expect(
+      loadSchemaSource(url, undefined, undefined, {
+        cache,
+        log,
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      })
+    ).resolves.toEqual({});
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Error processing schema from URL 'https://schemas.example.com/cached.json': explosive-ref"
       )
     );
   });
@@ -371,6 +505,15 @@ describe('schema-loading', () => {
     expect(loadSchemaSourceSync('.templjs/frontmatter.json#/$defs/missing', tempDir)).toEqual({});
   });
 
+  it('returns empty for synchronously loaded malformed JSON schema files', () => {
+    const tempDir = makeTempDir();
+    const schemaPath = path.join(tempDir, '.templjs', 'broken.json');
+    mkdirSync(path.dirname(schemaPath), { recursive: true });
+    writeFileSync(schemaPath, '{"type":', 'utf-8');
+
+    expect(loadSchemaSourceSync('.templjs/broken.json', tempDir)).toEqual({});
+  });
+
   it('extracts schema keys from inline directives and JSON root objects', () => {
     const inlineContent = [
       '---',
@@ -392,6 +535,19 @@ describe('schema-loading', () => {
         })
       )
     ).toBe('.templjs/root-object-frontmatter.json\0.templjs/root-object-content.json');
+  });
+
+  it('uses the first inline schema directive when multiple directives are present', () => {
+    const inlineContent = [
+      '{{# schema: .templjs/first-inline-frontmatter.json }}',
+      '{{# schema: .templjs/second-inline-frontmatter.json }}',
+      '{{# content-schema: .templjs/first-inline-content.json }}',
+      '{{# content-schema: .templjs/second-inline-content.json }}',
+    ].join('\n');
+
+    expect(extractDocumentSchemaKey(inlineContent)).toBe(
+      '.templjs/first-inline-frontmatter.json\0.templjs/first-inline-content.json'
+    );
   });
 
   it('resolves document schema sources with inline, root, and pattern precedence', () => {
@@ -452,6 +608,34 @@ describe('schema-loading', () => {
     ).toEqual({
       schemaPath: '.templjs/pattern-frontmatter.json',
       contentSchemaPath: '.templjs/pattern-content.json',
+    });
+  });
+
+  it('falls back to default settings when document URI cannot be normalized', () => {
+    const tempDir = makeTempDir();
+    const workspaceUri = pathToFileURL(tempDir).toString();
+
+    expect(
+      resolveDocumentSchemaSources({
+        workspaceFolders: [{ uri: workspaceUri }],
+        initializationOptions: {
+          schemaPath: '.templjs/default-frontmatter.json',
+          contentSchemaPath: '.templjs/default-content.json',
+          schemaPatterns: {
+            'backlog/**': {
+              schemaPath: '.templjs/pattern-frontmatter.json',
+              contentSchemaPath: '.templjs/pattern-content.json',
+            },
+          },
+          documentContext: {
+            uri: 'file://%zz',
+            content: '',
+          },
+        },
+      })
+    ).toEqual({
+      schemaPath: '.templjs/default-frontmatter.json',
+      contentSchemaPath: '.templjs/default-content.json',
     });
   });
 });
