@@ -75,10 +75,11 @@ test_results:
         reuse parsed content and avoid redundant network fetches
       - Added regression tests for URL cache reuse and first-inline-directive precedence in
         `src/extensions/vscode/test/schema-loading.test.ts`
+      - Added regression coverage for non-OK HTTP schema responses and error logging
       - Expanded README coverage for URL schema behavior, multi-root handling, and troubleshooting
       - Verification:
         - `src/extensions/vscode/test/schema-loading.test.ts` + `server.test.ts` +
-          `server-inprocess.integration.test.ts` (72 passed)
+          `server-inprocess.integration.test.ts` (73 passed)
 links:
   depends_on:
     - '[[031_language_feature_tests]]'

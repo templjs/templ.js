@@ -364,6 +364,26 @@ describe('schema-loading', () => {
     );
   });
 
+  it('returns empty and logs for non-OK HTTP responses', async () => {
+    const log = vi.fn();
+    const fetchImpl = vi.fn(async () => ({
+      ok: false,
+      status: 404,
+      text: async () => 'not found',
+    }));
+
+    await expect(
+      loadSchemaSource('https://schemas.example.com/missing.json', undefined, undefined, {
+        fetchImpl: fetchImpl as typeof fetch,
+        log,
+      })
+    ).resolves.toEqual({});
+
+    expect(log).toHaveBeenCalledWith(
+      "[templjs] Failed to load schema from URL 'https://schemas.example.com/missing.json': HTTP 404"
+    );
+  });
+
   it('dereferences circular and missing local refs without crashing', async () => {
     const tempDir = makeTempDir();
     const schemaPath = path.join(tempDir, '.templjs', 'circular.json');
