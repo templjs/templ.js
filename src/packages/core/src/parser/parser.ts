@@ -779,8 +779,6 @@ export class TemplateParser {
         !inSingleQuote &&
         !inDoubleQuote &&
         !inTemplateString &&
-        !inLineComment &&
-        !inBlockComment &&
         depth === 0 &&
         char === delimiter
       ) {
