@@ -4,9 +4,12 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '34: Pre-Release Coverage Quality Gate (ADR-006 Alignment)'
-status: ready-for-review
+status: closed
+status_reason: completed
 priority: critical
 estimated: 8
+actual: 8
+completed_date: 2026-03-27
 assignee: ''
 commits:
   30196db: 'test(vscode): raise strict WI-034 branch coverage'
@@ -19,6 +22,12 @@ commits:
   e8cc1f0: 'test(volar): close WI-034 per-file coverage gates'
   8b4673f: 'test(cli): close WI-034 per-file coverage gates for CLI package'
 test_results:
+  - timestamp: 2026-03-27T00:00:00Z
+    note: |
+      WI-034 closure validation in `feature/wi-034-coverage-gate-finalize` worktree:
+      - `pnpm test:affected:ci` returned `NX   No tasks were run` (expected for metadata-only WI finalization update)
+      - `pnpm run lint:frontmatter` passed: all backlog frontmatter files schema-valid
+      - Verified linked implementation PR merged: https://github.com/templjs/templ.js/pull/31
   - timestamp: 2026-03-17T00:00:00Z
     note: |
       Coverage remediation branch follow-up:
@@ -76,6 +85,8 @@ links:
     - '[[030_reenable_coverage_thresholds]]'
   pull_requests:
     - https://github.com/templjs/templ.js/pull/31
+    - https://github.com/templjs/templ.js/pull/32
+    - https://github.com/templjs/templ.js/pull/33
 ---
 
 ## Goal
@@ -183,10 +194,29 @@ Reconcile all coverage thresholds in vitest configs to align with ADR-006 target
 - [x] VSCode extension achieves ≥90% coverage on all metrics
 - [x] No files below package-level threshold (per-file enforcement active)
 - [x] Coverage gaps identified and either closed or documented with per-file overrides
-- [ ] Coverage audit report completed and committed
+- [x] Coverage audit report completed and committed
 - [x] All status checks pass (lint, type-check, build, test, coverage)
-- [ ] PR reviewed and merged to main before v1.0 release
-- [ ] Work item marked closed with `status_reason: completed`
+- [x] PR reviewed and merged to main before v1.0 release
+- [x] Work item marked closed with `status_reason: completed`
+
+## Coverage Variance Audit Report
+
+The WI-034 variance audit is captured in committed execution evidence under `test_results` and aligned with policy documentation in `docs/COVERAGE_STRATEGY.md`.
+
+Observed variance snapshots:
+
+- 2026-03-20 (ADR alignment pass; deterministic gap surfacing enabled)
+  - `@templjs/core`: 96.30 / 91.31 / 99.41 / 96.50
+  - `@templjs/cli`: 96.32 / 88.29 / 100.00 / 96.30
+  - `@templjs/volar`: 85.30 / 72.57 / 94.73 / 85.45
+  - `vscode-templjs`: 87.86 / 76.88 / 91.30 / 87.94
+- 2026-03-21 (final remediation and gate pass)
+  - `@templjs/core`: 99.39 / 97.32 / 100.00 / 99.42
+  - `@templjs/cli`: 97.54 / 90.96 / 100.00 / 97.53
+  - `@templjs/volar`: 98.35 / 92.89 / 99.13 / 98.34
+  - `vscode-templjs`: 96.32 / 90.12 / 96.73 / 96.47
+
+Metric order is Statements / Branches / Functions / Lines.
 
 ## Notes
 
