@@ -39,7 +39,7 @@ jobs:
           # If you want to customize queries, uncomment and edit:
           # config-file: ./.github/codeql/codeql-config.yml
 
-      - name: Setup Node.js
+      - name: Setup workspace
         uses: ./.github/actions/setup-workspace
         with:
           node-version: ''

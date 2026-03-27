@@ -333,14 +333,14 @@ describe('evaluateFilter', () => {
           minimumIntegerDigits: 1,
           minimumFractionDigits: 0,
           maximumFractionDigits: 0,
-          useGrouping: 'auto',
+          useGrouping: true,
           notation: 'standard',
           signDisplay: 'auto',
           roundingIncrement: 1,
           roundingMode: 'halfExpand',
           roundingPriority: 'auto',
           trailingZeroDisplay: 'auto',
-        };
+        } as Intl.ResolvedNumberFormatOptions;
       }
     }
 
