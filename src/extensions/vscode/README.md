@@ -48,7 +48,26 @@ Schema precedence is resolved per document as:
 2. Root/frontmatter aliases (`$templ-schema`, `$content-schema`)
 3. Workspace settings (`templjs.schemas`, `templjs.schemaPath`, `templjs.contentSchemaPath`)
 
+Schema paths can be local file paths or HTTPS URLs. URL schemas support fragment references (for example `https://example.com/schema.json#/$defs/item`) and are cached in-memory by source URL for the current extension host session.
+
 When schema files change on disk (`.json`, `.yaml`, `.yml`), the server invalidates its schema cache and refreshes diagnostics for open templjs documents.
+
+## Multi-root Workspaces
+
+templjs uses the first workspace folder as its schema resolution root for relative paths. In multi-root workspaces, keep schema files and templjs documents in the same primary folder, or use absolute paths/URLs in settings and inline directives to avoid ambiguity.
+
+## Schema Troubleshooting
+
+- **Schema appears ignored**:
+  - Confirm precedence order. Inline directives override root aliases and settings.
+  - Verify the schema path is reachable and resolves from the active workspace root.
+- **URL schema not loading**:
+  - Use `https://` URLs and verify remote access from your environment.
+  - Check the output channel for timeout or fetch errors.
+- **Definitions not updated after editing a local schema file**:
+  - Save the schema file and wait for diagnostics refresh; templjs invalidates local schema cache entries on file changes.
+- **Multiple roots resolve unexpectedly**:
+  - Move schema settings to the first workspace folder, or switch to absolute/URL schema references.
 
 ## Triage Logs
 

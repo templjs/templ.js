@@ -251,19 +251,46 @@ export async function loadSchemaSource(
       return {};
     }
 
-    const controller = new AbortController();
-    const timeoutMs = context?.timeoutMs ?? DEFAULT_SCHEMA_LOAD_TIMEOUT_MS;
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const response = await fetchImpl(sourcePath, { signal: controller.signal });
+    let rootSchema = cache.get(sourcePath);
+    if (rootSchema === undefined) {
+      const controller = new AbortController();
+      const timeoutMs = context?.timeoutMs ?? DEFAULT_SCHEMA_LOAD_TIMEOUT_MS;
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetchImpl(sourcePath, { signal: controller.signal });
 
-      if (!response.ok) {
-        log(`[templjs] Failed to load schema from URL '${sourcePath}': HTTP ${response.status}`);
+        if (!response.ok) {
+          log(`[templjs] Failed to load schema from URL '${sourcePath}': HTTP ${response.status}`);
+          return {};
+        }
+
+        const schemaContent = await response.text();
+        rootSchema = JSON.parse(schemaContent) as unknown;
+        cache.set(sourcePath, rootSchema);
+      } catch (error) {
+        if (
+          (error instanceof Error && error.name === 'AbortError') ||
+          (typeof error === 'object' &&
+            error !== null &&
+            'name' in error &&
+            (error as { name?: unknown }).name === 'AbortError')
+        ) {
+          log(`[templjs] Timeout loading schema from URL '${sourcePath}' after ${timeoutMs}ms`);
+          return {};
+        }
+
+        log(
+          `[templjs] Error loading schema from URL '${sourcePath}': ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
         return {};
+      } finally {
+        clearTimeout(timeoutId);
       }
+    }
 
-      const schemaContent = await response.text();
-      const rootSchema = JSON.parse(schemaContent) as unknown;
+    try {
       const schema = resolveFragmentSchema(rootSchema, fragment);
       if (!schema) {
         log(`[templjs] Schema fragment not found in URL '${sourcePath}${fragment ?? ''}'`);
@@ -277,35 +304,19 @@ export async function loadSchemaSource(
         new Map<string, unknown>([[sourcePath, rootSchema]]),
         new Set<string>()
       );
-      if (!isJsonRecord(dereferencedSchema)) {
-        return {};
-      }
 
       log(`[templjs] Loaded schema from URL: ${sourcePath}${fragment ?? ''}`);
       return {
-        schema: dereferencedSchema,
+        schema: dereferencedSchema as object,
         schemaUri: sourcePath,
       };
     } catch (error) {
-      if (
-        (error instanceof Error && error.name === 'AbortError') ||
-        (typeof error === 'object' &&
-          error !== null &&
-          'name' in error &&
-          (error as { name?: unknown }).name === 'AbortError')
-      ) {
-        log(`[templjs] Timeout loading schema from URL '${sourcePath}' after ${timeoutMs}ms`);
-        return {};
-      }
-
       log(
-        `[templjs] Error loading schema from URL '${sourcePath}': ${
+        `[templjs] Error processing schema from URL '${sourcePath}': ${
           error instanceof Error ? error.message : String(error)
         }`
       );
       return {};
-    } finally {
-      clearTimeout(timeoutId);
     }
   }
 
@@ -330,13 +341,10 @@ export async function loadSchemaSource(
       cache,
       new Set<string>()
     );
-    if (!isJsonRecord(dereferencedSchema)) {
-      return {};
-    }
 
     log(`[templjs] Loaded schema from file: ${resolvedPath}${fragment ?? ''}`);
     return {
-      schema: dereferencedSchema,
+      schema: dereferencedSchema as object,
       schemaUri: pathToFileURL(resolvedPath).toString(),
     };
   } catch (error) {
@@ -385,12 +393,9 @@ export function loadSchemaSourceSync(
       cache,
       new Set<string>()
     );
-    if (!isJsonRecord(dereferencedSchema)) {
-      return {};
-    }
 
     return {
-      schema: dereferencedSchema,
+      schema: dereferencedSchema as object,
       schemaUri: pathToFileURL(resolvedPath).toString(),
     };
   } catch {
