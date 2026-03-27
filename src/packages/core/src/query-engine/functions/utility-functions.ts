@@ -102,7 +102,7 @@ export const stringFunction: FilterFunction = (value: unknown): string => {
 
 function toNumberOrNull(value: unknown): number | null {
   if (typeof value === 'number') {
-    return value;
+    return Number.isFinite(value) ? value : null;
   }
 
   if (typeof value === 'string') {
@@ -111,7 +111,7 @@ function toNumberOrNull(value: unknown): number | null {
       return null;
     }
     const num = Number(trimmed);
-    return Number.isNaN(num) ? null : num;
+    return Number.isFinite(num) ? num : null;
   }
 
   if (typeof value === 'boolean') {

@@ -43,7 +43,13 @@ describe('QueryEngine utility functions', () => {
     expect(numberFunction('42')).toBe(42);
     expect(numberFunction('  42.5  ')).toBe(42.5);
     expect(numberFunction('-1.2e3')).toBe(-1200);
+    expect(numberFunction(Number.POSITIVE_INFINITY)).toBeNull();
+    expect(numberFunction(Number.NEGATIVE_INFINITY)).toBeNull();
+    expect(numberFunction(Number.NaN)).toBeNull();
     expect(numberFunction('123abc')).toBeNull();
+    expect(numberFunction('Infinity')).toBeNull();
+    expect(numberFunction('-Infinity')).toBeNull();
+    expect(numberFunction('NaN')).toBeNull();
     expect(numberFunction('')).toBeNull();
     expect(numberFunction('   ')).toBeNull();
     expect(numberFunction('abc')).toBeNull();
@@ -55,6 +61,8 @@ describe('QueryEngine utility functions', () => {
   it('supports an optional fallback for number conversion failures', () => {
     expect(numberFunction('abc', 0)).toBe(0);
     expect(numberFunction('', 0)).toBe(0);
+    expect(numberFunction(Number.POSITIVE_INFINITY, 0)).toBe(0);
+    expect(numberFunction('Infinity', 0)).toBe(0);
     expect(numberFunction(false, 7)).toBe(0);
     expect(numberFunction(0, 7)).toBe(0);
     expect(numberFunction({}, undefined)).toBeUndefined();
