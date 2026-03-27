@@ -254,6 +254,73 @@ describe('schema-loading', () => {
     });
   });
 
+  it('reuses cached HTTP schema content across repeated loads', async () => {
+    const cache = new Map<string, unknown>();
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          $defs: {
+            owner: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+              },
+            },
+            meta: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+              },
+            },
+          },
+        }),
+    }));
+
+    await expect(
+      loadSchemaSource(
+        'https://schemas.example.com/work-item.json#/$defs/owner',
+        undefined,
+        undefined,
+        {
+          fetchImpl: fetchImpl as typeof fetch,
+          cache,
+        }
+      )
+    ).resolves.toEqual({
+      schema: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+        },
+      },
+      schemaUri: 'https://schemas.example.com/work-item.json',
+    });
+
+    await expect(
+      loadSchemaSource(
+        'https://schemas.example.com/work-item.json#/$defs/meta',
+        undefined,
+        undefined,
+        {
+          fetchImpl: fetchImpl as typeof fetch,
+          cache,
+        }
+      )
+    ).resolves.toEqual({
+      schema: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+        },
+      },
+      schemaUri: 'https://schemas.example.com/work-item.json',
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
   it('returns empty for unsupported fragment syntax and scalar fragment targets', async () => {
     const fetchImpl = vi.fn(async () => ({
       ok: true,
@@ -392,6 +459,19 @@ describe('schema-loading', () => {
         })
       )
     ).toBe('.templjs/root-object-frontmatter.json\0.templjs/root-object-content.json');
+  });
+
+  it('uses the first inline schema directive when multiple directives are present', () => {
+    const inlineContent = [
+      '{{# schema: .templjs/first-inline-frontmatter.json }}',
+      '{{# schema: .templjs/second-inline-frontmatter.json }}',
+      '{{# content-schema: .templjs/first-inline-content.json }}',
+      '{{# content-schema: .templjs/second-inline-content.json }}',
+    ].join('\n');
+
+    expect(extractDocumentSchemaKey(inlineContent)).toBe(
+      '.templjs/first-inline-frontmatter.json\0.templjs/first-inline-content.json'
+    );
   });
 
   it('resolves document schema sources with inline, root, and pattern precedence', () => {
