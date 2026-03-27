@@ -76,10 +76,12 @@ test_results:
       - Added regression tests for URL cache reuse and first-inline-directive precedence in
         `src/extensions/vscode/test/schema-loading.test.ts`
       - Added regression coverage for non-OK HTTP schema responses and error logging
+      - Added regression coverage for missing fetch implementation and sync malformed-schema handling
+      - Removed unreachable non-record guard branches in schema loaders to align behavior and coverage gating
       - Expanded README coverage for URL schema behavior, multi-root handling, and troubleshooting
       - Verification:
-        - `src/extensions/vscode/test/schema-loading.test.ts` + `server.test.ts` +
-          `server-inprocess.integration.test.ts` (73 passed)
+        - `pnpm run test:affected:pre-push` for `vscode-templjs` (4 files, 98 tests passed)
+        - Coverage for `src/extensions/vscode/src/schema-loading.ts`: branches 91.25%
 links:
   depends_on:
     - '[[031_language_feature_tests]]'

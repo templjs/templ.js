@@ -304,13 +304,10 @@ export async function loadSchemaSource(
         new Map<string, unknown>([[sourcePath, rootSchema]]),
         new Set<string>()
       );
-      if (!isJsonRecord(dereferencedSchema)) {
-        return {};
-      }
 
       log(`[templjs] Loaded schema from URL: ${sourcePath}${fragment ?? ''}`);
       return {
-        schema: dereferencedSchema,
+        schema: dereferencedSchema as object,
         schemaUri: sourcePath,
       };
     } catch (error) {
@@ -344,13 +341,10 @@ export async function loadSchemaSource(
       cache,
       new Set<string>()
     );
-    if (!isJsonRecord(dereferencedSchema)) {
-      return {};
-    }
 
     log(`[templjs] Loaded schema from file: ${resolvedPath}${fragment ?? ''}`);
     return {
-      schema: dereferencedSchema,
+      schema: dereferencedSchema as object,
       schemaUri: pathToFileURL(resolvedPath).toString(),
     };
   } catch (error) {
@@ -399,12 +393,9 @@ export function loadSchemaSourceSync(
       cache,
       new Set<string>()
     );
-    if (!isJsonRecord(dereferencedSchema)) {
-      return {};
-    }
 
     return {
-      schema: dereferencedSchema,
+      schema: dereferencedSchema as object,
       schemaUri: pathToFileURL(resolvedPath).toString(),
     };
   } catch {

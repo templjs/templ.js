@@ -384,6 +384,53 @@ describe('schema-loading', () => {
     );
   });
 
+  it('returns empty and logs when no fetch implementation is available', async () => {
+    const log = vi.fn();
+    vi.stubGlobal('fetch', undefined);
+
+    await expect(
+      loadSchemaSource('https://schemas.example.com/no-fetch.json', undefined, undefined, {
+        log,
+      })
+    ).resolves.toEqual({});
+
+    expect(log).toHaveBeenCalledWith(
+      "[templjs] No fetch implementation available for schema URL 'https://schemas.example.com/no-fetch.json'"
+    );
+  });
+
+  it('returns empty and logs when cached URL schema processing throws', async () => {
+    const url = 'https://schemas.example.com/cached.json';
+    const cache = new Map<string, unknown>();
+    const log = vi.fn();
+    const fetchImpl = vi.fn();
+
+    const problematicSchema = {} as Record<string, unknown>;
+    Object.defineProperty(problematicSchema, '$ref', {
+      enumerable: true,
+      get() {
+        throw new Error('explosive-ref');
+      },
+    });
+
+    cache.set(url, problematicSchema);
+
+    await expect(
+      loadSchemaSource(url, undefined, undefined, {
+        cache,
+        log,
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      })
+    ).resolves.toEqual({});
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Error processing schema from URL 'https://schemas.example.com/cached.json': explosive-ref"
+      )
+    );
+  });
+
   it('dereferences circular and missing local refs without crashing', async () => {
     const tempDir = makeTempDir();
     const schemaPath = path.join(tempDir, '.templjs', 'circular.json');
@@ -456,6 +503,15 @@ describe('schema-loading', () => {
     });
     expect(loadSchemaSourceSync('https://schemas.example.com/schema.json', tempDir)).toEqual({});
     expect(loadSchemaSourceSync('.templjs/frontmatter.json#/$defs/missing', tempDir)).toEqual({});
+  });
+
+  it('returns empty for synchronously loaded malformed JSON schema files', () => {
+    const tempDir = makeTempDir();
+    const schemaPath = path.join(tempDir, '.templjs', 'broken.json');
+    mkdirSync(path.dirname(schemaPath), { recursive: true });
+    writeFileSync(schemaPath, '{"type":', 'utf-8');
+
+    expect(loadSchemaSourceSync('.templjs/broken.json', tempDir)).toEqual({});
   });
 
   it('extracts schema keys from inline directives and JSON root objects', () => {
@@ -552,6 +608,34 @@ describe('schema-loading', () => {
     ).toEqual({
       schemaPath: '.templjs/pattern-frontmatter.json',
       contentSchemaPath: '.templjs/pattern-content.json',
+    });
+  });
+
+  it('falls back to default settings when document URI cannot be normalized', () => {
+    const tempDir = makeTempDir();
+    const workspaceUri = pathToFileURL(tempDir).toString();
+
+    expect(
+      resolveDocumentSchemaSources({
+        workspaceFolders: [{ uri: workspaceUri }],
+        initializationOptions: {
+          schemaPath: '.templjs/default-frontmatter.json',
+          contentSchemaPath: '.templjs/default-content.json',
+          schemaPatterns: {
+            'backlog/**': {
+              schemaPath: '.templjs/pattern-frontmatter.json',
+              contentSchemaPath: '.templjs/pattern-content.json',
+            },
+          },
+          documentContext: {
+            uri: 'file://%zz',
+            content: '',
+          },
+        },
+      })
+    ).toEqual({
+      schemaPath: '.templjs/default-frontmatter.json',
+      contentSchemaPath: '.templjs/default-content.json',
     });
   });
 });
