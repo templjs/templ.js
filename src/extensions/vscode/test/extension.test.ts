@@ -187,6 +187,8 @@ describe('extension-activation', () => {
         { scheme: 'file', language: 'templjs-json' },
         { scheme: 'file', language: 'templjs-markdown' },
         { scheme: 'file', language: 'templjs-html' },
+        { scheme: 'file', pattern: '**/*.md.templ' },
+        { scheme: 'file', pattern: '**/*.md.tmpl' },
         { scheme: 'file', pattern: '**/*.md.tpl' },
       ])
     );

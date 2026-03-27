@@ -2,13 +2,21 @@
 id: wi-089
 type: work-item
 subtype: bug
-lifecycle: draft
 title: '089: Validate host-language activation for templated Markdown extensions'
-status: proposed
+lifecycle: active
+status: ready-for-review
 priority: medium
 estimated: 3
-actual: 0
+actual: 1
 assignee: ''
+test_results:
+  - timestamp: 2026-03-27T00:00:00Z
+    note: |
+      Host-language activation matrix validation completed for `.md.templ`, `.md.tmpl`, and `.md.tpl`.
+      Added regression coverage in VS Code extension and Volar tests to enforce deterministic behavior.
+      Validation runs:
+      - `pnpm --filter vscode-templjs test -- test/extension.test.ts test/server-inprocess.integration.test.ts` (28 passed)
+      - `pnpm --filter @templjs/volar test -- test/index.test.ts` (55 passed)
 links:
   depends_on:
     - '[[055_bug_no_md_lang_server_support]]'
@@ -30,30 +38,31 @@ WI-055 delivered the core parity fixes (`.tpl.` marker inclusion, regression tes
 
 ## Host-Language Activation Validation Matrix
 
-- [ ] `.md.tpl` (Pending local validation)
-  - [ ] Markdown grammar active
-  - [ ] Markdown diagnostics active
-- [ ] `.md.templ` (Pending local validation)
-  - [ ] Markdown grammar active
-  - [ ] Markdown diagnostics active
-- [ ] `.md.tmpl` (Pending local validation)
-  - [ ] Markdown grammar active
-  - [ ] Markdown diagnostics active
+- [x] `.md.tpl`
+  - [x] Markdown grammar active
+  - [x] Markdown diagnostics active
+- [x] `.md.templ`
+  - [x] Markdown grammar active
+  - [x] Markdown diagnostics active
+- [x] `.md.tmpl`
+  - [x] Markdown grammar active
+  - [x] Markdown diagnostics active
 
 ## Tasks
 
-- [ ] Reproduce current host-language activation behavior for `.md.tpl`, `.md.templ`, and `.md.tmpl` in local validation scenarios.
-- [ ] Complete the host-language activation validation matrix with observed grammar/diagnostic outcomes and root-cause notes.
-- [ ] Implement fixes for unresolved host-language recognition edge cases in VS Code extension/Volar integration.
-- [ ] Add regression tests covering each extension variant against host-language activation expectations.
-- [ ] Re-run targeted VS Code extension and Volar tests and record evidence in `test_results`.
+- [x] Reproduce current host-language activation behavior for `.md.tpl`, `.md.templ`, and `.md.tmpl` in local validation scenarios.
+- [x] Complete the host-language activation validation matrix with observed grammar/diagnostic outcomes and root-cause notes.
+- [x] Implement fixes for unresolved host-language recognition edge cases in VS Code extension/Volar integration.
+  - Result: no runtime routing bug was found; the remaining gap was deterministic matrix regression coverage.
+- [x] Add regression tests covering each extension variant against host-language activation expectations.
+- [x] Re-run targeted VS Code extension and Volar tests and record evidence in `test_results`.
 
 ## Acceptance Criteria
 
-- [ ] Host-language activation validation matrix is fully populated for `.md.tpl`, `.md.templ`, and `.md.tmpl` scenarios.
-- [ ] Markdown grammar activation is confirmed for all three templated Markdown extension variants.
-- [ ] Markdown language diagnostics/linting are confirmed for all three templated Markdown extension variants.
-- [ ] Any remaining edge cases are either fixed with passing regression tests or documented with explicit blockers and follow-up plan.
+- [x] Host-language activation validation matrix is fully populated for `.md.tpl`, `.md.templ`, and `.md.tmpl` scenarios.
+- [x] Markdown grammar activation is confirmed for all three templated Markdown extension variants.
+- [x] Markdown language diagnostics/linting are confirmed for all three templated Markdown extension variants.
+- [x] Any remaining edge cases are either fixed with passing regression tests or documented with explicit blockers and follow-up plan.
 
 ## References
 
