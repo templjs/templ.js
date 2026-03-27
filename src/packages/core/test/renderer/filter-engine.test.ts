@@ -150,6 +150,16 @@ describe('FilterEngine', () => {
       expect(engine.applyFilter('format_number', 12.3, ['', 'x', 'y'])).toBe('12');
     });
 
+    it('format_number clamps fraction digit arguments to Intl-safe bounds', () => {
+      const expected = new Intl.NumberFormat('en-US', {
+        useGrouping: true,
+        minimumFractionDigits: 20,
+        maximumFractionDigits: 20,
+      }).format(12.3);
+
+      expect(engine.applyFilter('format_number', 12.3, ['en-US', 25, 25])).toBe(expected);
+    });
+
     it('falls back to en-US when locale-specific number formatting throws', () => {
       const originalNumberFormat = Intl.NumberFormat;
       clearFormatterCaches();

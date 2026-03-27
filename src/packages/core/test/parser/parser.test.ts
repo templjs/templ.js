@@ -27,6 +27,8 @@ function splitTopLevel(str: string, delimiter: string): string[] {
   let inInterpolation = false;
   let interpolationBraceDepth = 0;
   let interpolationQuote: "'" | '"' | '`' | null = null;
+  let inLineComment = false;
+  let inBlockComment = false;
 
   for (let i = 0; i < str.length; i++) {
     const char = str[i];
@@ -34,6 +36,24 @@ function splitTopLevel(str: string, delimiter: string): string[] {
     if (escaped) {
       current += char;
       escaped = false;
+      continue;
+    }
+
+    if (inLineComment) {
+      current += char;
+      if (char === '\n') {
+        inLineComment = false;
+      }
+      continue;
+    }
+
+    if (inBlockComment) {
+      current += char;
+      if (char === '*' && str[i + 1] === '/') {
+        current += '/';
+        i++;
+        inBlockComment = false;
+      }
       continue;
     }
 
@@ -96,6 +116,22 @@ function splitTopLevel(str: string, delimiter: string): string[] {
       quote = char;
       current += char;
       continue;
+    }
+
+    if (char === '/') {
+      if (str[i + 1] === '/') {
+        current += '//';
+        i++;
+        inLineComment = true;
+        continue;
+      }
+
+      if (str[i + 1] === '*') {
+        current += '/*';
+        i++;
+        inBlockComment = true;
+        continue;
+      }
     }
 
     if (char === '(') parenDepth++;
@@ -269,6 +305,18 @@ describe('splitTopLevel', () => {
     const result = splitTopLevel("head|`tmpl ${'a\\'|b'}`|tail", '|');
 
     expect(result).toEqual(['head', "`tmpl ${'a\\'|b'}`", 'tail']);
+  });
+
+  it('does not split delimiters inside block comments', () => {
+    const result = splitTopLevel('value /* | */ | upper', '|');
+
+    expect(result).toEqual(['value /* | */ ', ' upper']);
+  });
+
+  it('does not split delimiters inside line comments', () => {
+    const result = splitTopLevel('value // | ignored\n| upper', '|');
+
+    expect(result).toEqual(['value // | ignored\n', ' upper']);
   });
 });
 

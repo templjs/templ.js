@@ -1,5 +1,5 @@
 #!/usr/bin/env tsx
-import { spawn } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 
 const pnpmCmd = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 
@@ -45,9 +45,13 @@ function resolveReporters(): string[] {
 function terminateProcessTree(pid: number, signal: NodeJS.Signals): void {
   if (process.platform === 'win32') {
     try {
-      process.kill(pid, signal);
+      execSync(`taskkill /PID ${pid} /T /F`, { stdio: 'ignore' });
     } catch {
-      // Ignore kill errors; process may already have exited.
+      try {
+        process.kill(pid, signal);
+      } catch {
+        // Ignore kill errors; process may already have exited.
+      }
     }
     return;
   }

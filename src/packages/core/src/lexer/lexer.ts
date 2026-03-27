@@ -1,5 +1,5 @@
-import type { Token, Position, DelimiterConfig, LexerOptions } from './types.js';
-import { TokenType, DEFAULT_DELIMITERS } from './types.js';
+import type { Token, Position, LexerOptions } from './types.js';
+import { TokenType, mergeDelimiterConfig } from './types.js';
 
 /**
  * Tokenize a template string into structured tokens
@@ -19,45 +19,7 @@ import { TokenType, DEFAULT_DELIMITERS } from './types.js';
  * ```
  */
 export function tokenize(template: string, options?: LexerOptions): Token[] {
-  // Merge delimiters with defaults
-  const statementPair = options?.delimiters?.statement;
-  const expressionPair = options?.delimiters?.expression;
-  const commentPair = options?.delimiters?.comment;
-  const {
-    statement: _statementTuple,
-    expression: _expressionTuple,
-    comment: _commentTuple,
-    ...delimiterOverrides
-  } = options?.delimiters ?? {};
-
-  const delimiters: Required<
-    Pick<
-      DelimiterConfig,
-      | 'statement_start'
-      | 'statement_end'
-      | 'expression_start'
-      | 'expression_end'
-      | 'comment_start'
-      | 'comment_end'
-    >
-  > = {
-    statement_start:
-      statementPair?.[0] ??
-      delimiterOverrides.statement_start ??
-      DEFAULT_DELIMITERS.statement_start,
-    statement_end:
-      statementPair?.[1] ?? delimiterOverrides.statement_end ?? DEFAULT_DELIMITERS.statement_end,
-    expression_start:
-      expressionPair?.[0] ??
-      delimiterOverrides.expression_start ??
-      DEFAULT_DELIMITERS.expression_start,
-    expression_end:
-      expressionPair?.[1] ?? delimiterOverrides.expression_end ?? DEFAULT_DELIMITERS.expression_end,
-    comment_start:
-      commentPair?.[0] ?? delimiterOverrides.comment_start ?? DEFAULT_DELIMITERS.comment_start,
-    comment_end:
-      commentPair?.[1] ?? delimiterOverrides.comment_end ?? DEFAULT_DELIMITERS.comment_end,
-  };
+  const delimiters = mergeDelimiterConfig(options?.delimiters ?? {});
 
   const tokens: Token[] = [];
   let position = 0;
@@ -119,7 +81,11 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
         );
       }
 
-      if (earliest === null || startPos < earliest.start) {
+      if (
+        earliest === null ||
+        startPos < earliest.start ||
+        (startPos === earliest.start && check.start.length > earliest.delimiterStart.length)
+      ) {
         earliest = {
           type: check.type,
           start: startPos,

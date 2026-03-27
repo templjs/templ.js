@@ -67,6 +67,8 @@ export type { FunctionSignature } from './query-engine/types.js';
 
 // Export renderer
 export { Renderer, render } from './renderer/renderer.js';
+// Clears process-global Intl formatter caches. Intended for test isolation or
+// explicit memory-pressure control, not routine request-path usage.
 export {
   BUILTIN_FILTER_NAMES,
   getBuiltinFilterNames,

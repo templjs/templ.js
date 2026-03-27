@@ -72,8 +72,8 @@ In progress across the repo:
 
 ### Prerequisites
 
-- Node.js `^22.0.0 || ^24.0.0`
-- pnpm `>=8`
+- Node.js `>=22.12.0 <23 || >=24.0.0 <25`
+- pnpm `8.15.0`
 
 ### Setup
 

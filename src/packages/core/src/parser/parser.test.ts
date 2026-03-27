@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TemplateParser } from './parser.js';
+import { tokenize } from '../lexer/lexer.js';
 import type { ExtractTokenInput, DelimiterConfig } from './parser.js';
 
 function makeParser() {
@@ -272,5 +273,35 @@ describe('TemplateParser - public extractStatementContent / extractExpressionCon
         contentEnd: 19,
       });
     });
+  });
+});
+
+describe('TemplateParser splitTopLevel integration', () => {
+  it('ignores block comment delimiters when parsing filter expressions', () => {
+    const tokens = tokenize('{{ value /* | */ | upper }}');
+    const result = new TemplateParser(tokens).parse();
+    const node = result.ast?.children[0];
+
+    expect(node?.type).toBe('expression_statement');
+    if (node?.type === 'expression_statement') {
+      expect(node.value.type).toBe('filter');
+      if (node.value.type === 'filter') {
+        expect(node.value.filters[0]?.name).toBe('upper');
+      }
+    }
+  });
+
+  it('ignores line comment delimiters when parsing filter expressions', () => {
+    const tokens = tokenize('{{ value // | ignored\n| upper }}');
+    const result = new TemplateParser(tokens).parse();
+    const node = result.ast?.children[0];
+
+    expect(node?.type).toBe('expression_statement');
+    if (node?.type === 'expression_statement') {
+      expect(node.value.type).toBe('filter');
+      if (node.value.type === 'filter') {
+        expect(node.value.filters[0]?.name).toBe('upper');
+      }
+    }
   });
 });

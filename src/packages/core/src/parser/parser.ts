@@ -699,6 +699,8 @@ export class TemplateParser {
     let inSingleQuote = false;
     let inDoubleQuote = false;
     let inTemplateString = false;
+    let inLineComment = false;
+    let inBlockComment = false;
     let escaped = false;
 
     for (let i = 0; i < str.length; i++) {
@@ -710,10 +712,44 @@ export class TemplateParser {
         continue;
       }
 
+      if (inLineComment) {
+        current += char;
+        if (char === '\n') {
+          inLineComment = false;
+        }
+        continue;
+      }
+
+      if (inBlockComment) {
+        current += char;
+        if (char === '*' && str[i + 1] === '/') {
+          current += '/';
+          i++;
+          inBlockComment = false;
+        }
+        continue;
+      }
+
       if ((inSingleQuote || inDoubleQuote || inTemplateString) && char === '\\') {
         current += char;
         escaped = true;
         continue;
+      }
+
+      if (!inSingleQuote && !inDoubleQuote && !inTemplateString && char === '/') {
+        const nextChar = str[i + 1];
+        if (nextChar === '/') {
+          current += '//';
+          i++;
+          inLineComment = true;
+          continue;
+        }
+        if (nextChar === '*') {
+          current += '/*';
+          i++;
+          inBlockComment = true;
+          continue;
+        }
       }
 
       if (!inDoubleQuote && !inTemplateString && char === "'") {
@@ -743,6 +779,8 @@ export class TemplateParser {
         !inSingleQuote &&
         !inDoubleQuote &&
         !inTemplateString &&
+        !inLineComment &&
+        !inBlockComment &&
         depth === 0 &&
         char === delimiter
       ) {
@@ -762,14 +800,6 @@ export class TemplateParser {
    */
   private isVariableStart(char: string): boolean {
     return /[a-zA-Z_]/.test(char);
-  }
-
-  private extractContentWithDelimiters(
-    tokenOrContent: string | ExtractTokenInput,
-    delimiters: DelimiterConfig | undefined,
-    extractorName: 'extractStatementContent' | 'extractExpressionContent'
-  ): ExtractedContent {
-    return extractContentWithDelimiters(tokenOrContent, delimiters, extractorName);
   }
 
   /**

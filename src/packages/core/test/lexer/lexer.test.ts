@@ -48,6 +48,12 @@ describe('Delimiter Utilities', () => {
     expect(merged.expression_end).toBe(']]');
     expect(merged.statement_start).toBe(DEFAULT_DELIMITERS.statement_start);
   });
+
+  it('mergeDelimiterConfig rejects empty delimiter strings', () => {
+    expect(() => mergeDelimiterConfig({ expression: ['', ']]'] })).toThrow(
+      'Delimiter "expression_start" must be a non-empty string'
+    );
+  });
 });
 
 describe('Lexer', () => {
@@ -192,6 +198,19 @@ describe('Lexer', () => {
           const template = '{% if x %}{% for y %}{{ y }}{% endfor %}{% endif %}';
           const tokens = tokenize(template);
           expect(tokens).toHaveLength(5);
+        });
+
+        it('should prefer the longest matching start delimiter when delimiters overlap', () => {
+          const tokens = tokenize('<< value >>', {
+            delimiters: {
+              statement: ['<', '>'],
+              expression: ['<<', '>>'],
+            },
+          });
+
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[0].content).toBe('<< value >>');
         });
       });
 

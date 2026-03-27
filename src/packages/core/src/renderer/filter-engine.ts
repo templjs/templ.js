@@ -20,6 +20,7 @@ export const MAX_FORMATTER_CACHE_SIZE = 256;
 
 const NUMBER_FORMATTER_CACHE = new Map<string, Intl.NumberFormat>();
 const CURRENCY_FORMATTER_CACHE = new Map<string, Intl.NumberFormat>();
+const MAX_INTL_FRACTION_DIGITS = 20;
 
 function getLruCacheValue(
   cache: Map<string, Intl.NumberFormat>,
@@ -305,15 +306,14 @@ const BUILTIN_FILTERS: Record<string, FilterFunction> = {
     }
 
     const resolvedLocale = typeof locale === 'string' && locale.trim() ? locale.trim() : 'en-US';
-    const MAX_FRACTION_DIGITS = 100;
     const minDigits = Math.min(
-      MAX_FRACTION_DIGITS,
+      MAX_INTL_FRACTION_DIGITS,
       typeof minimumFractionDigits === 'number' && Number.isFinite(minimumFractionDigits)
         ? Math.max(0, Math.floor(minimumFractionDigits))
         : 0
     );
     const maxDigitsCandidate = Math.min(
-      MAX_FRACTION_DIGITS,
+      MAX_INTL_FRACTION_DIGITS,
       typeof maximumFractionDigits === 'number' && Number.isFinite(maximumFractionDigits)
         ? Math.max(0, Math.floor(maximumFractionDigits))
         : minDigits
