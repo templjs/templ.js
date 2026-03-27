@@ -109,6 +109,37 @@ describe('signal-handler', () => {
     exitSpy.mockRestore();
   });
 
+  it('registers and cleans up SIGPIPE listeners when platform is non-Windows', async () => {
+    const originalPlatform = process.platform;
+    Object.defineProperty(process, 'platform', {
+      configurable: true,
+      value: 'linux',
+    });
+
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+    const options: SignalHandlerOptions = { onSigPipe: () => {} };
+
+    try {
+      const cleanup = registerSignalHandlers(options);
+
+      const sigpipeListenerCount = process.listeners('SIGPIPE').length;
+      expect(sigpipeListenerCount).toBeGreaterThan(0);
+
+      process.emit('SIGPIPE');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(exitSpy).toHaveBeenCalledWith(141);
+
+      cleanup();
+      expect(process.listeners('SIGPIPE').length).toBe(sigpipeListenerCount - 1);
+    } finally {
+      Object.defineProperty(process, 'platform', {
+        configurable: true,
+        value: originalPlatform,
+      });
+      exitSpy.mockRestore();
+    }
+  });
+
   it('calls handler functions before exiting', async () => {
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);

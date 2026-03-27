@@ -239,7 +239,7 @@ describe('extension-activation', () => {
         documentContext?: { uri: string; content: string };
       };
     };
-    expect(clientOptions.initializationOptions.typescript?.tsdk).toContain('typescript/lib');
+    expect(clientOptions.initializationOptions.typescript?.tsdk).toMatch(/typescript[\\/]lib/);
     expect(clientOptions.initializationOptions.schemaPath).toBe('.templjs/schema.json');
     expect(clientOptions.initializationOptions.contentSchemaPath).toBe(
       '.templjs/content-schema.json'
@@ -295,7 +295,7 @@ describe('extension-activation', () => {
         schemaPatterns?: Record<string, { schemaPath?: string; contentSchemaPath?: string }>;
       };
     };
-    expect(clientOptions.initializationOptions.typescript?.tsdk).toContain('typescript/lib');
+    expect(clientOptions.initializationOptions.typescript?.tsdk).toMatch(/typescript[\\/]lib/);
     expect(clientOptions.initializationOptions.schemaPath).toBe('.templjs/schema.json');
     expect(clientOptions.initializationOptions.contentSchemaPath).toBe(
       '.templjs/content-schema.json'

@@ -37,7 +37,7 @@ afterEach(() => {
 
 describe('schema-loading', () => {
   it('exports helper functions and resolves workspace roots', () => {
-    const workspaceRoot = '/tmp/templjs-schema-workspace';
+    const workspaceRoot = path.join(tmpdir(), 'templjs-schema-workspace');
 
     expect(schemaLoading.DEFAULT_SCHEMA_LOAD_TIMEOUT_MS).toBe(DEFAULT_SCHEMA_LOAD_TIMEOUT_MS);
     expect(schemaLoading.extractDocumentSchemaKey).toBe(extractDocumentSchemaKey);
