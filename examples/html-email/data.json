@@ -1,4 +1,9 @@
 {
+  "lang": "en",
+  "labels": {
+    "unit": "Unit",
+    "subtotal": "Subtotal"
+  },
   "user": { "first_name": "Taylor" },
   "order": {
     "id": "ORD-1042",

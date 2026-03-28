@@ -7,7 +7,7 @@ title: '21: Create Example Templates and Demo Video'
 status: in-progress
 priority: critical
 estimated: 8
-actual: 3
+actual: 4
 assignee: ''
 commits:
   8418c57: 'docs(release): add critical-path docs and reduced example slice (WI-020, WI-021, WI-022)'
@@ -23,6 +23,23 @@ test_results:
       - `examples/config-files/`
       - `examples/documentation/`
       - demo video recording
+  - timestamp: 2026-03-28T20:35:00Z
+    note: |
+      Expanded WI-021 example coverage and revalidated the full example pack:
+      - Added `examples/config-files/` with `.env.tmpl`, `docker-compose.tmpl`, shared data, and README
+      - Added `examples/documentation/` with markdown API-doc generation example, data, and README
+      - Added inline template comments to markdown-report, html-email, and json-api examples
+      - Simplified markdown-report, html-email, and config-files example syntax to match the current renderer capabilities
+      - Updated example READMEs and `docs/examples.md` to use repo-root build and render commands
+      Validation:
+      - `pnpm --filter @templjs/core build`
+      - `pnpm --filter @templjs/cli build`
+      - `node src/packages/cli/dist/cli.js render -t examples/markdown-report/template.md.templ -i examples/markdown-report/data.json`
+      - `node src/packages/cli/dist/cli.js render -t examples/html-email/template.html.templ -i examples/html-email/data.json`
+      - `node src/packages/cli/dist/cli.js render -t examples/json-api/template.json.templ -i examples/json-api/data.json`
+      - `node src/packages/cli/dist/cli.js render -t examples/config-files/.env.tmpl -i examples/config-files/data.json`
+      - `node src/packages/cli/dist/cli.js render -t examples/config-files/docker-compose.tmpl -i examples/config-files/data.json`
+      - `node src/packages/cli/dist/cli.js render -t examples/documentation/template.md.templ -i examples/documentation/data.json`
 links:
   depends_on:
     - '[[017_cli_commands]]'
@@ -41,10 +58,10 @@ Examples showcase templ.js capabilities and help users understand syntax. Video 
 - [x] Create `examples/markdown-report/` (analytics report)
 - [x] Create `examples/html-email/` (transactional email)
 - [x] Create `examples/json-api/` (API response transformation)
-- [ ] Create `examples/config-files/` (.env.tmpl, docker-compose.tmpl)
-- [ ] Create `examples/documentation/` (auto-generated docs)
-- [ ] Annotate all examples with comments
-- [ ] Create demo data files for each example
+- [x] Create `examples/config-files/` (.env.tmpl, docker-compose.tmpl)
+- [x] Create `examples/documentation/` (auto-generated docs)
+- [x] Annotate all examples with comments
+- [x] Create demo data files for each example
 - [ ] Record demo video (5-10 minutes)
 - [x] Add example README with instructions
 
@@ -57,12 +74,12 @@ Examples showcase templ.js capabilities and help users understand syntax. Video 
 
 ## Acceptance Criteria
 
-- [ ] All examples run without errors
-- [ ] Examples demonstrate different features
-- [ ] Example data is realistic
+- [x] All examples run without errors
+- [x] Examples demonstrate different features
+- [x] Example data is realistic
 - [ ] Video shows installation → rendering
 - [ ] Video shows VS Code features
-- [ ] Examples are well-commented
+- [x] Examples are well-commented
 
 ## Example Templates
 
