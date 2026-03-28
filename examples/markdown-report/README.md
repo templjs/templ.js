@@ -11,8 +11,10 @@ summary: Run and understand the markdown report templating example.
 ## Run
 
 ```bash
-node examples/markdown-report/validate-data.mjs && \
-pnpm --filter @templjs/cli exec node dist/cli.js render \
+node examples/markdown-report/validate-data.mjs
+pnpm --filter @templjs/core build
+pnpm --filter @templjs/cli build
+node src/packages/cli/dist/cli.js render \
   -t examples/markdown-report/template.md.templ \
   -i examples/markdown-report/data.json
 ```

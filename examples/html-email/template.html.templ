@@ -1,9 +1,8 @@
 <!doctype html>
 
+{# HTML email example showing localization, formatting, loops, and optional sections. #}
 {% set locale = order.locale | default('en-US') %}
-{% set lang_code = locale | split('-') | first | default('en') %}
-{% set labels_by_lang = {'en': {'unit': 'Unit', 'subtotal': 'Subtotal'}, 'de': {'unit': 'Einzelpreis', 'subtotal': 'Zwischensumme'}, 'es': {'unit': 'Precio unitario', 'subtotal': 'Subtotal'}, 'fr': {'unit': 'Prix unitaire', 'subtotal': 'Sous-total'}, 'it': {'unit': 'Prezzo unitario', 'subtotal': 'Subtotale'}, 'pt': {'unit': 'Preço unitário', 'subtotal': 'Subtotal'}, 'nl': {'unit': 'Stukprijs', 'subtotal': 'Subtotaal'}} %}
-{% set labels = labels_by_lang[lang_code] | default(labels_by_lang.en, true) %}
+{% set lang_code = lang | default('en') %}
 <html
   lang="{{ lang_code }}"
   xmlns="http://www.w3.org/1999/xhtml"
@@ -100,7 +99,7 @@
                   <strong>{{ order.status | escape }}</strong>.
                 </p>
 
-                {% set currency_code = order.currency_code | default(order.currency) | default('USD') %}
+                {% set currency_code = order.currency_code | default('USD') %}
                 {% if order.items %}
                 <table
                   role="presentation"

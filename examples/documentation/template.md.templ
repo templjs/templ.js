@@ -1,0 +1,29 @@
+{# Markdown documentation generated from endpoint metadata. #}
+# {{ service.name }}
+
+Version: {{ service.version }}
+
+{% for endpoint in endpoints %}
+## {{ endpoint.name }}
+
+`{{ endpoint.method }}` `{{ endpoint.path }}`
+
+{{ endpoint.description }}
+
+{% if endpoint.deprecated is defined and endpoint.deprecated %}
+> Deprecated endpoint.
+{% endif %}
+
+### Parameters
+
+{% for param in endpoint.params %}
+- `{{ param.name }}` (`{{ param.type }}`){% if param.required %} required{% endif %}
+{% endfor %}
+
+### Responses
+
+{% for response in endpoint.responses %}
+- `{{ response.code }}`: {{ response.description }}
+{% endfor %}
+
+{% endfor %}

@@ -7,13 +7,15 @@ status: ready
 title: Example Templates
 ---
 
-This release slice includes a reduced, high-value example set from WI-021.
+This guide now covers the full example pack currently shipped for release readiness work.
 
 ## Included Examples
 
 - [markdown-report/](../examples/markdown-report/README.md)
 - [html-email/](../examples/html-email/README.md)
 - [json-api/](../examples/json-api/README.md)
+- [config-files/](../examples/config-files/README.md)
+- [documentation/](../examples/documentation/README.md)
 
 ## Files in the Examples
 
@@ -35,6 +37,19 @@ This release slice includes a reduced, high-value example set from WI-021.
 - [data.json](../examples/json-api/data.json)
 - [README.md](../examples/json-api/README.md)
 
+### config-files/
+
+- [.env.tmpl](../examples/config-files/.env.tmpl)
+- [docker-compose.tmpl](../examples/config-files/docker-compose.tmpl)
+- [data.json](../examples/config-files/data.json)
+- [README.md](../examples/config-files/README.md)
+
+### documentation/
+
+- [template.md.templ](../examples/documentation/template.md.templ)
+- [data.json](../examples/documentation/data.json)
+- [README.md](../examples/documentation/README.md)
+
 ## Implementation Links
 
 - CLI command registration for `templjs render`: [src/packages/cli/src/cli.ts](../src/packages/cli/src/cli.ts)
@@ -51,6 +66,8 @@ This release slice includes a reduced, high-value example set from WI-021.
 ## Run an Example
 
 ```bash
+pnpm --filter @templjs/core build
+pnpm --filter @templjs/cli build
 node src/packages/cli/dist/cli.js render \
   -t examples/markdown-report/template.md.templ \
   -i examples/markdown-report/data.json
@@ -60,12 +77,14 @@ Related source:
 
 - [src/packages/cli/src/commands/render.ts](../src/packages/cli/src/commands/render.ts)
 
-## Why This Slice
+## Why These Examples
 
-This reduced set covers the most representative production cases:
+This pack covers the most representative release-readiness cases:
 
 - Human-readable report generation (Markdown)
 - Transactional messaging (HTML)
 - Structured response transformation (JSON)
+- Deployment-oriented config generation (.env and Docker Compose)
+- API-style documentation generation (Markdown)
 
-The full WI-021 scope (additional packs + demo video) can be completed after v1.0 release readiness.
+The remaining WI-021 scope is the demo video.

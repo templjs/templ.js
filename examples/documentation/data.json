@@ -1,0 +1,34 @@
+{
+  "service": {
+    "name": "templjs API",
+    "version": "1.0.0"
+  },
+  "endpoints": [
+    {
+      "name": "Render Template",
+      "method": "POST",
+      "path": "/render",
+      "description": "Render a template against validated input data.",
+      "params": [
+        { "name": "template", "type": "string", "required": true },
+        { "name": "data", "type": "object", "required": true }
+      ],
+      "responses": [
+        { "code": 200, "description": "Rendered output returned." },
+        { "code": 400, "description": "Template or input validation failed." }
+      ]
+    },
+    {
+      "name": "Validate Template",
+      "method": "POST",
+      "path": "/validate",
+      "description": "Validate a template and optional schema without rendering.",
+      "deprecated": false,
+      "params": [
+        { "name": "template", "type": "string", "required": true },
+        { "name": "schema", "type": "object", "required": false }
+      ],
+      "responses": [{ "code": 200, "description": "Validation result returned." }]
+    }
+  ]
+}
