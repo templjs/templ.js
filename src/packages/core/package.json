@@ -17,6 +17,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "docs:api": "typedoc --options typedoc.json",
     "test": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "test:coverage": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts --coverage",

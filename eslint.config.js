@@ -19,5 +19,5 @@ export default tseslint.config({
     ],
     'prefer-regex-literals': ['error', { disallowRedundantWrapping: true }],
   },
-  ignores: ['dist/**', 'node_modules/**', 'coverage/**', '.changeset/**'],
+  ignores: ['dist/**', 'node_modules/**', 'coverage/**', '.changeset/**', 'docs/api/**'],
 });
