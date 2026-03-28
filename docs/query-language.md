@@ -1,0 +1,171 @@
+---
+id: querylanguage-001
+type: document
+subtype: guide
+lifecycle: active
+status: ready
+title: Query Language Guide
+---
+
+## Overview
+
+The templjs query engine resolves values from structured input data using:
+
+- dot notation for nested properties
+- bracket access for array indexes and quoted keys
+- built-in filter functions for transformation
+- strict/default execution options for missing-path handling
+
+Source implementation:
+Source implementation: [src/packages/core/src/query-engine/query-engine.ts](../src/packages/core/src/query-engine/query-engine.ts)
+
+Primary behavior tests:
+Primary behavior tests: [src/packages/core/test/query-engine/query-engine.test.ts](../src/packages/core/test/query-engine/query-engine.test.ts)
+
+## Dot Notation
+
+Use `.` to walk nested object properties.
+
+```templ
+{{ user.profile.name }}
+```
+
+With input:
+
+```json
+{
+  "user": {
+    "profile": {
+      "name": "Alice"
+    }
+  }
+}
+```
+
+Result:
+
+```text
+Alice
+```
+
+## Array Access
+
+Use bracket notation for numeric indexes.
+
+```templ
+{{ items[1] }}
+```
+
+```json
+{
+  "items": ["zero", "one", "two"]
+}
+```
+
+Result:
+
+```text
+one
+```
+
+## Variable Index Access
+
+Bracket indexes can reference another root variable.
+
+```templ
+{{ items[idx] }}
+```
+
+```json
+{
+  "items": ["zero", "one", "two"],
+  "idx": 2
+}
+```
+
+Result:
+
+```text
+two
+```
+
+Chained bracket access also works:
+
+```templ
+{{ matrix[row][col] }}
+```
+
+## Quoted Keys
+
+Use quoted brackets for object keys that are not valid identifiers.
+
+```templ
+{{ user["display-name"] }}
+```
+
+## Missing Paths and Defaults
+
+By default, unresolved paths return `undefined`.
+
+Programmatic callers can provide `defaultValue` or enable `strict` mode through the query engine API.
+
+Implementation reference:
+Implementation reference: [src/packages/core/src/query-engine/types.ts](../src/packages/core/src/query-engine/types.ts)
+
+## Filters
+
+Apply filters with pipe syntax.
+
+```templ
+{{ user.name | upper }}
+{{ total | round(2) }}
+{{ tags | join(", ") }}
+```
+
+Built-in function catalogs:
+
+- [String functions](./functions/string-functions.md)
+- [Number functions](./functions/number-functions.md)
+- [Datetime functions](./functions/datetime-functions.md)
+- [Array functions](./functions/array-functions.md)
+- [Object functions](./functions/object-functions.md)
+
+## Overloads and Runtime Dispatch
+
+Some filter names are overloaded by runtime category. For example, `reverse` supports both strings and arrays. The query engine selects the appropriate overload by inspecting the input value and argument shape.
+
+Metadata and overload tests:
+
+- [src/packages/core/test/query-engine/query-engine.metadata.test.ts](../src/packages/core/test/query-engine/query-engine.metadata.test.ts)
+- [src/packages/core/test/query-engine/query-engine.catalog.test.ts](../src/packages/core/test/query-engine/query-engine.catalog.test.ts)
+
+## Expression-Based Array Filters
+
+Array helpers such as `filter` and `find` support simple expression strings.
+
+Examples:
+
+```templ
+{{ scores | filter("> 90") }}
+{{ users | find("active == true") }}
+{{ items | where("published") }}
+```
+
+Supported comparison forms include:
+
+- scalar comparisons such as `> 1`, `<= 10`, `== "ok"`
+- field comparisons such as `age >= 18`, `status == "active"`
+- truthy property lookup such as `published`
+
+## Limits and Current Behavior
+
+- Maximum nesting depth defaults to `100` in query execution options.
+- Malformed bracket syntax may fall back to property lookup behavior rather than throwing.
+- `reduce` is registered but currently returns the input array unchanged.
+- Datetime formatting/parsing examples can vary by runtime timezone.
+
+## Related Guides
+
+- [Core and CLI API Reference](./api-reference.md)
+- [Configuration Guide](./configuration.md)
+- [Getting Started with templjs](./getting-started.md)

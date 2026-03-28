@@ -92,6 +92,15 @@ pnpm type-check
 pnpm graph
 ```
 
+## Documentation
+
+- [Getting Started](docs/getting-started.md)
+- [Core and CLI API Reference](docs/api-reference.md)
+- [Query Language Guide](docs/query-language.md)
+- [Configuration Guide](docs/configuration.md)
+- [CLI Reference](docs/cli.md)
+- [Examples](docs/examples.md)
+
 ## Template Syntax (Current)
 
 Current defaults support Jinja2-style block/comment delimiters plus expression tags:
