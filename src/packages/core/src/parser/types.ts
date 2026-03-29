@@ -74,7 +74,7 @@ export interface BlockNode extends BaseNode {
 
 /**
  * Expression statement
- * e.g., {{ user.name | upper }}
+ * e.g., `{{ user.name | upper }}`
  */
 export interface ExpressionStatementNode extends BaseNode {
   type: 'expression_statement';
@@ -110,7 +110,7 @@ export interface LiteralNode extends BaseNode {
 
 /**
  * Filter expression
- * e.g., user.name | upper | trim
+ * e.g., `user.name | upper | trim`
  */
 export interface FilterNode extends BaseNode {
   type: 'filter';

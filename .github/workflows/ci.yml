@@ -142,7 +142,9 @@ jobs:
           node-version: ${{ needs.toolchain.outputs.node_default }}
 
       - name: Generate API docs and verify artifact
-        run: pnpm run ci:docs-api
+        run: |
+          rm -rf docs/api
+          pnpm run ci:docs-api
 
   test:
     name: Test (Node ${{ matrix.node-version }}, ${{ matrix.os }})

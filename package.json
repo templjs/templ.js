@@ -24,7 +24,7 @@
     "benchmark:compare": "tsx benchmarks/compare.ts",
     "benchmark:summary": "tsx benchmarks/summary.ts",
     "ci:build": "pnpm run build:affected:ci",
-    "ci:docs-api": "pnpm run docs:api && test -f docs/api/index.html",
+    "ci:docs-api": "pnpm run docs:api && test -f docs/api/index.html && git diff --exit-code -- docs/api",
     "ci:frontmatter": "pnpm run lint:frontmatter",
     "ci:lint": "pnpm run lint:ci",
     "ci:test": "pnpm run test:affected:ci",

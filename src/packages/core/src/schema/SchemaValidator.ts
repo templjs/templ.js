@@ -116,7 +116,7 @@ export class SchemaValidator {
 
   /**
    * Validate a query path against the schema
-   * @param path - Query path (e.g., 'user.name', 'users[0].email')
+   * @param path - Query path (e.g., `user.name`, `users[0].email`)
    * @returns Validation result with suggestions if invalid
    */
   validateQueryPath(path: string): ValidationResult {

@@ -109,11 +109,13 @@ export interface FrontmatterKeyValueAtOffset {
 }
 
 /**
- * Detect the byte range occupied by a YAML frontmatter block.
+ * Detect the string index range (code unit offsets) occupied by a YAML
+ * frontmatter block.
  *
  * @param text - Full document text to scan
  * @returns `FrontmatterRange` `{start, end}` if a `---`-delimited block is
- *   found at the document start, or `undefined` if none is present
+ *   found at the document start, or `undefined` if none is present. These
+ *   indices are intended for use with `text.slice(range.start, range.end)`.
  */
 export function detectFrontmatterRange(text: string): FrontmatterRange | undefined {
   const openingFenceLength = text.startsWith('---\r\n')
@@ -496,8 +498,8 @@ export function resolveSemanticHostLanguage(documentUri?: string): SemanticHostL
 /**
  * Resolve semantic zone defaults based on host language + offset context.
  *
- * For JSON/YAML files, frontmatter detection is preserved to avoid changing
- * metadata behavior when templ blocks embed those formats.
+ * Frontmatter detection is only active for Markdown files. For JSON/YAML and
+ * other host languages, all content is treated as the `content` zone.
  *
  * @param text - Full document text
  * @param offset - Zero-based character offset

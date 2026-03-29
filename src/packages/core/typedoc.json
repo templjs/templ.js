@@ -9,6 +9,8 @@
   "excludeInternal": true,
   "excludeExternals": true,
   "excludeNotDocumented": false,
+  "sourceLinkTemplate": "https://github.com/templjs/templ.js/blob/{gitRevision}/{path}#L{line}",
+  "gitRevision": "main",
   "categorizeByGroup": true,
   "sort": ["source-order"],
   "plugin": []
