@@ -1,0 +1,17 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/index.ts"],
+  "out": "../../../docs/api",
+  "name": "templjs Core API",
+  "readme": "none",
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "excludeNotDocumented": false,
+  "sourceLinkTemplate": "https://github.com/templjs/templ.js/blob/{gitRevision}/{path}#L{line}",
+  "gitRevision": "main",
+  "categorizeByGroup": true,
+  "sort": ["source-order"],
+  "plugin": []
+}

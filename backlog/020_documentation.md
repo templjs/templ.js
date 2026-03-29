@@ -12,6 +12,7 @@ assignee: ''
 commits:
   8418c57: 'docs(release): add critical-path docs and reduced example slice (WI-020, WI-021, WI-022)'
   660e0f6: 'docs: address PR-38 function reference review comments'
+  51333ce: 'docs: add WI-020 query and configuration guides (#39)'
 test_results:
   - timestamp: 2026-03-22T00:00:00Z
     note: |
@@ -77,17 +78,18 @@ Documentation covers:
   - [x] `docs/functions/datetime-functions.md` - Datetime function catalog with usage examples
   - [x] `docs/functions/array-functions.md` - Array function catalog with usage examples
   - [x] `docs/functions/object-functions.md` - Object function catalog with usage examples
-- [ ] Create `docs/query-language.md` (dot notation, array access, filters, chaining)
 - [x] Create `docs/query-language.md` (dot notation, array access, filters, chaining)
 - [x] Create `docs/cli.md` (render, validate, init, watch commands)
 - [x] Create `docs/configuration.md` (delimiters, schema, custom functions)
 - [ ] Create `docs/examples.md` (10+ example templates)
 - [x] Update root `README.md` with feature overview and badges
 - [ ] Add TypeScript JSDoc comments to all source files
-- [ ] Generate API docs from source (TypeDoc)
+- [x] Generate API docs from source (TypeDoc)
+- [x] Add TypeDoc regression guard in CI (`ci:docs-api` must succeed and produce `docs/api/index.html`)
 - [ ] Setup docs hosting (GitHub Pages or Vercel)
-- [ ] Create function cheat sheet (one-page reference)
-- [ ] Add visual diagrams for query language and control flow
+- [x] Create function cheat sheet (one-page reference)
+- [x] Add visual diagrams for query language and control flow
+- [ ] Track and close remaining TypeDoc documentation coverage gap via [[090_typedoc_coverage_ratcheting]]
 
 ## Deliverables
 
@@ -117,7 +119,8 @@ Documentation covers:
 - [ ] Examples cover: strings, numbers, arrays, objects, control flow
 - [ ] All links and code examples tested
 - [ ] Docs render properly (markdown, HTML, PDF)
-- [ ] Function cheat sheet fits one page
+- [x] TypeDoc docs generation succeeds in CI and emits `docs/api/index.html`
+- [x] Function cheat sheet fits one page
 - [ ] Search functionality works
 
 ## Documentation Structure
@@ -153,3 +156,4 @@ docs/
 ## Related Items
 
 - [[061_multiple_filter_signatures]]: follow-up API/docs work for overload-aware built-in filter signature metadata
+- [[090_typedoc_coverage_ratcheting]]: incremental path to close TypeDoc/JSDoc coverage gap after generation guard baseline

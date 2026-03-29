@@ -90,7 +90,7 @@ export class QueryEngine {
    * Query data using dot notation and array access.
    *
    * @param data - The data object to query
-   * @param path - Query path (e.g., "user.profile.name" or "items[0]")
+   * @param path - Query path (e.g., `user.profile.name` or `items[0]`)
    * @param options - Query options
    * @returns The resolved value or undefined
    *

@@ -16,6 +16,44 @@ The templjs query engine resolves values from structured input data using:
 - built-in filter functions for transformation
 - strict/default execution options for missing-path handling
 
+## Query Resolution Flow
+
+```mermaid
+flowchart LR
+  A[Template Expression] --> B{Path Type?}
+  B -->|dot notation| C[Property Lookup]
+  B -->|bracket index| D[Array / Key Access]
+  B -->|variable index| E[Resolve Index Var First]
+  C --> F[Resolved Value]
+  D --> F
+  E --> D
+  F --> G{Filters?}
+  G -->|yes| H[Apply Filter Chain]
+  G -->|no| I[Output]
+  H --> H2{More Filters?}
+  H2 -->|yes| H
+  H2 -->|no| I
+```
+
+## Filter Pipeline
+
+```mermaid
+flowchart LR
+  V[Value] --> F1["filter1()"]
+  F1 --> F2["filter2(arg)"]
+  F2 --> F3["filter3(a, b)"]
+  F3 --> Out[Final Output]
+
+  style V fill:#ddf,stroke:#99b
+  style Out fill:#dfd,stroke:#9b9
+```
+
+Syntax in templates:
+
+```templ
+{{ value | upper | truncate(50) | escape }}
+```
+
 Source implementation:
 Source implementation: [src/packages/core/src/query-engine/query-engine.ts](../src/packages/core/src/query-engine/query-engine.ts)
 

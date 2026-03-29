@@ -74,10 +74,22 @@ export interface SemanticResponse {
   diagnostics?: SemanticDiagnosticResult[];
 }
 
+/**
+ * Derive a stable schema profile ID from a semantic context block name.
+ *
+ * @param contextBlock - `"frontmatter"` or `"content"`
+ * @returns Profile ID string (e.g. `"schema-frontmatter"`)
+ */
 export function getSemanticProfileId(contextBlock: SemanticContextBlock): string {
   return `schema-${contextBlock}`;
 }
 
+/**
+ * Convert a semantic context block into a structured `SemanticZone`.
+ *
+ * @param contextBlock - `"frontmatter"` or `"content"`
+ * @returns `SemanticZone` with `kind`, `profileId`, and legacy block name
+ */
 export function toSemanticZone(contextBlock: SemanticContextBlock): SemanticZone {
   return {
     kind: contextBlock === 'frontmatter' ? 'metadata' : 'body',
@@ -96,6 +108,15 @@ export interface FrontmatterKeyValueAtOffset {
   valueToken: string;
 }
 
+/**
+ * Detect the string index range (code unit offsets) occupied by a YAML
+ * frontmatter block.
+ *
+ * @param text - Full document text to scan
+ * @returns `FrontmatterRange` `{start, end}` if a `---`-delimited block is
+ *   found at the document start, or `undefined` if none is present. These
+ *   indices are intended for use with `text.slice(range.start, range.end)`.
+ */
 export function detectFrontmatterRange(text: string): FrontmatterRange | undefined {
   const openingFenceLength = text.startsWith('---\r\n')
     ? '---\r\n'.length
@@ -130,6 +151,13 @@ export function detectFrontmatterRange(text: string): FrontmatterRange | undefin
   };
 }
 
+/**
+ * Return `true` when `offset` falls inside the frontmatter block.
+ *
+ * @param text - Full document text
+ * @param offset - Zero-based character offset to test
+ * @returns `true` if the offset is within the `---` YAML frontmatter block
+ */
 export function isOffsetInFrontmatter(text: string, offset: number): boolean {
   const range = detectFrontmatterRange(text);
   if (!range) {
@@ -143,6 +171,17 @@ function isTokenCharacter(character: string): boolean {
   return /[A-Za-z0-9_./:#$~+-]/.test(character);
 }
 
+/**
+ * Extract the token under (or immediately before) the given text offset.
+ *
+ * Token characters include alphanumerics plus path/symbol characters used by
+ * schema and query references (`.`, `/`, `:`, `#`, `$`, `~`, `+`, `-`).
+ *
+ * @param text - Full document text
+ * @param offset - Zero-based character offset
+ * @returns Token string with its start/end offsets, or `undefined` when no
+ *   token is present at that location
+ */
 export function getTokenAtOffset(
   text: string,
   offset: number
@@ -214,6 +253,16 @@ function matchFrontmatterSchemaAlias(line: string):
   };
 }
 
+/**
+ * Read known schema alias keys from YAML frontmatter.
+ *
+ * Supported aliases:
+ * - templ schema: `$schema`, `$templ-schema`
+ * - content schema: `$content-schema`, `$content_schema`
+ *
+ * @param text - Full document text
+ * @returns Object with discovered schema URI values (if present)
+ */
 export function getFrontmatterSchemaAliases(text: string): {
   templSchema?: string;
   contentSchema?: string;
@@ -251,6 +300,14 @@ export function getFrontmatterSchemaAliases(text: string): {
   };
 }
 
+/**
+ * Resolve a schema URI reference when the cursor is on a frontmatter schema
+ * key or value token.
+ *
+ * @param text - Full document text
+ * @param offset - Zero-based character offset
+ * @returns `{ value }` when offset targets a schema alias key/value, else `null`
+ */
 export function getFrontmatterSchemaReferenceAtOffset(
   text: string,
   offset: number
@@ -297,6 +354,14 @@ export function getFrontmatterSchemaReferenceAtOffset(
   return null;
 }
 
+/**
+ * Parse the frontmatter key/value pair at a cursor offset.
+ *
+ * @param text - Full document text
+ * @param offset - Zero-based character offset
+ * @returns Parsed key and normalized value token, or `null` if offset does not
+ *   fall on a parseable key/value line
+ */
 export function getFrontmatterKeyValueAtOffset(
   text: string,
   offset: number
@@ -331,6 +396,13 @@ export function getFrontmatterKeyValueAtOffset(
   return { key, valueToken: valueText };
 }
 
+/**
+ * Determine which semantic block surrounds the given offset.
+ *
+ * @param text - Full document text
+ * @param offset - Zero-based character offset to classify
+ * @returns `"frontmatter"` when offset is inside the YAML block, `"content"` otherwise
+ */
 export function resolveSemanticContextBlock(text: string, offset: number): SemanticContextBlock {
   if (!isOffsetInFrontmatter(text, offset)) {
     return 'content';
@@ -366,10 +438,29 @@ export function resolveSemanticContextBlock(text: string, offset: number): Seman
   return 'frontmatter';
 }
 
+/**
+ * Resolve the full `SemanticZone` for the given offset.
+ *
+ * Convenience wrapper around `resolveSemanticContextBlock` + `toSemanticZone`.
+ *
+ * @param text - Full document text
+ * @param offset - Zero-based character offset
+ * @returns `SemanticZone` describing the zone at that offset
+ */
 export function resolveSemanticZone(text: string, offset: number): SemanticZone {
   return toSemanticZone(resolveSemanticContextBlock(text, offset));
 }
 
+/**
+ * Infer the host document language from the file URI extension.
+ *
+ * Recognises `.md.templ`, `.yaml.templ`, `.json.templ`, `.toml.templ`,
+ * `.html.templ`, and `.xml.templ` double-extension conventions.
+ *
+ * @param documentUri - Optional document URI or path
+ * @returns `SemanticHostLanguage` string (`"markdown"`, `"json"`, etc.)
+ *   or `"unknown"` if no recognised extension is found
+ */
 export function resolveSemanticHostLanguage(documentUri?: string): SemanticHostLanguage {
   if (!documentUri) {
     return 'unknown';
@@ -404,6 +495,17 @@ export function resolveSemanticHostLanguage(documentUri?: string): SemanticHostL
   return 'unknown';
 }
 
+/**
+ * Resolve semantic zone defaults based on host language + offset context.
+ *
+ * Frontmatter detection is only active for Markdown files. For JSON/YAML and
+ * other host languages, all content is treated as the `content` zone.
+ *
+ * @param text - Full document text
+ * @param offset - Zero-based character offset
+ * @param hostLanguage - Host language inferred from file extension
+ * @returns `SemanticZone` suitable for language-aware tooling behavior
+ */
 export function resolveSemanticZoneByHostLanguage(
   text: string,
   offset: number,

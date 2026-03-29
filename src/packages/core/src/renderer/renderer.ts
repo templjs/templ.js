@@ -329,7 +329,22 @@ function renderNode(node: ASTNode, context: RenderContext): string {
   }
 }
 /**
- * Convenience function to render a template
+ * Render an AST node with the provided data context.
+ *
+ * Convenience wrapper around `new Renderer(options).render(ast, data)`.
+ *
+ * @param ast - The abstract syntax tree to render (from `parse()`)
+ * @param data - Data context used for variable resolution
+ * @param options - Optional render configuration (errors, depth limit, debug)
+ * @returns Render result with `output` string and `errors` array
+ *
+ * @example
+ * ```typescript
+ * const tokens = tokenize('Hello {{ name }}!');
+ * const { ast } = parse(tokens);
+ * const { output } = render(ast, { name: 'World' });
+ * // output → 'Hello World!'
+ * ```
  */
 export function render(
   ast: TemplateNode | ASTNode,
