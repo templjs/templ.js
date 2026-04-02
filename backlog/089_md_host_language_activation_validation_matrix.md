@@ -4,10 +4,12 @@ type: work-item
 subtype: bug
 title: '089: Validate host-language activation for templated Markdown extensions'
 lifecycle: active
-status: ready-for-review
+status: closed
+status_reason: completed
 priority: medium
 estimated: 3
 actual: 1
+completed_date: 2026-03-29
 assignee: ''
 test_results:
   - timestamp: 2026-03-27T00:00:00Z
@@ -17,9 +19,16 @@ test_results:
       Validation runs:
       - `pnpm --filter vscode-templjs test -- test/extension.test.ts test/server-inprocess.integration.test.ts` (28 passed)
       - `pnpm --filter @templjs/volar test -- test/index.test.ts` (55 passed)
+  - timestamp: 2026-03-29T00:00:00Z
+    note: |
+      Closure validation:
+      - Merged implementation PR: https://github.com/templjs/templ.js/pull/36
+      - PR #36 checks: all successful (16/16)
 links:
   depends_on:
     - '[[055_bug_no_md_lang_server_support]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/36'
 ---
 
 ## Goal

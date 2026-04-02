@@ -4,10 +4,12 @@ type: work-item
 subtype: bug
 lifecycle: active
 title: '055: Markdown syntax highlighting and linting not working for md.tpl files'
-status: ready-for-review
+status: closed
+status_reason: completed
 priority: medium
 estimated: 2
 actual: 3
+completed_date: 2026-03-29
 assignee: ''
 commits:
   91b879c: 'fix(volar): add .tpl template marker and suffix file extension detection'
@@ -25,6 +27,11 @@ test_results:
         - `src/extensions/vscode/test/server.test.ts` (41 passed)
         - `src/extensions/vscode/test/server-inprocess.integration.test.ts` (5 passed)
         - Full VS Code extension test set (80 passed)
+  - timestamp: 2026-03-29T00:00:00Z
+    note: |
+      Closure validation:
+      - Merged implementation PR: https://github.com/templjs/templ.js/pull/27
+      - PR #27 checks: all successful (10/10)
 links:
   depends_on:
     - '[[054_bug_no_schema_aware_authoring]]'

@@ -4,10 +4,12 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '40: Honor Output Mode Flags (--json, --quiet) in Watch Mode'
-status: ready-for-review
+status: closed
+status_reason: completed
 priority: medium
 estimated: 3
 actual: 3
+completed_date: 2026-03-29
 assignee: ''
 commits:
   f5979e5: 'fix(cli): honor json and quiet output policies in watch mode (WI-040)'
@@ -21,12 +23,18 @@ test_results:
       Verification:
       - `src/packages/cli/test/cli.test.ts` + `src/packages/cli/test/watch-mode.test.ts` (52 passed)
       - Full CLI suite (247 passed)
+  - timestamp: 2026-03-29T00:00:00Z
+    note: |
+      Closure validation:
+      - Merged implementation PR: https://github.com/templjs/templ.js/pull/32
+      - PR #32 checks: all successful (17/17)
 links:
   depends_on:
     - '[[029_cli_signal_handling]]'
     - '[[018_cli_watch_mode]]'
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/23'
+    - 'https://github.com/templjs/templ.js/pull/32'
 ---
 
 ## Goal

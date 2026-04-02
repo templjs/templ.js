@@ -4,10 +4,12 @@ type: work-item
 subtype: bug
 lifecycle: active
 title: '054: VS Code extension does not load input schema for schema-aware authoring'
-status: in-progress
+status: closed
+status_reason: completed
 priority: high
 estimated: 8
 actual: 4
+completed_date: 2026-03-29
 assignee: ''
 commits:
   8ab845c: 'perf(ide): optimize schema resolution and semantic caches'
@@ -82,10 +84,20 @@ test_results:
       - Verification:
         - `pnpm run test:affected:pre-push` for `vscode-templjs` (4 files, 98 tests passed)
         - Coverage for `src/extensions/vscode/src/schema-loading.ts`: branches 91.25%
+  - timestamp: 2026-03-29T00:00:00Z
+    note: |
+      Closure validation:
+      - Verified dependencies closed: [[031_language_feature_tests]], [[053_validate_schema_input_integration]]
+      - Merged PR evidence:
+        - https://github.com/templjs/templ.js/pull/27 (all checks successful)
+        - https://github.com/templjs/templ.js/pull/32 (all checks successful)
 links:
   depends_on:
     - '[[031_language_feature_tests]]'
     - '[[053_validate_schema_input_integration]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/27'
+    - 'https://github.com/templjs/templ.js/pull/32'
 ---
 
 ## Goal
@@ -191,7 +203,7 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 - [x] Schema changes on disk update editor behavior without requiring extension restart
 - [x] Network failures, missing files, and parse errors yield clear, non-crashing diagnostics/logging
 - [x] Backward compatibility: existing `templjs.schemaPath` setting continues to work
-- [ ] All new tests pass in CI for schema-aware extension behavior
+- [x] All new tests pass in CI for schema-aware extension behavior
 - [x] Documentation covers: glob patterns, content-schema usage, inline directives, root properties, URL schemas, multi-root workspace handling
 
 ## Evidence / References
