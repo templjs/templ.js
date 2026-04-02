@@ -6,7 +6,7 @@ export enum TokenType {
   TEXT = 'TEXT',
   /** Control flow statements like {% if %}, {% for %} */
   STATEMENT = 'STATEMENT',
-  /** Variable expressions like {{ `user.name` }} */
+  /** Variable expressions like {{ user.name }} */
   EXPRESSION = 'EXPRESSION',
   /** Comments like {# note #} - ignored in output */
   COMMENT = 'COMMENT',
