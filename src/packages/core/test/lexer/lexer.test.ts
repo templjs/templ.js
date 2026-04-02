@@ -319,6 +319,49 @@ describe('Lexer', () => {
           expect(tokens[1].trimRight).toBe(false);
           expect(tokens[2].content).toBe(' B');
         });
+
+        it('should prefer the longest delimiter when multiple delimiters start at the same offset', () => {
+          const tokens = tokenize('[[ value ]]', {
+            delimiters: {
+              expression_start: '[',
+              expression_end: ']',
+              comment_start: '[[',
+              comment_end: ']]',
+            },
+          });
+
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.COMMENT);
+          expect(tokens[0].content).toBe('[[ value ]]');
+        });
+
+        it('should drop the previous text token when left trim removes it entirely', () => {
+          const tokens = tokenize('   {{- value }}');
+
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+        });
+
+        it('should throw an unclosed delimiter error with accurate line and column', () => {
+          expect(() => tokenize('Line 1\n  {{- value')).toThrow(
+            'Unclosed expression starting at line 2, column 2'
+          );
+        });
+
+        it('should trim following whitespace to empty text without emitting a text token', () => {
+          const tokens = tokenize('{{ value -}}   ');
+
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+        });
+
+        it('should update token end positions when trimmed delimiters span multiple lines', () => {
+          const tokens = tokenize('{%- if show\n-%}');
+
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.STATEMENT);
+          expect(tokens[0].end).toEqual({ line: 2, column: 3 });
+        });
       });
 
       describe('Special Characters', () => {
