@@ -1715,7 +1715,11 @@ describe('parse', () => {
     it('should parse for with key-value unpacking', () => {
       const tokens = tokenize('{% for key, value in items %}{{ key }}: {{ value }}{% endfor %}');
       const result = parse(tokens);
+      expect(result.errors.length).toBe(0);
       expect(result.ast?.children.length).toBeGreaterThan(0);
+      const forNode = result.ast?.children[0] as ForNode;
+      expect(forNode.iterator).toBe('key');
+      expect(forNode.valueIterator).toBe('value');
     });
 
     it('should parse for loop variable access (special variables)', () => {

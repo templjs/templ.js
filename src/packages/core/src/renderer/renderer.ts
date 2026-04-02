@@ -184,7 +184,17 @@ class ForNodeRenderer extends BaseNodeRenderer<ForNode> {
   render(node: ForNode, context: RenderContext): string {
     const iterable = this.evaluateExpression(node.iterable, context);
 
-    if (!Array.isArray(iterable)) {
+    const isPairIteration = typeof node.valueIterator === 'string' && node.valueIterator.length > 0;
+
+    const pairEntries = isPairIteration
+      ? Array.isArray(iterable)
+        ? iterable.map((value: AnyValue, index: number) => [index, value] as const)
+        : typeof iterable === 'object' && iterable !== null
+          ? Object.entries(iterable)
+          : null
+      : null;
+
+    if (!isPairIteration && !Array.isArray(iterable)) {
       const error: RenderError = {
         message: `Cannot iterate over non-array value: ${this.variableResolver.getType(iterable)}`,
         path: `for.iterable`,
@@ -198,7 +208,23 @@ class ForNodeRenderer extends BaseNodeRenderer<ForNode> {
       return '';
     }
 
+    if (isPairIteration && !pairEntries) {
+      const error: RenderError = {
+        message: `Cannot iterate with key/value aliases over non-object value: ${this.variableResolver.getType(iterable)}`,
+        path: `for.iterable`,
+        type: 'type_error',
+        location: { start: node.start, end: node.end },
+      };
+      context.errors.push(error);
+      if (context.options.throwOnError) {
+        throw new Error(error.message);
+      }
+      return '';
+    }
+
     const output: string[] = [];
+    const iterationEntries: ReadonlyArray<readonly [AnyValue | undefined, AnyValue]> =
+      pairEntries ?? iterable.map((item: AnyValue) => [undefined, item] as const);
 
     // Check max depth
     if (context.scopes.length >= (context.options.maxDepth ?? DEFAULT_OPTIONS.maxDepth)) {
@@ -215,24 +241,32 @@ class ForNodeRenderer extends BaseNodeRenderer<ForNode> {
       return '';
     }
 
-    iterable.forEach((item: AnyValue, index: number) => {
-      // Push a new scope with the loop variable and loop object
-      context.scopes.push({
-        [node.iterator]: item,
-        loop: {
-          index: index + 1, // 1-indexed for templates
-          first: index === 0,
-          last: index === iterable.length - 1,
-          length: iterable.length,
-        },
-      });
+    iterationEntries.forEach(
+      ([key, item]: readonly [AnyValue | undefined, AnyValue], index: number) => {
+        // Push a new scope with the loop variable and loop object
+        context.scopes.push({
+          [node.iterator]: item,
+          ...(isPairIteration && node.valueIterator
+            ? {
+                [node.iterator]: key,
+                [node.valueIterator]: item,
+              }
+            : {}),
+          loop: {
+            index: index + 1, // 1-indexed for templates
+            first: index === 0,
+            last: index === iterationEntries.length - 1,
+            length: iterationEntries.length,
+          },
+        });
 
-      // Render the loop body
-      output.push(node.body.map((child) => renderNode(child, context)).join(''));
+        // Render the loop body
+        output.push(node.body.map((child) => renderNode(child, context)).join(''));
 
-      // Pop the scope
-      context.scopes.pop();
-    });
+        // Pop the scope
+        context.scopes.pop();
+      }
+    );
 
     return output.join('');
   }

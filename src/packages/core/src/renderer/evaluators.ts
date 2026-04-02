@@ -7,6 +7,7 @@ import type {
   FilterNode,
   LiteralNode,
   ParenNode,
+  TernaryNode,
   UnaryOpNode,
   VariableNode,
 } from '../parser/types.js';
@@ -244,6 +245,16 @@ export function evaluateParen(node: ParenNode, context: RenderContext): AnyValue
 }
 
 /**
+ * Evaluate a ternary conditional expression
+ */
+export function evaluateTernary(node: TernaryNode, context: RenderContext): AnyValue {
+  const condition = evaluateExpression(node.condition, context);
+  return variableResolver.toBoolean(condition)
+    ? evaluateExpression(node.trueValue, context)
+    : evaluateExpression(node.falseValue, context);
+}
+
+/**
  * Handle parse error expressions
  */
 export function evaluateError(expr: ErrorNode, context: RenderContext): AnyValue {
@@ -304,6 +315,7 @@ export function evaluateExpression(expr: ExpressionNode, context: RenderContext)
     binary_op: evaluateBinaryOp as any,
     unary_op: evaluateUnaryOp as any,
     paren: evaluateParen as any,
+    ternary: evaluateTernary as any,
     error: evaluateError as any,
   };
 

@@ -168,6 +168,59 @@ Built-in function catalogs:
 - [Array functions](./functions/array-functions.md)
 - [Object functions](./functions/object-functions.md)
 
+## Whitespace Control
+
+templjs supports delimiter trim markers to remove formatting-only whitespace around expressions and statements.
+
+Syntax contract:
+
+- `{{- expr }}`: trim whitespace immediately to the left of the expression
+- `{{ expr -}}`: trim whitespace immediately to the right of the expression
+- `{{- expr -}}`: trim both sides
+- `{%- statement %}` / `{% statement -%}` / `{%- statement -%}`: same trim behavior for statements
+
+Trim markers are optional. Templates without trim markers keep existing whitespace behavior.
+
+### Examples by Output Format
+
+JSON:
+
+```templ
+{
+  "items": [
+    {%- for item in items -%}
+    "{{- item -}}"{%- if !loop.last -%},{%- endif -%}
+    {%- endfor -%}
+  ]
+}
+```
+
+Markdown:
+
+```templ
+# Release Notes
+{%- for entry in entries -%}
+- {{- entry.title -}}
+{%- endfor -%}
+```
+
+HTML:
+
+```templ
+<ul>
+{%- for item in items -%}
+  <li>{{- item.name -}}</li>
+{%- endfor -%}
+</ul>
+```
+
+### Migration Guidance
+
+- Start by adding trim markers only where output diffs are noisy (blank lines, indentation gaps, trailing separators).
+- Keep control structures readable first; apply `{%- ... -%}` to the outer loop/condition boundaries before trimming every nested expression.
+- Prefer `{{- value -}}` when values are punctuation-sensitive (CSV/JSON lists) to avoid accidental spaces around separators.
+- Existing templates remain backward-compatible unless trim markers are added explicitly.
+
 ## Overloads and Runtime Dispatch
 
 Some filter names are overloaded by runtime category. For example, `reverse` supports both strings and arrays. The query engine selects the appropriate overload by inspecting the input value and argument shape.

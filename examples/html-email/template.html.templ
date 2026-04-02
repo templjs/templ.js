@@ -1,8 +1,8 @@
 <!doctype html>
 
 {# HTML email example showing localization, formatting, loops, and optional sections. #}
-{% set locale = order.locale | default('en-US') %}
-{% set lang_code = lang | default('en') %}
+{%- set locale = order.locale | default('en-US') -%}
+{%- set lang_code = lang | default('en') -%}
 <html
   lang="{{ lang_code }}"
   xmlns="http://www.w3.org/1999/xhtml"
@@ -99,8 +99,8 @@
                   <strong>{{ order.status | escape }}</strong>.
                 </p>
 
-                {% set currency_code = order.currency_code | default('USD') %}
-                {% if order.items %}
+                {%- set currency_code = order.currency_code | default('USD') -%}
+                {%- if order.items %}
                 <table
                   role="presentation"
                   width="100%"
@@ -108,20 +108,20 @@
                   cellspacing="0"
                   border="0"
                 >
-                  {% for item in order.items %}
+                  {%- for item in order.items %}
                   <tr>
                     <td
                       class="text line"
                       style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; font-size: 15px; line-height: 1.5; color: #374151;"
                     >
-                      {% set quantity = item.quantity | round(0) | number(0) %}
-                      {% set item_price = item.price | number(0) %}
-                      {% set item_subtotal = item.subtotal | default(item_price * quantity) | number(0) %}
+                      {%- set quantity = item.quantity | round(0) | number(0) -%}
+                      {%- set item_price = item.price | number(0) -%}
+                      {%- set item_subtotal = item.subtotal | default(item_price * quantity) | number(0) -%}
                       <p style="margin: 0;">
                         <strong style="font-weight: 700;">{{ item.name | escape }}</strong>
-                        {% if quantity > 0 %}
+                        {%- if quantity > 0 %}
                         <span class="muted" style="color: #6b7280;">x{{ quantity | escape }}</span>
-                        {% endif %}
+                        {%- endif %}
                       </p>
                       <p class="muted" style="margin: 2px 0 0; color: #6b7280; font-size: 13px;">
                         {{ labels.unit | escape }}: {{ item_price | format_currency(currency_code, locale) | escape }}
@@ -130,9 +130,9 @@
                       </p>
                     </td>
                   </tr>
-                  {% endfor %}
+                  {%- endfor %}
                 </table>
-                {% endif %}
+                {%- endif %}
 
                 <!-- `order.total` should be a numeric value or numeric string (without a currency symbol). -->
                 <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #111827;">

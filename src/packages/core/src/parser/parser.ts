@@ -214,13 +214,14 @@ export class TemplateParser {
   /**
    * Parse a for loop
    * Syntax: {% for item in items %}...{% endfor %}
+   * or {% for key, value in object %}...{% endfor %}
    */
   private parseForStatement(): ForNode {
     const startToken = this.peek();
     if (!startToken) throw new Error('Expected statement token');
 
     const content = this.extractStatementContent(startToken).content;
-    const match = content.match(/^for\s+(\w+)\s+in\s+(.+?)$/);
+    const match = content.match(/^for\s+(\w+)(?:\s*,\s*(\w+))?\s+in\s+(.+?)$/);
 
     if (!match) {
       this.addError(
@@ -234,7 +235,8 @@ export class TemplateParser {
     }
 
     const iterator = match[1];
-    const iterableStr = match[2].trim();
+    const valueIterator = match[2];
+    const iterableStr = match[3].trim();
     const iterable = this.parseExpression(iterableStr);
 
     this.advance();
@@ -260,6 +262,7 @@ export class TemplateParser {
     return {
       type: 'for',
       iterator,
+      valueIterator,
       iterable,
       body,
       start: startToken.start,
@@ -881,6 +884,7 @@ export class TemplateParser {
     return {
       type: 'for',
       iterator: '',
+      valueIterator: undefined,
       iterable: this.createErrorExpression('Invalid for statement'),
       body: [],
       start: token.start,
@@ -999,6 +1003,9 @@ function extractContentWithDelimiters(
     };
   }
 
+  const startsWithTrimmedDelimiter = result.startsWith(`${startDelimiter}-`);
+  const endsWithTrimmedDelimiter = result.endsWith(`-${endDelimiter}`);
+
   // When the content does not start and end with the resolved delimiters,
   // hasWrappedDelimiters is false and the entire string is treated as the
   // inner content (innerStart=0, innerEnd=result.length).  Only leading/
@@ -1008,9 +1015,15 @@ function extractContentWithDelimiters(
   // returned intact (trimmed).  If different extraction semantics are needed,
   // adjust the hasWrappedDelimiters condition or the innerStart/innerEnd
   // derivations below.
-  const hasWrappedDelimiters = result.startsWith(startDelimiter) && result.endsWith(endDelimiter);
-  const innerStart = hasWrappedDelimiters ? startDelimiter.length : 0;
-  const innerEnd = hasWrappedDelimiters ? result.length - endDelimiter.length : result.length;
+  const hasWrappedDelimiters =
+    (result.startsWith(startDelimiter) || startsWithTrimmedDelimiter) &&
+    (result.endsWith(endDelimiter) || endsWithTrimmedDelimiter);
+  const innerStart = hasWrappedDelimiters
+    ? startDelimiter.length + (startsWithTrimmedDelimiter ? 1 : 0)
+    : 0;
+  const innerEnd = hasWrappedDelimiters
+    ? result.length - endDelimiter.length - (endsWithTrimmedDelimiter ? 1 : 0)
+    : result.length;
   const inner = result.substring(innerStart, innerEnd);
 
   const trimmedStart = inner.trimStart();

@@ -251,6 +251,74 @@ describe('Lexer', () => {
           const tokens = tokenize('Unix\nWindows\r\nMac\r');
           expect(tokens).toHaveLength(1);
         });
+
+        it('should trim trailing whitespace from previous text token when expression uses left trim marker', () => {
+          const tokens = tokenize('Hello   {{- name }}');
+          expect(tokens).toHaveLength(2);
+          expect(tokens[0].type).toBe(TokenType.TEXT);
+          expect(tokens[0].content).toBe('Hello');
+          expect(tokens[1].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[1].trimLeft).toBe(true);
+          expect(tokens[1].trimRight).toBe(false);
+        });
+
+        it('should trim leading whitespace from next text token when expression uses right trim marker', () => {
+          const tokens = tokenize('{{ name -}}   World');
+          expect(tokens).toHaveLength(2);
+          expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[0].trimLeft).toBe(false);
+          expect(tokens[0].trimRight).toBe(true);
+          expect(tokens[1].type).toBe(TokenType.TEXT);
+          expect(tokens[1].content).toBe('World');
+        });
+
+        it('should trim both sides when statement uses both trim markers', () => {
+          const tokens = tokenize('A\n   {%- if show -%}\n   B');
+          expect(tokens).toHaveLength(3);
+          expect(tokens[0].type).toBe(TokenType.TEXT);
+          expect(tokens[0].content).toBe('A');
+          expect(tokens[1].type).toBe(TokenType.STATEMENT);
+          expect(tokens[1].trimLeft).toBe(true);
+          expect(tokens[1].trimRight).toBe(true);
+          expect(tokens[2].type).toBe(TokenType.TEXT);
+          expect(tokens[2].content).toBe('B');
+        });
+
+        it('should support trim markers with custom expression delimiters', () => {
+          const tokens = tokenize('X   [[- value -]]   Y', {
+            delimiters: {
+              expression: ['[[', ']]'],
+            },
+          });
+
+          expect(tokens).toHaveLength(3);
+          expect(tokens[0].type).toBe(TokenType.TEXT);
+          expect(tokens[0].content).toBe('X');
+          expect(tokens[1].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[1].content).toBe('[[- value -]]');
+          expect(tokens[1].trimLeft).toBe(true);
+          expect(tokens[1].trimRight).toBe(true);
+          expect(tokens[2].type).toBe(TokenType.TEXT);
+          expect(tokens[2].content).toBe('Y');
+        });
+
+        it('should not set trim flags when minus is part of expression content', () => {
+          const tokens = tokenize('{{ value - 1 }}');
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[0].trimLeft).toBe(false);
+          expect(tokens[0].trimRight).toBe(false);
+        });
+
+        it('should preserve legacy whitespace behavior when trim markers are not used', () => {
+          const tokens = tokenize('A {{ value }} B');
+          expect(tokens).toHaveLength(3);
+          expect(tokens[0].content).toBe('A ');
+          expect(tokens[1].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[1].trimLeft).toBe(false);
+          expect(tokens[1].trimRight).toBe(false);
+          expect(tokens[2].content).toBe(' B');
+        });
       });
 
       describe('Special Characters', () => {

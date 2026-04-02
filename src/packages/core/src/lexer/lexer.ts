@@ -37,6 +37,8 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
     content: string;
     delimiterStart: string;
     delimiterEnd: string;
+    trimLeft: boolean;
+    trimRight: boolean;
   } | null {
     let earliest: {
       type: TokenType;
@@ -45,6 +47,8 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
       content: string;
       delimiterStart: string;
       delimiterEnd: string;
+      trimLeft: boolean;
+      trimRight: boolean;
     } | null = null;
 
     // Check each delimiter type
@@ -70,7 +74,11 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
       const startPos = text.indexOf(check.start, offset);
       if (startPos === -1) continue;
 
-      const endPos = text.indexOf(check.end, startPos + check.start.length);
+      const trimLeftPos = startPos + check.start.length;
+      const trimLeft = text[trimLeftPos] === '-';
+      const searchStart = trimLeft ? trimLeftPos + 1 : trimLeftPos;
+
+      const endPos = text.indexOf(check.end, searchStart);
       if (endPos === -1) {
         // Unclosed delimiter
         const lines = text.substring(0, startPos).split('\n');
@@ -93,12 +101,16 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
           content: text.substring(startPos, endPos + check.end.length),
           delimiterStart: check.start,
           delimiterEnd: check.end,
+          trimLeft,
+          trimRight: text[endPos - 1] === '-',
         };
       }
     }
 
     return earliest;
   }
+
+  let trimNextTextLeadingWhitespace = false;
 
   // Process the template
   while (position < template.length) {
@@ -107,13 +119,18 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
     if (nextDelim === null || nextDelim.start > position) {
       // There's text before the next delimiter (or no more delimiters)
       const textEnd = nextDelim ? nextDelim.start : template.length;
-      const textContent = template.substring(position, textEnd);
+      const originalTextContent = template.substring(position, textEnd);
+      const textContent = trimNextTextLeadingWhitespace
+        ? originalTextContent.replace(/^[\t\n\r ]+/, '')
+        : originalTextContent;
+
+      trimNextTextLeadingWhitespace = false;
 
       if (textContent.length > 0) {
         const start: Position = { line, column };
 
         // Update position tracking
-        for (const char of textContent) {
+        for (const char of originalTextContent) {
           if (char === '\n') {
             line++;
             column = 0;
@@ -134,6 +151,16 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
     }
 
     if (nextDelim && position === nextDelim.start) {
+      if (nextDelim.trimLeft) {
+        const previousToken = tokens[tokens.length - 1];
+        if (previousToken?.type === TokenType.TEXT) {
+          previousToken.content = previousToken.content.replace(/[\t\n\r ]+$/, '');
+          if (previousToken.content.length === 0) {
+            tokens.pop();
+          }
+        }
+      }
+
       // Process the delimiter token
       const start: Position = { line, column };
 
@@ -152,9 +179,13 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
         content: nextDelim.content,
         delimiterStart: nextDelim.delimiterStart,
         delimiterEnd: nextDelim.delimiterEnd,
+        trimLeft: nextDelim.trimLeft,
+        trimRight: nextDelim.trimRight,
         start,
         end: { line, column },
       });
+
+      trimNextTextLeadingWhitespace = nextDelim.trimRight;
 
       position = nextDelim.end;
     }

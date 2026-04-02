@@ -44,10 +44,12 @@ export interface IfNode extends BaseNode {
 /**
  * For loop statement
  * e.g., {% for item in items %}...{% endfor %}
+ * or {% for key, value in object %}...{% endfor %}
  */
 export interface ForNode extends BaseNode {
   type: 'for';
   iterator: string;
+  valueIterator?: string;
   iterable: ExpressionNode;
   body: ASTNode[];
 }

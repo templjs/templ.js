@@ -280,6 +280,11 @@ const BUILTIN_FILTERS: Record<string, FilterFunction> = {
   },
 
   /**
+   * Mark trusted content for raw output without escaping.
+   */
+  no_escape: (value: AnyValue): AnyValue => value,
+
+  /**
    * Convert to number
    */
   number: function (value: AnyValue, fallback?: AnyValue): number | null | AnyValue {

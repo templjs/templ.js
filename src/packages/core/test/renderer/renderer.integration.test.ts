@@ -108,6 +108,66 @@ describe('Renderer', () => {
       const result = render(parseResult.ast!, { count: 42 });
       expect(result.output).toBe('Number: 42');
     });
+
+    it('should trim left-side whitespace around expressions using {{- ... }}', () => {
+      const template = 'Hello   {{- name }}';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { name: 'World' });
+      expect(result.output).toBe('HelloWorld');
+    });
+
+    it('should trim right-side whitespace around expressions using {{ ... -}}', () => {
+      const template = '{{ name -}}   World';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { name: 'Hello' });
+      expect(result.output).toBe('HelloWorld');
+    });
+
+    it('should trim both sides around expressions using {{- ... -}}', () => {
+      const template = 'A   {{- name -}}   B';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { name: 'X' });
+      expect(result.output).toBe('AXB');
+    });
+
+    it('should trim whitespace around statements using {%- ... -%}', () => {
+      const template = 'A\n{% if show -%}\nB\n{%- endif %}\nC';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { show: true });
+      expect(result.output).toBe('A\nB\nC');
+    });
+
+    it('should honor trim markers with custom expression delimiters', () => {
+      const template = 'L  [[- value -]]  R';
+      const tokens = tokenize(template, {
+        delimiters: {
+          expression: ['[[', ']]'],
+        },
+      });
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { value: 'M' });
+      expect(result.output).toBe('LMR');
+    });
+
+    it('should keep legacy whitespace output when trim markers are absent', () => {
+      const template = 'A {{ value }} B';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { value: 'X' });
+      expect(result.output).toBe('A X B');
+    });
+
+    it('should treat malformed trim-like syntax as expression content without whitespace trimming', () => {
+      const template = 'A {{ value-1 }} B';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, { value: 2 });
+      expect(result.output).toBe('A 1 B');
+    });
   });
 
   describe('conditional blocks', () => {
@@ -203,6 +263,15 @@ describe('Renderer', () => {
       const result = render(parseResult.ast!, { num: 5 });
       expect(result.output).toBe('small');
     });
+
+    it('should render ternary expressions inside output statements', () => {
+      const template = '{{ environment == "prod" ? 3 : 1 }}';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+
+      expect(render(parseResult.ast!, { environment: 'prod' }).output).toBe('3');
+      expect(render(parseResult.ast!, { environment: 'dev' }).output).toBe('1');
+    });
   });
 
   describe('loops', () => {
@@ -250,6 +319,21 @@ describe('Renderer', () => {
         inner: ['1', '2'],
       });
       expect(result.output).toBe('a1a2b1b2');
+    });
+
+    it('should iterate over object entries with key and value aliases', () => {
+      const template = '{% for key, value in environment_vars %}{{ key }}={{ value }};{% endfor %}';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, {
+        environment_vars: {
+          NODE_ENV: 'production',
+          LOG_LEVEL: 'info',
+        },
+      });
+
+      expect(result.errors).toHaveLength(0);
+      expect(result.output).toBe('NODE_ENV=production;LOG_LEVEL=info;');
     });
 
     it('should skip empty arrays', () => {

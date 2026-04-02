@@ -81,6 +81,12 @@ describe('FilterEngine', () => {
       expect(engine.applyFilter('string', { a: 1 })).toBe('[object Object]');
     });
 
+    it('passes through trusted content with no_escape', () => {
+      const html = '<strong>Trusted</strong>';
+      expect(engine.applyFilter('no_escape', html)).toBe(html);
+      expect(engine.applyFilter('no_escape', { html })).toEqual({ html });
+    });
+
     it('coerces values with number filter', () => {
       expect(engine.applyFilter('number', 10)).toBe(10);
       expect(engine.applyFilter('number', Number.POSITIVE_INFINITY)).toBeNull();
