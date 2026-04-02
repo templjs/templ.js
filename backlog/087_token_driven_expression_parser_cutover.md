@@ -25,6 +25,13 @@ Replace string-priority expression parsing with a token-driven structured parser
 - Remove or quarantine legacy string-splitting heuristics after behavior parity is reached.
 - Preserve current public behavior for templjs syntax during transition.
 
+## Current Compatibility Context
+
+- Runtime ternary evaluation was added in core renderer follow-up work to restore fixture/render parity for existing templates.
+- `for key, value in object` support and `no_escape` filter support were also added as compatibility fixes during template adoption.
+- WI-087 remains open because expression parsing still relies on legacy string-priority heuristics; this work item owns the parser-stage cutover, not those runtime parity patches.
+- Compatibility reference: `78e0adf` added the current renderer-side ternary parity path without performing the token-driven parser cutover.
+
 ## Tasks
 
 - [ ] Implement structured parse functions for precedence layers and grouping.
@@ -38,3 +45,8 @@ Replace string-priority expression parsing with a token-driven structured parser
 - [ ] Legacy recursion/heuristic failure modes have dedicated regression tests.
 - [ ] Existing parser tests pass with equivalent or improved diagnostics.
 - [ ] Coverage thresholds remain satisfied for parser modules.
+
+## References
+
+- [src/packages/core/src/parser/parser.ts](../src/packages/core/src/parser/parser.ts)
+- [src/packages/core/src/renderer/evaluators.ts](../src/packages/core/src/renderer/evaluators.ts)
