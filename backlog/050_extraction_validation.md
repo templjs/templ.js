@@ -13,6 +13,8 @@ links:
   depends_on:
     - '[[049_extraction_engine]]'
     - '[[008_query_engine]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/42'
 ---
 
 ## Goal

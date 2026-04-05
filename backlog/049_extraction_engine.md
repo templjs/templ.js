@@ -14,6 +14,8 @@ links:
     - '[[048_extraction_algorithm_design]]'
     - '[[007_ast_renderer]]'
     - '[[006_chevrotain_parser]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/42'
 ---
 
 ## Goal

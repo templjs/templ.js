@@ -14,6 +14,8 @@ links:
     - '[[050_extraction_validation]]'
     - '[[017_cli_commands]]'
     - '[[033_schema_parity]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/42'
 ---
 
 ## Goal

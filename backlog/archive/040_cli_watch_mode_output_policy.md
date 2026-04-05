@@ -29,6 +29,7 @@ links:
     - '[[018_cli_watch_mode]]'
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/23'
+    - 'https://github.com/templjs/templ.js/pull/42'
 ---
 
 ## Goal

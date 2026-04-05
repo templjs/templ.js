@@ -13,6 +13,8 @@ links:
   depends_on:
     - '[[047_template_extraction]]'
     - '[[006_chevrotain_parser]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/42'
 ---
 
 ## Goal

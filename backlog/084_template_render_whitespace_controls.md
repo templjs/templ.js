@@ -43,6 +43,8 @@ links:
   depends_on:
     - '[[062_authoritative_template_parsing_and_delimiter_parity]]'
     - '[[067_extract_authoritative_core_statement_and_expression_analysis]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/42'
 ---
 
 ## Goal

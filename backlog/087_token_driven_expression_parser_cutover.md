@@ -13,6 +13,8 @@ links:
   depends_on:
     - '[[085_structured_expression_parser_ast_migration_epic]]'
     - '[[086_expression_ast_contract_and_semantic_ir]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/42'
 ---
 
 ## Goal

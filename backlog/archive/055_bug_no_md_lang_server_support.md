@@ -32,6 +32,7 @@ links:
     - '[[054_bug_no_schema_aware_authoring]]'
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/27'
+    - 'https://github.com/templjs/templ.js/pull/42'
 ---
 
 ## Goal

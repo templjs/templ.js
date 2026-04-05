@@ -24,6 +24,7 @@ links:
     - '[[055_bug_no_md_lang_server_support]]'
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/27'
+    - 'https://github.com/templjs/templ.js/pull/42'
 ---
 
 ## Goal
