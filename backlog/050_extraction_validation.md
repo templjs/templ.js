@@ -13,8 +13,6 @@ links:
   depends_on:
     - '[[049_extraction_engine]]'
     - '[[008_query_engine]]'
-  blocks:
-    - '[[051_extraction_cli]]'
 ---
 
 ## Goal

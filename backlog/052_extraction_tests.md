@@ -11,8 +11,6 @@ actual: 0
 assignee: ''
 links:
   depends_on:
-    - '[[049_extraction_engine]]'
-    - '[[050_extraction_validation]]'
     - '[[051_extraction_cli]]'
 ---
 

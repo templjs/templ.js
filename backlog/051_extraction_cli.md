@@ -11,12 +11,9 @@ actual: 0
 assignee: ''
 links:
   depends_on:
-    - '[[049_extraction_engine]]'
     - '[[050_extraction_validation]]'
     - '[[017_cli_commands]]'
     - '[[033_schema_parity]]'
-  blocks:
-    - '[[052_extraction_tests]]'
 ---
 
 ## Goal

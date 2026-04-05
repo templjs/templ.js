@@ -14,9 +14,6 @@ links:
     - '[[048_extraction_algorithm_design]]'
     - '[[007_ast_renderer]]'
     - '[[006_chevrotain_parser]]'
-  blocks:
-    - '[[050_extraction_validation]]'
-    - '[[051_extraction_cli]]'
 ---
 
 ## Goal

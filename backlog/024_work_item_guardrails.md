@@ -20,9 +20,6 @@ links:
   depends_on:
     - '[[001_github_organization]]'
     - '[[002_monorepo_setup]]'
-  commits:
-    - 'https://github.com/templjs/templ.js/commit/29e2e74'
-    - 'https://github.com/templjs/templ.js/commit/a2e8939'
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/1'
 ---

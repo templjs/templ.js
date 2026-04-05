@@ -13,8 +13,6 @@ links:
   depends_on:
     - '[[047_template_extraction]]'
     - '[[006_chevrotain_parser]]'
-  blocks:
-    - '[[049_extraction_engine]]'
 ---
 
 ## Goal
