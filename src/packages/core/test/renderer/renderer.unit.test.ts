@@ -310,7 +310,7 @@ describe('Evaluators', () => {
       expect(evaluateExpression(expr, context)).toBe(1);
     });
 
-    it('uses JS-like truthiness for ternary conditions', () => {
+    it('uses templjs truthiness for ternary conditions', () => {
       const context = createContext({ value: '' });
       const expr = ternary(variable('value'), literal('filled'), literal('empty'));
 

@@ -280,7 +280,7 @@ const BUILTIN_FILTERS: Record<string, FilterFunction> = {
   },
 
   /**
-   * Mark trusted content for raw output without escaping.
+   * Compatibility no-op filter that returns the value unchanged.
    */
   no_escape: (value: AnyValue): AnyValue => value,
 
