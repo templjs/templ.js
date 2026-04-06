@@ -243,15 +243,19 @@ class ForNodeRenderer extends BaseNodeRenderer<ForNode> {
 
     iterationEntries.forEach(
       ([key, item]: readonly [AnyValue | undefined, AnyValue], index: number) => {
-        // Push a new scope with the loop variable and loop object
-        context.scopes.push({
-          [node.iterator]: item,
-          ...(isPairIteration && node.valueIterator
+        const loopScope =
+          isPairIteration && node.valueIterator
             ? {
                 [node.iterator]: key,
                 [node.valueIterator]: item,
               }
-            : {}),
+            : {
+                [node.iterator]: item,
+              };
+
+        // Push a new scope with the loop variable and loop object
+        context.scopes.push({
+          ...loopScope,
           loop: {
             index: index + 1, // 1-indexed for templates
             first: index === 0,
