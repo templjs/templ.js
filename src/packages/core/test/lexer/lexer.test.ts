@@ -362,6 +362,35 @@ describe('Lexer', () => {
           expect(tokens[0].type).toBe(TokenType.STATEMENT);
           expect(tokens[0].end).toEqual({ line: 2, column: 3 });
         });
+
+        it('should update previous text end position when custom delimiters trim left whitespace', () => {
+          const tokens = tokenize('X   [[- value ]]', {
+            delimiters: {
+              expression_start: '[[',
+              expression_end: ']]',
+            },
+          });
+
+          expect(tokens).toHaveLength(2);
+          expect(tokens[0].type).toBe(TokenType.TEXT);
+          expect(tokens[0].content).toBe('X');
+          expect(tokens[0].end).toEqual({ line: 1, column: 1 });
+        });
+
+        it('should align text start and end when custom delimiters trim right whitespace', () => {
+          const tokens = tokenize('[[ value -]]   Y', {
+            delimiters: {
+              expression_start: '[[',
+              expression_end: ']]',
+            },
+          });
+
+          expect(tokens).toHaveLength(2);
+          expect(tokens[1].type).toBe(TokenType.TEXT);
+          expect(tokens[1].content).toBe('Y');
+          expect(tokens[1].start).toEqual({ line: 1, column: 15 });
+          expect(tokens[1].end).toEqual({ line: 1, column: 16 });
+        });
       });
 
       describe('Special Characters', () => {
