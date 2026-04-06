@@ -3,9 +3,10 @@
  */
 
 import type { Position } from '../lexer/types.js';
+import type { FilterFunction as QueryEngineFilterFunction } from '../query-engine/types.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyValue = any;
+export type AnyValue = any;
 
 /**
  * Render context containing data and scope information
@@ -16,7 +17,7 @@ export interface RenderContext {
   /** Stack of scopes for nested contexts (loops, conditionals) */
   scopes: Array<Record<string, AnyValue>>;
   /** Registered filter functions */
-  filters: Map<string, FilterFunction>;
+  filters: Map<string, QueryEngineFilterFunction>;
   /** Registered built-in functions */
   functions: Map<string, BuiltinFunction>;
   /** Error tracking during rendering */
