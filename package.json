@@ -30,7 +30,7 @@
     "ci:test": "pnpm run test:affected:ci",
     "ci:type-check": "pnpm run type-check",
     "clean": "nx reset && rm -rf node_modules src/packages/*/node_modules src/extensions/*/node_modules src/packages/*/dist src/extensions/*/dist",
-    "docs:api": "pnpm --filter @templjs/core docs:api",
+    "docs:api": "pnpm --filter @templjs/core docs:api && prettier --write docs/api/assets/*.js",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "graph": "nx graph",
