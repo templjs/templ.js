@@ -137,11 +137,19 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
       const textContent = trimNextTextLeadingWhitespace
         ? originalTextContent.replace(/^[\t\n\r ]+/, '')
         : originalTextContent;
+      const trimmedLeadingLength =
+        trimNextTextLeadingWhitespace && textContent.length <= originalTextContent.length
+          ? originalTextContent.length - textContent.length
+          : 0;
 
       trimNextTextLeadingWhitespace = false;
 
       if (textContent.length > 0) {
-        const start: Position = { line, column };
+        const rawStart: Position = { line, column };
+        const start =
+          trimmedLeadingLength > 0
+            ? positionAfter(rawStart, originalTextContent.slice(0, trimmedLeadingLength))
+            : rawStart;
 
         // Update position tracking
         for (const char of originalTextContent) {
@@ -157,7 +165,7 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
           type: TokenType.TEXT,
           content: textContent,
           start,
-          end: { line, column },
+          end: positionAfter(start, textContent),
         });
       }
 
