@@ -231,7 +231,7 @@ export const noEscapeSignature: FunctionSignature = {
   category: 'string',
   description: 'Return trusted content unchanged for raw template output.',
   parameters: [],
-  returnType: 'string',
+  returnType: 'any',
   examples: ['no_escape("<strong>safe</strong>") → "<strong>safe</strong>"'],
 };
 

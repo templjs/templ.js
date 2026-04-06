@@ -26,6 +26,20 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
   let line = 1;
   let column = 0;
 
+  function positionAfter(start: Position, content: string): Position {
+    let nextLine = start.line;
+    let nextColumn = start.column;
+    for (const char of content) {
+      if (char === '\n') {
+        nextLine++;
+        nextColumn = 0;
+      } else {
+        nextColumn++;
+      }
+    }
+    return { line: nextLine, column: nextColumn };
+  }
+
   // Track which delimiter starts earliest in the remaining string
   function findNextDelimiter(
     text: string,
@@ -154,7 +168,11 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
       if (nextDelim.trimLeft) {
         const previousToken = tokens[tokens.length - 1];
         if (previousToken?.type === TokenType.TEXT) {
-          previousToken.content = previousToken.content.replace(/[\t\n\r ]+$/, '');
+          const trimmedContent = previousToken.content.replace(/[\t\n\r ]+$/, '');
+          if (trimmedContent !== previousToken.content) {
+            previousToken.content = trimmedContent;
+            previousToken.end = positionAfter(previousToken.start, previousToken.content);
+          }
           if (previousToken.content.length === 0) {
             tokens.pop();
           }

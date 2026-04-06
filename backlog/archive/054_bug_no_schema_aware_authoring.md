@@ -145,7 +145,7 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 - Pass loaded schema and schema URI into plugin options
 - Basic tests for schema handoff
 
-**Phase 2 (New):**
+**Phase 2 (Completed):**
 
 - Extended VS Code settings: glob-pattern-based configuration and content-schema paths
 - HTTPS/HTTP URL schema loading with timeout and error handling
@@ -167,7 +167,7 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 - [x] Pass loaded schema and schema URI into language feature pipeline
 - [x] Add/extend tests for schema handoff and schema-aware editor behavior
 
-### Phase 2 (In Progress)
+### Phase 2 (Completed)
 
 - [x] Extend VS Code settings schema with glob-pattern-based `templjs.schema` object and `templjs.contentSchemaPath` setting
 - [x] Update extension to parse glob patterns and match document URIs to schema configuration
@@ -210,9 +210,9 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 ## Evidence / References
 
 - Extension initialization currently only passes TypeScript SDK options (Phase 1 added schema options)
-- Server currently creates plugin without full schema wiring (Phase 2 will complete this)
+- Server-side plugin schema wiring is fully implemented and validated through integration tests
 - Volar providers already accept schema options and use SchemaValidator
 - Core SchemaValidator already supports metadata extraction and query-path validation
 - Existing `stripTemplateSyntax()` and `createMappings()` in Volar plugin handle virtual code generation
 - Gray-matter pattern exists in scripts/ci/lint-frontmatter.ts for YAML frontmatter parsing
-- Tests currently cover basic schema handoff but not glob patterns, URL loading, directives, frontmatter, or precedence rules (Phase 2 will add these)
+- Tests now cover glob patterns, URL loading, directives, frontmatter extraction, and schema precedence rules

@@ -10,7 +10,7 @@ Version: {{ service.version }}
 
 {{ endpoint.description }}
 
-{%- if endpoint.deprecated is defined and endpoint.deprecated %}
+{%- if endpoint.deprecated !== undefined && endpoint.deprecated %}
 > Deprecated endpoint.
 {%- endif %}
 
