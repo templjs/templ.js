@@ -45,6 +45,7 @@ links:
     - '[[067_extract_authoritative_core_statement_and_expression_analysis]]'
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/42'
+    - 'https://github.com/templjs/templ.js/pull/43'
 ---
 
 ## Goal

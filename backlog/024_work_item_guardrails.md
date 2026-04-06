@@ -23,6 +23,7 @@ links:
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/1'
     - 'https://github.com/templjs/templ.js/pull/42'
+    - 'https://github.com/templjs/templ.js/pull/43'
 ---
 
 ## Goal

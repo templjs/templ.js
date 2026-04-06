@@ -15,6 +15,7 @@ links:
     - '[[086_expression_ast_contract_and_semantic_ir]]'
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/42'
+    - 'https://github.com/templjs/templ.js/pull/43'
 ---
 
 ## Goal

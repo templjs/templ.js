@@ -99,6 +99,7 @@ links:
     - 'https://github.com/templjs/templ.js/pull/27'
     - 'https://github.com/templjs/templ.js/pull/32'
     - 'https://github.com/templjs/templ.js/pull/42'
+    - 'https://github.com/templjs/templ.js/pull/43'
 ---
 
 ## Goal
