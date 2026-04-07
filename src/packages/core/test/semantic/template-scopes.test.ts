@@ -106,6 +106,19 @@ describe('template-scopes helpers', () => {
     expect(bindings[0].declarationStartOffset).toBe(template.indexOf('item in users'));
   });
 
+  it('extracts both aliases from key-value loop bindings', () => {
+    const template = '{% for key, value in environment_vars %}{{ key }}={{ value }}{% endfor %}';
+    const bindings = extractTemplateScopeBindings(template);
+
+    expect(bindings).toHaveLength(2);
+    expect(bindings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ alias: 'key', iterablePath: 'environment_vars' }),
+        expect.objectContaining({ alias: 'value', iterablePath: 'environment_vars' }),
+      ])
+    );
+  });
+
   it('handles empty custom comment delimiters while normalizing loop delimiters', () => {
     const template = '<% for item in users %><< item >><% endfor %>';
     const options: LexerOptions = {

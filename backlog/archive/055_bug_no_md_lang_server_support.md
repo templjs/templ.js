@@ -4,7 +4,9 @@ type: work-item
 subtype: bug
 lifecycle: active
 title: '055: Markdown syntax highlighting and linting not working for md.tpl files'
-status: ready-for-review
+status: closed
+status_reason: completed
+completed_date: '2026-04-05'
 priority: medium
 estimated: 2
 actual: 3
@@ -30,6 +32,8 @@ links:
     - '[[054_bug_no_schema_aware_authoring]]'
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/27'
+    - 'https://github.com/templjs/templ.js/pull/42'
+    - 'https://github.com/templjs/templ.js/pull/43'
 ---
 
 ## Goal

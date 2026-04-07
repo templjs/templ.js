@@ -34,6 +34,10 @@ export interface Token {
   delimiterStart?: string;
   /** Delimiter end marker for non-text tokens */
   delimiterEnd?: string;
+  /** True when token uses a trim marker immediately after the opening delimiter (e.g., {{- expr }}) */
+  trimLeft?: boolean;
+  /** True when token uses a trim marker immediately before the closing delimiter (e.g., {{ expr -}}) */
+  trimRight?: boolean;
   /** Starting position in source */
   start: Position;
   /** Ending position in source */

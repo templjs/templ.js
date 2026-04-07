@@ -4,7 +4,9 @@ type: work-item
 subtype: bug
 title: '089: Validate host-language activation for templated Markdown extensions'
 lifecycle: active
-status: ready-for-review
+status: closed
+status_reason: completed
+completed_date: '2026-04-05'
 priority: medium
 estimated: 3
 actual: 1
@@ -20,6 +22,10 @@ test_results:
 links:
   depends_on:
     - '[[055_bug_no_md_lang_server_support]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/27'
+    - 'https://github.com/templjs/templ.js/pull/42'
+    - 'https://github.com/templjs/templ.js/pull/43'
 ---
 
 ## Goal

@@ -5,36 +5,36 @@ Generated: {{ generated_at | default('Unknown timestamp') }}
 
 ## KPI Summary
 
-{% if kpi %}
+{%- if kpi %}
 - Total Users: {{ kpi.total_users | default('N/A') }}
 - Active Users (30d): {{ kpi.active_users_30d | default('N/A') }}
-{% if field_formats.kpi.conversion_rate == 'percentage' %}
+{%- if field_formats.kpi.conversion_rate == 'percentage' %}
 - Conversion Rate: {{ kpi.conversion_rate | round(1) }}%
-{% else %}
+{%- else %}
 - Conversion Rate: {{ (kpi.conversion_rate * 100) | round(1) }}%
-{% endif %}
-{% else %}
+{%- endif %}
+{%- else %}
 - Total Users: N/A
 - Active Users (30d): N/A
 - Conversion Rate: N/A
-{% endif %}
+{%- endif %}
 
 ## Top Regions
 
-{% if active_users_by_region %}
-{% for region in active_users_by_region %}
+{%- if active_users_by_region %}
+{%- for region in active_users_by_region %}
 - {{ region.name }}: {{ region.users }} users
-{% endfor %}
-{% else %}
+{%- endfor %}
+{%- else %}
 - None
-{% endif %}
+{%- endif %}
 
 ## Risks
 
-{% if risks %}
-{% for risk in risks %}
+{%- if risks %}
+{%- for risk in risks %}
 - {{ risk }}
-{% endfor %}
-{% else %}
+{%- endfor %}
+{%- else %}
 - None
-{% endif %}
+{%- endif %}

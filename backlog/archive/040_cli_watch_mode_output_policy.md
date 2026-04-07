@@ -4,7 +4,9 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '40: Honor Output Mode Flags (--json, --quiet) in Watch Mode'
-status: ready-for-review
+status: closed
+status_reason: completed
+completed_date: '2026-04-05'
 priority: medium
 estimated: 3
 actual: 3
@@ -27,6 +29,8 @@ links:
     - '[[018_cli_watch_mode]]'
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/23'
+    - 'https://github.com/templjs/templ.js/pull/42'
+    - 'https://github.com/templjs/templ.js/pull/43'
 ---
 
 ## Goal

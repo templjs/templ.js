@@ -3,13 +3,13 @@
   "version": "{{ app.version }}",
   "description": "{{ app.description }}",
   "settings": {
-    {% for setting in app.settings %}
+    {% for setting in app.settings -%}
     "{{ setting.key }}": {{ setting.value }}{{ if not loop.last }},{{ endif }}
-    {% endfor %}
+    {%- endfor %}
   },
   "features": [
-    {% for feature in app.features %}
+    {% for feature in app.features -%}
     "{{ feature }}"{{ if not loop.last }},{{ endif }}
-    {% endfor %}
+    {%- endfor %}
   ]
 }

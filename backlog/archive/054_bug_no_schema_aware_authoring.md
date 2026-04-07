@@ -4,10 +4,12 @@ type: work-item
 subtype: bug
 lifecycle: active
 title: '054: VS Code extension does not load input schema for schema-aware authoring'
-status: in-progress
+status: closed
+status_reason: completed
 priority: high
 estimated: 8
 actual: 4
+completed_date: 2026-03-29
 assignee: ''
 commits:
   8ab845c: 'perf(ide): optimize schema resolution and semantic caches'
@@ -82,10 +84,22 @@ test_results:
       - Verification:
         - `pnpm run test:affected:pre-push` for `vscode-templjs` (4 files, 98 tests passed)
         - Coverage for `src/extensions/vscode/src/schema-loading.ts`: branches 91.25%
+  - timestamp: 2026-03-29T00:00:00Z
+    note: |
+      Closure validation:
+      - Verified dependencies closed: [[031_language_feature_tests]], [[053_validate_schema_input_integration]]
+      - Merged PR evidence:
+        - https://github.com/templjs/templ.js/pull/27 (all checks successful)
+        - https://github.com/templjs/templ.js/pull/32 (all checks successful)
 links:
   depends_on:
     - '[[031_language_feature_tests]]'
     - '[[053_validate_schema_input_integration]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/27'
+    - 'https://github.com/templjs/templ.js/pull/32'
+    - 'https://github.com/templjs/templ.js/pull/42'
+    - 'https://github.com/templjs/templ.js/pull/43'
 ---
 
 ## Goal
@@ -132,7 +146,7 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 - Pass loaded schema and schema URI into plugin options
 - Basic tests for schema handoff
 
-**Phase 2 (New):**
+**Phase 2 (Completed):**
 
 - Extended VS Code settings: glob-pattern-based configuration and content-schema paths
 - HTTPS/HTTP URL schema loading with timeout and error handling
@@ -154,7 +168,7 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 - [x] Pass loaded schema and schema URI into language feature pipeline
 - [x] Add/extend tests for schema handoff and schema-aware editor behavior
 
-### Phase 2 (In Progress)
+### Phase 2 (Completed)
 
 - [x] Extend VS Code settings schema with glob-pattern-based `templjs.schema` object and `templjs.contentSchemaPath` setting
 - [x] Update extension to parse glob patterns and match document URIs to schema configuration
@@ -191,15 +205,15 @@ Schema-aware logic exists in core and Volar providers, but the VS Code extension
 - [x] Schema changes on disk update editor behavior without requiring extension restart
 - [x] Network failures, missing files, and parse errors yield clear, non-crashing diagnostics/logging
 - [x] Backward compatibility: existing `templjs.schemaPath` setting continues to work
-- [ ] All new tests pass in CI for schema-aware extension behavior
+- [x] All new tests pass in CI for schema-aware extension behavior
 - [x] Documentation covers: glob patterns, content-schema usage, inline directives, root properties, URL schemas, multi-root workspace handling
 
 ## Evidence / References
 
 - Extension initialization currently only passes TypeScript SDK options (Phase 1 added schema options)
-- Server currently creates plugin without full schema wiring (Phase 2 will complete this)
+- Server-side plugin schema wiring is fully implemented and validated through integration tests
 - Volar providers already accept schema options and use SchemaValidator
 - Core SchemaValidator already supports metadata extraction and query-path validation
 - Existing `stripTemplateSyntax()` and `createMappings()` in Volar plugin handle virtual code generation
 - Gray-matter pattern exists in scripts/ci/lint-frontmatter.ts for YAML frontmatter parsing
-- Tests currently cover basic schema handoff but not glob patterns, URL loading, directives, frontmatter, or precedence rules (Phase 2 will add these)
+- Tests now cover glob patterns, URL loading, directives, frontmatter extraction, and schema precedence rules

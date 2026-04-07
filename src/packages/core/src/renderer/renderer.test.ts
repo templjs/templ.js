@@ -44,7 +44,7 @@ function exprStmt(value: VariableNode): ExpressionStatementNode {
 }
 
 function forNode(iterator: string, iterable: VariableNode, body: ASTNode[]): ForNode {
-  return { type: 'for', iterator, iterable, body, start: POS, end: POS };
+  return { type: 'for', iterator, valueIterator: undefined, iterable, body, start: POS, end: POS };
 }
 
 function template(...children: ASTNode[]): TemplateNode {

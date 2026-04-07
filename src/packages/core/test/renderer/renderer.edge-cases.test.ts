@@ -215,6 +215,86 @@ describe('Renderer', () => {
         expect(() => render(loopAst, { items: 'not-an-array' }, { throwOnError: true })).toThrow();
       });
 
+      it('iterates arrays with key/value aliases using index and item values', () => {
+        const loopAst: TemplateNode = {
+          type: 'template',
+          start: POS,
+          end: POS,
+          children: [
+            {
+              type: 'for',
+              iterator: 'index',
+              valueIterator: 'item',
+              iterable: variable('items'),
+              body: [
+                {
+                  type: 'expression_statement',
+                  value: binary(
+                    '+',
+                    binary('+', variable('index'), literal(':')),
+                    variable('item')
+                  ),
+                  start: POS,
+                  end: POS,
+                },
+              ],
+              start: POS,
+              end: POS,
+            },
+          ],
+        };
+
+        const result = render(loopAst, { items: ['a', 'b'] });
+        expect(result.output).toBe('0:a1:b');
+        expect(result.errors).toHaveLength(0);
+      });
+
+      it('records type errors for key/value loops over primitive iterables', () => {
+        const loopAst: TemplateNode = {
+          type: 'template',
+          start: POS,
+          end: POS,
+          children: [
+            {
+              type: 'for',
+              iterator: 'key',
+              valueIterator: 'value',
+              iterable: variable('items'),
+              body: [{ type: 'text', value: 'x', start: POS, end: POS }],
+              start: POS,
+              end: POS,
+            },
+          ],
+        };
+
+        const result = render(loopAst, { items: 'not-an-object' });
+        expect(result.output).toBe('');
+        expect(result.errors[0]?.message).toContain('key/value aliases');
+      });
+
+      it('throws for key/value loops over primitive iterables when throwOnError is enabled', () => {
+        const loopAst: TemplateNode = {
+          type: 'template',
+          start: POS,
+          end: POS,
+          children: [
+            {
+              type: 'for',
+              iterator: 'key',
+              valueIterator: 'value',
+              iterable: variable('items'),
+              body: [{ type: 'text', value: 'x', start: POS, end: POS }],
+              start: POS,
+              end: POS,
+            },
+          ],
+        };
+
+        expect(() => render(loopAst, { items: 'not-an-object' }, { throwOnError: true })).toThrow(
+          'Cannot iterate with key/value aliases over non-object value: string'
+        );
+      });
+
       it('records max-depth errors when loop nesting exceeds configured maxDepth', () => {
         const loopAst: TemplateNode = {
           type: 'template',
@@ -285,6 +365,56 @@ describe('Renderer', () => {
         expect(() => renderer.render(loopAst, { items: [1] })).toThrow(
           'Maximum nesting depth exceeded'
         );
+      });
+
+      it('records runtime errors when set value evaluation throws', () => {
+        const ast: TemplateNode = {
+          type: 'template',
+          start: POS,
+          end: POS,
+          children: [
+            {
+              type: 'set',
+              name: 'value',
+              value: binary('[', literal(null), literal(0)) as ExpressionNode,
+              start: POS,
+              end: POS,
+            },
+          ],
+        };
+
+        const result = render(ast, {});
+        expect(result.output).toBe('');
+        expect(result.errors[0]?.message).toContain('Error evaluating set value for "value"');
+      });
+
+      it('coerces non-Error set evaluation throws into runtime errors', () => {
+        const throwingValue = {
+          get type() {
+            throw 'set-string-throw';
+          },
+          start: POS,
+          end: POS,
+        } as unknown as ExpressionNode;
+
+        const ast: TemplateNode = {
+          type: 'template',
+          start: POS,
+          end: POS,
+          children: [
+            {
+              type: 'set',
+              name: 'value',
+              value: throwingValue,
+              start: POS,
+              end: POS,
+            },
+          ],
+        };
+
+        const result = render(ast, {});
+        expect(result.output).toBe('');
+        expect(result.errors[0]?.message).toContain('set-string-throw');
       });
 
       it('returns success=false when a runtime exception escapes expression evaluation', () => {

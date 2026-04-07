@@ -3,27 +3,27 @@
 
 Version: {{ service.version }}
 
-{% for endpoint in endpoints %}
+{%- for endpoint in endpoints %}
 ## {{ endpoint.name }}
 
 `{{ endpoint.method }}` `{{ endpoint.path }}`
 
 {{ endpoint.description }}
 
-{% if endpoint.deprecated is defined and endpoint.deprecated %}
+{%- if endpoint.deprecated !== undefined && endpoint.deprecated %}
 > Deprecated endpoint.
-{% endif %}
+{%- endif %}
 
 ### Parameters
 
-{% for param in endpoint.params %}
+{%- for param in endpoint.params %}
 - `{{ param.name }}` (`{{ param.type }}`){% if param.required %} required{% endif %}
-{% endfor %}
+{%- endfor %}
 
 ### Responses
 
-{% for response in endpoint.responses %}
+{%- for response in endpoint.responses %}
 - `{{ response.code }}`: {{ response.description }}
-{% endfor %}
+{%- endfor %}
 
-{% endfor %}
+{%- endfor -%}

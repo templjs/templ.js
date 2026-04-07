@@ -226,6 +226,15 @@ export const escapeSignature: FunctionSignature = {
   examples: ['escape("<script>") → "&lt;script&gt;"'],
 };
 
+export const noEscapeSignature: FunctionSignature = {
+  name: 'no_escape',
+  category: 'string',
+  description: 'Return trusted content unchanged for raw template output.',
+  parameters: [],
+  returnType: 'any',
+  examples: ['no_escape("<strong>safe</strong>") → "<strong>safe</strong>"'],
+};
+
 export const truncateSignature: FunctionSignature = {
   name: 'truncate',
   category: 'string',
@@ -350,6 +359,10 @@ export const escape: FilterFunction = (value: unknown): string => {
   return str.replace(/[&<>"']/g, (char) => escapeMap[char]);
 };
 
+export const noEscape: FilterFunction = (value: unknown): unknown => {
+  return value;
+};
+
 export const truncate: FilterFunction = (
   value: unknown,
   length: unknown,
@@ -389,5 +402,6 @@ export const stringFunctions = [
   { signature: repeatSignature, handler: repeat },
   { signature: reverseSignature, handler: reverse },
   { signature: escapeSignature, handler: escape },
+  { signature: noEscapeSignature, handler: noEscape },
   { signature: truncateSignature, handler: truncate },
 ];

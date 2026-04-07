@@ -219,29 +219,37 @@ function getDeclarationOffsets(
   template: string,
   node: ForNode,
   statementEnd: string
-): { start: number; end: number } | undefined {
+): Array<{ alias: string; start: number; end: number }> {
   const nodeStart = positionToOffset(template, node.start.line, node.start.column);
   const openingTagEnd = template.indexOf(statementEnd, nodeStart);
   if (openingTagEnd === -1) {
-    return undefined;
+    return [];
   }
 
   const openingTag = template.slice(nodeStart, openingTagEnd + statementEnd.length);
-  const match = openingTag.match(/\bfor\s+([A-Za-z_][\w]*)\s+in\b/);
+  const match = openingTag.match(/\bfor\s+([A-Za-z_][\w]*)(?:\s*,\s*([A-Za-z_][\w]*))?\s+in\b/);
   if (!match || typeof match.index !== 'number') {
-    return undefined;
+    return [];
   }
 
-  const alias = match[1];
-  const aliasStart = openingTag.indexOf(alias, match.index);
-  if (aliasStart === -1) {
-    return undefined;
+  const aliases = [match[1], match[2]].filter((alias): alias is string => Boolean(alias));
+  const results: Array<{ alias: string; start: number; end: number }> = [];
+  let searchFrom = match.index;
+
+  for (const alias of aliases) {
+    const aliasStart = openingTag.indexOf(alias, searchFrom);
+    if (aliasStart === -1) {
+      continue;
+    }
+    results.push({
+      alias,
+      start: nodeStart + aliasStart,
+      end: nodeStart + aliasStart + alias.length,
+    });
+    searchFrom = aliasStart + alias.length;
   }
 
-  return {
-    start: nodeStart + aliasStart,
-    end: nodeStart + aliasStart + alias.length,
-  };
+  return results;
 }
 
 function collectBindings(
@@ -259,7 +267,7 @@ function collectBindings(
     case 'for': {
       const iterablePath = expressionToPath(node.iterable);
       if (iterablePath) {
-        const declaration = getDeclarationOffsets(template, node, statementEnd);
+        const declarations = getDeclarationOffsets(template, node, statementEnd);
         const nodeStart = positionToOffset(template, node.start.line, node.start.column);
         const openingTagEnd = template.indexOf(statementEnd, nodeStart);
         const openingTagEndOffset =
@@ -269,14 +277,19 @@ function collectBindings(
             ? positionToOffset(template, node.body[0].start.line, node.body[0].start.column)
             : openingTagEndOffset;
 
-        bindings.push({
-          alias: node.iterator,
-          iterablePath,
-          scopeStartOffset,
-          scopeEndOffset: positionToOffset(template, node.end.line, node.end.column),
-          declarationStartOffset: declaration?.start,
-          declarationEndOffset: declaration?.end,
-        });
+        for (const alias of [node.iterator, node.valueIterator].filter(
+          (value): value is string => typeof value === 'string' && value.length > 0
+        )) {
+          const declaration = declarations.find((entry) => entry.alias === alias);
+          bindings.push({
+            alias,
+            iterablePath,
+            scopeStartOffset,
+            scopeEndOffset: positionToOffset(template, node.end.line, node.end.column),
+            declarationStartOffset: declaration?.start,
+            declarationEndOffset: declaration?.end,
+          });
+        }
       }
 
       for (const child of node.body) {

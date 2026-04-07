@@ -6,9 +6,5 @@
     "id": "{{ customer.id }}",
     "tier": "{{ customer.tier }}"
   },
-  "features": [
-    {% for feature in features %}
-    "{{ feature }}"{% if not loop.last %},{% endif %}
-    {% endfor %}
-  ]
+  "features": [{%- for feature in features -%}"{{- feature -}}"{%- if !loop.last -%},{%- endif -%}{%- endfor -%}]
 }

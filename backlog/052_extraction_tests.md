@@ -11,9 +11,10 @@ actual: 0
 assignee: ''
 links:
   depends_on:
-    - '[[049_extraction_engine]]'
-    - '[[050_extraction_validation]]'
     - '[[051_extraction_cli]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/42'
+    - 'https://github.com/templjs/templ.js/pull/43'
 ---
 
 ## Goal

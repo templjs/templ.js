@@ -5,6 +5,7 @@ import type {
   ExpressionNode,
   FilterNode,
   LiteralNode,
+  TernaryNode,
   UnaryOpNode,
   VariableNode,
 } from '../../src/parser/types.js';
@@ -58,6 +59,19 @@ const unary = (operator: string, operand: ExpressionNode): UnaryOpNode => ({
   type: 'unary_op',
   operator,
   operand,
+  start: POS,
+  end: POS,
+});
+
+const ternary = (
+  condition: ExpressionNode,
+  trueValue: ExpressionNode,
+  falseValue: ExpressionNode
+): TernaryNode => ({
+  type: 'ternary',
+  condition,
+  trueValue,
+  falseValue,
   start: POS,
   end: POS,
 });
@@ -283,6 +297,26 @@ describe('Evaluators', () => {
     it('returns operand for unknown unary operator', () => {
       const context = createContext();
       expect(evaluateExpression(unary('~', literal(5)), context)).toBe(5);
+    });
+  });
+
+  describe('ternary operations', () => {
+    it('evaluates truthy and falsy ternary branches', () => {
+      const context = createContext({ env: 'prod' });
+      const expr = ternary(binary('==', variable('env'), literal('prod')), literal(3), literal(1));
+
+      expect(evaluateExpression(expr, context)).toBe(3);
+      context.data.env = 'dev';
+      expect(evaluateExpression(expr, context)).toBe(1);
+    });
+
+    it('uses templjs truthiness for ternary conditions', () => {
+      const context = createContext({ value: '' });
+      const expr = ternary(variable('value'), literal('filled'), literal('empty'));
+
+      expect(evaluateExpression(expr, context)).toBe('empty');
+      context.data.value = 'x';
+      expect(evaluateExpression(expr, context)).toBe('filled');
     });
   });
 

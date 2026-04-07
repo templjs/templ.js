@@ -251,6 +251,185 @@ describe('Lexer', () => {
           const tokens = tokenize('Unix\nWindows\r\nMac\r');
           expect(tokens).toHaveLength(1);
         });
+
+        it('should trim trailing whitespace from previous text token when expression uses left trim marker', () => {
+          const tokens = tokenize('Hello   {{- name }}');
+          expect(tokens).toHaveLength(2);
+          expect(tokens[0].type).toBe(TokenType.TEXT);
+          expect(tokens[0].content).toBe('Hello');
+          expect(tokens[1].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[1].trimLeft).toBe(true);
+          expect(tokens[1].trimRight).toBe(false);
+        });
+
+        it('should keep previous text unchanged when trim-left is set but there is no trailing whitespace to remove', () => {
+          const tokens = tokenize('Hello{{- name }}');
+          expect(tokens).toHaveLength(2);
+          expect(tokens[0].type).toBe(TokenType.TEXT);
+          expect(tokens[0].content).toBe('Hello');
+          expect(tokens[1].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[1].trimLeft).toBe(true);
+          expect(tokens[1].trimRight).toBe(false);
+        });
+
+        it('should trim leading whitespace from next text token when expression uses right trim marker', () => {
+          const tokens = tokenize('{{ name -}}   World');
+          expect(tokens).toHaveLength(2);
+          expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[0].trimLeft).toBe(false);
+          expect(tokens[0].trimRight).toBe(true);
+          expect(tokens[1].type).toBe(TokenType.TEXT);
+          expect(tokens[1].content).toBe('World');
+        });
+
+        it('should still advance cursor when trim-right removes the entire interstitial text segment', () => {
+          const tokens = tokenize('{{ value -}}   {{ other }}');
+          expect(tokens).toHaveLength(2);
+          expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[0].trimRight).toBe(true);
+          expect(tokens[1].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[1].start).toEqual({ line: 1, column: 15 });
+        });
+
+        it('should trim both sides when statement uses both trim markers', () => {
+          const tokens = tokenize('A\n   {%- if show -%}\n   B');
+          expect(tokens).toHaveLength(3);
+          expect(tokens[0].type).toBe(TokenType.TEXT);
+          expect(tokens[0].content).toBe('A');
+          expect(tokens[1].type).toBe(TokenType.STATEMENT);
+          expect(tokens[1].trimLeft).toBe(true);
+          expect(tokens[1].trimRight).toBe(true);
+          expect(tokens[2].type).toBe(TokenType.TEXT);
+          expect(tokens[2].content).toBe('B');
+        });
+
+        it('should support trim markers with custom expression delimiters', () => {
+          const tokens = tokenize('X   [[- value -]]   Y', {
+            delimiters: {
+              expression: ['[[', ']]'],
+            },
+          });
+
+          expect(tokens).toHaveLength(3);
+          expect(tokens[0].type).toBe(TokenType.TEXT);
+          expect(tokens[0].content).toBe('X');
+          expect(tokens[1].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[1].content).toBe('[[- value -]]');
+          expect(tokens[1].trimLeft).toBe(true);
+          expect(tokens[1].trimRight).toBe(true);
+          expect(tokens[2].type).toBe(TokenType.TEXT);
+          expect(tokens[2].content).toBe('Y');
+        });
+
+        it('should not set trim flags when minus is part of expression content', () => {
+          const tokens = tokenize('{{ value - 1 }}');
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[0].trimLeft).toBe(false);
+          expect(tokens[0].trimRight).toBe(false);
+        });
+
+        it('should not treat a dash immediately followed by non-whitespace as a trim-left marker ({{-1}} regression)', () => {
+          // '{{-1}}' must NOT be interpreted as trim-left + expression '1'.
+          // Without a whitespace separator the dash is part of the expression.
+          const tokens = tokenize('{{-1}}');
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[0].content).toBe('{{-1}}');
+          expect(tokens[0].trimLeft).toBe(false);
+          expect(tokens[0].trimRight).toBe(false);
+        });
+
+        it('should not treat a dash immediately preceded by non-whitespace as a trim-right marker ({{1-}} regression)', () => {
+          // '{{1-}}' must NOT be interpreted as expression '1' + trim-right.
+          const tokens = tokenize('{{1-}}');
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[0].trimLeft).toBe(false);
+          expect(tokens[0].trimRight).toBe(false);
+        });
+
+        it('should preserve legacy whitespace behavior when trim markers are not used', () => {
+          const tokens = tokenize('A {{ value }} B');
+          expect(tokens).toHaveLength(3);
+          expect(tokens[0].content).toBe('A ');
+          expect(tokens[1].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[1].trimLeft).toBe(false);
+          expect(tokens[1].trimRight).toBe(false);
+          expect(tokens[2].content).toBe(' B');
+        });
+
+        it('should prefer the longest delimiter when multiple delimiters start at the same offset', () => {
+          const tokens = tokenize('[[ value ]]', {
+            delimiters: {
+              expression_start: '[',
+              expression_end: ']',
+              comment_start: '[[',
+              comment_end: ']]',
+            },
+          });
+
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.COMMENT);
+          expect(tokens[0].content).toBe('[[ value ]]');
+        });
+
+        it('should drop the previous text token when left trim removes it entirely', () => {
+          const tokens = tokenize('   {{- value }}');
+
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+        });
+
+        it('should throw an unclosed delimiter error with accurate line and column', () => {
+          expect(() => tokenize('Line 1\n  {{- value')).toThrow(
+            'Unclosed expression starting at line 2, column 2'
+          );
+        });
+
+        it('should trim following whitespace to empty text without emitting a text token', () => {
+          const tokens = tokenize('{{ value -}}   ');
+
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+        });
+
+        it('should update token end positions when trimmed delimiters span multiple lines', () => {
+          const tokens = tokenize('{%- if show\n-%}');
+
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.STATEMENT);
+          expect(tokens[0].end).toEqual({ line: 2, column: 3 });
+        });
+
+        it('should update previous text end position when custom delimiters trim left whitespace', () => {
+          const tokens = tokenize('X   [[- value ]]', {
+            delimiters: {
+              expression_start: '[[',
+              expression_end: ']]',
+            },
+          });
+
+          expect(tokens).toHaveLength(2);
+          expect(tokens[0].type).toBe(TokenType.TEXT);
+          expect(tokens[0].content).toBe('X');
+          expect(tokens[0].end).toEqual({ line: 1, column: 1 });
+        });
+
+        it('should align text start and end when custom delimiters trim right whitespace', () => {
+          const tokens = tokenize('[[ value -]]   Y', {
+            delimiters: {
+              expression_start: '[[',
+              expression_end: ']]',
+            },
+          });
+
+          expect(tokens).toHaveLength(2);
+          expect(tokens[1].type).toBe(TokenType.TEXT);
+          expect(tokens[1].content).toBe('Y');
+          expect(tokens[1].start).toEqual({ line: 1, column: 15 });
+          expect(tokens[1].end).toEqual({ line: 1, column: 16 });
+        });
       });
 
       describe('Special Characters', () => {

@@ -280,6 +280,11 @@ const BUILTIN_FILTERS: Record<string, FilterFunction> = {
   },
 
   /**
+   * Compatibility no-op filter that returns the value unchanged.
+   */
+  no_escape: (value: AnyValue): AnyValue => value,
+
+  /**
    * Convert to number
    */
   number: function (value: AnyValue, fallback?: AnyValue): number | null | AnyValue {

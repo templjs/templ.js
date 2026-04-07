@@ -26,6 +26,20 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
   let line = 1;
   let column = 0;
 
+  function positionAfter(start: Position, content: string): Position {
+    let nextLine = start.line;
+    let nextColumn = start.column;
+    for (const char of content) {
+      if (char === '\n') {
+        nextLine++;
+        nextColumn = 0;
+      } else {
+        nextColumn++;
+      }
+    }
+    return { line: nextLine, column: nextColumn };
+  }
+
   // Track which delimiter starts earliest in the remaining string
   function findNextDelimiter(
     text: string,
@@ -37,6 +51,8 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
     content: string;
     delimiterStart: string;
     delimiterEnd: string;
+    trimLeft: boolean;
+    trimRight: boolean;
   } | null {
     let earliest: {
       type: TokenType;
@@ -45,6 +61,8 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
       content: string;
       delimiterStart: string;
       delimiterEnd: string;
+      trimLeft: boolean;
+      trimRight: boolean;
     } | null = null;
 
     // Check each delimiter type
@@ -70,7 +88,15 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
       const startPos = text.indexOf(check.start, offset);
       if (startPos === -1) continue;
 
-      const endPos = text.indexOf(check.end, startPos + check.start.length);
+      const trimLeftPos = startPos + check.start.length;
+      const charAfterTrimLeftMarker = text.charAt(trimLeftPos + 1);
+      // Require whitespace after the '-' so that '{{-1}}' is NOT treated as
+      // trim-left + expression '1' — unary minus and negative literals need
+      // '{{- expr }}' (dash followed by whitespace) to activate trim-left.
+      const trimLeft = text[trimLeftPos] === '-' && /[ \t\r\n]/.test(charAfterTrimLeftMarker);
+      const searchStart = trimLeft ? trimLeftPos + 1 : trimLeftPos;
+
+      const endPos = text.indexOf(check.end, searchStart);
       if (endPos === -1) {
         // Unclosed delimiter
         const lines = text.substring(0, startPos).split('\n');
@@ -93,12 +119,19 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
           content: text.substring(startPos, endPos + check.end.length),
           delimiterStart: check.start,
           delimiterEnd: check.end,
+          trimLeft,
+          // Require whitespace before the '-' so that '{{ 1-}}' is NOT
+          // treated as trim-right + expression '1' — trim-right activates
+          // only with '{{ expr -}}' (whitespace then dash then close).
+          trimRight: text[endPos - 1] === '-' && /[ \t\r\n]/.test(text.charAt(endPos - 2)),
         };
       }
     }
 
     return earliest;
   }
+
+  let trimNextTextLeadingWhitespace = false;
 
   // Process the template
   while (position < template.length) {
@@ -107,26 +140,39 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
     if (nextDelim === null || nextDelim.start > position) {
       // There's text before the next delimiter (or no more delimiters)
       const textEnd = nextDelim ? nextDelim.start : template.length;
-      const textContent = template.substring(position, textEnd);
+      const originalTextContent = template.substring(position, textEnd);
+      const textContent = trimNextTextLeadingWhitespace
+        ? originalTextContent.replace(/^[\t\n\r ]+/, '')
+        : originalTextContent;
+      const trimmedLeadingLength =
+        trimNextTextLeadingWhitespace && textContent.length <= originalTextContent.length
+          ? originalTextContent.length - textContent.length
+          : 0;
+
+      trimNextTextLeadingWhitespace = false;
+
+      const rawStart: Position = { line, column };
+      const start =
+        trimmedLeadingLength > 0
+          ? positionAfter(rawStart, originalTextContent.slice(0, trimmedLeadingLength))
+          : rawStart;
+
+      // Always advance raw cursor, even when trimming removes all text.
+      for (const char of originalTextContent) {
+        if (char === '\n') {
+          line++;
+          column = 0;
+        } else {
+          column++;
+        }
+      }
 
       if (textContent.length > 0) {
-        const start: Position = { line, column };
-
-        // Update position tracking
-        for (const char of textContent) {
-          if (char === '\n') {
-            line++;
-            column = 0;
-          } else {
-            column++;
-          }
-        }
-
         tokens.push({
           type: TokenType.TEXT,
           content: textContent,
           start,
-          end: { line, column },
+          end: positionAfter(start, textContent),
         });
       }
 
@@ -134,6 +180,20 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
     }
 
     if (nextDelim && position === nextDelim.start) {
+      if (nextDelim.trimLeft) {
+        const previousToken = tokens[tokens.length - 1];
+        if (previousToken?.type === TokenType.TEXT) {
+          const trimmedContent = previousToken.content.replace(/[\t\n\r ]+$/, '');
+          if (trimmedContent !== previousToken.content) {
+            previousToken.content = trimmedContent;
+            previousToken.end = positionAfter(previousToken.start, previousToken.content);
+          }
+          if (previousToken.content.length === 0) {
+            tokens.pop();
+          }
+        }
+      }
+
       // Process the delimiter token
       const start: Position = { line, column };
 
@@ -152,9 +212,13 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
         content: nextDelim.content,
         delimiterStart: nextDelim.delimiterStart,
         delimiterEnd: nextDelim.delimiterEnd,
+        trimLeft: nextDelim.trimLeft,
+        trimRight: nextDelim.trimRight,
         start,
         end: { line, column },
       });
+
+      trimNextTextLeadingWhitespace = nextDelim.trimRight;
 
       position = nextDelim.end;
     }

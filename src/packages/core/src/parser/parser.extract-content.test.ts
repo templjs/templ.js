@@ -194,6 +194,22 @@ describe('TemplateParser extract content helpers', () => {
       });
     });
 
+    it('extracts content and offsets from statement delimiters with trim markers', () => {
+      const parser = createParser();
+      const token: ExtractTokenInput = {
+        content: '{%-   if user.active   -%}',
+        delimiterStart: '{%',
+        delimiterEnd: '%}',
+      };
+
+      const extracted = parser.extractStatementContent(token);
+      expect(extracted).toEqual({
+        content: 'if user.active',
+        contentStart: 6,
+        contentEnd: 20,
+      });
+    });
+
     it('returns original content when only delimiterStart metadata is present (end is undefined)', () => {
       // The function falls back to the default end delimiter '%}' from the config,
       // but the content ends with '%>' not '%}', so hasWrappedDelimiters is false
@@ -348,6 +364,22 @@ describe('TemplateParser extract content helpers', () => {
         content: 'user.name',
         contentStart: 5,
         contentEnd: 14,
+      });
+    });
+
+    it('extracts content and offsets from expression delimiters with trim markers', () => {
+      const parser = createParser();
+      const token: ExtractTokenInput = {
+        content: '{{-   user.name   -}}',
+        delimiterStart: '{{',
+        delimiterEnd: '}}',
+      };
+
+      const extracted = parser.extractExpressionContent(token);
+      expect(extracted).toEqual({
+        content: 'user.name',
+        contentStart: 6,
+        contentEnd: 15,
       });
     });
   });
