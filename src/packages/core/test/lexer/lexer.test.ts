@@ -282,6 +282,15 @@ describe('Lexer', () => {
           expect(tokens[1].content).toBe('World');
         });
 
+        it('should still advance cursor when trim-right removes the entire interstitial text segment', () => {
+          const tokens = tokenize('{{ value -}}   {{ other }}');
+          expect(tokens).toHaveLength(2);
+          expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[0].trimRight).toBe(true);
+          expect(tokens[1].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[1].start).toEqual({ line: 1, column: 15 });
+        });
+
         it('should trim both sides when statement uses both trim markers', () => {
           const tokens = tokenize('A\n   {%- if show -%}\n   B');
           expect(tokens).toHaveLength(3);

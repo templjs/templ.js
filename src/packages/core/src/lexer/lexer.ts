@@ -151,23 +151,23 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
 
       trimNextTextLeadingWhitespace = false;
 
-      if (textContent.length > 0) {
-        const rawStart: Position = { line, column };
-        const start =
-          trimmedLeadingLength > 0
-            ? positionAfter(rawStart, originalTextContent.slice(0, trimmedLeadingLength))
-            : rawStart;
+      const rawStart: Position = { line, column };
+      const start =
+        trimmedLeadingLength > 0
+          ? positionAfter(rawStart, originalTextContent.slice(0, trimmedLeadingLength))
+          : rawStart;
 
-        // Update position tracking
-        for (const char of originalTextContent) {
-          if (char === '\n') {
-            line++;
-            column = 0;
-          } else {
-            column++;
-          }
+      // Always advance raw cursor, even when trimming removes all text.
+      for (const char of originalTextContent) {
+        if (char === '\n') {
+          line++;
+          column = 0;
+        } else {
+          column++;
         }
+      }
 
+      if (textContent.length > 0) {
         tokens.push({
           type: TokenType.TEXT,
           content: textContent,
