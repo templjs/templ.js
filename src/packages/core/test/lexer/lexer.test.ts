@@ -262,6 +262,16 @@ describe('Lexer', () => {
           expect(tokens[1].trimRight).toBe(false);
         });
 
+        it('should keep previous text unchanged when trim-left is set but there is no trailing whitespace to remove', () => {
+          const tokens = tokenize('Hello{{- name }}');
+          expect(tokens).toHaveLength(2);
+          expect(tokens[0].type).toBe(TokenType.TEXT);
+          expect(tokens[0].content).toBe('Hello');
+          expect(tokens[1].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[1].trimLeft).toBe(true);
+          expect(tokens[1].trimRight).toBe(false);
+        });
+
         it('should trim leading whitespace from next text token when expression uses right trim marker', () => {
           const tokens = tokenize('{{ name -}}   World');
           expect(tokens).toHaveLength(2);

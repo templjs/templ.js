@@ -89,10 +89,11 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
       if (startPos === -1) continue;
 
       const trimLeftPos = startPos + check.start.length;
+      const charAfterTrimLeftMarker = text.charAt(trimLeftPos + 1);
       // Require whitespace after the '-' so that '{{-1}}' is NOT treated as
       // trim-left + expression '1' — unary minus and negative literals need
       // '{{- expr }}' (dash followed by whitespace) to activate trim-left.
-      const trimLeft = text[trimLeftPos] === '-' && /[ \t\r\n]/.test(text[trimLeftPos + 1] ?? '');
+      const trimLeft = text[trimLeftPos] === '-' && /[ \t\r\n]/.test(charAfterTrimLeftMarker);
       const searchStart = trimLeft ? trimLeftPos + 1 : trimLeftPos;
 
       const endPos = text.indexOf(check.end, searchStart);
@@ -122,7 +123,7 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
           // Require whitespace before the '-' so that '{{ 1-}}' is NOT
           // treated as trim-right + expression '1' — trim-right activates
           // only with '{{ expr -}}' (whitespace then dash then close).
-          trimRight: text[endPos - 1] === '-' && /[ \t\r\n]/.test(text[endPos - 2] ?? ''),
+          trimRight: text[endPos - 1] === '-' && /[ \t\r\n]/.test(text.charAt(endPos - 2)),
         };
       }
     }
