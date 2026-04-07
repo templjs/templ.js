@@ -221,7 +221,7 @@ export class TemplateParser {
     if (!startToken) throw new Error('Expected statement token');
 
     const content = this.extractStatementContent(startToken).content;
-    const match = content.match(/^for\s+(\w+)(?:\s*,\s*(\w+))?\s+in\s+(.+?)$/);
+    const match = content.match(/^for\s+([a-zA-Z_]\w*)(?:\s*,\s*([a-zA-Z_]\w*))?\s+in\s+(.+?)$/);
 
     if (!match) {
       this.addError(
