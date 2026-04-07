@@ -1003,8 +1003,16 @@ function extractContentWithDelimiters(
     };
   }
 
-  const startsWithTrimmedDelimiter = result.startsWith(`${startDelimiter}-`);
-  const endsWithTrimmedDelimiter = result.endsWith(`-${endDelimiter}`);
+  // Require whitespace after the leading '-' and before the trailing '-' so
+  // that '{{-1}}' is NOT treated as trim-left + expression '1' and
+  // '{{ val-}}' is NOT treated as trim-right.  Trim markers activate only
+  // when the dash is adjacent to whitespace: '{{- expr -}}'.
+  const startsWithTrimmedDelimiter =
+    result.startsWith(`${startDelimiter}-`) &&
+    /[ \t\r\n]/.test(result[startDelimiter.length + 1] ?? '');
+  const endsWithTrimmedDelimiter =
+    result.endsWith(`-${endDelimiter}`) &&
+    /[ \t\r\n]/.test(result[result.length - endDelimiter.length - 2] ?? '');
 
   // When the content does not start and end with the resolved delimiters,
   // hasWrappedDelimiters is false and the entire string is treated as the

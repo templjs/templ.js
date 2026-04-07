@@ -310,6 +310,26 @@ describe('Lexer', () => {
           expect(tokens[0].trimRight).toBe(false);
         });
 
+        it('should not treat a dash immediately followed by non-whitespace as a trim-left marker ({{-1}} regression)', () => {
+          // '{{-1}}' must NOT be interpreted as trim-left + expression '1'.
+          // Without a whitespace separator the dash is part of the expression.
+          const tokens = tokenize('{{-1}}');
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[0].content).toBe('{{-1}}');
+          expect(tokens[0].trimLeft).toBe(false);
+          expect(tokens[0].trimRight).toBe(false);
+        });
+
+        it('should not treat a dash immediately preceded by non-whitespace as a trim-right marker ({{1-}} regression)', () => {
+          // '{{1-}}' must NOT be interpreted as expression '1' + trim-right.
+          const tokens = tokenize('{{1-}}');
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[0].trimLeft).toBe(false);
+          expect(tokens[0].trimRight).toBe(false);
+        });
+
         it('should preserve legacy whitespace behavior when trim markers are not used', () => {
           const tokens = tokenize('A {{ value }} B');
           expect(tokens).toHaveLength(3);

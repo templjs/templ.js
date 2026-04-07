@@ -153,6 +153,15 @@ describe('Renderer', () => {
       expect(result.output).toBe('LMR');
     });
 
+    it('should not treat {{-1}} as trim-left: unary minus without whitespace is not a trim marker', () => {
+      // '{{-1}}' should render as '-1', not as trim-left applied to '1'.
+      const template = 'Result: {{-1}}';
+      const tokens = tokenize(template);
+      const parseResult = parse(tokens);
+      const result = render(parseResult.ast!, {});
+      expect(result.output).toBe('Result: -1');
+    });
+
     it('should keep legacy whitespace output when trim markers are absent', () => {
       const template = 'A {{ value }} B';
       const tokens = tokenize(template);
