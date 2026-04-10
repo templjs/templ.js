@@ -247,6 +247,8 @@ it('renders template', async () => {
 
 **✅ Do this in addition:**
 
+{% raw %}
+
 ```typescript
 // tests/integration/public-api.test.ts
 import { renderTemplate, validateTemplate } from '@templjs/core';
@@ -268,6 +270,8 @@ describe('Public API Integration', () => {
   });
 });
 ```
+
+{% endraw %}
 
 #### Work Item Acceptance Criteria
 
