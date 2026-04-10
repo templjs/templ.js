@@ -44,6 +44,15 @@ test_results:
       Validation:
       - `pnpm lint:markdown`
       - `pnpm run lint:frontmatter`
+  - timestamp: 2026-04-07T04:30:00Z
+    note: |
+      PR #43 merged with TypeDoc regeneration guard hardening and follow-up review fixes.
+      Merge details:
+      - PR: https://github.com/templjs/templ.js/pull/43
+      - Merge commit: c81c88a8a36bf2af3d06db8e91ee66463d91906d
+      Validation at merge:
+      - GitHub checks: 17/17 successful
+      - All review threads resolved after verified fixes
 links:
   depends_on:
     - '[[005_chevrotain_lexer]]'
@@ -52,6 +61,8 @@ links:
     - '[[029_cli_signal_handling]]'
     - '[[032_cli_config_files]]'
     - '[[033_schema_parity]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/43'
 ---
 
 ## Goal

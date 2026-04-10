@@ -87,4 +87,9 @@ This pack covers the most representative release-readiness cases:
 - Deployment-oriented config generation (.env and Docker Compose)
 - API-style documentation generation (Markdown)
 
-The remaining WI-021 scope is the demo video.
+WI-021 now includes a generated in-repo demo video artifact for review.
+
+## Demo Video
+
+- [templjs-demo.mp4](../assets/demo/templjs-demo.mp4)
+- [wi-021-demo-script.md](../assets/demo/wi-021-demo-script.md)

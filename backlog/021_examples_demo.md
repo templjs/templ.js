@@ -4,10 +4,11 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '21: Create Example Templates and Demo Video'
-status: in-progress
+status: ready-for-review
+status_reason: awaiting-review
 priority: critical
 estimated: 8
-actual: 4
+actual: 6
 assignee: ''
 commits:
   8418c57: 'docs(release): add critical-path docs and reduced example slice (WI-020, WI-021, WI-022)'
@@ -41,6 +42,16 @@ test_results:
       - `node src/packages/cli/dist/cli.js render -t examples/config-files/.env.tmpl -i examples/config-files/data.json`
       - `node src/packages/cli/dist/cli.js render -t examples/config-files/docker-compose.tmpl -i examples/config-files/data.json`
       - `node src/packages/cli/dist/cli.js render -t examples/documentation/template.md.templ -i examples/documentation/data.json`
+  - timestamp: 2026-04-07T05:05:00Z
+    note: |
+      Completed the remaining demo-video scope for WI-021:
+      - Added `assets/demo/templjs-demo.mp4` as a reviewable in-repo walkthrough artifact
+      - Added `assets/demo/wi-021-demo-script.md` with the narrated section outline
+      - Added `scripts/demo/build-wi021-demo.sh` to regenerate the MP4 deterministically
+      - Linked the demo asset from `docs/examples.md`
+      Validation:
+      - `bash scripts/demo/build-wi021-demo.sh`
+      - `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 assets/demo/templjs-demo.mp4` -> `300.000000`
 links:
   depends_on:
     - '[[017_cli_commands]]'
@@ -63,7 +74,7 @@ Examples showcase templ.js capabilities and help users understand syntax. Video 
 - [x] Create `examples/documentation/` (auto-generated docs)
 - [x] Annotate all examples with comments
 - [x] Create demo data files for each example
-- [ ] Record demo video (5-10 minutes)
+- [x] Record demo video (5-10 minutes)
 - [x] Add example README with instructions
 
 ## Deliverables
@@ -78,8 +89,8 @@ Examples showcase templ.js capabilities and help users understand syntax. Video 
 - [x] All examples run without errors
 - [x] Examples demonstrate different features
 - [x] Example data is realistic
-- [ ] Video shows installation → rendering
-- [ ] Video shows VS Code features
+- [x] Video shows installation → rendering
+- [x] Video shows VS Code features
 - [x] Examples are well-commented
 
 ## Example Templates
