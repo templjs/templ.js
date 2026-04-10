@@ -45,7 +45,7 @@ test_results:
   - timestamp: 2026-04-07T05:05:00Z
     note: |
       Completed the remaining demo-video scope for WI-021:
-      - Added `assets/demo/templjs-demo.mp4` as a reviewable in-repo walkthrough artifact
+      - Added `assets/demo/templjs-demo.mp4` as a reviewable in-repo slide-based walkthrough artifact
       - Added `assets/demo/wi-021-demo-script.md` with the narrated section outline
       - Added `scripts/demo/build-wi021-demo.sh` to regenerate the MP4 in a reproducible workflow
       - Linked the demo asset from `docs/examples.md`
@@ -152,13 +152,12 @@ Generated: {{ generated_at | date }}
 
 ## Demo Video Content
 
-1. **Installation** (30s): `npm install @templjs/core`
-2. **First Render** (1m): Parse and render simple template
-3. **VS Code Setup** (1m): Install extension, open template file
-4. **IDE Features** (2m): Show completion, hover, diagnostics
-5. **CLI Usage** (1m): `templjs render` command
-6. **Complex Example** (2m): Markdown report with loops
-7. **Summary** (30s): Where to go next (docs, examples)
+1. **Installation and Build**: `pnpm install`, then build core and CLI packages
+2. **First Render**: Render `examples/markdown-report/template.md.templ` with CLI
+3. **Example Pack Overview**: markdown-report, html-email, json-api, config-files, documentation
+4. **VS Code Workflow**: authoring, completion, hover help, and diagnostics
+5. **CLI Workflow**: scriptable render command for local and CI usage
+6. **Where to Go Next**: docs and example READMEs for follow-on usage
 
 ## References
 

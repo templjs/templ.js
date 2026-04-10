@@ -40,15 +40,15 @@ Reopened on 2026-03-04 during backlog audit to reconcile unresolved checklist it
 
 ## Completion Update
 
-The remaining checklist items are now satisfied by repo-local workflow skills in `.github/skills/` for create, update, and finalize work-item flows.
+The remaining checklist items are now supported by repo-local workflow skills in `.github/skills/` for create, update, and finalize work-item flows. Machine-verifiable guardrails remain enforced by `scripts/ci/lint-frontmatter.ts`, pre-push hooks, and CI.
 
 ## Goal
 
-Implement objective, machine-verifiable guardrails for work item status claims. Work items can only be marked `completed` if they have merged PRs with passing CI, recorded test results, and all tasks checked. Enforce this via validation script, Husky hooks, and GitHub Actions. Migrate to numeric-only work item IDs and add dependency tracking.
+Implement objective, machine-verifiable guardrails for work item status claims. Work items can only be marked `closed` (with `status_reason: completed` for the normal done case) if they have merged PRs with passing CI, recorded test results, and all tasks checked. Enforce this via validation script, Husky hooks, and GitHub Actions. Migrate to numeric-only work item IDs and add dependency tracking.
 
 ## Background
 
-Current backlog has `status: completed` items without merged PRs, test evidence, or complete tasks. This creates false confidence in delivery. We need:
+Current backlog has `status: closed` items without merged PRs, test evidence, or complete tasks. This creates false confidence in delivery. We need:
 
 1. Automated validation that enforces schema rules (merged PR, tests, complete tasks)
 2. Husky pre-push gate to block invalid status claims locally
@@ -61,8 +61,8 @@ Current backlog has `status: completed` items without merged PRs, test evidence,
 
 - TypeScript validation script (`scripts/ci/validate-work-items.ts`) that:
   - Validates work item frontmatter against schema
-  - Enforces `completed` status requires: merged PR, passing CI, recorded tests, all tasks `[x]`
-  - Enforces `in-progress` status: all dependencies must be `completed`
+  - Enforces `closed` status requires: merged PR, passing CI, recorded tests, all tasks `[x]`
+  - Enforces `in-progress` status: all dependencies must be `closed`
   - Returns exit code 0/1 with detailed violation reports
 - Updated backlog schema with `links.pull_requests` and `links.depends_on` fields
 - All decimal work item IDs renamed to numeric format (012, 013, etc.)
@@ -81,7 +81,7 @@ Current backlog has `status: completed` items without merged PRs, test evidence,
 - [x] Add `links.depends_on` to all work items based on dependency analysis (enforced by validation script)
 - [x] Update `create-work-item` skill to enforce numeric-only IDs and prompt for dependencies
 - [x] Update `update-work-item` skill to validate dependencies before `in-progress` transition
-- [x] Update `finalize-work-item` skill to validate merged PR, tests, and complete tasks before `completed`
+- [x] Update `finalize-work-item` skill to validate merged PR, tests, and complete tasks before `closed`
 - [x] Wire validation into `.husky/pre-push` hook
 - [x] Add validation job to `.github/workflows/ci.yml`
 - [x] Add npm script to `package.json` for running validation (`lint:frontmatter`)
@@ -93,8 +93,8 @@ Current backlog has `status: completed` items without merged PRs, test evidence,
 - [x] Pre-push hook blocks commits with any invalid work item status
 - [x] GitHub Actions CI validates backlog as gate on merge
 - [x] All work items use numeric IDs only (no decimals)
-- [x] Dependencies tracked and enforced (cannot be `in-progress` if dependency not `completed`)
-- [x] `completed` items verified to have merged PR and tests (schema enforces required fields)
+- [x] Dependencies tracked and enforced (cannot be `in-progress` if dependency not `closed`)
+- [x] `closed` items verified to have merged PR and tests (schema enforces required fields)
 - [x] Agent skills updated to enforce constraints during creation/update/finalization
 - [x] Backlog normalized and passes validation without violations
 
