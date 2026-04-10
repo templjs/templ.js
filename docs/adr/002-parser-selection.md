@@ -15,7 +15,7 @@ Accepted - February 2026
 
 The Temple DSL requires a production-grade parser capable of:
 
-1. **Configurable Delimiters**: Support `{% %}`, `{{ }}`, `{# #}` with user-configurable alternatives
+1. **Configurable Delimiters**: Support {% raw %}`{% %}`{% endraw %}, {% raw %}`{{ }}`{% endraw %}, {% raw %}`{# #}`{% endraw %} with user-configurable alternatives
 2. **Positional Accuracy**: Track exact line/column positions for error reporting
 3. **Incremental Parsing**: Support LSP use cases (partial file edits)
 4. **Embedded Languages**: Distinguish template syntax from base format (Markdown, JSON, HTML)
