@@ -113,9 +113,9 @@ make_slide 6 40 "5. CLI workflow" "The same template can be rendered in CI or lo
 make_slide 7 35 "6. Where to go next" "Review the docs and examples:\n\n- docs/getting-started.md\n- docs/examples.md\n- examples/*/README.md\n\nGenerated for WI-021 to provide a reviewable demo-video artifact in-repo." "#5b9aa5"
 
 LIST_FILE="$TMP_DIR/concat.txt"
-for file in "$TMP_DIR"/segment-*.mp4; do
+while IFS= read -r file; do
   printf "file '%s'\n" "$file" >> "$LIST_FILE"
-done
+done < <(find "$TMP_DIR" -maxdepth 1 -type f -name 'segment-*.mp4' | sort -V)
 
 mkdir -p "$(dirname "$OUT")"
 ffmpeg -loglevel error -y -f concat -safe 0 -i "$LIST_FILE" -c copy "$OUT"

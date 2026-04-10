@@ -11,6 +11,7 @@ Use this repo-local skill when adding a new work item under backlog/.
 
 - Create files in backlog/ using numeric prefixes only: 001_style.md, 090_example.md.
 - Frontmatter id must use wi-NNN format.
+- Required frontmatter includes: id, type, subtype, lifecycle, title, status, priority, estimated, assignee, actual.
 - Review and populate links.depends_on before finishing the draft.
 - Do not invent decimal IDs, mixed formats, or missing dependency sections.
 - Run pnpm run lint:frontmatter before considering the new item complete.
