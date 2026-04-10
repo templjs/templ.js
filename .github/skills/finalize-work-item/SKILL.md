@@ -18,6 +18,7 @@ Before setting status: closed, verify all of the following:
 - Merged PRs completed with passing checks.
 - test_results contains concrete evidence.
 - actual is populated.
+- For the normal done/merged case, status_reason is set to completed when setting status: closed.
 - completed_date is set.
 - pnpm run lint:frontmatter passes.
 

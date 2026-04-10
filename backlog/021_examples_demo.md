@@ -47,7 +47,7 @@ test_results:
       Completed the remaining demo-video scope for WI-021:
       - Added `assets/demo/templjs-demo.mp4` as a reviewable in-repo walkthrough artifact
       - Added `assets/demo/wi-021-demo-script.md` with the narrated section outline
-      - Added `scripts/demo/build-wi021-demo.sh` to regenerate the MP4 deterministically
+      - Added `scripts/demo/build-wi021-demo.sh` to regenerate the MP4 in a reproducible workflow
       - Linked the demo asset from `docs/examples.md`
       Validation:
       - `bash scripts/demo/build-wi021-demo.sh`

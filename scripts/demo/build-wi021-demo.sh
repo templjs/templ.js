@@ -4,13 +4,71 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 OUT="${1:-$ROOT/assets/demo/templjs-demo.mp4}"
 TMP_DIR="$(mktemp -d)"
-FONT="/System/Library/Fonts/Supplemental/Menlo.ttc"
 FPS=30
+
+require_cmd() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "Error: required command not found: $1" >&2
+    exit 1
+  fi
+}
+
+resolve_font() {
+  local requested_font="$1"
+  local fallback_font
+
+  if [ -n "$requested_font" ]; then
+    if [ -f "$requested_font" ]; then
+      printf '%s\n' "$requested_font"
+      return 0
+    fi
+    echo "Error: requested font file not found: $requested_font" >&2
+    return 1
+  fi
+
+  if command -v fc-match >/dev/null 2>&1; then
+    local matched_font
+    matched_font="$(fc-match monospace -f '%{file}\n' 2>/dev/null | head -n 1 || true)"
+    if [ -n "$matched_font" ] && [ -f "$matched_font" ]; then
+      printf '%s\n' "$matched_font"
+      return 0
+    fi
+  fi
+
+  for fallback_font in \
+    "/System/Library/Fonts/Supplemental/Menlo.ttc" \
+    "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf" \
+    "/usr/share/fonts/TTF/DejaVuSansMono.ttf" \
+    "/usr/share/fonts/truetype/liberation2/LiberationMono-Regular.ttf" \
+    "/mnt/c/Windows/Fonts/consola.ttf" \
+    "/c/Windows/Fonts/consola.ttf"
+  do
+    if [ -f "$fallback_font" ]; then
+      printf '%s\n' "$fallback_font"
+      return 0
+    fi
+  done
+
+  echo "Error: unable to find a usable font. Set FONT or FONT_PATH, or pass a font path as the second argument." >&2
+  return 1
+}
 
 cleanup() {
   rm -rf "$TMP_DIR"
 }
 trap cleanup EXIT
+
+require_cmd python3
+require_cmd ffmpeg
+require_cmd ffprobe
+
+if ! python3 -c 'from PIL import Image, ImageDraw, ImageFont' >/dev/null 2>&1; then
+  echo "Error: Python dependency Pillow is required (python3 -m pip install pillow)." >&2
+  exit 1
+fi
+
+FONT="${FONT:-${FONT_PATH:-${2:-}}}"
+FONT="$(resolve_font "$FONT")"
 
 make_slide() {
   local index="$1"

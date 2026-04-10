@@ -16,8 +16,8 @@ proposed -> ready -> in-progress -> ready-for-review -> closed
 ### Before moving to in-progress
 
 - Read links.depends_on from the work item.
-- Confirm each dependency is already in-progress, ready-for-review, or closed.
-- Do not advance the item if a dependency is still proposed or ready.
+- Confirm each dependency is closed before starting work.
+- Do not advance the item if a dependency is still proposed, ready, in-progress, or ready-for-review.
 - Record a note or test_results entry when the transition reflects real execution start.
 
 ### Before moving to ready-for-review

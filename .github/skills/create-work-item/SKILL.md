@@ -19,7 +19,7 @@ Use this repo-local skill when adding a new work item under backlog/.
 
 1. Find the next unused numeric backlog file number in backlog/.
 2. Create a matching file name and wi-NNN frontmatter id.
-3. Ask whether the item depends on any existing WIs; if none, record an empty or omitted dependency section consistently with schema.
+3. Ask whether the item depends on any existing WIs; if none, omit links.depends_on entirely, and if it does, add the existing WI references there.
 4. Add Goal, Background, Tasks, Deliverables, and Acceptance Criteria sections.
 5. Keep initial status within the repo lifecycle: proposed, ready, in-progress, ready-for-review, closed.
 6. Run pnpm run lint:frontmatter and fix any schema or dependency errors.
