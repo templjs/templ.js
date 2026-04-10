@@ -4,10 +4,11 @@ type: work-item
 subtype: epic
 lifecycle: active
 title: '024: Implement Work Item Validation & Guardrails'
-status: ready-for-review
-status_reason: awaiting-review
+status: closed
+status_reason: completed
 priority: critical
 estimated: 12
+completed_date: '2026-04-10'
 assignee: ''
 test_results:
   - timestamp: 2026-03-03T08:30:00.000Z
@@ -24,14 +25,16 @@ actual: 8
 commits:
   29e2e74: 'chore(ci): fix frontmatter lint job'
   a2e8939: 'Phase 1: Infrastructure Foundation'
+  d0217af: 'Merge pull request #46 chore(backlog): close out WI-021 and WI-024 for review'
 links:
-  depends_on:
-    - '[[001_github_organization]]'
-    - '[[002_monorepo_setup]]'
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/1'
     - 'https://github.com/templjs/templ.js/pull/42'
     - 'https://github.com/templjs/templ.js/pull/43'
+    - 'https://github.com/templjs/templ.js/pull/46'
+  depends_on:
+    - '[[001_github_organization]]'
+    - '[[002_monorepo_setup]]'
 ---
 
 ## Reopen Notes

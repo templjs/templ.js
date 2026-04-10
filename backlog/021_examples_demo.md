@@ -4,15 +4,17 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '21: Create Example Templates and Demo Video'
-status: ready-for-review
-status_reason: awaiting-review
+status: closed
+status_reason: completed
 priority: critical
 estimated: 8
 actual: 6
+completed_date: '2026-04-10'
 assignee: ''
 commits:
   8418c57: 'docs(release): add critical-path docs and reduced example slice (WI-020, WI-021, WI-022)'
   c306f44: 'docs(examples): expand WI-021 example packs and validate all renders (#40)'
+  d0217af: 'Merge pull request #46 chore(backlog): close out WI-021 and WI-024 for review'
 test_results:
   - timestamp: 2026-03-22T00:00:00Z
     note: |
@@ -53,6 +55,8 @@ test_results:
       - `bash scripts/demo/build-wi021-demo.sh`
       - `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 assets/demo/templjs-demo.mp4` -> `300.000000`
 links:
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/46'
   depends_on:
     - '[[017_cli_commands]]'
 ---
