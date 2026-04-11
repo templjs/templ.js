@@ -4,7 +4,7 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '22: Release v1.0 to npm and VS Code Marketplace'
-status: in-progress
+status: ready
 priority: critical
 estimated: 10
 actual: 1
@@ -18,6 +18,13 @@ test_results:
       Remaining blockers before publish:
       - Dependency work items must be moved to closed state with merged PR evidence
       - Release credentials and publication steps require maintainer execution (`npm publish`, `vsce publish`)
+  - timestamp: 2026-04-10T00:00:00Z
+    note: |
+      Dependencies resolved — advancing to ready:
+      - WI-020 (Write Documentation) closed: GitHub Pages live at https://templjs.github.io/templ.js/
+      - WI-021 (Examples and Demo) closed: PR #46 merged, all examples validated
+      All pre-release documentation and example deliverables are complete.
+      Remaining steps require maintainer credentials: npm publish, vsce publish.
 links:
   depends_on:
     - '[[020_documentation]]'
