@@ -67,6 +67,17 @@ test_results:
       - `npm view @templjs/context-graph@1.0.0-beta.1 version` -> `E404 Not Found`
       Conclusion:
       - Repo-controlled release prep is complete; external publish actions remain blocked on maintainer npm auth and VS Code Marketplace PAT.
+  - timestamp: 2026-04-11T06:52:00Z
+    note: |
+      Retried VS Code Marketplace publish flow:
+      - `npx --yes @vscode/vsce package --no-dependencies --skip-license` succeeded and produced `vscode-templjs-1.0.0-beta.1.vsix`
+      - `npx --yes @vscode/vsce publish 1.0.0-beta.1 --pat <token> --skip-license` failed with:
+        - `VS Marketplace doesn't support prerelease versions: '1.0.0-beta.1'`
+      Required path to publish pre-release extension:
+      - Use a normal semver extension version (for example `1.0.0`)
+      - Publish with `--pre-release` flag
+      Additional packaging hygiene:
+      - Added `src/extensions/vscode/LICENSE` so packaging no longer requires `--skip-license` for missing-license prompt
 links:
   depends_on:
     - '[[020_documentation]]'
