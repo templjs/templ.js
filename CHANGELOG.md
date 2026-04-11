@@ -1,4 +1,13 @@
-# Changelog
+---
+id: changelog-001
+type: document
+subtype: reference
+lifecycle: active
+status: ready
+title: Changelog
+---
+
+## Changelog
 
 All notable changes to this project are documented in this file.
 
@@ -14,7 +23,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
   - API and CLI references
   - Query language and configuration guides
   - Function catalog and cheat sheet
-- Added examples and demo coverage for markdown, HTML, JSON, config, and documentation templates.
+- Added examples and demo coverage for Markdown, HTML, JSON, config, and documentation templates.
 
 ### Changed
 
@@ -26,4 +35,4 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 - Release branch checks passing across lint, type-check, build, benchmark, and multi-platform test matrix.
 
-[1.0.0-beta.1]: https://github.com/templjs/templ.js/releases/tag/v1.0.0-beta.1
+[1.0.0-beta.1]: https://github.com/templjs/templ.js/releases/tag/untagged-f1e57f07110579d85ee4

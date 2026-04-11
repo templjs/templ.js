@@ -83,12 +83,14 @@ pnpm test
 pnpm build
 ```
 
-### Install Published Packages
+### Install Published Packages (After Publishing)
 
 ```bash
 npm install @templjs/core
 npm install -D @templjs/cli
 ```
+
+For beta releases, install the published beta dist-tag/version when available.
 
 VS Code extension:
 

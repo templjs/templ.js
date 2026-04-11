@@ -522,7 +522,7 @@ Already configured in `.vscode/settings.json`:
 
 ### CLI Commands Reference
 
-````bash
+```bash
 # Nx commands
 pnpm nx <target> <project>        # Run target for project
 pnpm nx run-many -t <target>      # Run target for all projects
@@ -545,7 +545,9 @@ pnpm format:check                  # Check formatting
 pnpm build                         # Build all packages
 pnpm clean                         # Clean all build outputs
 
-# Changesets & Version Management
+```
+
+## Changesets & Version Management
 
 ## Overview
 
@@ -568,7 +570,7 @@ See [`.changeset/config.json`](.changeset/config.json):
   ],
   "updateInternalDependencies": "patch"
 }
-````
+```
 
 ## Proper Workflow
 

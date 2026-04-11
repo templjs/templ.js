@@ -93,8 +93,8 @@ v1.0 release marks project completion and opens adoption phase. Includes:
 - [ ] `npm install @templjs/core` works
 - [ ] `npm install @templjs/cli` works
 - [ ] VS Code extension installable from marketplace
-- [x] GitHub release visible
-- [x] Blog post published
+- [ ] GitHub release visible
+- [ ] Blog post published
 - [ ] Social media posts made
 - [ ] At least 100 package downloads in first week
 
