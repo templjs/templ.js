@@ -83,6 +83,17 @@ pnpm test
 pnpm build
 ```
 
+### Install Published Packages
+
+```bash
+npm install @templjs/core
+npm install -D @templjs/cli
+```
+
+VS Code extension:
+
+- <https://marketplace.visualstudio.com/items?itemName=templjs.vscode-templjs>
+
 ### Useful Commands
 
 ```bash

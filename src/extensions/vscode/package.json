@@ -3,7 +3,7 @@
   "private": true,
   "displayName": "Templjs",
   "description": "Language support for templjs meta-templates",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "publisher": "templjs",
   "engines": {
     "vscode": "^1.85.0"

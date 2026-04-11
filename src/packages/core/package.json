@@ -1,6 +1,6 @@
 {
   "name": "@templjs/core",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Core template parser, renderer, and query engine for templjs",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
