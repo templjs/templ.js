@@ -97,6 +97,17 @@ test_results:
       - VSCE reported publish target: `templjs.vscode-templjs v0.1.0`
       Follow-up verification:
       - Immediate `curl` to the public Marketplace URL still returned `404`; likely propagation delay, so install/public visibility verification remains open until the listing resolves publicly.
+  - timestamp: 2026-04-11T08:00:00Z
+    note: |
+      Added repository release automation aligned to the corrected publish strategy:
+      - `release.yml` now maintains the Changesets version PR on pushes to `main`
+      - Tagged releases now publish from commits already on `main`
+      - `pre-vX.Y.Z` tags publish npm packages to dist-tag `next`, publish the VS Code extension as prerelease, and create a prerelease GitHub Release
+      - `vX.Y.Z` tags publish npm packages to dist-tag `latest`, publish the VS Code extension as stable, and create a stable GitHub Release
+      - VS Code publishing now packages a VSIX with `--no-dependencies` and publishes from `--packagePath` to avoid monorepo dependency-scan failures
+      Documentation updates:
+      - Updated `.github/workflows/README.md` to document the tag model
+      - Updated `.github/SECRETS.md` to document required secrets and publisher membership requirements
 links:
   depends_on:
     - '[[020_documentation]]'
@@ -236,4 +247,5 @@ vsce publish
 
 - npm package publication requires maintainer npm credentials (`npm whoami` currently returns 401 in this environment)
 - VS Code Marketplace publish succeeded; public listing/install verification is pending Marketplace propagation
+- Future publish automation no longer requires a dedicated prerelease branch; tags created from `main` control prerelease vs stable channels
 - Post-publication verification (`npm install ...`), social promotion, and week-1 download KPI tracking occur after publish

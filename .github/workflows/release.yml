@@ -4,7 +4,10 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - release/**
+      - main
+    tags:
+      - 'v*'
+      - 'pre-v*'
 
 permissions:
   contents: write
@@ -13,11 +16,9 @@ permissions:
 
 jobs:
   version:
-    name: Version and Publish
+    name: Create Version PR
+    if: github.ref_type == 'branch' && github.ref_name == 'main'
     runs-on: ubuntu-latest
-    outputs:
-      published: ${{ steps.changesets.outputs.published }}
-      version: ${{ steps.parsed.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -30,55 +31,144 @@ jobs:
         with:
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Build all packages
-        run: pnpm build
-
-      - name: Create Release Pull Request or Publish
+      - name: Create or update version pull request
         id: changesets
         uses: changesets/action@v1
         with:
           version: pnpm changeset version
-          publish: pnpm changeset publish
           commit: 'chore: version packages'
           title: 'chore: version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Parse published version
-        id: parsed
-        if: steps.changesets.outputs.published == 'true'
-        env:
-          PUBLISHED_PACKAGES: ${{ steps.changesets.outputs.publishedPackages }}
+  prepare-release:
+    name: Prepare Tagged Release
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      channel: ${{ steps.meta.outputs.channel }}
+      npm_dist_tag: ${{ steps.meta.outputs.npm_dist_tag }}
+      github_prerelease: ${{ steps.meta.outputs.github_prerelease }}
+      vscode_prerelease: ${{ steps.meta.outputs.vscode_prerelease }}
+      tag_name: ${{ steps.meta.outputs.tag_name }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Derive release channel from tag
+        id: meta
         run: |
-          VERSION=$(echo "$PUBLISHED_PACKAGES" | jq -r '.[0].version')
-          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
-            echo "::error::Failed to parse version from publishedPackages"
+          TAG_NAME="${GITHUB_REF_NAME}"
+          case "$TAG_NAME" in
+            pre-v*)
+              VERSION="${TAG_NAME#pre-v}"
+              CHANNEL="pre-release"
+              NPM_DIST_TAG="next"
+              GITHUB_PRERELEASE="true"
+              VSCODE_PRERELEASE="true"
+              ;;
+            v*)
+              VERSION="${TAG_NAME#v}"
+              CHANNEL="release"
+              NPM_DIST_TAG="latest"
+              GITHUB_PRERELEASE="false"
+              VSCODE_PRERELEASE="false"
+              ;;
+            *)
+              echo "::error::Unsupported release tag: $TAG_NAME"
+              exit 1
+              ;;
+          esac
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "npm_dist_tag=$NPM_DIST_TAG" >> "$GITHUB_OUTPUT"
+          echo "github_prerelease=$GITHUB_PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "vscode_prerelease=$VSCODE_PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Verify tag was created from main
+        run: |
+          git fetch origin main --depth=1
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/main"; then
+            echo "::error::Tag ${GITHUB_REF_NAME} must point to a commit already on origin/main"
             exit 1
           fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Publish GitHub Release
-        if: steps.changesets.outputs.published == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.parsed.outputs.version }}
-          name: Release v${{ steps.parsed.outputs.version }}
-          body: |
-            Release v${{ steps.parsed.outputs.version }}
-
-            See CHANGELOG.md for details.
-          draft: false
-          prerelease: false
+      - name: Verify synchronized package versions
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXPECTED_VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          node <<'EOF'
+          const { readFileSync } = require('node:fs');
+          const expected = process.env.EXPECTED_VERSION;
+          const files = [
+            'src/packages/core/package.json',
+            'src/packages/cli/package.json',
+            'src/packages/volar/package.json',
+            'src/packages/context-graph/package.json',
+            'src/extensions/vscode/package.json',
+          ];
+          const mismatches = files.filter((file) => {
+            const pkg = JSON.parse(readFileSync(file, 'utf8'));
+            return pkg.version !== expected;
+          });
+          if (mismatches.length > 0) {
+            console.error(`Version mismatch for tag ${expected}: ${mismatches.join(', ')}`);
+            process.exit(1);
+          }
+          EOF
+
+  publish-npm-packages:
+    name: Publish npm Packages
+    runs-on: ubuntu-latest
+    needs: prepare-release
+    if: github.ref_type == 'tag'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup workspace toolchain
+        uses: ./.github/actions/setup-workspace
+        with:
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Build all packages
+        run: pnpm build
+
+      - name: Publish packages or update npm dist-tags
+        env:
+          VERSION: ${{ needs.prepare-release.outputs.version }}
+          NPM_DIST_TAG: ${{ needs.prepare-release.outputs.npm_dist_tag }}
+          NODE_AUTH_TOKEN: ${{ secrets['NPM_TOKEN'] }}
+        run: |
+          packages=(
+            '@templjs/core'
+            '@templjs/cli'
+            '@templjs/volar'
+            '@templjs/context-graph'
+          )
+
+          for pkg in "${packages[@]}"; do
+            if npm view "$pkg@$VERSION" version >/dev/null 2>&1; then
+              echo "$pkg@$VERSION already published; ensuring dist-tag '$NPM_DIST_TAG'"
+              npm dist-tag add "$pkg@$VERSION" "$NPM_DIST_TAG"
+            else
+              echo "Publishing $pkg@$VERSION to dist-tag '$NPM_DIST_TAG'"
+              pnpm --filter "$pkg" publish --access public --tag "$NPM_DIST_TAG" --no-git-checks
+            fi
+          done
 
   publish-vscode-extension:
     name: Publish VS Code Extension
     runs-on: ubuntu-latest
-    needs: version
-    if: github.event_name == 'push' && contains(github.ref, 'release/') && needs.version.outputs.published == 'true'
+    needs: prepare-release
+    if: github.ref_type == 'tag'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -90,21 +180,49 @@ jobs:
         run: pnpm --filter vscode-templjs build
 
       - name: Package VS Code extension
+        env:
+          VERSION: ${{ needs.prepare-release.outputs.version }}
+          VSCODE_PRERELEASE: ${{ needs.prepare-release.outputs.vscode_prerelease }}
         run: |
           cd src/extensions/vscode
-          npx vsce package
+          if [ "$VSCODE_PRERELEASE" = 'true' ]; then
+            npx --yes @vscode/vsce package --no-dependencies --pre-release
+          else
+            npx --yes @vscode/vsce package --no-dependencies
+          fi
 
       - name: Publish to VS Code Marketplace
-        run: |
-          cd src/extensions/vscode
-          npx vsce publish -p ${{ secrets.VSCODE_PUBLISHER_TOKEN }}
         env:
+          VERSION: ${{ needs.prepare-release.outputs.version }}
+          VSCODE_PRERELEASE: ${{ needs.prepare-release.outputs.vscode_prerelease }}
           VSCE_PAT: ${{ secrets.VSCODE_PUBLISHER_TOKEN }}
-
-      - name: Publish to Open VSX Registry
         run: |
           cd src/extensions/vscode
-          npx ovsx publish -p ${{ secrets.OPEN_VSX_TOKEN }}
-        continue-on-error: true
+          if [ "$VSCODE_PRERELEASE" = 'true' ]; then
+            npx --yes @vscode/vsce publish --pre-release --packagePath "vscode-templjs-$VERSION.vsix"
+          else
+            npx --yes @vscode/vsce publish --packagePath "vscode-templjs-$VERSION.vsix"
+          fi
+
+  publish-github-release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs:
+      - prepare-release
+      - publish-npm-packages
+      - publish-vscode-extension
+    if: github.ref_type == 'tag'
+    steps:
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare-release.outputs.tag_name }}
+          name: Release ${{ needs.prepare-release.outputs.tag_name }}
+          body: |
+            Release ${{ needs.prepare-release.outputs.tag_name }}
+
+            See CHANGELOG.md for details.
+          draft: false
+          prerelease: ${{ needs.prepare-release.outputs.github_prerelease == 'true' }}
         env:
-          OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
