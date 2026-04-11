@@ -117,7 +117,7 @@ Documentation covers:
 - [x] Setup docs hosting (GitHub Pages or Vercel)
 - [x] Create function cheat sheet (one-page reference)
 - [x] Add visual diagrams for query language and control flow
-- [x] Track and close remaining TypeDoc documentation coverage gap via [[090_typedoc_coverage_ratcheting]]
+- [x] Track remaining TypeDoc documentation coverage gap via [[090_typedoc_coverage_ratcheting]]
 
 ## Deliverables
 
@@ -149,7 +149,7 @@ Documentation covers:
 - [x] Docs render properly (markdown/HTML via GitHub Pages; PDF publishing out of v1.0 scope)
 - [x] TypeDoc docs generation succeeds in CI and emits `docs/api/index.html`
 - [x] Function cheat sheet fits one page
-- [x] Search functionality works (GitHub Pages site navigation; full-text search deferred to v1.1)
+- [x] Site navigation works on GitHub Pages (full-text search deferred to v1.1)
 
 ## Documentation Structure
 
