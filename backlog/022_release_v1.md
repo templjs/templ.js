@@ -7,7 +7,7 @@ title: '22: Release v1.0 to npm and VS Code Marketplace'
 status: in-progress
 priority: critical
 estimated: 10
-actual: 7
+actual: 8
 assignee: ''
 test_results:
   - timestamp: 2026-03-22T00:00:00Z
@@ -54,6 +54,19 @@ test_results:
         - `pnpm changeset version` (twice) -> all fixed packages now at `1.0.0-beta.1`
       Validation:
       - `pnpm run lint:frontmatter` passed
+  - timestamp: 2026-04-11T06:46:00Z
+    note: |
+      Executed Group 4 credential and publication preflight checks:
+      - `npm whoami` -> `E401 Unauthorized` (no npm auth in this environment)
+      - `npx --yes @vscode/vsce --version` -> `3.7.1` (tooling available)
+      - `npx --yes @vscode/vsce verify-pat templjs` prompted for interactive PAT input (no token configured in session)
+      Publication/install verification state:
+      - `npm view @templjs/core@1.0.0-beta.1 version` -> `E404 Not Found`
+      - `npm view @templjs/cli@1.0.0-beta.1 version` -> `E404 Not Found`
+      - `npm view @templjs/volar@1.0.0-beta.1 version` -> `E404 Not Found`
+      - `npm view @templjs/context-graph@1.0.0-beta.1 version` -> `E404 Not Found`
+      Conclusion:
+      - Repo-controlled release prep is complete; external publish actions remain blocked on maintainer npm auth and VS Code Marketplace PAT.
 links:
   depends_on:
     - '[[020_documentation]]'
@@ -61,6 +74,7 @@ links:
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/31'
     - 'https://github.com/templjs/templ.js/pull/47'
+    - 'https://github.com/templjs/templ.js/pull/48'
 ---
 
 ## Goal
