@@ -1,0 +1,21 @@
+---
+id: docs-home-001
+type: document
+subtype: guide
+lifecycle: active
+status: ready
+title: templjs Documentation Home
+---
+
+## templjs Documentation
+
+Welcome to the templjs docs.
+
+- [Getting Started](./getting-started.md)
+- [API Reference](./api-reference.md)
+- [Configuration](./configuration.md)
+- [Query Language](./query-language.md)
+- [CLI Usage](./cli.md)
+- [Examples](./examples.md)
+- [Function Cheat Sheet](./functions/cheat-sheet.md)
+- [Architecture Decisions](./adr/)
