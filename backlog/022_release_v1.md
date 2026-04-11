@@ -4,7 +4,7 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '22: Release v1.0 to npm and VS Code Marketplace'
-status: in-progress
+status: ready
 priority: critical
 estimated: 10
 actual: 5
