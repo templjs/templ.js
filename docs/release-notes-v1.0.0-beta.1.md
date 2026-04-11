@@ -27,8 +27,8 @@ templjs v1.0.0-beta.1 is the first beta release of the TypeScript-native meta-te
 ### Installation
 
 ```bash
-npm install @templjs/core
-npm install -D @templjs/cli
+npm install @templjs/core@1.0.0-beta.1
+npm install -D @templjs/cli@1.0.0-beta.1
 ```
 
 ### VS Code

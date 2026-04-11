@@ -35,4 +35,4 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 - Release branch checks passing across lint, type-check, build, benchmark, and multi-platform test matrix.
 
-[1.0.0-beta.1]: https://github.com/templjs/templ.js/releases/tag/untagged-f1e57f07110579d85ee4
+[1.0.0-beta.1]: https://github.com/templjs/templ.js/releases/tag/v1.0.0-beta.1

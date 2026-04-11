@@ -34,7 +34,7 @@ test_results:
         - `docs/release-notes-v1.0.0-beta.1.md`
         - `docs/how-to/v1.0.0-beta.1-release-announcement.md`
       - Updated docs landing and README install instructions for v1.0.0-beta.1
-      - Created GitHub draft release: https://github.com/templjs/templ.js/releases/tag/untagged-f1e57f07110579d85ee4
+      - Created GitHub draft release: https://github.com/templjs/templ.js/releases/tag/v1.0.0-beta.1
       Validation and release-gate checks:
       - `pnpm run lint:frontmatter` passed
       - `pnpm lint:markdown` passed

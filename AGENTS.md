@@ -90,4 +90,4 @@ git diff package.json  # should show no version changes
 ## Commands
 
 - Commit: Use `git-commit` skill
-- Version management\*\*: Always use `pnpm changeset`, never manual edits
+- **Version management**: Always use `pnpm changeset`, never manual edits
