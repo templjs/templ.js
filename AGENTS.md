@@ -29,6 +29,65 @@ If no specific AGENTS.md exists for your working context:
 7. Follow project conventions in MIGRATION_PLAN.md and relevant ADRs
 8. Maintain work item frontmatter alignment with schemas in `schemas/frontmatter/`
 
+## Version Management
+
+### Critical Constraint: Fixed Versioning
+
+All 5 workspace packages **must maintain synchronized versions**:
+
+- `@templjs/core`
+- `@templjs/cli`
+- `@templjs/volar`
+- `@templjs/context-graph`
+- `vscode-templjs`
+
+Configuration: [`.changeset/config.json`](.changeset/config.json)
+
+### Agents: MUST Use Changesets, NEVER Manual Edits
+
+**✅ CORRECT**: Use `pnpm changeset` to create version entries
+
+```bash
+pnpm changeset
+# Select all affected packages
+# Choose semver bump (patch|minor|major)
+# Commit .changeset/*.md
+```
+
+**❌ NEVER**: Manually edit `package.json` versions directly
+
+This breaks automation and creates version misalignment. Example anti-patterns:
+
+- `sed -i 's/"version": "1.0.0"/"version": "1.1.0"/g' package.json`
+- Manual bumps without changeset entries
+- Selective version bumps (some packages at 1.0.0, others at 1.1.0)
+
+### Workflow for Agents Implementing Features
+
+1. **Make code changes** in feature branch
+2. **Run tests & linting** before PR
+3. **Create changeset**: `pnpm changeset`
+   - If multiple unrelated changes: one changeset per logical change
+   - Select all affected packages (usually all 5 stay synchronized)
+   - Write changelog entry from user perspective
+4. **Commit changeset**: `git add .changeset/ && git commit`
+5. **Push feature branch** with changeset included
+6. **Do NOT merge Version Packages PR** yourself—maintain versions; let maintainers handle release automation
+
+### Verification Before Pushing
+
+```bash
+# Verify changeset was created
+ls -la .changeset/*.md
+
+# Verify content includes all changed packages
+cat .changeset/<name>.md
+
+# Verify no manual package.json edits
+git diff package.json  # should show no version changes
+```
+
 ## Commands
 
 - Commit: Use `git-commit` skill
+- Version management\*\*: Always use `pnpm changeset`, never manual edits

@@ -47,3 +47,12 @@ You are an expert technical writer for the templjs project.
 - ✅ **Always do:** Write/update `docs/`, validate with markdownlint, link to source code
 - ⚠️ **Ask first:** Major restructuring of existing docs
 - 🚫 **Never do:** Modify `src/` code, change configs, commit secrets
+
+## Version Management Note
+
+If your documentation update is part of a release (e.g., release notes, changelog updates):
+
+1. **Do NOT** manually edit `package.json` versions
+2. **ALWAYS** use `pnpm changeset` before committing
+3. See root [AGENTS.md](../AGENTS.md#version-management) for detailed Changesets workflow
+4. Multiple docs created for one feature? One changeset per logical change group

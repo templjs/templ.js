@@ -28,12 +28,12 @@ test_results:
   - timestamp: 2026-04-10T00:00:00Z
     note: |
       Executed remaining repository-controlled release tasks:
-      - Bumped monorepo/package versions to 1.0.0 (`package.json`, core/cli/volar/context-graph, VS Code extension)
-      - Added `CHANGELOG.md` v1.0.0 summary
+      - Bumped monorepo/package versions to 1.0.0-beta.1 (`package.json`, core/cli/volar/context-graph, VS Code extension)
+      - Added `CHANGELOG.md` v1.0.0-beta.1 summary
       - Added release docs:
-        - `docs/release-notes-v1.0.0.md`
-        - `docs/how-to/v1.0.0-release-announcement.md`
-      - Updated docs landing and README install instructions for v1.0.0
+        - `docs/release-notes-v1.0.0-beta.1.md`
+        - `docs/how-to/v1.0.0-beta.1-release-announcement.md`
+      - Updated docs landing and README install instructions for v1.0.0-beta.1
       - Created GitHub draft release: https://github.com/templjs/templ.js/releases/tag/untagged-f1e57f07110579d85ee4
       Validation and release-gate checks:
       - `pnpm run lint:frontmatter` passed
@@ -68,7 +68,7 @@ v1.0 release marks project completion and opens adoption phase. Includes:
 
 ## Tasks
 
-- [x] Bump version to 1.0.0 in all `package.json` files
+- [x] Bump version to 1.0.0-beta.1 in all `package.json` files
 - [x] Update CHANGELOG.md with all changes
 - [x] Create GitHub release with release notes
 - [ ] Publish packages to npm: `@templjs/core`, `@templjs/cli`, `@templjs/volar`

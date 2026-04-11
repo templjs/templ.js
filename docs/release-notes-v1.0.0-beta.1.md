@@ -4,14 +4,14 @@ type: document
 subtype: guide
 lifecycle: active
 status: ready
-title: templjs v1.0.0 Release Notes
+title: templjs v1.0.0-beta.1 Release Notes
 ---
 
 {% raw %}
 
-## templjs v1.0.0
+## templjs v1.0.0-beta.1
 
-templjs v1.0.0 is the first stable release of the TypeScript-native meta-templating system.
+templjs v1.0.0-beta.1 is the first beta release of the TypeScript-native meta-templating system.
 
 ### Highlights
 

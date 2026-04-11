@@ -522,7 +522,7 @@ Already configured in `.vscode/settings.json`:
 
 ### CLI Commands Reference
 
-```bash
+````bash
 # Nx commands
 pnpm nx <target> <project>        # Run target for project
 pnpm nx run-many -t <target>      # Run target for all projects
@@ -545,10 +545,211 @@ pnpm format:check                  # Check formatting
 pnpm build                         # Build all packages
 pnpm clean                         # Clean all build outputs
 
-# Changesets
+# Changesets & Version Management
+
+## Overview
+
+This monorepo uses **[Changesets](https://github.com/changesets/changesets)** for automated version management. All 5 packages (`@templjs/core`, `@templjs/cli`, `@templjs/volar`, `@templjs/context-graph`, `vscode-templjs`) are configured with **fixed versioning**—they must always release with the same version number.
+
+### Why Fixed Versioning?
+
+- Coordinated releases: all packages ship v1.0.0, not v1.0.0, v0.9.5, v1.1.0
+- Simplified user experience: one version to track
+- Clearer dependency management across the monorepo
+
+### Configuration
+
+See [`.changeset/config.json`](.changeset/config.json):
+
+```json
+{
+  "fixed": [
+    ["@templjs/core", "@templjs/cli", "@templjs/volar", "@templjs/context-graph", "vscode-templjs"]
+  ],
+  "updateInternalDependencies": "patch"
+}
+````
+
+## Proper Workflow
+
+### For Contributors (All Changes)
+
+```bash
+# 1. Make your code changes
+git checkout -b feature/my-feature
+# ... edit files ...
+
+# 2. When ready for PR, create a changeset
+pnpm changeset
+
+# You'll be prompted to:
+# - Select changed packages (Ctrl+Space to toggle, Enter to submit)
+# - Choose bump type: patch | minor | major
+# - Write a brief changelog entry
+```
+
+**Example:**
+
+```text
+$ pnpm changeset
+? Which packages would like to bump?
+  ◉ @templjs/core
+  ◉ @templjs/cli
+  ◉ @templjs/volar
+  ◉ @templjs/context-graph
+  ◉ vscode-templjs
+
+? What kind of change is this for @templjs/core (Currently at 1.0.0)?
+  ◯ patch (bugfix)
+  ◯ minor (feature)
+  ◉ major
+
+? Write a summary for this change...
+  Update parser to support whitespace controls
+```
+
+This creates `.changeset/<id>-<desc>.md` with your change details.
+
+### 3. Commit the changeset
+
+```bash
+git add .changeset/
+git commit -m "chore: add changeset for feature description"
+git push
+```
+
+### 4. Create PR normally
+
+The changeset goes in the PR; CI validates it.
+
+### For Release (Maintainers Only)
+
+When merging a feature branch with a changeset:
+
+1. **Changesets bot** detects the changeset and creates an automated "Version Packages" PR
+2. **Review the Version PR**: Check proposed versions align with semver intent
+3. **Merge Version PR**: Triggers automated release workflow:
+   - Updates all root + workspace `package.json` versions (synchronized)
+   - Updates `CHANGELOG.md` entries
+   - Creates GitHub release
+   - Publishes to npm + VS Code Marketplace
+
+## Common Pitfalls
+
+### ❌ DON'T: Manually Edit `package.json` Versions
+
+**Problem**: Breaks the automation; versions desynchronize
+
+```bash
+# WRONG - skips Changesets entirely
+sed -i 's/"version": "1.0.0"/"version": "1.1.0"/g' package.json
+git add package.json && git commit -m "bump version"
+```
+
+**Result**:
+
+- ❌ No `CHANGELOG.md` entry
+- ❌ Release workflow fails
+- ❌ Packages become misaligned
+- ❌ No post-release Git tag
+
+### ✅ DO: Use Changesets
+
+```bash
+# CORRECT
+pnpm changeset
+# ... follow prompts ...
+git add .changeset/ && git commit
+```
+
+**Result**:
+
+- ✅ Changelog auto-generated
+- ✅ All versions sync perfectly
+- ✅ Release workflow triggers correctly
+- ✅ GitHub release created automatically
+
+### ❌ DON'T: Skip Changesets for Bug Fixes
+
+Even tiny changes need a changeset entry so users see them in release notes:
+
+```bash
+# WRONG
+git commit -m "fix: resolve edge case in parser"
+git push
+```
+
+**Result**:
+
+- ❌ Change doesn't appear in release notes
+- ❌ Users don't know about the fix
+
+### ✅ DO: Include Changesets for All Changes
+
+```bash
+# CORRECT - even for patch fixes
+pnpm changeset
+# Select packages, choose "patch", describe the fix
+git add .changeset/ && git commit
+```
+
+## Emergency Manual Release
+
+**Only if automated release workflow fails:**
+
+```bash
+# 1. Verify changes are committed and pushed
+git status  # should be clean
+
+# 2. Version packages locally
+pnpm changeset version
+
+# 3. Review changes
+git diff HEAD package.json
+
+# 4. Commit and tag
+git commit -am "chore(release): v1.1.0"
+git tag v1.1.0
+git push && git push --tags
+
+# 5. Publish manually (credentials required)
+pnpm publish -r --access public
+```
+
+## Verification Checklist
+
+Before merging a PR with changesets:
+
+- [ ] `.changeset/*.md` file exists and is committed
+- [ ] Changeset file lists all affected packages
+- [ ] Semver bump type matches the change scope
+- [ ] Changelog entry is clear and user-facing
+- [ ] No manual `package.json` version edits in the PR
+- [ ] CI lint:frontmatter passes (validates changeset format)
+
+## Testing Locally
+
+To test the full release flow without publishing:
+
+```bash
+# Simulate what the Version PR would do
+pnpm changeset version
+
+# Preview what would be committed
+git diff
+
+# Undo without committing
+git reset --hard
+```
+
+## Useful Commands
+
+```bash
 pnpm changeset                     # Create a changeset
-pnpm changeset version             # Version packages
+pnpm changeset version             # Version packages (for testing)
 pnpm changeset publish             # Publish packages (typically handled by CI)
+pnpm changeset status              # Show current changeset status
+cat .changeset/config.json         # Review version config
 ```
 
 ### Environment Variables

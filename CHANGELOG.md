@@ -4,11 +4,11 @@ All notable changes to this project are documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
-## [1.0.0] - 2026-04-10
+## [1.0.0-beta.1] - 2026-04-10
 
 ### Added
 
-- Published initial stable package surface for `@templjs/core`, `@templjs/cli`, and `@templjs/volar`.
+- Published initial beta package surface for `@templjs/core`, `@templjs/cli`, and `@templjs/volar`.
 - Added comprehensive documentation set:
   - Getting Started
   - API and CLI references
@@ -26,4 +26,4 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 - Release branch checks passing across lint, type-check, build, benchmark, and multi-platform test matrix.
 
-[1.0.0]: https://github.com/templjs/templ.js/releases/tag/v1.0.0
+[1.0.0-beta.1]: https://github.com/templjs/templ.js/releases/tag/v1.0.0-beta.1
