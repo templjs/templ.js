@@ -13,8 +13,8 @@ Welcome to the templjs docs.
 
 Latest release notes:
 
-- [v1.0.0-beta.1 Release Notes](./release-notes-v1.0.0-beta.1.md)
-- [v1.0.0-beta.1 Announcement](./how-to/v1.0.0-beta.1-release-announcement.md)
+- [v0.1.0 Release Notes](./release-notes-v0.1.0.md)
+- [v0.1.0 Announcement](./how-to/v0.1.0-release-announcement.md)
 
 - [Getting Started](./getting-started.md)
 - [API Reference](./api-reference.md)
