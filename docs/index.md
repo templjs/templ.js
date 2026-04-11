@@ -11,6 +11,11 @@ title: templjs Documentation Home
 
 Welcome to the templjs docs.
 
+Latest release notes:
+
+- [v1.0.0-beta.1 Release Notes](./release-notes-v1.0.0-beta.1.md)
+- [v1.0.0-beta.1 Announcement](./how-to/v1.0.0-beta.1-release-announcement.md)
+
 - [Getting Started](./getting-started.md)
 - [API Reference](./api-reference.md)
 - [Configuration](./configuration.md)
