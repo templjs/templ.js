@@ -7,6 +7,8 @@ status: ready
 title: 'ADR-007: Syntax Extensibility and Themes'
 ---
 
+{% raw %}
+
 ## Status
 
 Accepted - February 2026
@@ -196,3 +198,5 @@ Example: Both Handlebars and Jinja2 produce equivalent ASTs:
 - [Jinja2 Documentation](https://jinja.palletsprojects.com/) - For syntax comparison
 - [Liquid Template Language](https://shopify.github.io/liquid/) - For future multi-theme consideration
 - ADR-002: Parser Selection (Chevrotain rationale)
+
+{% endraw %}

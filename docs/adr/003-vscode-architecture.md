@@ -7,6 +7,8 @@ status: ready
 title: 'ADR-003: VS Code Architecture (Volar)'
 ---
 
+{% raw %}
+
 ## Status
 
 Accepted - February 2026
@@ -117,3 +119,5 @@ Volar Language Server
 - [Volar.js Documentation](https://volarjs.dev)
 - [VS Code Language Server Extension Guide](https://code.visualstudio.com/api/language-extensions/language-server-extension-guide)
 - ADR-001: Language Migration
+
+{% endraw %}

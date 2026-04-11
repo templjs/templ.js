@@ -7,6 +7,8 @@ status: ready
 title: 'ADR-006: Testing Strategy (Vitest)'
 ---
 
+{% raw %}
+
 ## Status
 
 Accepted - February 2026
@@ -247,8 +249,6 @@ it('renders template', async () => {
 
 **✅ Do this in addition:**
 
-{% raw %}
-
 ```typescript
 // tests/integration/public-api.test.ts
 import { renderTemplate, validateTemplate } from '@templjs/core';
@@ -270,8 +270,6 @@ describe('Public API Integration', () => {
   });
 });
 ```
-
-{% endraw %}
 
 #### Work Item Acceptance Criteria
 
@@ -386,3 +384,5 @@ nx test --inspect-brk          # Debug with Chrome DevTools
 - [Vitest Documentation](https://vitest.dev/)
 - [VS Code Test Runner API](https://code.visualstudio.com/api/extension-guides/testing)
 - [Jest-to-Vitest Migration Guide](https://vitest.dev/guide/migration.html)
+
+{% endraw %}

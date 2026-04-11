@@ -7,6 +7,8 @@ status: ready
 title: Getting Started with templjs
 ---
 
+{% raw %}
+
 ## 5-Minute Setup
 
 1. Install prerequisites:
@@ -111,3 +113,5 @@ Implementation references:
 - CLI reference: [cli.md](./cli.md)
 - API reference: [api-reference.md](./api-reference.md)
 - Curated examples: [examples.md](./examples.md)
+
+{% endraw %}

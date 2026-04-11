@@ -7,6 +7,8 @@ status: ready
 title: Function Cheat Sheet
 ---
 
+{% raw %}
+
 Quick reference for all 55+ templjs built-in functions. Use pipe syntax in templates: `{{ value | functionName(args) }}`.
 
 ## String Functions (20)
@@ -169,3 +171,5 @@ Quick reference for all 55+ templjs built-in functions. Use pipe syntax in templ
 - [Array Functions Reference](./array-functions.md)
 - [Object Functions Reference](./object-functions.md)
 - [Query Language Guide](../query-language.md)
+
+{% endraw %}

@@ -7,6 +7,8 @@ status: ready
 title: Query Language Guide
 ---
 
+{% raw %}
+
 ## Overview
 
 The templjs query engine resolves values from structured input data using:
@@ -260,3 +262,5 @@ Supported comparison forms include:
 - [Core and CLI API Reference](./api-reference.md)
 - [Configuration Guide](./configuration.md)
 - [Getting Started with templjs](./getting-started.md)
+
+{% endraw %}

@@ -7,6 +7,8 @@ status: ready
 title: Configuration Guide
 ---
 
+{% raw %}
+
 ## Overview
 
 templjs CLI configuration is loaded from a `.templjs.json` file discovered by walking upward from the current working directory.
@@ -162,3 +164,5 @@ Example:
 - [CLI Reference](./cli.md)
 - [Query Language Guide](./query-language.md)
 - [Getting Started with templjs](./getting-started.md)
+
+{% endraw %}

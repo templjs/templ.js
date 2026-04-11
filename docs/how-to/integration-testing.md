@@ -8,6 +8,8 @@ title: Integration Testing Guide
 description: Best practices for integration testing public APIs and cross-component workflows
 ---
 
+{% raw %}
+
 This guide provides best practices for writing integration tests in the templjs project, with emphasis on testing public API exports and avoiding common pitfalls.
 
 ## Overview
@@ -374,3 +376,5 @@ This guide was created to prevent issues like:
 - WI-007: Renderer implementation complete but `renderTemplate()` left as stub
 - Tests all passing because they mocked the broken function
 - Manual CLI testing revealed the bug only after PR review
+
+{% endraw %}

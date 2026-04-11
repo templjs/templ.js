@@ -7,6 +7,8 @@ status: ready
 title: Core and CLI API Reference
 ---
 
+{% raw %}
+
 ## `@templjs/core`
 
 ### Function References
@@ -124,3 +126,5 @@ templjs init -f markdown [-o starter.md.templ]
 
 - Current package releases are pre-1.0 and move in a shared monorepo release train.
 - Public APIs listed above are the recommended integration surface.
+
+{% endraw %}

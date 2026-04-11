@@ -7,6 +7,8 @@ status: ready
 title: CI/CD Infrastructure
 ---
 
+{% raw %}
+
 ## CI/CD Infrastructure
 
 Comprehensive documentation for templjs continuous integration and deployment workflows.
@@ -548,3 +550,5 @@ Fix failing hooks instead of bypassing them so local validation stays aligned wi
 - **Nx Configuration**: `nx.json`
 - **Changesets Configuration**: `.changeset/config.json`
 - **Codecov Configuration**: `codecov.yml`
+
+{% endraw %}
