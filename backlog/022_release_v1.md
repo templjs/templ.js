@@ -4,10 +4,10 @@ type: work-item
 subtype: task
 lifecycle: active
 title: '22: Release v1.0 to npm and VS Code Marketplace'
-status: ready
+status: in-progress
 priority: critical
 estimated: 10
-actual: 5
+actual: 7
 assignee: ''
 test_results:
   - timestamp: 2026-03-22T00:00:00Z
@@ -43,6 +43,17 @@ test_results:
       Credential blockers (still pending):
       - `npm whoami` -> 401 Unauthorized (cannot publish npm packages in this environment)
       - VS Code Marketplace publish requires maintainer PAT for `vsce publish`
+  - timestamp: 2026-04-11T00:00:00Z
+    note: |
+      Completed Groups 1-3 critical-path execution follow-up:
+      - Group 1 cleanup complete: synced to `main`, removed merged local branch `chore/close-wi020-wi022-final-gaps`, removed stale worktree `prod-plan-critical-path`
+      - Group 2 archival prep complete: moved closed WI-020, WI-021, WI-024 into `backlog/archive/`
+      - Group 3 versioning workflow complete via Changesets (no manual package edits):
+        - `pnpm changeset pre enter beta`
+        - `pnpm changeset add --empty` (twice; fixed package set)
+        - `pnpm changeset version` (twice) -> all fixed packages now at `1.0.0-beta.1`
+      Validation:
+      - `pnpm run lint:frontmatter` passed
 links:
   depends_on:
     - '[[020_documentation]]'
