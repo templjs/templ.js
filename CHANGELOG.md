@@ -17,7 +17,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Added
 
-- Published initial pre-1.0 package surface for `@templjs/core`, `@templjs/cli`, and `@templjs/volar`.
+- Prepared the initial pre-1.0 package surface for `@templjs/core`, `@templjs/cli`, and `@templjs/volar`; npm publication remains pending maintainer credential execution.
 - Added comprehensive documentation set:
   - Getting Started
   - API and CLI references
