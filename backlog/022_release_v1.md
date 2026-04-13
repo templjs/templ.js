@@ -28,7 +28,7 @@ test_results:
   - timestamp: 2026-04-10T00:00:00Z
     note: |
       Executed remaining repository-controlled release tasks:
-      - Bumped monorepo/package versions to 0.1.0 (`package.json`, core/cli/volar/context-graph, VS Code extension)
+      - Set monorepo/package versions to 0.1.0 via WI-022 versioning strategy (pre-1.0 release transition; changeset pre-release exit path would produce 1.0.0, so 0.1.0 was set as the intentional first-publish baseline)
       - Added `CHANGELOG.md` v0.1.0 summary
       - Added release docs:
         - `docs/release-notes-v0.1.0.md`

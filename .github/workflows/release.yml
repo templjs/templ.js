@@ -183,11 +183,10 @@ jobs:
           VERSION: ${{ needs.prepare-release.outputs.version }}
           VSCODE_PRERELEASE: ${{ needs.prepare-release.outputs.vscode_prerelease }}
         run: |
-          cd src/extensions/vscode
           if [ "$VSCODE_PRERELEASE" = 'true' ]; then
-            npx --yes @vscode/vsce package --no-dependencies --pre-release
+            pnpm --filter vscode-templjs exec vsce package --no-dependencies --pre-release
           else
-            npx --yes @vscode/vsce package --no-dependencies
+            pnpm --filter vscode-templjs exec vsce package --no-dependencies
           fi
 
       - name: Publish to VS Code Marketplace
@@ -196,11 +195,10 @@ jobs:
           VSCODE_PRERELEASE: ${{ needs.prepare-release.outputs.vscode_prerelease }}
           VSCE_PAT: ${{ secrets.VSCODE_PUBLISHER_TOKEN }}
         run: |
-          cd src/extensions/vscode
           if [ "$VSCODE_PRERELEASE" = 'true' ]; then
-            npx --yes @vscode/vsce publish --pre-release --packagePath "vscode-templjs-$VERSION.vsix"
+            pnpm --filter vscode-templjs exec vsce publish --pre-release --packagePath "vscode-templjs-$VERSION.vsix"
           else
-            npx --yes @vscode/vsce publish --packagePath "vscode-templjs-$VERSION.vsix"
+            pnpm --filter vscode-templjs exec vsce publish --packagePath "vscode-templjs-$VERSION.vsix"
           fi
 
   publish-github-release:
