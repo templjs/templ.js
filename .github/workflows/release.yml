@@ -191,8 +191,8 @@ jobs:
       - name: Setup workspace toolchain
         uses: ./.github/actions/setup-workspace
 
-      - name: Build VS Code extension
-        run: pnpm --filter vscode-templjs build
+      - name: Build VS Code extension and dependencies
+        run: pnpm build
 
       - name: Package VS Code extension
         env:
