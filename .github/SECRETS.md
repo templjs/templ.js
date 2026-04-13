@@ -65,13 +65,18 @@ These secrets are automatically provided by GitHub:
 - `GITHUB_TOKEN`: Automatically generated for each workflow run
   - Used for: Creating releases, commenting on PRs, pushing changes
 
-## Testing Secrets Configuration
+## Validating Secrets Configuration
 
-After setting up secrets, you can test them by:
+Do not use release tags as a secret smoke test. Pushing `pre-vX.Y.Z` or `vX.Y.Z`
+will publish artifacts to npm and VS Code Marketplace.
 
-1. **NPM Token**: Push a `pre-vX.Y.Z` or `vX.Y.Z` tag created from `main`
-2. **VSCODE_PUBLISHER_TOKEN**: Push a `pre-vX.Y.Z` or `vX.Y.Z` tag created from `main`
-3. **CODECOV_TOKEN**: Push a commit and check if coverage uploads
+Validate credentials with non-publishing checks first:
+
+1. **NPM Token**: run `npm whoami` in an authenticated shell.
+2. **VSCODE_PUBLISHER_TOKEN**: run `npx --yes @vscode/vsce verify-pat <publisher>`.
+3. **CODECOV_TOKEN**: push a normal commit and confirm coverage upload in CI.
+
+Use release tags only when you are intentionally performing a real release.
 
 ## Security Best Practices
 
