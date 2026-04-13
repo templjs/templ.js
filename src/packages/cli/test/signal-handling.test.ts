@@ -169,10 +169,11 @@ describe('signal-handler', () => {
     const cleanup = registerSignalHandlers({ onSigInt, cleanupTimeoutMs: 5000 });
     process.emit('SIGINT');
 
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await vi.waitFor(() => {
+      expect(handlerExecuted).toBe(true);
+      expect(exitSpy).toHaveBeenCalledWith(130);
+    });
 
-    expect(handlerExecuted).toBe(true);
-    expect(exitSpy).toHaveBeenCalledWith(130);
     cleanup();
     exitSpy.mockRestore();
   });

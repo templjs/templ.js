@@ -17,7 +17,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Added
 
-- Published initial beta package surface for `@templjs/core`, `@templjs/cli`, and `@templjs/volar`.
+- Published initial pre-1.0 package surface for `@templjs/core`, `@templjs/cli`, and `@templjs/volar`.
 - Added comprehensive documentation set:
   - Getting Started
   - API and CLI references

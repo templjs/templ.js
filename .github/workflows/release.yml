@@ -92,7 +92,6 @@ jobs:
 
       - name: Verify tag was created from main
         run: |
-          git fetch origin main --depth=1
           if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/main"; then
             echo "::error::Tag ${GITHUB_REF_NAME} must point to a commit already on origin/main"
             exit 1

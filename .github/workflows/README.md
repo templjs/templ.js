@@ -35,7 +35,7 @@ This directory contains CI/CD workflows for the templjs monorepo.
 
 - Push to `main` for Changesets version PR maintenance
 - Pushes of release tags created from `main`
-  - `pre-vX.Y.Z` for prerelease channel publishing
+  - `pre-vX.Y.Z` for pre-release channel publishing
   - `vX.Y.Z` for stable channel publishing
 
 **Jobs:**
@@ -60,7 +60,7 @@ This directory contains CI/CD workflows for the templjs monorepo.
 
 - ✅ Automated version bumping via Changesets
 - ✅ Tag-driven npm publishing with `next` and `latest` channel targets
-- ✅ VS Code Marketplace publishing with explicit prerelease/stable behavior
+- ✅ VS Code Marketplace publishing with explicit pre-release/stable behavior
 - ✅ GitHub release creation
 - ✅ Changelog generation
 
@@ -187,11 +187,11 @@ pnpm nx affected -t build
 
 4. Create a release tag from the release commit on `main`
 
-`pre-vX.Y.Z` publishes npm packages to `next`, the VS Code extension as prerelease, and a prerelease GitHub Release.
+`pre-vX.Y.Z` publishes npm packages to `next`, the VS Code extension as pre-release, and a pre-release GitHub Release.
 
 `vX.Y.Z` publishes npm packages to `latest`, the VS Code extension as stable, and a stable GitHub Release.
 
-1. Workflow behavior:
+Workflow behavior:
 
 Maintains a Changesets version PR on `main`, publishes the fixed version set after a tag is pushed from `main`, creates GitHub release notes for the matching tag, and publishes the VS Code extension via the packaged VSIX flow.
 
