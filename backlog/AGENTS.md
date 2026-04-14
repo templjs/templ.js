@@ -16,9 +16,14 @@ Maintain work items following structured lifecycle and validation rules.
 
 ## Work Item Schema
 
-- **Frontmatter**: Must validate against `schemas/frontmatter/by-type/work-item/latest.json`
-- **Required fields**: id, type, subtype, lifecycle, title, status, priority, estimated, assignee, actual
-- **Links**: `depends_on` (array of wikilinks), `pull_requests` (PRs implementing this)
+- **Canonical frontmatter**: Work items validate against `schemas/work-management/frontmatter/work-item.json`
+- **Canonical IDs**: Work items use `work-item:*`; evidence records use `record:*`
+- **Directory layout**:
+  - Active work items: `backlog/active/`
+  - Archived work items: `backlog/archive/`
+  - Evidence records: `backlog/records/`
+  - Migration/audit artifacts: `backlog/audit/`
+- **Closure evidence**: linked records in `links.evidence` replace inline `test_results`
 
 ## Status Lifecycle
 
@@ -33,7 +38,7 @@ proposed → ready → in-progress → ready-for-review → closed
    - Merged PR in `links.pull_requests` with passing CI
    - All tasks marked `[x]` completed
    - `actual` hours recorded
-   - Test results documented
+   - Linked evidence records in `links.evidence`
 
 ## Testing Requirements Before Closing Work Items
 
@@ -102,6 +107,8 @@ See [ADR-006: Testing Strategy](../docs/adr/006-testing.md#public-api-integratio
 ## Commands
 
 - Validate: `pnpm run lint:frontmatter`
+- Run doc-vader commands: `pnpm run backlog:doc-vader -- ...`
+- Dry-run migration: `pnpm run backlog:migrate:dry-run`
 - Create: Use `create-work-item` skill
 - Update: Use `update-work-item` skill
 - Finalize: Use `finalize-work-item` skill
