@@ -21,8 +21,10 @@ templjs/
 ├── .changeset/                 # Changesets for versioning
 │   ├── config.json             # Changeset configuration
 │   └── *.md                    # Individual changesets
+├── .doc-vader/                 # Backlog consumer configuration
 ├── .github/                    # GitHub configuration
 │   ├── workflows/              # GitHub Actions workflows
+│   │   ├── backlog-automation.yml # Backlog event ingestion automation
 │   │   ├── ci.yml              # CI workflow (tests, lint, build)
 │   │   ├── release.yml         # Release workflow (publish)
 │   │   ├── codeql.yml          # Security analysis
@@ -34,10 +36,14 @@ templjs/
 │   └── copilot-instructions.md # Copilot agent instructions
 ├── .husky/                     # Git hooks (pre-commit, commit-msg)
 ├── .nx/                        # Nx cache (ignored by Git)
-├── backlog/                    # Work items and planning
-│   ├── NNN_work_item.md        # Active work items
-│   └── archive/                # Completed work items
-│       └── NNN_work_item.md
+├── backlog/                    # Work items, evidence, and audit artifacts
+│   ├── active/                 # Active work items
+│   │   └── work-item-*.md
+│   ├── archive/                # Completed work items
+│   │   └── work-item-*.md
+│   ├── records/                # Evidence records
+│   │   └── record-*.md
+│   └── audit/                  # Migration and reconciliation output
 ├── docs/                       # Documentation
 │   ├── adr/                    # Architecture Decision Records
 │   │   └── NNN-title.md        # Individual ADRs
@@ -100,6 +106,9 @@ templjs/
 │       │   ├── overlays/
 │       │   └── payloads/
 │       └── schema-map.json     # Type -> schema routing map
+│   └── work-management/        # Canonical backlog/work-management schemas
+│       ├── frontmatter/
+│       └── support/
 ├── .editorconfig               # Editor configuration
 ├── .eslintrc.json              # ESLint configuration
 ├── .gitignore                  # Git ignore rules
@@ -119,6 +128,15 @@ templjs/
 ```
 
 ## Package Organization
+
+## Backlog Organization
+
+Backlog automation uses the canonical `doc-vader` work-management model.
+
+- Work items use `work-item:*` identifiers and live in `backlog/active/` or `backlog/archive/`.
+- Evidence uses `record:*` identifiers and lives in `backlog/records/`.
+- `backlog/audit/` stores migration and reconciliation artifacts.
+- Use `pnpm run backlog:doc-vader -- ...` for backlog mutations and `pnpm run lint:frontmatter` to validate the results.
 
 ### Core Package (`@templjs/core`)
 

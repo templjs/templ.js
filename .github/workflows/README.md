@@ -132,6 +132,32 @@ This directory contains CI/CD workflows for the templjs monorepo.
 - ✅ Repository-owned threshold policy via `benchmarks/policy.json`
 - ✅ Non-gating workflow ready for future regression enforcement
 
+### 5. Backlog Automation (`backlog-automation.yml`)
+
+**Triggers:**
+
+- Pull request open/edit/reopen/synchronize/close on `main` and `staging`
+- Completed `CI` workflow runs
+- Manual workflow dispatch
+
+**Jobs:**
+
+- **Ingest Pull Request Event**:
+  - Runs for same-repository PR branches
+  - Builds `doc-vader` and ingests the GitHub event payload
+  - Updates canonical work-item PR links and merge metadata
+- **Ingest Workflow Run Event**:
+  - Runs for same-repository `CI` workflow completions
+  - Builds `doc-vader` and ingests the workflow payload
+  - Generates and links `record:*` evidence for CI outcomes when enough structured data is available
+
+**Features:**
+
+- ✅ Canonical backlog mutations routed through `doc-vader`
+- ✅ Automatic PR link updates on work items
+- ✅ Automatic CI evidence record generation and linking
+- ✅ Auto-commit of backlog changes back to the relevant branch for same-repo events
+
 ## Configuration Files
 
 ### `codecov.yml`
