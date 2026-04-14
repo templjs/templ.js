@@ -31,14 +31,17 @@ If no specific AGENTS.md exists for your working context:
 
 ## Version Management
 
-### Critical Constraint: Fixed Versioning
+### Critical Constraint: Split Versioning
 
-All 5 workspace packages **must maintain synchronized versions**:
+The 4 published npm packages **must maintain synchronized versions**:
 
 - `@templjs/core`
 - `@templjs/cli`
 - `@templjs/volar`
 - `@templjs/context-graph`
+
+The VS Code extension is **versioned independently**:
+
 - `vscode-templjs`
 
 Configuration: [`.changeset/config.json`](.changeset/config.json)
@@ -60,7 +63,8 @@ This breaks automation and creates version misalignment. Example anti-patterns:
 
 - `sed -i 's/"version": "1.0.0"/"version": "1.1.0"/g' package.json`
 - Manual bumps without changeset entries
-- Selective version bumps (some packages at 1.0.0, others at 1.1.0)
+- Desynchronizing the 4 fixed npm packages from each other
+- Reusing the same VS Code extension version for prerelease and stable publishes
 
 ### Workflow for Agents Implementing Features
 
@@ -68,11 +72,18 @@ This breaks automation and creates version misalignment. Example anti-patterns:
 2. **Run tests & linting** before PR
 3. **Create changeset**: `pnpm changeset`
    - If multiple unrelated changes: one changeset per logical change
-   - Select all affected packages (usually all 5 stay synchronized)
+   - For npm package work, keep `@templjs/core`, `@templjs/cli`, `@templjs/volar`, and `@templjs/context-graph` aligned
+   - For extension-only work, select `vscode-templjs` independently
    - Write changelog entry from user perspective
 4. **Commit changeset**: `git add .changeset/ && git commit`
 5. **Push feature branch** with changeset included
 6. **Do NOT merge Version Packages PR** yourself—maintain versions; let maintainers handle release automation
+
+### Release Tag Conventions
+
+- npm package releases use `vX.Y.Z`
+- VS Code extension releases use `vscode-vX.Y.Z`
+- The GitHub Release prerelease flag controls prerelease vs stable channel behavior
 
 ### Verification Before Pushing
 
