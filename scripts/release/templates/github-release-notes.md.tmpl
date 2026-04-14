@@ -1,0 +1,16 @@
+## Release Summary
+- Release lane: {{ releaseKindLabel }}
+- Channel: {{ channelLabel }}
+- npm packages: `{{ packageVersion }}`
+- VS Code extension: `{{ vscodeVersion }}`
+{%- if hasDistributionNote %}
+- Distribution: {{ distributionNote }}
+{%- endif %}
+
+{%- if hasPreviousTag %}
+Changes since `{{ previousTag }}`.
+{%- else %}
+Changes since the start of the tracked release history.
+{%- endif %}
+
+{{ changesMarkdown }}
