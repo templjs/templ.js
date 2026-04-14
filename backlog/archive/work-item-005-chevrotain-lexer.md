@@ -1,0 +1,92 @@
+---
+$schema: schemas/work-management/frontmatter/work-item.json
+id: work-item:005-chevrotain-lexer
+title: '5: Implement Chevrotain Lexer with Configurable Delimiters'
+summary: Implement Chevrotain Lexer with Configurable Delimiters
+type: work-item
+subtype: story
+lifecycle: inactive
+status: closed
+status_reason: completed
+priority: critical
+estimated: 12
+actual: 12
+commits:
+  24232eb: 'feat(core): implement Chevrotain lexer with tests'
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/2
+  evidence:
+    - '[[record-005-chevrotain-lexer-evidence-1]]'
+---
+
+## Goal
+
+Build tokenization layer using Chevrotain that supports default and custom delimiters.
+
+## Background
+
+Tokenizer converts template strings into tokens with position metadata. Must support:
+
+- Default delimiters: `{% %}`, `{{ }}`, `{# #}`
+- Custom delimiters: Any string pair configuration
+- All token types: text, statement, expression, comment
+- Accurate line/column tracking
+
+**Related ADRs**: [[ADR-002 Parser Selection]], [[ADR-006 Testing Strategy]]
+
+## Tasks
+
+- [x] Create `packages/core/src/types.ts` with token interfaces
+- [x] Implement `TokenType` enum (TEXT, STATEMENT, EXPRESSION, COMMENT)
+- [x] Create Chevrotain lexer in `packages/core/src/lexer.ts`
+- [x] Support configurable delimiters via options object
+- [x] Add error handling for malformed delimiters
+- [x] Implement position tracking (line/column)
+- [x] Write 200+ unit tests for lexer
+- [x] Verify <1ms tokenization for 4KB template
+
+## Deliverables
+
+- Chevrotain-based lexer implementation
+- Token type definitions
+- Configurable delimiter support
+- 200+ passing tests
+- Performance benchmarks
+
+## Acceptance Criteria
+
+- [x] Default delimiters work correctly
+- [x] Custom delimiters work correctly
+- [x] All character positions tracked accurately
+- [x] 200+ tests passing with 95%+ coverage
+- [x] Tokenization <1ms for 4KB template
+- [x] Error messages reference exact positions
+
+## Example Test
+
+```typescript
+it('should tokenize expression with custom delimiters', () => {
+  const tokens = tokenize('Hello <: user.name :>', {
+    expression_start: '<:',
+    expression_end: ':>',
+  });
+  expect(tokens).toHaveLength(3);
+  expect(tokens[1].type).toBe(TokenType.EXPRESSION);
+});
+```
+
+## References
+
+- ADR-002: Parser Selection
+- [Chevrotain Getting Started](https://github.com/Chevrotain/chevrotain/tree/master/packages/chevrotain)
+- Handlebars lexer for reference: [Handlebars on GitHub](https://github.com/handlebars-lang/handlebars.js)
+
+## Dependencies
+
+- Requires: [[2 Initialize Monorepo]]
+- Unblocks: [[6 Implement Chevrotain Parser]], [[9 Write Lexer Tests]]
+
+## Relationships
+
+- `depends_on`: [[work-item-002-monorepo-setup]]
