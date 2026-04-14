@@ -226,6 +226,16 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     needs: [lint, test, lint-work-item-frontmatter, require-changeset, docs-api-guard, toolchain]
+    if: >-
+      ${{
+        always() &&
+        needs.lint.result == 'success' &&
+        needs.test.result == 'success' &&
+        needs.lint-work-item-frontmatter.result == 'success' &&
+        needs.docs-api-guard.result == 'success' &&
+        needs.toolchain.result == 'success' &&
+        (needs.require-changeset.result == 'success' || needs.require-changeset.result == 'skipped')
+      }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

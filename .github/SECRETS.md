@@ -80,13 +80,28 @@ Configure these secrets in your GitHub repository settings: Settings → Secrets
 - **Where to set**: Repository Settings → Secrets and variables → Actions → New repository secret
 - **Note**: While Codecov can auto-detect public repositories, using a token is more reliable and required for private repositories
 
+### Backlog Automation Source Access
+
+**`DOC_VADER_CHECKOUT_TOKEN`** (Required to enable backlog automation against the private `doc-vader` source repository)
+
+- **Purpose**: Allow the `backlog-automation.yml` workflow to checkout `squirrel289/doc-vader`
+- **How to obtain**:
+  1. Create a fine-grained GitHub personal access token
+  2. Grant read access to the private `squirrel289/doc-vader` repository
+  3. Copy the token
+- **Where to set**: Repository Settings → Secrets and variables → Actions → New repository secret
+- **Behavior when unset**:
+  - backlog automation jobs are skipped cleanly
+  - PRs and CI remain mergeable without a failing automation check
+
 ## Secrets Summary
 
-| Secret Name              | Required    | Used In     | Purpose                                                        |
-| ------------------------ | ----------- | ----------- | -------------------------------------------------------------- |
-| `NPM_TOKEN`              | Fallback    | release.yml | Publish npm packages when trusted publishing is not configured |
-| `VSCODE_PUBLISHER_TOKEN` | Yes         | release.yml | Publish VS Code prerelease and stable extension builds         |
-| `CODECOV_TOKEN`          | Recommended | ci.yml      | Upload coverage reports                                        |
+| Secret Name                | Required    | Used In                | Purpose                                                        |
+| -------------------------- | ----------- | ---------------------- | -------------------------------------------------------------- |
+| `NPM_TOKEN`                | Fallback    | release.yml            | Publish npm packages when trusted publishing is not configured |
+| `VSCODE_PUBLISHER_TOKEN`   | Yes         | release.yml            | Publish VS Code prerelease and stable extension builds         |
+| `CODECOV_TOKEN`            | Recommended | ci.yml                 | Upload coverage reports                                        |
+| `DOC_VADER_CHECKOUT_TOKEN` | Optional    | backlog-automation.yml | Checkout private `doc-vader` source for backlog automation     |
 
 ## Default GitHub Secrets
 
