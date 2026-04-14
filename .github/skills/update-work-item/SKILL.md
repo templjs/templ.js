@@ -1,6 +1,6 @@
 ---
 name: update-work-item
-description: 'Update templjs backlog work items. Use when moving a work item between statuses, recording test results, adding commits, or advancing to in-progress or ready-for-review. Validates dependency readiness before in-progress transitions and requires pnpm run lint:frontmatter.'
+description: 'Update templjs backlog work items. Use when moving a work item between statuses, linking PR/evidence records, recording commits, or advancing to in-progress or ready-for-review. Validates dependency readiness before in-progress transitions and requires pnpm run lint:frontmatter.'
 ---
 
 # Update Work Item
@@ -18,20 +18,20 @@ proposed -> ready -> in-progress -> ready-for-review -> closed
 - Read links.depends_on from the work item.
 - Confirm each dependency is closed before starting work.
 - Do not advance the item if a dependency is still proposed, ready, in-progress, or ready-for-review.
-- Record a note or test_results entry when the transition reflects real execution start.
+- Record execution start with `doc-vader work-item transition` and create/link a record if the start itself is meaningful evidence.
 
 ### Before moving to ready-for-review
 
 - Ensure implementation work is complete for the current scope.
 - Record commits relevant to the work item.
-- Record validation evidence in test_results.
+- Record validation evidence as `record:*` documents and link them under `links.evidence`.
 - Run pnpm run lint:frontmatter.
 
 ## Required metadata updates
 
 - Keep actual updated as work progresses.
 - Add commit hashes under commits.
-- Add timestamped validation notes under test_results.
+- Add or link evidence with `pnpm run backlog:doc-vader -- record create ...` and `pnpm run backlog:doc-vader -- work-item link evidence ...`.
 - Preserve status_reason only when the status requires it.
 
 ## Dependency validation guidance
