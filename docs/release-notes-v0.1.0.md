@@ -4,14 +4,14 @@ type: document
 subtype: guide
 lifecycle: active
 status: ready
-title: templjs v1.0.0-beta.1 Release Notes
+title: templjs v0.1.0 Release Notes
 ---
 
 {% raw %}
 
-## templjs v1.0.0-beta.1
+## templjs v0.1.0
 
-templjs v1.0.0-beta.1 is the first beta release of the TypeScript-native meta-templating system.
+templjs v0.1.0 is the first public pre-1.0 release of the TypeScript-native meta-templating system.
 
 ### Highlights
 
@@ -27,8 +27,8 @@ templjs v1.0.0-beta.1 is the first beta release of the TypeScript-native meta-te
 ### Installation
 
 ```bash
-npm install @templjs/core@1.0.0-beta.1
-npm install -D @templjs/cli@1.0.0-beta.1
+npm install @templjs/core@0.1.0
+npm install -D @templjs/cli@0.1.0
 ```
 
 ### VS Code

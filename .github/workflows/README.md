@@ -33,26 +33,34 @@ This directory contains CI/CD workflows for the templjs monorepo.
 
 **Triggers:**
 
-- Manual workflow dispatch
-- Push to `release/**` branches
+- Push to `main` for Changesets version PR maintenance
+- Pushes of release tags created from `main`
+  - `pre-vX.Y.Z` for pre-release channel publishing
+  - `vX.Y.Z` for stable channel publishing
 
 **Jobs:**
 
-- **Version and Publish**:
-  - Uses Changesets for version management
-  - Applies a fixed-version release train across the npm packages and VS Code extension
-  - Publishes packages to npm (@templjs scope)
-  - Creates GitHub releases with changelog
+- **Create Version PR**:
+  - Runs on `main`
+  - Uses Changesets to open or update the versioning pull request
+  - Keeps the fixed-version release train synchronized across the npm packages and VS Code extension
+- **Tagged Publish**:
+  - Runs only for tags created from `main`
+  - Verifies the tagged commit is reachable from `main`
+  - Verifies all fixed-release package versions match the tag version
+  - Publishes npm packages to the correct dist-tag (`next` for `pre-v*`, `latest` for `v*`)
+  - Publishes the VS Code extension using the packaged VSIX flow
+  - Creates a GitHub Release matching the tag channel
 - **Publish VS Code Extension**:
-  - Packages and publishes to VS Code Marketplace
-  - Optionally publishes to Open VSX Registry
-  - Uses the extension package version, but does not publish the extension to npm
+  - Uses `vsce package --no-dependencies` to avoid monorepo dependency scan failures
+  - Uses `--pre-release` for `pre-v*` tags and stable publish for `v*` tags
+  - Publishes from `--packagePath`, not from the raw workspace tree
 
 **Features:**
 
 - ✅ Automated version bumping via Changesets
-- ✅ npm publishing with scope support
-- ✅ VS Code Marketplace publishing
+- ✅ Tag-driven npm publishing with `next` and `latest` channel targets
+- ✅ VS Code Marketplace publishing with explicit pre-release/stable behavior
 - ✅ GitHub release creation
 - ✅ Changelog generation
 
@@ -124,12 +132,11 @@ Changesets configuration for release automation:
 
 See [SECRETS.md](./SECRETS.md) for detailed setup instructions.
 
-| Secret                   | Required    | Purpose                      |
-| ------------------------ | ----------- | ---------------------------- |
-| `NPM_TOKEN`              | Yes         | Publish npm packages         |
-| `VSCODE_PUBLISHER_TOKEN` | Yes         | Publish VS Code extension    |
-| `OPEN_VSX_TOKEN`         | No          | Publish to Open VSX Registry |
-| `CODECOV_TOKEN`          | Recommended | Upload coverage reports      |
+| Secret                   | Required    | Purpose                   |
+| ------------------------ | ----------- | ------------------------- |
+| `NPM_TOKEN`              | Yes         | Publish npm packages      |
+| `VSCODE_PUBLISHER_TOKEN` | Yes         | Publish VS Code extension |
+| `CODECOV_TOKEN`          | Recommended | Upload coverage reports   |
 
 ## Usage
 
@@ -176,16 +183,17 @@ pnpm nx affected -t build
 
 2. Commit the changeset files
 
-3. Either:
-   - **Automatic**: Push to `release/v1.x` branch to trigger workflow
-   - **Manual**: Go to Actions → Release → Run workflow
+3. Merge the generated versioning PR back to `main`
 
-4. Workflow will:
-   - Create a PR with version bumps
-   - Keep the npm packages and VS Code extension on the same version
-   - Merge PR to publish packages
-   - Create GitHub release
-   - Publish the VS Code extension on `release/**` pushes
+4. Create a release tag from the release commit on `main`
+
+`pre-vX.Y.Z` publishes npm packages to `next`, the VS Code extension as pre-release, and a pre-release GitHub Release.
+
+`vX.Y.Z` publishes npm packages to `latest`, the VS Code extension as stable, and a stable GitHub Release.
+
+Workflow behavior:
+
+Maintains a Changesets version PR on `main`, publishes the fixed version set after a tag is pushed from `main`, creates GitHub release notes for the matching tag, and publishes the VS Code extension via the packaged VSIX flow.
 
 ### Viewing Coverage
 
@@ -238,7 +246,8 @@ nx affected -t test --parallel=3
 - Verify NPM_TOKEN has publish permissions
 - Check package names aren't already taken on npm
 - Ensure the `@templjs` npm scope is registered
-- Confirm the release PR includes the expected fixed-version bump for every published package
+- Confirm the tagged commit is already reachable from `main`
+- Confirm the tag matches package versions exactly (`pre-vX.Y.Z` or `vX.Y.Z`)
 - Remember that `vscode-templjs` is versioned with Changesets but published via `vsce`, not npm
 
 ### Security Scan Fails

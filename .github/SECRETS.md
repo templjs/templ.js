@@ -2,15 +2,22 @@
 
 This document lists all required secrets for the templjs GitHub Actions workflows.
 
+Release automation now follows a two-stage model:
+
+- Pushes to `main` maintain the Changesets version pull request.
+- Tags created from `main` publish artifacts:
+  - `pre-vX.Y.Z` publishes prerelease artifacts
+  - `vX.Y.Z` publishes stable artifacts
+
 ## Required Secrets
 
 Configure these secrets in your GitHub repository settings: Settings → Secrets and variables → Actions
 
 ### NPM Publishing
 
-**`NPM_TOKEN`** (Required for release workflow)
+**`NPM_TOKEN`** (Required for tag-driven npm publishing)
 
-- **Purpose**: Publish packages to npm under the `@templjs` scope
+- **Purpose**: Publish packages to npm under the `@templjs` scope and maintain `next`/`latest` dist-tags during tagged releases
 - **How to obtain**:
   1. Log in to npm: `npm login`
   2. Generate a token: Visit [Creating and viewing access tokens](https://docs.npmjs.com/creating-and-viewing-access-tokens)
@@ -22,23 +29,14 @@ Configure these secrets in your GitHub repository settings: Settings → Secrets
 
 **`VSCODE_PUBLISHER_TOKEN`** (Required for VS Code extension publishing)
 
-- **Purpose**: Publish the VS Code extension to the Visual Studio Marketplace
+- **Purpose**: Publish the VS Code extension to the Visual Studio Marketplace via packaged VSIX artifacts
 - **How to obtain**:
   1. Go to [Azure](https://dev.azure.com)
   2. Create a Personal Access Token (PAT) with Marketplace → Manage scope
-  3. Copy the token
+  3. Ensure the PAT user is a member of the `templjs` publisher with publish permissions
+  4. Copy the token
 - **Where to set**: Repository Settings → Secrets and variables → Actions → New repository secret
 - **Documentation**: [Publishing Extensions](https://code.visualstudio.com/api/working-with-extensions/publishing-extension)
-
-**`OPEN_VSX_TOKEN`** (Optional for Open VSX Registry)
-
-- **Purpose**: Publish the extension to Open VSX Registry (open-source alternative)
-- **How to obtain**:
-  1. Create an account at [Open VSX Registry](https://open-vsx.org)
-  2. Generate an access token from your user settings
-  3. Copy the token
-- **Where to set**: Repository Settings → Secrets and variables → Actions → New repository secret
-- **Documentation**: [Publishing Extensions](https://github.com/eclipse/openvsx/wiki/Publishing-Extensions)
 
 ### Code Coverage
 
@@ -54,12 +52,11 @@ Configure these secrets in your GitHub repository settings: Settings → Secrets
 
 ## Secrets Summary
 
-| Secret Name              | Required    | Used In     | Purpose                      |
-| ------------------------ | ----------- | ----------- | ---------------------------- |
-| `NPM_TOKEN`              | Yes         | release.yml | Publish npm packages         |
-| `VSCODE_PUBLISHER_TOKEN` | Yes         | release.yml | Publish VS Code extension    |
-| `OPEN_VSX_TOKEN`         | No          | release.yml | Publish to Open VSX Registry |
-| `CODECOV_TOKEN`          | Recommended | ci.yml      | Upload coverage reports      |
+| Secret Name              | Required    | Used In     | Purpose                   |
+| ------------------------ | ----------- | ----------- | ------------------------- |
+| `NPM_TOKEN`              | Yes         | release.yml | Publish npm packages      |
+| `VSCODE_PUBLISHER_TOKEN` | Yes         | release.yml | Publish VS Code extension |
+| `CODECOV_TOKEN`          | Recommended | ci.yml      | Upload coverage reports   |
 
 ## Default GitHub Secrets
 
@@ -68,13 +65,18 @@ These secrets are automatically provided by GitHub:
 - `GITHUB_TOKEN`: Automatically generated for each workflow run
   - Used for: Creating releases, commenting on PRs, pushing changes
 
-## Testing Secrets Configuration
+## Validating Secrets Configuration
 
-After setting up secrets, you can test them by:
+Do not use release tags as a secret smoke test. Pushing `pre-vX.Y.Z` or `vX.Y.Z`
+will publish artifacts to npm and VS Code Marketplace.
 
-1. **NPM Token**: Run the release workflow manually
-2. **VSCODE_PUBLISHER_TOKEN**: Merge to a release branch
-3. **CODECOV_TOKEN**: Push a commit and check if coverage uploads
+Validate credentials with non-publishing checks first:
+
+1. **NPM Token**: run `npm whoami` in an authenticated shell.
+2. **VSCODE_PUBLISHER_TOKEN**: run `npx --yes @vscode/vsce verify-pat <publisher>`.
+3. **CODECOV_TOKEN**: push a normal commit and confirm coverage upload in CI.
+
+Use release tags only when you are intentionally performing a real release.
 
 ## Security Best Practices
 
@@ -91,12 +93,16 @@ After setting up secrets, you can test them by:
 - Verify token has "Publish" scope
 - Check package names aren't already taken
 - Ensure `@templjs` scope is registered to your npm account
+- For prerelease tags (`pre-vX.Y.Z`), packages publish to npm dist-tag `next`
+- For stable tags (`vX.Y.Z`), packages publish to npm dist-tag `latest`
 
 ### VS Code Extension Publishing Fails
 
 - Verify PAT has "Marketplace: Manage" scope
 - Check publisher ID exists and matches package.json
 - Ensure PAT hasn't expired
+- Ensure the tagged version in `src/extensions/vscode/package.json` is plain semver (`X.Y.Z`), not a prerelease suffix
+- The workflow packages the extension with `vsce package --no-dependencies` and publishes from `--packagePath`
 
 ### Codecov Upload Fails
 
