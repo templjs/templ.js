@@ -23,7 +23,10 @@ env:
 jobs:
   ingest-pull-request:
     name: Ingest Pull Request Event
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      secrets.DOC_VADER_CHECKOUT_TOKEN != ''
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository branch
@@ -39,6 +42,7 @@ jobs:
           ref: ${{ env.DOC_VADER_REF }}
           path: ${{ env.DOC_VADER_DIR }}
           fetch-depth: 1
+          token: ${{ secrets.DOC_VADER_CHECKOUT_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -78,7 +82,8 @@ jobs:
     name: Ingest Workflow Run Event
     if: >
       github.event_name == 'workflow_run' &&
-      github.event.workflow_run.head_repository.full_name == github.repository
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      secrets.DOC_VADER_CHECKOUT_TOKEN != ''
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository branch
@@ -94,6 +99,7 @@ jobs:
           ref: ${{ env.DOC_VADER_REF }}
           path: ${{ env.DOC_VADER_DIR }}
           fetch-depth: 1
+          token: ${{ secrets.DOC_VADER_CHECKOUT_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

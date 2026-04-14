@@ -1,11 +1,4 @@
----
-id: secrets-001
-type: document
-subtype: reference
-lifecycle: active
-status: ready
-title: GitHub Actions Secrets
----
+# GitHub Actions Secrets Configuration
 
 This document lists all required secrets for the templjs GitHub Actions workflows.
 
@@ -28,50 +21,35 @@ Release automation now follows a branch-aware model:
 
 Configure these secrets in your GitHub repository settings: Settings → Secrets and variables → Actions
 
-### npm Publishing
+### NPM Publishing
 
-No GitHub secret is required for npm publishing.
+**`NPM_TOKEN`** (Optional fallback for npm publishing)
 
-templjs uses npm trusted publishing via GitHub Actions OIDC instead of a long-lived `NPM_TOKEN`.
+- **Purpose**: Publish packages to npm under the `@templjs` scope and maintain `next`/`latest` dist-tags when npm trusted publishing is not configured
+- **How to obtain**:
+  1. Log in to npm: `npm login`
+  2. Generate a token: Visit [Creating and viewing access tokens](https://docs.npmjs.com/creating-and-viewing-access-tokens)
+  3. Create an "Automation" token (recommended) or "Publish" token
+  4. Copy the token
+- **Where to set**: Repository Settings → Secrets and variables → Actions → New repository secret
 
-Configure a trusted publisher for each published npm package:
+### Preferred npm Publishing Setup
 
-- `@templjs/core`
-- `@templjs/cli`
-- `@templjs/volar`
-- `@templjs/context-graph`
+**Trusted publishing via GitHub OIDC** (Preferred, no secret required)
 
-Before opening npm settings pages, generate the repo-derived checklist:
-
-```bash
-./.github/scripts/prepare-npm-trusted-publishing.sh
-```
-
-Optional preflight:
-
-```bash
-./.github/scripts/prepare-npm-trusted-publishing.sh --check-registry
-```
-
-For each package:
-
-1. Ensure the package already exists on npmjs.com.
-2. Run the helper script above and use the emitted package URLs and trusted publisher values.
-3. Open the package settings page, for example:
-   - <https://www.npmjs.com/package/@templjs/core/settings/access>
-4. Under **Publishing**, add GitHub as a trusted publisher with:
-   - **Repository owner**: `templjs`
-   - **Repository name**: `templ.js`
-   - **Workflow filename**: `release.yml`
-   - **Environment name**: leave blank
-5. Save the trusted publisher configuration.
-
-Repo-specific note:
-
-- The helper script automates the repo-side translation work and surfaces any package metadata mismatches it finds.
-- `release.yml` publishes npm packages from both the `prerelease` and `release` GitHub environments.
-- npm allows only one trusted publisher configuration per package, so the npm-side environment field must remain unset to allow both lanes to publish.
-- See [trusted publishers](https://docs.npmjs.com/trusted-publishers) for the canonical npm reference.
+- **Purpose**: Let GitHub Actions publish to npm without storing a long-lived npm token in repository secrets
+- **How to configure**:
+  1. In npm, configure this repository as a trusted publisher
+  2. Ensure the workflow has `id-token: write` permission
+  3. Allow publishing from GitHub Actions runs in this repository
+  4. Configure both workflow environments used by release automation:
+     - `prerelease`
+     - `release`
+- **Why preferred**:
+  - no long-lived publish token stored in GitHub
+  - better provenance and maintainability
+  - simpler secret rotation story
+- **Fallback**: If trusted publishing is not available yet, keep `NPM_TOKEN` configured
 
 ### VS Code Extension Publishing
 
@@ -102,12 +80,28 @@ Repo-specific note:
 - **Where to set**: Repository Settings → Secrets and variables → Actions → New repository secret
 - **Note**: While Codecov can auto-detect public repositories, using a token is more reliable and required for private repositories
 
+### Backlog Automation Source Access
+
+**`DOC_VADER_CHECKOUT_TOKEN`** (Required to enable backlog automation against the private `doc-vader` source repository)
+
+- **Purpose**: Allow the `backlog-automation.yml` workflow to checkout `squirrel289/doc-vader`
+- **How to obtain**:
+  1. Create a fine-grained GitHub personal access token
+  2. Grant read access to the private `squirrel289/doc-vader` repository
+  3. Copy the token
+- **Where to set**: Repository Settings → Secrets and variables → Actions → New repository secret
+- **Behavior when unset**:
+  - backlog automation jobs are skipped cleanly
+  - PRs and CI remain mergeable without a failing automation check
+
 ## Secrets Summary
 
-| Secret Name              | Required    | Used In     | Purpose                                                |
-| ------------------------ | ----------- | ----------- | ------------------------------------------------------ |
-| `VSCODE_PUBLISHER_TOKEN` | Yes         | release.yml | Publish VS Code prerelease and stable extension builds |
-| `CODECOV_TOKEN`          | Recommended | ci.yml      | Upload coverage reports                                |
+| Secret Name                | Required    | Used In                | Purpose                                                        |
+| -------------------------- | ----------- | ---------------------- | -------------------------------------------------------------- |
+| `NPM_TOKEN`                | Fallback    | release.yml            | Publish npm packages when trusted publishing is not configured |
+| `VSCODE_PUBLISHER_TOKEN`   | Yes         | release.yml            | Publish VS Code prerelease and stable extension builds         |
+| `CODECOV_TOKEN`            | Recommended | ci.yml                 | Upload coverage reports                                        |
+| `DOC_VADER_CHECKOUT_TOKEN` | Optional    | backlog-automation.yml | Checkout private `doc-vader` source for backlog automation     |
 
 ## Default GitHub Secrets
 
@@ -118,13 +112,12 @@ These secrets are automatically provided by GitHub:
 
 ## Validating Secrets Configuration
 
-Do not use release automation as a secret smoke test. Pushing to `staging`
-publishes prerelease artifacts, and publishing a GitHub Release for `vX.Y.Z`
-or `vscode-vX.Y.Z` publishes stable artifacts.
+Do not use release tags as a secret smoke test. Pushing `pre-vX.Y.Z` or `vX.Y.Z`
+will publish artifacts to npm and VS Code Marketplace.
 
 Validate credentials with non-publishing checks first:
 
-1. **npm trusted publishing**: confirm each published package trusts `templjs/templ.js` with workflow `release.yml` and no environment restriction.
+1. **NPM Token**: run `npm whoami` in an authenticated shell.
 2. **VSCODE_PUBLISHER_TOKEN**: run `npx --yes @vscode/vsce verify-pat <publisher>`.
 3. **CODECOV_TOKEN**: push a normal commit and confirm coverage upload in CI.
 
@@ -133,18 +126,17 @@ Use release tags only when you are intentionally performing a real release.
 ## Security Best Practices
 
 1. **Never commit secrets** to your repository
-2. **Prefer OIDC over long-lived tokens** whenever a publisher supports it
-3. **Use minimal scope** tokens where tokens are still required
-4. **Monitor token usage** in your Azure DevOps and Codecov dashboards
+2. **Rotate tokens** periodically (every 6-12 months)
+3. **Use minimal scope** tokens (e.g., "Publish" not "Full Access")
+4. **Monitor token usage** in your npm/Azure DevOps dashboards
 5. **Revoke unused tokens** immediately
 
 ## Troubleshooting
 
 ### NPM Publishing Fails
 
-- Verify each published package has a trusted publisher configured on npm
-- Confirm the trusted publisher points to `templjs/templ.js` and `release.yml`
-- Leave the npm trusted publisher environment field blank so both `staging` prereleases and stable releases can use the same workflow
+- If using `NPM_TOKEN`, verify the token has "Publish" scope
+- If using trusted publishing, verify npm trusted publisher configuration matches this repository/workflow
 - Check package names aren't already taken
 - Ensure `@templjs` scope is registered to your npm account
 - For `staging` prereleases, packages publish to npm dist-tag `next`
