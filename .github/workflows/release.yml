@@ -67,7 +67,11 @@ jobs:
         run: |
           BASE_REF="$BEFORE_SHA"
           if [ "$BASE_REF" = '0000000000000000000000000000000000000000' ]; then
-            BASE_REF="$(git rev-parse HEAD^)"
+            if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+              BASE_REF="$(git rev-parse HEAD^)"
+            else
+              BASE_REF="$(git rev-parse HEAD)"
+            fi
           fi
           echo "base_ref=$BASE_REF" >> "$GITHUB_OUTPUT"
 
@@ -274,8 +278,8 @@ jobs:
 
       - name: Verify release commit is already on main
         run: |
-          git fetch origin main --depth=1
-          if ! git merge-base --is-ancestor HEAD origin/main; then
+          git fetch origin main --force
+          if ! git merge-base --is-ancestor HEAD refs/remotes/origin/main; then
             echo "::error::Release tag ${GITHUB_REF_NAME} must point to a commit already on origin/main"
             exit 1
           fi

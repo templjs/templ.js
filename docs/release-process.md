@@ -1,5 +1,5 @@
 ---
-id: release-process-001
+id: releaseprocess-001
 type: document
 subtype: guide
 lifecycle: active
