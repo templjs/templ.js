@@ -49,7 +49,7 @@
       "$ref": "../support/common.json#/$defs/analysisFamily"
     },
     "notes": {
-      "$ref": "../support/common.json#/$defs/stringList"
+      "$ref": "../support/common.json#/$defs/notesValue"
     }
   },
   "additionalProperties": false

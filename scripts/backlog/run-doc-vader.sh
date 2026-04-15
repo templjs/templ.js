@@ -10,6 +10,14 @@ for arg in "$@"; do
     has_consumer_config=1
     break
   fi
+
+  case "$arg" in
+    --consumer-config=*)
+    has_consumer_config=1
+    break
+      ;;
+  esac
+
   previous="$arg"
 done
 

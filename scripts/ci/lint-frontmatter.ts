@@ -2,7 +2,9 @@ import { existsSync, readFileSync, readdirSync } from 'fs';
 import { dirname, isAbsolute, join, normalize, relative, resolve } from 'path';
 import { spawnSync } from 'child_process';
 import * as yaml from 'yaml';
-import { Ajv, ValidateFunction } from 'ajv';
+import { Ajv as LegacyAjv } from 'ajv';
+import type { ValidateFunction } from 'ajv';
+import Ajv from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import { fileURLToPath } from 'url';
 
@@ -25,6 +27,12 @@ interface WorkItemRef {
   file: string;
   id: string;
   title: string;
+}
+
+interface AjvLike {
+  addSchema: (schema: Record<string, unknown>) => AjvLike;
+  getSchema: (keyRef: string) => ValidateFunction<unknown> | undefined;
+  compile: (schema: Record<string, unknown>) => ValidateFunction<unknown>;
 }
 
 /**
@@ -85,7 +93,10 @@ function extractCanonicalRelationshipDependencies(content: string): string[] {
   const wikilinkRegex = /\[\[([^\]]+)\]\]/g;
 
   for (const match of sectionMatch[1].matchAll(wikilinkRegex)) {
-    refs.push(match[1]);
+    const canonicalRef = match[1].split('|', 1)[0].trim();
+    if (canonicalRef) {
+      refs.push(canonicalRef);
+    }
   }
 
   return refs;
@@ -115,7 +126,7 @@ function collectBacklogMarkdownFiles(dirPath: string, relativePrefix = ''): stri
  * Load and compile JSON schemas with Ajv
  */
 function loadSchemas() {
-  const ajv = new Ajv({
+  const ajv = new LegacyAjv({
     schemas: [],
     strict: false,
     allErrors: true,
@@ -123,7 +134,16 @@ function loadSchemas() {
     validateSchema: false, // Skip meta-schema validation (we trust our schemas)
   });
 
+  const workManagementAjv = new Ajv({
+    schemas: [],
+    strict: false,
+    allErrors: true,
+    verbose: true,
+    validateSchema: false,
+  });
+
   addFormats(ajv);
+  addFormats(workManagementAjv);
 
   const schemaMapPath = join(SCHEMA_DIR, 'schema-map.json');
   const schemaMap = parseJsonFile<SchemaMap>(schemaMapPath);
@@ -145,6 +165,7 @@ function loadSchemas() {
 
     const schema = parseJsonFile<Record<string, unknown>>(schemaFile);
     ajv.addSchema(schema);
+    workManagementAjv.addSchema(schema);
   }
 
   const baseSchema = parseJsonFile<{ $defs?: { statusTransitions?: { properties?: object } } }>(
@@ -167,11 +188,20 @@ function loadSchemas() {
     validators.set(type, ajv.compile(schema));
   }
 
-  return { ajv, validators, schemaValidators, statusTransitions, supportedTypes };
+  return { ajv, workManagementAjv, validators, schemaValidators, statusTransitions, supportedTypes };
+}
+
+function selectAjvForSchemaPath(
+  schemaPath: string,
+  ajv: AjvLike,
+  workManagementAjv: AjvLike
+): AjvLike {
+  return schemaPath.startsWith(WORK_MANAGEMENT_SCHEMA_DIR) ? workManagementAjv : ajv;
 }
 
 function resolveValidatorForFrontmatter(
-  ajv: Ajv,
+  ajv: AjvLike,
+  workManagementAjv: AjvLike,
   validators: Map<string, ValidateFunction<unknown>>,
   schemaValidators: Map<string, ValidateFunction<unknown>>,
   frontmatter: Record<string, unknown>
@@ -181,6 +211,7 @@ function resolveValidatorForFrontmatter(
   if (schemaRef) {
     const resolvedPath = resolveSchemaPath(schemaRef);
     if (existsSync(resolvedPath)) {
+      const selectedAjv = selectAjvForSchemaPath(resolvedPath, ajv, workManagementAjv);
       const cachedValidator = schemaValidators.get(resolvedPath);
       if (cachedValidator) {
         return cachedValidator;
@@ -189,14 +220,14 @@ function resolveValidatorForFrontmatter(
       const schema = parseJsonFile<Record<string, unknown>>(resolvedPath);
       const schemaId = typeof schema.$id === 'string' ? schema.$id : null;
       if (schemaId) {
-        const registeredValidator = ajv.getSchema(schemaId);
+        const registeredValidator = selectedAjv.getSchema(schemaId);
         if (registeredValidator) {
           schemaValidators.set(resolvedPath, registeredValidator);
           return registeredValidator;
         }
       }
 
-      const compiledValidator = ajv.compile(schema);
+      const compiledValidator = selectedAjv.compile(schema);
       schemaValidators.set(resolvedPath, compiledValidator);
       return compiledValidator;
     }
@@ -316,7 +347,7 @@ function resolveFilesToValidate(allBacklogFiles: string[], cliArgs: string[]): s
  * Main validation function
  */
 function validateFrontmatter(): boolean {
-  const { ajv, validators, schemaValidators, statusTransitions, supportedTypes } = loadSchemas();
+  const { ajv, workManagementAjv, validators, schemaValidators, statusTransitions, supportedTypes } = loadSchemas();
   const allBacklogFiles = collectBacklogMarkdownFiles(BACKLOG_DIR);
   const files = resolveFilesToValidate(allBacklogFiles, process.argv.slice(2));
   let hasViolations = false;
@@ -375,6 +406,7 @@ function validateFrontmatter(): boolean {
       const type = frontmatter.type;
       const validator = resolveValidatorForFrontmatter(
         ajv,
+        workManagementAjv,
         validators,
         schemaValidators,
         frontmatter
@@ -447,7 +479,7 @@ function validateFrontmatter(): boolean {
             // Extract work item reference from wikilink format [[xxx]]
             const wikilinkMatch = dep.match(/^\[\[([^\]]+)\]\]$/);
             if (wikilinkMatch) {
-              const depRef = wikilinkMatch[1];
+              const depRef = wikilinkMatch[1].split('|', 1)[0].trim();
               const depItem = workItemsMap.get(depRef);
 
               if (!depItem) {
@@ -467,6 +499,19 @@ function validateFrontmatter(): boolean {
 
                 console.error(
                   `   /links/depends_on: Dependency '${dep}' (${depItem.id}: ${depItem.title}) must be 'closed' but is '${depItem.status}'`
+                );
+              } else if (
+                status === 'in-progress' &&
+                !['in-progress', 'ready-for-review', 'closed'].includes(depItem.status)
+              ) {
+                hasViolations = true;
+                hasItemViolations = true;
+                if (!validator.errors || validator.errors.length === 0) {
+                  console.error(`❌ ${file}`);
+                }
+
+                console.error(
+                  `   /links/depends_on: Dependency '${dep}' (${depItem.id}: ${depItem.title}) must be 'in-progress', 'ready-for-review', or 'closed' but is '${depItem.status}'`
                 );
               }
             }
