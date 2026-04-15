@@ -31,17 +31,16 @@ function main(): void {
   const headRef = readArg('head-ref') ?? process.env.GITHUB_HEAD_REF ?? '';
   const prTitle = readArg('pr-title') ?? process.env.PR_TITLE ?? '';
   const actor = process.env.GITHUB_ACTOR ?? '';
+  const isTrustedAutomationActor = actor === 'github-actions[bot]';
+  const isAutomatedVersionPr =
+    headRef.startsWith('changeset-release/') || prTitle === 'chore: version packages';
 
   if (!base) {
     console.log('No PR base SHA provided; skipping Changeset requirement check.');
     return;
   }
 
-  if (
-    headRef.startsWith('changeset-release/') ||
-    prTitle === 'chore: version packages' ||
-    actor === 'github-actions[bot]'
-  ) {
+  if (isTrustedAutomationActor && isAutomatedVersionPr) {
     console.log('Skipping Changeset requirement for automated version PR.');
     return;
   }

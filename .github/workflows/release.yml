@@ -253,14 +253,13 @@ jobs:
           esac
 
           if [ "$GITHUB_PRERELEASE" = 'true' ]; then
-            CHANNEL="pre-release"
-            NPM_DIST_TAG="next"
-            VSCODE_PRERELEASE="true"
-          else
-            CHANNEL="release"
-            NPM_DIST_TAG="latest"
-            VSCODE_PRERELEASE="false"
+            echo "::error::Stable release tags must not use the GitHub prerelease checkbox: $TAG_NAME"
+            exit 1
           fi
+
+          CHANNEL="release"
+          NPM_DIST_TAG="latest"
+          VSCODE_PRERELEASE="false"
 
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
           echo "npm_dist_tag=$NPM_DIST_TAG" >> "$GITHUB_OUTPUT"

@@ -283,7 +283,7 @@ nx affected:graph --base=origin/main
 - Require status checks to pass before merging: Yes
 - Required checks: `Lint`, `Type Check`, `Lint Work Item Frontmatter`, `Require Changeset`, `Docs API Guard`, `Test`, `Build`
 - Require branches to be up to date: Yes
-- Require linear history: No
+- Require linear history: Yes
 
 ## Performance Targets
 
@@ -395,6 +395,11 @@ See [Release Process](./release-process.md) for the detailed flowchart and maint
 ```bash
 # Apply version changes locally
 pnpm exec tsx scripts/release/prepare-version-pr.ts
+
+# Commit and push the generated version updates before tagging
+git add .changeset src/packages src/extensions/vscode CHANGELOG.md
+git commit -m "chore(release): prepare emergency release"
+git push origin main
 
 # Build artifacts
 pnpm build

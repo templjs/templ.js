@@ -1,7 +1,7 @@
 import {
   VSCODE_CHANGELOG_FILE,
   VSCODE_CHANGELOG_TEMPLATE,
-  VSCODE_PATHS,
+  VSCODE_SCOPE_PATHS,
   buildSections,
   getCommits,
   getPreviousReleaseTag,
@@ -26,7 +26,7 @@ function main(): void {
   const commits = getCommits({
     fromTag: previousTag,
     toRef,
-    paths: [...VSCODE_PATHS],
+    paths: [...VSCODE_SCOPE_PATHS],
   });
   const sections = buildSections(commits);
   const renderedSection = renderTemplateFile(VSCODE_CHANGELOG_TEMPLATE, {

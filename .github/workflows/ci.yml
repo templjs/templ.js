@@ -146,12 +146,13 @@ jobs:
         env:
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REF: ${{ github.head_ref }}
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           pnpm run ci:changeset-guard -- \
             --base="$PR_BASE_SHA" \
             --head="$PR_HEAD_SHA" \
-            --head-ref="${{ github.head_ref }}" \
+            --head-ref="$HEAD_REF" \
             --pr-title="$PR_TITLE"
 
   docs-api-guard:

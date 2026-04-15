@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import {
   RELEASE_NOTES_TEMPLATE,
-  VSCODE_PATHS,
+  VSCODE_SCOPE_PATHS,
   buildSections,
   getCommits,
   getPreviousReleaseTag,
@@ -38,7 +38,7 @@ function main(): void {
       ? getCommits({
           fromTag: previousTag,
           toRef: tagName,
-          paths: [...VSCODE_PATHS],
+          paths: [...VSCODE_SCOPE_PATHS],
         })
       : getCommits({
           fromTag: previousTag,

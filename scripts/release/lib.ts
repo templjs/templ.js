@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { renderTemplate } from '../../src/packages/core/src/index.ts';
 
@@ -36,7 +37,7 @@ type ConventionalParts = {
   prNumber: string | null;
 };
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 export const PACKAGE_VERSION_FILES = [
   'src/packages/core/package.json',
@@ -47,7 +48,6 @@ export const PACKAGE_VERSION_FILES = [
 
 export const VSCODE_PACKAGE_FILE = 'src/extensions/vscode/package.json';
 export const VSCODE_CHANGELOG_FILE = 'src/extensions/vscode/CHANGELOG.md';
-export const VSCODE_PATHS = ['src/extensions/vscode'] as const;
 export const PACKAGE_SCOPE_PATHS = ['src/packages'] as const;
 export const VSCODE_SCOPE_PATHS = [
   'src/extensions/vscode',
@@ -55,6 +55,7 @@ export const VSCODE_SCOPE_PATHS = [
   'src/packages/volar',
   'src/packages/context-graph',
 ] as const;
+export const VSCODE_PATHS = VSCODE_SCOPE_PATHS;
 export const VSCODE_CHANGELOG_TEMPLATE = path.join(
   ROOT,
   'scripts/release/templates/vscode-changelog-entry.md.tmpl'
@@ -71,8 +72,11 @@ function runGit(args: string[]): string {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
     }).trim();
-  } catch {
-    return '';
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`git ${args.join(' ')} failed: ${message}`, {
+      cause: error,
+    });
   }
 }
 
@@ -221,7 +225,12 @@ export function getPreviousReleaseTag(kind: ReleaseKind, currentTagName?: string
     return tags.length > 0 ? tags[0].tagName : null;
   }
 
-  return tags.find((tag) => tag.tagName !== currentTagName)?.tagName ?? null;
+  const currentIndex = tags.findIndex((tag) => tag.tagName === currentTagName);
+  if (currentIndex === -1) {
+    return null;
+  }
+
+  return tags[currentIndex + 1]?.tagName ?? null;
 }
 
 function parseConventionalSummary(subject: string): ConventionalParts {
