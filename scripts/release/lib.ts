@@ -11,7 +11,6 @@ export type ReleaseCommit = {
   hash: string;
   subject: string;
   body: string;
-  files: string[];
   type: string;
   scope: string | null;
   summary: string;
@@ -256,14 +255,6 @@ function parseConventionalSummary(subject: string): ConventionalParts {
   };
 }
 
-function listCommitFiles(hash: string): string[] {
-  const output = runGit(['show', '--format=', '--name-only', hash]);
-  return output
-    .split('\n')
-    .map((file) => file.trim())
-    .filter(Boolean);
-}
-
 export function getCommits(options: {
   fromTag?: string | null;
   toRef?: string;
@@ -294,7 +285,6 @@ export function getCommits(options: {
         hash,
         subject,
         body: body?.trim() ?? '',
-        files: listCommitFiles(hash),
         type: conventional.type,
         scope: conventional.scope,
         summary: conventional.summary,

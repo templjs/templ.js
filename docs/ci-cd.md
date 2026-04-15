@@ -188,7 +188,7 @@ templjs uses GitHub Actions for automated testing, linting, security analysis, b
 
 - `GITHUB_TOKEN`: Automatically provided by GitHub
 - `VSCODE_PUBLISHER_TOKEN`: Required for VS Code Marketplace publishing
-- `NPM_TOKEN`: Optional fallback when npm trusted publishing is not configured
+- No npm publish secret is required once npm trusted publishing is configured for the published packages
 
 **Canonical Runbook**: See [Release Process](./release-process.md) for the branch strategy, manual promotion steps, and configuration details.
 
@@ -313,15 +313,22 @@ nx affected:graph --base=origin/main
 
 Configure in GitHub Settings → Secrets and variables → Actions:
 
-#### NPM_TOKEN
+#### npm Trusted Publishing
 
-- **Purpose**: Publish packages to npm registry
-- **Type**: npm automation token
-- **Scope**: Publish access to `@templjs/*` packages
+- **Purpose**: Publish `@templjs/*` packages to npm without storing a long-lived token in GitHub
+- **Type**: GitHub Actions OIDC trusted publisher configuration on npm
 - **How to Create**:
-  1. Log in to npm
-  2. Access tokens → Generate new token → Automation
-  3. Copy token and add to GitHub secrets
+  1. Run `./.github/scripts/prepare-npm-trusted-publishing.sh`
+  2. Open the emitted npm settings page for each published package
+  3. Add GitHub as a trusted publisher
+  4. Use repository `templjs/templ.js`
+  5. Use workflow filename `release.yml`
+  6. Leave the environment field blank so both prerelease and stable publish jobs can use the same workflow
+  7. Save the trusted publisher in npm
+- **Automated in-repo already**:
+  - GitHub workflow OIDC permissions
+  - npm provenance on publish
+  - prerelease and stable dist-tag selection
 
 #### VSCODE_PUBLISHER_TOKEN
 

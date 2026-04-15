@@ -360,33 +360,51 @@ Each package must exist on npmjs.com before configuring its trusted publisher. I
 pnpm --filter @templjs/core publish --access public --tag latest --dry-run
 ```
 
+Before opening npm settings pages, generate the exact per-package checklist from the repository:
+
+```bash
+cd /Users/macos/dev/templjs
+./.github/scripts/prepare-npm-trusted-publishing.sh
+```
+
+Optional network preflight:
+
+```bash
+./.github/scripts/prepare-npm-trusted-publishing.sh --check-registry
+```
+
 Once each package exists:
 
-1. Navigate to the package settings page on npm, for example:
+1. Run the helper script and keep its output open while you configure npm.
+2. Navigate to the package settings page on npm, for example:
    - <https://www.npmjs.com/package/@templjs/core/settings/access>
-2. Under "Publishing", configure GitHub as a trusted publisher:
+3. Under "Publishing", configure GitHub as a trusted publisher:
    - **GitHub repository**: `templjs/templ.js`
    - **Workflow filename**: `release.yml`
-   - **Environment names**:
-     - `prerelease` for automated staging publishes
-     - `release` for stable tag-based publishes
-3. Repeat for each published package
+   - **Environment name**: leave blank
 4. Save the trusted publisher configuration
+5. Repeat for each published package
+
+What is automated already:
+
+- GitHub-side OIDC permissions are encoded in `.github/workflows/release.yml`
+- npm publish provenance is enabled in the workflow
+- prerelease vs. stable dist-tag behavior is encoded in the workflow
+
+What remains manual:
+
+- npm trusted publisher creation is still package-by-package in the npm UI
+- initial package creation on npm, if a package has never been published before
 
 Your CI/CD workflows can now publish to npm without storing tokens as secrets.
 
 ### Required Secrets
 
-1. **NPM_TOKEN** (Legacy - to be replaced with Trusted Publishing)
-   - Purpose: Publish packages to npm registry (use Trusted Publishing instead)
-   - How to obtain: <https://www.npmjs.com/settings/~/tokens>
-   - Scope: Automation token with publish access
-   - Status: Deprecated in favor of Trusted Publishing
-2. **VSCODE_PUBLISHER_TOKEN**
+1. **VSCODE_PUBLISHER_TOKEN**
    - Purpose: Publish VS Code extension to marketplace
    - How to obtain: <https://dev.azure.com/> → Personal Access Tokens
    - Scope: Marketplace (publish)
-3. **CODECOV_TOKEN**
+2. **CODECOV_TOKEN**
    - Purpose: Upload code coverage reports
    - How to obtain: <https://codecov.io/gh/templjs/templ.js/settings>
    - Required for private repos only (optional for public)
@@ -481,7 +499,7 @@ git push -u origin main
 - [x] Repository created: `templjs/templ.js`
 - [x] Repository is public with issues enabled
 - [x] Shared long-lived branch ruleset active for `main` and `staging`
-- [x] Secrets configured: ~~NPM_TOKEN~~, VSCODE_PUBLISHER_TOKEN, CODECOV_TOKEN
+- [x] Secrets configured: VSCODE_PUBLISHER_TOKEN, CODECOV_TOKEN
 - [x] GitHub Pages enabled (if applicable)
 - [x] Initial code pushed to `main` branch
 - [ ] Issue templates visible when creating new issues

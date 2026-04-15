@@ -342,18 +342,16 @@ Create these environments:
 
 ### npm
 
-Preferred setup:
-
-- configure npm trusted publishing for each published package
-- repository: `templjs/templ.js`
-- workflow: `release.yml`
-- environments:
-  - `prerelease`
-  - `release`
-
-Fallback:
-
-- set `NPM_TOKEN`
+- configure npm trusted publishing for:
+  - `@templjs/core`
+  - `@templjs/cli`
+  - `@templjs/volar`
+  - `@templjs/context-graph`
+- run `./.github/scripts/prepare-npm-trusted-publishing.sh` to print the exact package URLs and expected trusted publisher values from the repo
+- set GitHub repository to `templjs/templ.js`
+- set workflow filename to `release.yml`
+- leave the npm trusted publisher environment name blank so both staging prereleases and stable releases can publish through the same workflow file
+- the remaining manual work is the npm web UI step for each package
 
 ### VS Code Marketplace
 

@@ -53,6 +53,7 @@ This directory contains CI/CD workflows for the templjs monorepo.
   - Computes CI-only prerelease versions without committing them back to the repo
 - **Publish Staging npm Prerelease**:
   - Publishes the fixed npm package train to dist-tag `next`
+  - Uses npm trusted publishing via GitHub Actions OIDC
   - Uses synchronized `0.0.0-staging.*` versions
 - **Publish Staging VS Code Prerelease**:
   - Publishes a VSIX built with a CI-generated next-minor plain semver version
@@ -67,14 +68,15 @@ This directory contains CI/CD workflows for the templjs monorepo.
   - Packages the VS Code extension into a VSIX and generates a checksum for extension releases
 - **Publish npm Packages**:
   - Runs only for `vX.Y.Z` tags
-  - Publishes npm packages to the correct dist-tag (`next` for prereleases, `latest` for stable releases)
-  - Prefers npm trusted publishing via GitHub OIDC and falls back to `NPM_TOKEN` when configured
+  - Publishes npm packages to dist-tag `latest`
+  - Uses npm trusted publishing via GitHub Actions OIDC
 - **Publish VS Code Extension**:
   - Runs only for `vscode-vX.Y.Z` tags
   - Uses `vsce package --no-dependencies` to avoid monorepo dependency scan failures
-  - Uses `--pre-release` when the GitHub Release is marked prerelease
+  - Requires the published GitHub Release to be stable (`prerelease: false`)
   - Publishes from `--packagePath`, not from the raw workspace tree
   - Uploads the packaged VSIX back onto the GitHub Release
+  - Leaves prerelease VS Code publishing to the separate `staging` branch flow
 
 **Features:**
 
@@ -82,7 +84,7 @@ This directory contains CI/CD workflows for the templjs monorepo.
 - ✅ Automated branch-based prereleases from `staging`
 - ✅ Separate release lanes for npm packages and the VS Code extension
 - ✅ GitHub Release-driven stable publishing with immutable release metadata
-- ✅ npm publishing with `next` and `latest` channel targets
+- ✅ npm trusted publishing via GitHub Actions OIDC with `next` and `latest` channel targets
 - ✅ VS Code Marketplace publishing with explicit prerelease/stable behavior
 - ✅ VSIX and checksum assets attached to the GitHub Release
 - ✅ Templated release notes and automated VS Code changelog refresh
@@ -155,11 +157,10 @@ Changesets configuration for release automation:
 
 See [SECRETS.md](../SECRETS.md) for detailed setup instructions.
 
-| Secret                   | Required    | Purpose                                                        |
-| ------------------------ | ----------- | -------------------------------------------------------------- |
-| `NPM_TOKEN`              | Fallback    | Publish npm packages when trusted publishing is not configured |
-| `VSCODE_PUBLISHER_TOKEN` | Yes         | Publish VS Code extension                                      |
-| `CODECOV_TOKEN`          | Recommended | Upload coverage reports                                        |
+| Secret                   | Required    | Purpose                   |
+| ------------------------ | ----------- | ------------------------- |
+| `VSCODE_PUBLISHER_TOKEN` | Yes         | Publish VS Code extension |
+| `CODECOV_TOKEN`          | Recommended | Upload coverage reports   |
 
 ## Usage
 
@@ -257,8 +258,9 @@ nx affected -t test --parallel=3
 
 ### Release Workflow Fails
 
-- Verify `NPM_TOKEN` has publish permissions if you are not using trusted publishing
-- If using trusted publishing, verify npm trusted publisher configuration matches this repository/workflow
+- Verify npm trusted publishing is configured for each `@templjs/*` package
+- Confirm the trusted publisher points to `templjs/templ.js` and workflow `release.yml`
+- Leave the npm trusted publisher environment field blank so both `prerelease` and `release` jobs can publish
 - Check package names aren't already taken on npm
 - Ensure the `@templjs` npm scope is registered
 - Confirm the tagged commit is already reachable from `main`
