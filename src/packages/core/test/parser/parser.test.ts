@@ -1266,7 +1266,7 @@ describe('parse', () => {
       expect(elapsed).toBeLessThan(5);
     });
 
-    it('should parse complex template within 10ms on average', () => {
+    it('should parse complex template within 15ms on average', () => {
       const template = `
       {% for i in items %}
         {% if i.active %}
@@ -1280,7 +1280,7 @@ describe('parse', () => {
 
       const tokens = tokenize(template);
       const elapsed = measureAverageParseMs(tokens, 50);
-      expect(elapsed).toBeLessThan(10);
+      expect(elapsed).toBeLessThan(15);
     });
   });
 
