@@ -34,7 +34,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/templjs.git",
+    "url": "https://github.com/templjs/templ.js.git",
     "directory": "src/packages/core"
   },
   "license": "Apache-2.0",

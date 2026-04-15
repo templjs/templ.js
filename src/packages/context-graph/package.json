@@ -31,5 +31,10 @@
     "graph",
     "lsp"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/templjs/templ.js.git",
+    "directory": "src/packages/context-graph"
+  },
   "license": "Apache-2.0"
 }
