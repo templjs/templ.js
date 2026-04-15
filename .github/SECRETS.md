@@ -1,4 +1,11 @@
-# GitHub Actions Secrets Configuration
+---
+id: secrets-001
+type: document
+subtype: reference
+lifecycle: active
+status: ready
+title: GitHub Actions Secrets
+---
 
 This document lists all required secrets for the templjs GitHub Actions workflows.
 

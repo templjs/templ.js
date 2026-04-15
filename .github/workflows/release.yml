@@ -163,11 +163,15 @@ jobs:
           NPM_CONFIG_PROVENANCE: 'true'
           PACKAGE_VERSION: ${{ needs.prepare-staging-prerelease.outputs.package_version }}
         run: |
-          packages=(
-            '@templjs/core'
-            '@templjs/cli'
-            '@templjs/volar'
-            '@templjs/context-graph'
+          mapfile -t packages < <(node <<'EOF'
+          const { readFileSync } = require('node:fs');
+          const changesetConfig = JSON.parse(readFileSync('.changeset/config.json', 'utf8'));
+          const fixedPackages = (changesetConfig.fixed ?? []).flat();
+          const npmPackages = fixedPackages.filter((pkgName) => pkgName.startsWith('@templjs/'));
+          for (const pkgName of npmPackages) {
+            console.log(pkgName);
+          }
+          EOF
           )
 
           for pkg in "${packages[@]}"; do
@@ -413,7 +417,7 @@ jobs:
           mapfile -t packages < <(node <<'EOF'
           const { readFileSync } = require('node:fs');
           const changesetConfig = JSON.parse(readFileSync('.changeset/config.json', 'utf8'));
-          const fixedPackages = changesetConfig.fixed?.[0] ?? [];
+          const fixedPackages = (changesetConfig.fixed ?? []).flat();
           const npmPackages = fixedPackages.filter((pkgName) => pkgName.startsWith('@templjs/'));
           for (const pkgName of npmPackages) {
             console.log(pkgName);

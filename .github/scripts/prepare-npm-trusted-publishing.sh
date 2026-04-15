@@ -155,7 +155,7 @@ while IFS= read -r row; do
     log '    Environment name: leave blank'
 
     if [ "$CHECK_REGISTRY" = 'true' ]; then
-        if npm view "${package_name}" name >/dev/null 2>&1; then
+        if npm view "${package_name}" name --registry=https://registry.npmjs.org >/dev/null 2>&1; then
             log '  Registry status: package exists on npm'
         else
             log '  Registry status: package not found on npm yet'
