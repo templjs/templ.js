@@ -1,23 +1,13 @@
 # @templjs/volar
 
-## 1.0.0-beta.1
-
-### Patch Changes
-
-- Advance prerelease sequence to align published artifacts and docs at v1.0.0-beta.1.
-
-- Updated dependencies
-  - @templjs/core@1.0.0-beta.1
-  - @templjs/context-graph@1.0.0-beta.1
-
-## 1.0.0-beta.0
+## 0.1.0
 
 ### Major Changes
 
-- Prepare v1.0.0-beta prerelease versions for all fixed-release workspace packages.
+- Initial pre-1.0 coordinated release for templjs Volar integration.
 
 ### Patch Changes
 
 - Updated dependencies
-  - @templjs/core@1.0.0-beta.0
-  - @templjs/context-graph@1.0.0-beta.0
+  - @templjs/core@0.1.0
+  - @templjs/context-graph@0.1.0

@@ -1,6 +1,6 @@
 {
   "name": "@templjs/core",
-  "version": "1.0.0-beta.1",
+  "version": "0.1.0",
   "description": "Core template parser, renderer, and query engine for templjs",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -34,7 +34,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/templjs.git",
+    "url": "https://github.com/templjs/templ.js.git",
     "directory": "src/packages/core"
   },
   "license": "Apache-2.0",

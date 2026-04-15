@@ -13,6 +13,12 @@ title: CI/CD Infrastructure
 
 Comprehensive documentation for templjs continuous integration and deployment workflows.
 
+This document is the CI/CD reference.
+
+- use [release-process.md](./release-process.md) for the human release runbook
+- use [../.github/organization-setup.md](../.github/organization-setup.md) for one-time repository and environment setup
+- use [../.github/SECRETS.md](../.github/SECRETS.md) for secret and credential lookup
+
 ## Overview
 
 templjs uses GitHub Actions for automated testing, linting, security analysis, benchmarking, and releases. All workflows are defined in `.github/workflows/`, use Nx for affected-project execution, and share a centrally pinned Node.js and pnpm toolchain from the root `package.json`.
@@ -32,10 +38,11 @@ templjs uses GitHub Actions for automated testing, linting, security analysis, b
 │  └─ Build (Nx build, Nx affected)                   │
 │                                                      │
 │  release.yml                                         │
-│  ├─ Version Packages (changesets)                   │
-│  ├─ Publish to npm                                  │
-│  ├─ Create GitHub Release                           │
-│  └─ Publish VS Code Extension                       │
+│  ├─ Maintain Version PR (changesets)                │
+│  ├─ Verify release tag + lane                       │
+│  ├─ Generate md.tmpl release notes                  │
+│  ├─ Publish npm packages OR VS Code extension       │
+│  └─ Finalize GitHub Release                         │
 │                                                      │
 │  codeql.yml                                          │
 │  ├─ Initialize CodeQL                               │
@@ -57,7 +64,7 @@ templjs uses GitHub Actions for automated testing, linting, security analysis, b
 
 ### 1. CI Workflow (`ci.yml`)
 
-**Trigger**: Manual dispatch (`workflow_dispatch`), push to `main`/`develop`, pull requests, nightly scheduled run
+**Trigger**: Manual dispatch (`workflow_dispatch`), push to `main`/`staging`, pull requests, nightly scheduled run
 
 **Purpose**: Validate code quality, tests, and builds for every change.
 
@@ -94,6 +101,16 @@ templjs uses GitHub Actions for automated testing, linting, security analysis, b
 
 **Performance Target**: <15 seconds for small PRs
 
+#### Require Changeset
+
+- Runs on pull requests only
+- Fails when a PR changes released artifact paths without adding a `.changeset/*.md` entry
+- Applies to:
+  - `src/packages/**`
+  - `src/extensions/vscode/**`
+- Skips the automated Changesets version PR on `main`
+- **Status**: Required for PR merge
+
 #### Test
 
 - Runs Vitest tests across all packages
@@ -117,49 +134,67 @@ templjs uses GitHub Actions for automated testing, linting, security analysis, b
 
 ### 2. Release Workflow (`release.yml`)
 
-**Trigger**: Manual workflow dispatch or push to `release/**` branches
+**Trigger**:
 
-**Purpose**: Automate versioning and publishing of packages.
+- Push to `staging` for automated prerelease publishing
+- Push to `main` for version PR maintenance
+- GitHub Release `published` events for stable artifact publishing
+
+**Purpose**: Automate branch-based prereleases from `staging` and stable releases from `main`.
+
+**Branch Roles**:
+
+- `staging`: prerelease integration branch
+- `main`: stable integration branch
+
+**Release Lanes**:
+
+- prerelease lane on `staging`
+  - npm packages publish with CI-generated `0.0.0-staging.*` versions to `next`
+  - VS Code publishes with a CI-generated next-minor plain semver version and `--pre-release`
+- stable lane on `main`
+  - npm packages publish from `vX.Y.Z`
+  - VS Code publishes from `vscode-vX.Y.Z`
 
 **Jobs**:
 
-#### Version and Publish
+#### Staging Prerelease
 
-1. Install dependencies
-2. Build all packages
-3. Run `changesets/action`:
-   - Reads changesets from `.changeset/`
-   - Applies semver updates from committed changesets
-   - Keeps the npm packages and VS Code extension on a fixed-version release train
-   - Updates CHANGELOG.md files
-   - Creates/updates PR with version changes
-   - Publishes to npm on merge to main
-4. Creates GitHub release with changelog
+- Detects whether the merged push affects npm packages, the VS Code extension, or both
+- Applies CI-only prerelease versions in the runner workspace
+- Publishes only the affected prerelease lane
+- Uses GitHub environment `prerelease`
+
+#### Create Version PR
+
+- Runs on pushes to `main`
+- Uses `changesets/action`
+- Applies pending Changesets
+- Keeps `@templjs/core`, `@templjs/cli`, `@templjs/volar`, and `@templjs/context-graph` on one fixed version train
+- Regenerates `src/extensions/vscode/CHANGELOG.md` automatically when `vscode-templjs` version changes
+- Opens or updates the "Version Packages" PR
+
+#### Stable Published Release
+
+- Runs only after a GitHub Release is published from a stable tag
+- Verifies the tagged commit is already on `main`
+- Verifies the tag version matches the selected stable lane in the workspace
+- Builds the workspace
+- Generates GitHub release notes from commit history using `md.tmpl`
+- Publishes only the selected stable lane
+- Updates the GitHub Release body and attaches VSIX assets for extension releases
 
 **Required Secrets**:
 
-- `NPM_TOKEN`: npm authentication token (publish access)
 - `GITHUB_TOKEN`: Automatically provided by GitHub
+- `VSCODE_PUBLISHER_TOKEN`: Required for VS Code Marketplace publishing
+- No npm publish secret is required once npm trusted publishing is configured for the published packages
 
-#### Publish VS Code Extension
-
-- Runs only for pushes to `release/**` after the version job completes
-- Uses the version already written into `src/extensions/vscode/package.json`
-- The extension package is marked `private` to prevent npm publication
-- Packages extension with `vsce package`
-- Publishes to VS Code Marketplace
-- Optionally publishes to Open VSX
-
-**Required Secrets**:
-
-- `VSCODE_PUBLISHER_TOKEN`: Personal Access Token for VS Code Marketplace
-- `OPEN_VSX_TOKEN`: Optional token for Open VSX publishing
-
-**Status**: Push-triggered for release branches, not required
+**Canonical Runbook**: See [Release Process](./release-process.md) for the branch strategy, manual promotion steps, and configuration details.
 
 ### 3. CodeQL Security Analysis (`codeql.yml`)
 
-**Trigger**: Push to main/develop, PRs, weekly scheduled (Monday 3 AM UTC)
+**Trigger**: Push to main/staging, PRs, weekly scheduled (Monday 3 AM UTC)
 
 **Purpose**: Detect security vulnerabilities using GitHub's semantic code analysis.
 
@@ -182,7 +217,7 @@ templjs uses GitHub Actions for automated testing, linting, security analysis, b
 
 ### 4. Benchmark Workflow (`benchmark.yml`)
 
-**Trigger**: Pull requests, pushes to `main`, pushes to `release/**`, nightly schedule, manual dispatch
+**Trigger**: Pull requests to `main`/`staging`, pushes to `main`, nightly schedule, manual dispatch
 
 **Purpose**: Track deterministic benchmark performance and compare PRs against the latest successful `main` baseline when available.
 
@@ -230,6 +265,9 @@ nx affected:graph --base=origin/main
 
 - ✅ Lint
 - ✅ Type Check
+- ✅ Lint Work Item Frontmatter
+- ✅ Require Changeset
+- ✅ Docs API Guard
 - ✅ Test
 - ✅ Build
 
@@ -241,10 +279,11 @@ nx affected:graph --base=origin/main
 
 **Branch Protection Rules**:
 
+- Protect both `staging` and `main`
 - Require status checks to pass before merging: Yes
-- Required checks: `Lint`, `Type Check`, `Test`, `Build`
+- Required checks: `Lint`, `Type Check`, `Lint Work Item Frontmatter`, `Require Changeset`, `Docs API Guard`, `Test`, `Build`
 - Require branches to be up to date: Yes
-- Require linear history: No
+- Require linear history: Yes
 
 ## Performance Targets
 
@@ -274,15 +313,22 @@ nx affected:graph --base=origin/main
 
 Configure in GitHub Settings → Secrets and variables → Actions:
 
-#### NPM_TOKEN
+#### npm Trusted Publishing
 
-- **Purpose**: Publish packages to npm registry
-- **Type**: npm automation token
-- **Scope**: Publish access to `@templjs/*` packages
+- **Purpose**: Publish `@templjs/*` packages to npm without storing a long-lived token in GitHub
+- **Type**: GitHub Actions OIDC trusted publisher configuration on npm
 - **How to Create**:
-  1. Log in to npm
-  2. Access tokens → Generate new token → Automation
-  3. Copy token and add to GitHub secrets
+  1. Run `./.github/scripts/prepare-npm-trusted-publishing.sh`
+  2. Open the emitted npm settings page for each published package
+  3. Add GitHub as a trusted publisher
+  4. Use repository `templjs/templ.js`
+  5. Use workflow filename `release.yml`
+  6. Leave the environment field blank so both prerelease and stable publish jobs can use the same workflow
+  7. Save the trusted publisher in npm
+- **Automated in-repo already**:
+  - GitHub workflow OIDC permissions
+  - npm provenance on publish
+  - prerelease and stable dist-tag selection
 
 #### VSCODE_PUBLISHER_TOKEN
 
@@ -304,13 +350,6 @@ Configure in GitHub Settings → Secrets and variables → Actions:
   1. Log in to [Codecov](https://about.codecov.io/)
   2. Add repository
   3. Copy token and add to GitHub secrets
-
-#### OPEN_VSX_TOKEN
-
-- **Purpose**: Publish the VS Code extension to Open VSX
-- **Type**: Open VSX access token
-- **Scope**: Publish access for the extension namespace
-- **Required**: No, the workflow continues if this publish step fails
 
 ### Automatic Secrets
 
@@ -341,31 +380,46 @@ git commit -m "chore: add changeset for vX.Y.Z"
 
 ### Release Process
 
-1. **Merge PR with changeset** to main
-2. **Changesets bot** creates/updates a "Version Packages" PR
-3. **Review Version PR**: Check updated versions and CHANGELOGs for the full fixed-version release train
-4. **Merge Version PR**: Triggers release workflow
-5. **Automated publishing**:
-   - Publishes packages to npm
-   - Creates GitHub release
-   - Publishes the VS Code extension from `src/extensions/vscode` on `release/**` pushes
+1. **Merge feature PR with changeset** to `staging`
+2. **Validate prerelease artifacts** from `staging`
+3. **Promote `staging` to `main`**
+4. **Changesets bot** creates/updates a "Version Packages" PR on `main`
+5. **Review Version PR**: Check updated versions and generated changelog content
+6. **Merge Version PR**
+7. **Create stable release tag**:
+   - `vX.Y.Z` for npm packages
+   - `vscode-vX.Y.Z` for the VS Code extension
+8. **Publish GitHub Release**
+9. **Automated stable publishing**:
+   - Publishes only the selected stable lane
+   - Updates GitHub release notes from generated markdown
+   - Attaches VSIX artifacts for extension releases
 
-The VS Code extension participates in shared versioning, but npm publication is disabled via its manifest because it is released through the Marketplace/Open VSX flow instead.
+See [Release Process](./release-process.md) for the detailed flowchart and maintainer checklist.
 
 ### Manual Release (Emergency)
 
 ```bash
-# Version packages locally
-pnpm changeset version
+# Apply version changes locally
+pnpm exec tsx scripts/release/prepare-version-pr.ts
 
-# Build and publish
+# Commit and push the generated version updates before tagging
+git add .changeset src/packages src/extensions/vscode CHANGELOG.md
+git commit -m "chore(release): prepare emergency release"
+git push origin main
+
+# Build artifacts
 pnpm build
 
-# Maintainership note: CI normally runs the publish step
-pnpm changeset publish
+# Package lane
+git tag vX.Y.Z
+git push origin vX.Y.Z
 
-# Push tags
-git push --follow-tags
+# Extension lane
+git tag vscode-vX.Y.Z
+git push origin vscode-vX.Y.Z
+
+# Publish the corresponding GitHub Release manually
 ```
 
 ## Codecov Integration

@@ -2,6 +2,11 @@
 
 This document outlines the manual steps required to set up the `templjs` GitHub organization. While some tasks can be automated (see [setup-branch-protection.sh](scripts/setup-branch-protection.sh)), others require manual configuration through the GitHub web interface.
 
+This document is the one-time setup guide for repository administration.
+
+- use [../docs/release-process.md](../docs/release-process.md) for recurring release operations
+- use [SECRETS.md](./SECRETS.md) for secret lookup and rotation details
+
 ## Prerequisites
 
 - GitHub account with permissions to create organizations
@@ -186,52 +191,141 @@ The repository includes a custom CodeQL workflow (`.github/workflows/codeql.yml`
 
 **Why Advanced?** The custom workflow includes explicit build steps (`pnpm install && pnpm build`) required for accurate analysis of TypeScript monorepo packages.
 
-## Step 6: Setup Branch Protection Rules
+## Step 6: Setup Shared Long-Lived Branch Ruleset
 
 ### Automated Setup (Recommended)
 
-Use the provided script to automate branch protection:
+Use the provided script to create or update one shared repository ruleset plus two branch-specific merge-method rulesets:
 
 ```bash
 cd /Users/macos/dev/templjs
 ./.github/scripts/setup-branch-protection.sh templjs templ.js
 ```
 
+Default behavior:
+
+- creates or updates a ruleset named `protect-long-lived-branches`
+- targets branch refs matching `refs/heads/*[!/]*`
+- applies the same required PR and status-check rules to slashless long-lived branches such as `main` and `staging`
+- creates or updates `protect-staging-merge-method` for `refs/heads/staging`
+- creates or updates `protect-main-merge-method` for `refs/heads/main`
+- excludes short-lived topic branches such as `feature/...`, `fix/...`, and `chore/...`
+- restricts merge methods as follows:
+  - `staging`: `squash` only
+  - `main`: `rebase` only
+
+Optional explicit invocation:
+
+```bash
+./.github/scripts/setup-branch-protection.sh \
+  templjs \
+  templ.js \
+  'refs/heads/*[!/]*' \
+  'protect-long-lived-branches'
+```
+
 ### Manual Setup
 
-1. Navigate to `https://github.com/templjs/templ.js/settings/branches`
-2. Click "Add branch protection rule"
-3. Configure for `main` branch:
+Create three branch rulesets.
 
-   **Branch name pattern**: `main`
+#### A. Shared Long-Lived Branch Ruleset
 
-   **Protect matching branches**:
+1. Navigate to `https://github.com/templjs/templ.js/settings/rules`
+2. Click **New ruleset** and choose **New branch ruleset**
+3. Configure:
+   - **Ruleset name**: `protect-long-lived-branches`
+   - **Enforcement status**: Active
+   - **Target branches by pattern**:
+     - include: `refs/heads/*[!/]*`
+     - exclude: none
+
+4. Add rules:
+   - ✅ Block branch creation outside the ruleset policy
+   - ✅ Block direct branch updates that bypass pull request flow
+   - ✅ Block branch deletion
+   - ✅ Block non-fast-forward updates
    - ✅ **Require a pull request before merging**
    - ✅ Require approvals: **1**
    - ✅ Dismiss stale pull request approvals when new commits are pushed
-   - ❌ Require review from Code Owners (enable when CODEOWNERS file exists)
+   - ❌ Require review from Code Owners (enable when CODEOWNERS exists)
    - ✅ Require approval of the most recent reviewable push
-   - ❌ Require conversation resolution before merging
+   - ✅ Require conversation resolution before merging
+   - ✅ Allowed merge methods:
+     - `squash`
+     - `rebase`
    - ✅ **Require status checks to pass before merging**
    - ✅ Require branches to be up to date before merging
-   - **Status checks required** (add as they become available):
+   - **Required status checks** (add them after the workflows have run at least once):
      - `Install Dependencies`
      - `Lint`
      - `Type Check`
      - `Lint Work Item Frontmatter`
-     - `Test (Node 18)`
-     - `Test (Node 20)`
+     - `Require Changeset`
+     - `Docs API Guard`
+     - `Test (Node 22, ubuntu-latest)`
+     - `Test (Node 22, macos-latest)`
+     - `Test (Node 22, windows-latest)`
+     - `Test (Node 24, ubuntu-latest)`
+     - `Test (Node 24, macos-latest)`
+     - `Test (Node 24, windows-latest)`
      - `Build`
-     - **Note**: CodeQL enforcement is handled by the `codeql.yml` workflow, not the native enforcement check
-   - ✅ **Require signed commits**
    - ✅ **Require linear history**
-   - ✅ **Require deployments to succeed before merging** (if deploying to GitHub Pages)
-   - ❌ **Lock branch** (keep branch open for commits via PRs)
-   - ❌ **Do not allow bypassing the above settings** (allow admins to bypass in emergencies)
-   - ✅ **Restrict who can push to matching branches**
-   - **Restrict pushes that create matching branches**: maintainers team only
+   - ✅ Enable Copilot code review:
+     - review on push: enabled
+     - review draft pull requests: disabled
+   - ❌ CodeQL and Benchmark checks should remain informational
 
-4. Click "Create" to save the protection rule
+5. Keep bypass actors empty unless you intentionally want exceptions
+6. Save the ruleset
+
+#### B. Staging Merge-Method Ruleset
+
+1. Create another **branch ruleset**
+2. Configure:
+   - **Ruleset name**: `protect-staging-merge-method`
+   - **Enforcement status**: Active
+   - **Target branches by pattern**:
+     - include: `refs/heads/staging`
+     - exclude: none
+3. Add only the pull request rule:
+   - ✅ **Require a pull request before merging**
+   - ✅ Require approvals: **1**
+   - ✅ Dismiss stale pull request approvals when new commits are pushed
+   - ❌ Require review from Code Owners
+   - ✅ Require approval of the most recent reviewable push
+   - ✅ Require conversation resolution before merging
+   - ✅ Allowed merge methods:
+     - `squash`
+4. Save the ruleset
+
+#### C. Main Merge-Method Ruleset
+
+1. Create another **branch ruleset**
+2. Configure:
+   - **Ruleset name**: `protect-main-merge-method`
+   - **Enforcement status**: Active
+   - **Target branches by pattern**:
+     - include: `refs/heads/main`
+     - exclude: none
+3. Add only the pull request rule:
+   - ✅ **Require a pull request before merging**
+   - ✅ Require approvals: **1**
+   - ✅ Dismiss stale pull request approvals when new commits are pushed
+   - ❌ Require review from Code Owners
+   - ✅ Require approval of the most recent reviewable push
+   - ✅ Require conversation resolution before merging
+   - ✅ Allowed merge methods:
+     - `rebase`
+4. Save the ruleset
+
+Notes:
+
+- `refs/heads/*[!/]*` is intended for slashless long-lived branches such as `main` and `staging`
+- topic branches like `feature/...` or `fix/...` are managed by PR flow, not by this shared long-lived-branch ruleset
+- `Require Changeset` should remain required for contributor PRs; the workflow skips the automated Changesets version PR automatically
+- the shared ruleset allows `squash` and `rebase`, but the branch-specific rulesets narrow this further
+- `staging` should use `squash` to keep prerelease integration history PR-shaped and easy to bisect
+- `main` should use `rebase` so promotion from `staging` preserves the already-curated linear commit sequence without merge commits
 
 ## Step 8: Configure Secrets
 
@@ -251,44 +345,98 @@ Or manually at: `https://github.com/organizations/templjs/settings/secrets/actio
 
 NPM now supports [Trusted Publishing](https://docs.npmjs.com/trusted-publishers), which eliminates the need for NPM tokens:
 
-**Note**: The `templ.js` package must exist on npmjs.com before configuring trusted publishers. If the package doesn't exist yet:
+**Note**: Trusted publishing must be configured per published package. For this repo, that means:
+
+- `@templjs/core`
+- `@templjs/cli`
+- `@templjs/volar`
+- `@templjs/context-graph`
+
+Each package must exist on npmjs.com before configuring its trusted publisher. If a package does not exist yet:
 
 ```bash
 # NOTE: You _must_ already be logged into an existing npmjs.com account from the command line (`npm login`)
-# Create a placeholder package (automated)
-# 1. npx setup-npm-trusted-publish templ.js
-# Create a placeholder package (manually)
-# 1. Ensure package.json is configured with private: false
-# 2. Run: npm publish --dry-run
-# 3. Once ready to publish: npm publish
+# Example dry run for a package
+pnpm --filter @templjs/core publish --access public --tag latest --dry-run
 ```
 
-Once the package exists:
+Before opening npm settings pages, generate the exact per-package checklist from the repository:
 
-1. Navigate to <https://www.npmjs.com/package/templ.js/settings/access>
-2. Under "Publishing", configure GitHub as a trusted publisher:
+```bash
+cd /Users/macos/dev/templjs
+./.github/scripts/prepare-npm-trusted-publishing.sh
+```
+
+Optional network preflight:
+
+```bash
+./.github/scripts/prepare-npm-trusted-publishing.sh --check-registry
+```
+
+Once each package exists:
+
+1. Run the helper script and keep its output open while you configure npm.
+2. Navigate to the package settings page on npm, for example:
+   - <https://www.npmjs.com/package/@templjs/core/settings/access>
+3. Under "Publishing", configure GitHub as a trusted publisher:
    - **GitHub repository**: `templjs/templ.js`
-   - **Workflow filename**: `publish.yml`
-   - **Environment name**: `npm` (optional, for additional protection)
-3. Save the trusted publisher configuration
+   - **Workflow filename**: `release.yml`
+   - **Environment name**: leave blank
+4. Save the trusted publisher configuration
+5. Repeat for each published package
+
+What is automated already:
+
+- GitHub-side OIDC permissions are encoded in `.github/workflows/release.yml`
+- npm publish provenance is enabled in the workflow
+- prerelease vs. stable dist-tag behavior is encoded in the workflow
+
+What remains manual:
+
+- npm trusted publisher creation is still package-by-package in the npm UI
+- initial package creation on npm, if a package has never been published before
 
 Your CI/CD workflows can now publish to npm without storing tokens as secrets.
 
 ### Required Secrets
 
-1. **NPM_TOKEN** (Legacy - to be replaced with Trusted Publishing)
-   - Purpose: Publish packages to npm registry (use Trusted Publishing instead)
-   - How to obtain: <https://www.npmjs.com/settings/~/tokens>
-   - Scope: Automation token with publish access
-   - Status: Deprecated in favor of Trusted Publishing
-2. **VSCODE_PUBLISHER_TOKEN**
+1. **VSCODE_PUBLISHER_TOKEN**
    - Purpose: Publish VS Code extension to marketplace
    - How to obtain: <https://dev.azure.com/> → Personal Access Tokens
    - Scope: Marketplace (publish)
-3. **CODECOV_TOKEN**
+2. **CODECOV_TOKEN**
    - Purpose: Upload code coverage reports
    - How to obtain: <https://codecov.io/gh/templjs/templ.js/settings>
    - Required for private repos only (optional for public)
+
+## Step 8a: Configure Release Environments
+
+The release workflow uses two GitHub environments.
+
+1. Navigate to `https://github.com/templjs/templ.js/settings/environments`
+2. Create an environment named `prerelease`
+3. Recommended settings for `prerelease`:
+   - No required reviewers by default
+   - Optional deployment branch restriction:
+     - branch `staging`
+4. Create an environment named `release`
+5. Recommended settings for `release`:
+   - Optional required reviewers: maintainers team
+   - Optional deployment tag restrictions:
+     - tags matching `v*`
+     - tags matching `vscode-v*`
+6. Keep the environment secrets empty unless you intentionally want environment-scoped overrides
+
+## Step 8b: Configure Tag Rules
+
+Protect both release tag lanes so only maintainers can create them:
+
+1. Navigate to `https://github.com/templjs/templ.js/settings/rules`
+2. Add tag protection or repository rulesets for:
+   - `v*`
+   - `vscode-v*`
+3. Restrict tag creation to the maintainers team
+4. Keep the shared long-lived branch ruleset separate from tag protection
 
 ## Step 9: Enable GitHub Pages
 
@@ -350,8 +498,8 @@ git push -u origin main
 - [x] Teams created: maintainers, contributors, documentation
 - [x] Repository created: `templjs/templ.js`
 - [x] Repository is public with issues enabled
-- [x] Branch protection active on `main` branch
-- [x] Secrets configured: ~~NPM_TOKEN~~, VSCODE_PUBLISHER_TOKEN, CODECOV_TOKEN
+- [x] Shared long-lived branch ruleset active for `main` and `staging`
+- [x] Secrets configured: VSCODE_PUBLISHER_TOKEN, CODECOV_TOKEN
 - [x] GitHub Pages enabled (if applicable)
 - [x] Initial code pushed to `main` branch
 - [ ] Issue templates visible when creating new issues
@@ -369,10 +517,10 @@ git push -u origin main
 - **Issue**: Some members don't have 2FA enabled
 - **Solution**: Remove non-compliant members, re-invite after they enable 2FA
 
-### Branch protection not working
+### Shared branch ruleset not working
 
-- **Issue**: Commits pushed directly to `main`
-- **Solution**: Ensure "Restrict who can push" is enabled and no admin bypass exceptions
+- **Issue**: A long-lived branch is not being gated as expected
+- **Solution**: Verify the ruleset is active, confirm the include pattern matches the branch ref, and check for bypass actors or overlapping rulesets
 
 ### Secrets not available in workflows
 
@@ -382,7 +530,7 @@ git push -u origin main
 ## Additional Resources
 
 - [GitHub Organizations Documentation](https://docs.github.com/en/organizations)
-- [Branch Protection Rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/about-protected-branches)
+- [GitHub Rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets)
 - [GitHub Actions Secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
 - [GitHub Pages Documentation](https://docs.github.com/en/pages)
 

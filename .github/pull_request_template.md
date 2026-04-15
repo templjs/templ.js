@@ -4,6 +4,8 @@
 
 <!-- Provide a clear and concise description of your changes -->
 
+> **Branch target**: open routine feature, fix, and chore PRs against `staging`. Reserve direct PRs to `main` for promotion and hotfix flows.
+
 ## Related Issues
 
 <!-- Link related issues using keywords: Fixes #123, Closes #456, Relates to #789 -->
@@ -34,7 +36,7 @@ Fixes #
 - [ ] I have added tests that prove my fix is effective or that my feature works
 - [ ] New and existing unit tests pass locally with my changes
 - [ ] Any dependent changes have been merged and published in downstream modules
-- [ ] I have updated the CHANGELOG.md (if applicable)
+- [ ] I have added or updated a Changeset entry when this change affects released artifacts
 
 ## Breaking Changes
 

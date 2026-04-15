@@ -4,11 +4,11 @@ on:
   push:
     branches:
       - main
-      - develop
+      - staging
   pull_request:
     branches:
       - main
-      - develop
+      - staging
   schedule:
     # Run nightly at 2 AM UTC
     - cron: '0 2 * * *'
@@ -126,6 +126,35 @@ jobs:
       - name: Validate work items
         run: pnpm run ci:frontmatter
 
+  require-changeset:
+    name: Require Changeset
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: [install, toolchain]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup workspace toolchain
+        uses: ./.github/actions/setup-workspace
+        with:
+          node-version: ${{ needs.toolchain.outputs.node_default }}
+
+      - name: Enforce Changeset for released artifacts
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REF: ${{ github.head_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pnpm run ci:changeset-guard -- \
+            --base="$PR_BASE_SHA" \
+            --head="$PR_HEAD_SHA" \
+            --head-ref="$HEAD_REF" \
+            --pr-title="$PR_TITLE"
+
   docs-api-guard:
     name: Docs API Guard
     runs-on: ubuntu-latest
@@ -197,7 +226,27 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint, test, lint-work-item-frontmatter, docs-api-guard, toolchain]
+    needs:
+      [
+        lint,
+        type-check,
+        test,
+        lint-work-item-frontmatter,
+        require-changeset,
+        docs-api-guard,
+        toolchain,
+      ]
+    if: >-
+      ${{
+        always() &&
+        needs.lint.result == 'success' &&
+        needs.type-check.result == 'success' &&
+        needs.test.result == 'success' &&
+        needs.lint-work-item-frontmatter.result == 'success' &&
+        needs.docs-api-guard.result == 'success' &&
+        needs.toolchain.result == 'success' &&
+        (needs.require-changeset.result == 'success' || needs.require-changeset.result == 'skipped')
+      }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

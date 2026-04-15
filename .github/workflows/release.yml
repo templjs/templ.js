@@ -1,23 +1,29 @@
 name: Release
 
 on:
-  workflow_dispatch:
   push:
     branches:
-      - release/**
+      - main
+      - staging
+  release:
+    types:
+      - published
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.event.release.tag_name || github.ref }}
+  cancel-in-progress: false
 
 permissions:
-  contents: write
-  pull-requests: write
-  packages: write
+  contents: read
 
 jobs:
   version:
-    name: Version and Publish
+    name: Create Version PR
+    if: github.event_name == 'push' && github.ref_name == 'main'
     runs-on: ubuntu-latest
-    outputs:
-      published: ${{ steps.changesets.outputs.published }}
-      version: ${{ steps.parsed.outputs.version }}
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -25,86 +31,488 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Node.js
+      - name: Setup workspace toolchain
         uses: ./.github/actions/setup-workspace
         with:
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: https://registry.npmjs.org
 
-      - name: Build all packages
-        run: pnpm build
-
-      - name: Create Release Pull Request or Publish
-        id: changesets
+      - name: Create or update version pull request
         uses: changesets/action@v1
         with:
-          version: pnpm changeset version
-          publish: pnpm changeset publish
+          version: pnpm exec tsx scripts/release/prepare-version-pr.ts
           commit: 'chore: version packages'
           title: 'chore: version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Parse published version
-        id: parsed
-        if: steps.changesets.outputs.published == 'true'
-        env:
-          PUBLISHED_PACKAGES: ${{ steps.changesets.outputs.publishedPackages }}
-        run: |
-          VERSION=$(echo "$PUBLISHED_PACKAGES" | jq -r '.[0].version')
-          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
-            echo "::error::Failed to parse version from publishedPackages"
-            exit 1
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Publish GitHub Release
-        if: steps.changesets.outputs.published == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.parsed.outputs.version }}
-          name: Release v${{ steps.parsed.outputs.version }}
-          body: |
-            Release v${{ steps.parsed.outputs.version }}
-
-            See CHANGELOG.md for details.
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  publish-vscode-extension:
-    name: Publish VS Code Extension
+  prepare-staging-prerelease:
+    name: Prepare Staging Prerelease
+    if: github.event_name == 'push' && github.ref_name == 'staging'
     runs-on: ubuntu-latest
-    needs: version
-    if: github.event_name == 'push' && contains(github.ref, 'release/') && needs.version.outputs.published == 'true'
+    outputs:
+      package_version: ${{ steps.scope.outputs.package_version }}
+      publish_packages: ${{ steps.scope.outputs.publish_packages }}
+      publish_vscode: ${{ steps.scope.outputs.publish_vscode }}
+      vscode_version: ${{ steps.scope.outputs.vscode_version }}
     steps:
-      - name: Checkout code
+      - name: Checkout staging branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve push comparison range
+        id: refs
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          BASE_REF="$BEFORE_SHA"
+          if [ "$BASE_REF" = '0000000000000000000000000000000000000000' ]; then
+            if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+              BASE_REF="$(git rev-parse HEAD^)"
+            else
+              BASE_REF="$(git rev-parse HEAD)"
+            fi
+          fi
+          echo "base_ref=$BASE_REF" >> "$GITHUB_OUTPUT"
+
+      - name: Setup workspace toolchain
+        uses: ./.github/actions/setup-workspace
+
+      - name: Detect prerelease scope
+        id: scope
+        run: |
+          pnpm exec tsx scripts/release/prepare-staging-prerelease.ts \
+            --base=${{ steps.refs.outputs.base_ref }} \
+            --head=${{ github.sha }} \
+            --run-number=${{ github.run_number }} \
+            --run-attempt=${{ github.run_attempt }}
+
+  build-staging-vscode-prerelease-assets:
+    name: Build Staging VS Code Prerelease Assets
+    if: github.event_name == 'push' && github.ref_name == 'staging' && needs.prepare-staging-prerelease.outputs.publish_vscode == 'true'
+    needs: prepare-staging-prerelease
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout staging branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup workspace toolchain
+        uses: ./.github/actions/setup-workspace
+
+      - name: Apply staging prerelease versions
+        env:
+          PACKAGE_VERSION: ${{ needs.prepare-staging-prerelease.outputs.package_version }}
+          PUBLISH_PACKAGES: ${{ needs.prepare-staging-prerelease.outputs.publish_packages }}
+          VSCODE_VERSION: ${{ needs.prepare-staging-prerelease.outputs.vscode_version }}
+        run: |
+          args=("--vscode-version=$VSCODE_VERSION")
+          if [ "$PUBLISH_PACKAGES" = 'true' ]; then
+            args+=("--package-version=$PACKAGE_VERSION")
+          fi
+          pnpm exec tsx scripts/release/apply-staging-prerelease.ts "${args[@]}"
+
+      - name: Build workspace
+        run: pnpm build
+
+      - name: Package VS Code extension prerelease
+        env:
+          VSCODE_VERSION: ${{ needs.prepare-staging-prerelease.outputs.vscode_version }}
+        run: |
+          mkdir -p artifacts/prerelease
+          cd src/extensions/vscode
+          npx --yes @vscode/vsce package --no-dependencies --pre-release
+          cp "vscode-templjs-$VSCODE_VERSION.vsix" ../../../artifacts/prerelease/
+          cd ../../..
+          shasum -a 256 "artifacts/prerelease/vscode-templjs-$VSCODE_VERSION.vsix" > "artifacts/prerelease/vscode-templjs-$VSCODE_VERSION.vsix.sha256"
+
+      - name: Upload prerelease assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-prerelease-assets
+          path: artifacts/prerelease
+
+  publish-staging-npm-prerelease:
+    name: Publish Staging npm Prerelease
+    if: github.event_name == 'push' && github.ref_name == 'staging' && needs.prepare-staging-prerelease.outputs.publish_packages == 'true'
+    needs: prepare-staging-prerelease
+    runs-on: ubuntu-latest
+    environment: prerelease
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout staging branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup workspace toolchain
+        uses: ./.github/actions/setup-workspace
+        with:
+          registry-url: https://registry.npmjs.org
+
+      - name: Apply staging package version
+        run: |
+          pnpm exec tsx scripts/release/apply-staging-prerelease.ts \
+            --package-version=${{ needs.prepare-staging-prerelease.outputs.package_version }} \
+            --refresh-vscode-changelog=false
+
+      - name: Build publishable packages
+        run: pnpm build
+
+      - name: Publish npm prereleases via trusted publishing
+        env:
+          NPM_CONFIG_PROVENANCE: 'true'
+          PACKAGE_VERSION: ${{ needs.prepare-staging-prerelease.outputs.package_version }}
+        run: |
+          mapfile -t packages < <(node <<'EOF'
+          const { readFileSync } = require('node:fs');
+          const changesetConfig = JSON.parse(readFileSync('.changeset/config.json', 'utf8'));
+          const fixedPackages = (changesetConfig.fixed ?? []).flat();
+          const npmPackages = fixedPackages.filter((pkgName) => pkgName.startsWith('@templjs/'));
+          for (const pkgName of npmPackages) {
+            console.log(pkgName);
+          }
+          EOF
+          )
+
+          for pkg in "${packages[@]}"; do
+            if npm view "$pkg@$PACKAGE_VERSION" version >/dev/null 2>&1; then
+              echo "$pkg@$PACKAGE_VERSION already published; skipping publish"
+            else
+              echo "Publishing $pkg@$PACKAGE_VERSION to dist-tag 'next'"
+              pnpm --filter "$pkg" publish --access public --tag next --no-git-checks
+            fi
+          done
+
+  publish-staging-vscode-prerelease:
+    name: Publish Staging VS Code Prerelease
+    if: github.event_name == 'push' && github.ref_name == 'staging' && needs.prepare-staging-prerelease.outputs.publish_vscode == 'true'
+    needs:
+      - prepare-staging-prerelease
+      - build-staging-vscode-prerelease-assets
+    runs-on: ubuntu-latest
+    environment: prerelease
+    steps:
+      - name: Checkout staging branch
         uses: actions/checkout@v4
 
       - name: Setup workspace toolchain
         uses: ./.github/actions/setup-workspace
 
-      - name: Build VS Code extension
-        run: pnpm --filter vscode-templjs build
+      - name: Download prerelease assets
+        uses: actions/download-artifact@v4
+        with:
+          name: staging-prerelease-assets
+          path: artifacts/prerelease
 
-      - name: Package VS Code extension
-        run: |
-          cd src/extensions/vscode
-          npx vsce package
-
-      - name: Publish to VS Code Marketplace
-        run: |
-          cd src/extensions/vscode
-          npx vsce publish -p ${{ secrets.VSCODE_PUBLISHER_TOKEN }}
+      - name: Publish VS Code Marketplace prerelease
         env:
           VSCE_PAT: ${{ secrets.VSCODE_PUBLISHER_TOKEN }}
+          VSCODE_VERSION: ${{ needs.prepare-staging-prerelease.outputs.vscode_version }}
+        run: |
+          npx --yes @vscode/vsce publish --pre-release --packagePath "artifacts/prerelease/vscode-templjs-$VSCODE_VERSION.vsix"
 
-      - name: Publish to Open VSX Registry
+  prepare-release:
+    name: Prepare Published Release
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    outputs:
+      channel: ${{ steps.meta.outputs.channel }}
+      npm_dist_tag: ${{ steps.meta.outputs.npm_dist_tag }}
+      package_version: ${{ steps.versions.outputs.package_version }}
+      publish_packages: ${{ steps.meta.outputs.publish_packages }}
+      publish_vscode: ${{ steps.meta.outputs.publish_vscode }}
+      release_kind: ${{ steps.meta.outputs.release_kind }}
+      tag_name: ${{ steps.meta.outputs.tag_name }}
+      vscode_prerelease: ${{ steps.meta.outputs.vscode_prerelease }}
+      vscode_version: ${{ steps.versions.outputs.vscode_version }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: refs/tags/${{ github.event.release.tag_name }}
+
+      - name: Derive release metadata
+        id: meta
+        env:
+          GITHUB_PRERELEASE: ${{ github.event.release.prerelease }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          case "$TAG_NAME" in
+            v[0-9]*.[0-9]*.[0-9]*)
+              RELEASE_KIND="packages"
+              PUBLISH_PACKAGES="true"
+              PUBLISH_VSCODE="false"
+              ;;
+            vscode-v[0-9]*.[0-9]*.[0-9]*)
+              RELEASE_KIND="vscode"
+              PUBLISH_PACKAGES="false"
+              PUBLISH_VSCODE="true"
+              ;;
+            *)
+              echo "::error::Release tag must use vX.Y.Z or vscode-vX.Y.Z"
+              exit 1
+              ;;
+          esac
+
+          if [ "$GITHUB_PRERELEASE" = 'true' ]; then
+            echo "::error::Stable release tags must not use the GitHub prerelease checkbox: $TAG_NAME"
+            exit 1
+          fi
+
+          CHANNEL="release"
+          NPM_DIST_TAG="latest"
+          VSCODE_PRERELEASE="false"
+
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "npm_dist_tag=$NPM_DIST_TAG" >> "$GITHUB_OUTPUT"
+          echo "publish_packages=$PUBLISH_PACKAGES" >> "$GITHUB_OUTPUT"
+          echo "publish_vscode=$PUBLISH_VSCODE" >> "$GITHUB_OUTPUT"
+          echo "release_kind=$RELEASE_KIND" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "vscode_prerelease=$VSCODE_PRERELEASE" >> "$GITHUB_OUTPUT"
+
+      - name: Verify release commit is already on main
+        run: |
+          git fetch origin main --force
+          if ! git merge-base --is-ancestor HEAD refs/remotes/origin/main; then
+            echo "::error::Release tag ${GITHUB_REF_NAME} must point to a commit already on origin/main"
+            exit 1
+          fi
+
+      - name: Read current workspace versions
+        id: versions
+        env:
+          RELEASE_KIND: ${{ steps.meta.outputs.release_kind }}
+          TAG_NAME: ${{ steps.meta.outputs.tag_name }}
+        run: |
+          node <<'EOF'
+          const { readFileSync } = require('node:fs');
+
+          const packageFiles = [
+            'src/packages/core/package.json',
+            'src/packages/cli/package.json',
+            'src/packages/volar/package.json',
+            'src/packages/context-graph/package.json',
+          ];
+          const packageVersions = packageFiles.map((file) => JSON.parse(readFileSync(file, 'utf8')).version);
+          const uniquePackageVersions = [...new Set(packageVersions)];
+          if (uniquePackageVersions.length !== 1) {
+            console.error(`Workspace package versions are not synchronized: ${packageVersions.join(', ')}`);
+            process.exit(1);
+          }
+
+          const packageVersion = uniquePackageVersions[0];
+          const vscodeVersion = JSON.parse(
+            readFileSync('src/extensions/vscode/package.json', 'utf8')
+          ).version;
+          const tagName = process.env.TAG_NAME;
+          const releaseKind = process.env.RELEASE_KIND;
+
+          if (releaseKind === 'packages') {
+            const expected = tagName.replace(/^v/, '');
+            if (packageVersion !== expected) {
+              console.error(`Package release tag ${tagName} does not match package version ${packageVersion}`);
+              process.exit(1);
+            }
+          }
+
+          if (releaseKind === 'vscode') {
+            const expected = tagName.replace(/^vscode-v/, '');
+            if (vscodeVersion !== expected) {
+              console.error(`VS Code release tag ${tagName} does not match extension version ${vscodeVersion}`);
+              process.exit(1);
+            }
+          }
+
+          const outputFile = process.env.GITHUB_OUTPUT;
+          require('node:fs').appendFileSync(outputFile, `package_version=${packageVersion}\n`);
+          require('node:fs').appendFileSync(outputFile, `vscode_version=${vscodeVersion}\n`);
+          EOF
+
+  build-release-assets:
+    name: Build Release Assets
+    if: github.event_name == 'release'
+    needs: prepare-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: refs/tags/${{ needs.prepare-release.outputs.tag_name }}
+
+      - name: Setup workspace toolchain
+        uses: ./.github/actions/setup-workspace
+
+      - name: Build workspace
+        run: pnpm build
+
+      - name: Generate release notes
+        run: |
+          pnpm exec tsx scripts/release/generate-release-notes.ts \
+            --tag=${{ needs.prepare-release.outputs.tag_name }} \
+            --channel=${{ needs.prepare-release.outputs.channel }} \
+            --output=artifacts/release/release-notes.md
+
+      - name: Package VS Code extension
+        if: needs.prepare-release.outputs.publish_vscode == 'true'
+        env:
+          VSCODE_PRERELEASE: ${{ needs.prepare-release.outputs.vscode_prerelease }}
         run: |
           cd src/extensions/vscode
-          npx ovsx publish -p ${{ secrets.OPEN_VSX_TOKEN }}
-        continue-on-error: true
+          if [ "$VSCODE_PRERELEASE" = 'true' ]; then
+            npx --yes @vscode/vsce package --no-dependencies --pre-release
+          else
+            npx --yes @vscode/vsce package --no-dependencies
+          fi
+
+      - name: Collect VS Code release assets
+        if: needs.prepare-release.outputs.publish_vscode == 'true'
         env:
-          OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}
+          VSCODE_VERSION: ${{ needs.prepare-release.outputs.vscode_version }}
+        run: |
+          mkdir -p artifacts/release
+          cp "src/extensions/vscode/vscode-templjs-$VSCODE_VERSION.vsix" artifacts/release/
+          shasum -a 256 "artifacts/release/vscode-templjs-$VSCODE_VERSION.vsix" > "artifacts/release/vscode-templjs-$VSCODE_VERSION.vsix.sha256"
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: artifacts/release
+
+  publish-npm-packages:
+    name: Publish npm Packages
+    if: github.event_name == 'release' && needs.prepare-release.outputs.publish_packages == 'true'
+    needs:
+      - prepare-release
+      - build-release-assets
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: refs/tags/${{ needs.prepare-release.outputs.tag_name }}
+
+      - name: Setup workspace toolchain
+        uses: ./.github/actions/setup-workspace
+        with:
+          registry-url: https://registry.npmjs.org
+
+      - name: Build publishable packages
+        run: pnpm build
+
+      - name: Publish packages via trusted publishing
+        env:
+          NPM_CONFIG_PROVENANCE: 'true'
+          NPM_DIST_TAG: ${{ needs.prepare-release.outputs.npm_dist_tag }}
+          VERSION: ${{ needs.prepare-release.outputs.package_version }}
+        run: |
+          mapfile -t packages < <(node <<'EOF'
+          const { readFileSync } = require('node:fs');
+          const changesetConfig = JSON.parse(readFileSync('.changeset/config.json', 'utf8'));
+          const fixedPackages = (changesetConfig.fixed ?? []).flat();
+          const npmPackages = fixedPackages.filter((pkgName) => pkgName.startsWith('@templjs/'));
+          for (const pkgName of npmPackages) {
+            console.log(pkgName);
+          }
+          EOF
+          )
+
+          for pkg in "${packages[@]}"; do
+            if npm view "$pkg@$VERSION" version >/dev/null 2>&1; then
+              echo "$pkg@$VERSION already published; skipping publish"
+            else
+              echo "Publishing $pkg@$VERSION to dist-tag '$NPM_DIST_TAG'"
+              pnpm --filter "$pkg" publish --access public --tag "$NPM_DIST_TAG" --no-git-checks
+            fi
+          done
+
+  publish-vscode-extension:
+    name: Publish VS Code Extension
+    if: github.event_name == 'release' && needs.prepare-release.outputs.publish_vscode == 'true'
+    needs:
+      - prepare-release
+      - build-release-assets
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup workspace toolchain
+        uses: ./.github/actions/setup-workspace
+
+      - name: Download packaged assets
+        uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: artifacts/release
+
+      - name: Publish to VS Code Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCODE_PUBLISHER_TOKEN }}
+          VSCODE_PRERELEASE: ${{ needs.prepare-release.outputs.vscode_prerelease }}
+          VSCODE_VERSION: ${{ needs.prepare-release.outputs.vscode_version }}
+        run: |
+          if [ "$VSCODE_PRERELEASE" = 'true' ]; then
+            npx --yes @vscode/vsce publish --pre-release --packagePath "artifacts/release/vscode-templjs-$VSCODE_VERSION.vsix"
+          else
+            npx --yes @vscode/vsce publish --packagePath "artifacts/release/vscode-templjs-$VSCODE_VERSION.vsix"
+          fi
+
+  finalize-release:
+    name: Finalize Release
+    if: >-
+      always() &&
+      github.event_name == 'release' &&
+      needs.prepare-release.result == 'success' &&
+      needs.build-release-assets.result == 'success' &&
+      needs.publish-npm-packages.result != 'failure' &&
+      needs.publish-vscode-extension.result != 'failure'
+    needs:
+      - prepare-release
+      - build-release-assets
+      - publish-npm-packages
+      - publish-vscode-extension
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: artifacts/release
+
+      - name: Update package release notes
+        if: needs.prepare-release.outputs.publish_vscode != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: artifacts/release/release-notes.md
+          tag_name: ${{ needs.prepare-release.outputs.tag_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update VS Code release notes and assets
+        if: needs.prepare-release.outputs.publish_vscode == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: artifacts/release/release-notes.md
+          files: |
+            artifacts/release/*.vsix
+            artifacts/release/*.sha256
+          fail_on_unmatched_files: true
+          tag_name: ${{ needs.prepare-release.outputs.tag_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

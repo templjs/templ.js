@@ -2,6 +2,11 @@
 
 Comprehensive guide to the templjs monorepo organization, naming conventions, and file locations.
 
+This document is repository reference material.
+
+- use [release-process.md](./release-process.md) for branch and release operations
+- use [ci-cd.md](./ci-cd.md) for workflow behavior and required checks
+
 ## Overview
 
 templjs is organized as a pnpm workspace monorepo using Nx for build orchestration and caching. The repository contains multiple packages, extensions, documentation, and development infrastructure.
@@ -23,8 +28,10 @@ templjs/
 │   │   ├── codeql.yml          # Security analysis
 │   │   └── benchmark.yml       # Benchmark publishing/comparison
 │   ├── ISSUE_TEMPLATE/         # Issue templates
-│   ├── PULL_REQUEST_TEMPLATE.md  # PR template
-│   └── copilot-instructions.md  # Copilot agent instructions
+│   ├── organization-setup.md   # Repository and org admin setup
+│   ├── pull_request_template.md  # PR template
+│   ├── SECRETS.md              # CI/CD secret reference
+│   └── copilot-instructions.md # Copilot agent instructions
 ├── .husky/                     # Git hooks (pre-commit, commit-msg)
 ├── .nx/                        # Nx cache (ignored by Git)
 ├── backlog/                    # Work items and planning
@@ -35,9 +42,10 @@ templjs/
 │   ├── adr/                    # Architecture Decision Records
 │   │   └── NNN-title.md        # Individual ADRs
 │   ├── prd/                    # Product Requirements Documents
-│   ├── CI_CD.md                # CI/CD infrastructure guide
-│   ├── REPOSITORY_STRUCTURE.md # This file
-│   └── RUNBOOK.md              # Operations runbook
+│   ├── ci-cd.md                # CI/CD infrastructure guide
+│   ├── coverage-strategy.md    # Coverage policy reference
+│   ├── repository-structure.md # This file
+│   └── release-process.md      # Release operations guide
 ├── examples/                   # Example templates and usage
 │   ├── README.md               # Examples overview
 │   └── *.templ                 # Example template files
@@ -233,9 +241,9 @@ Sections:
 
 **Key Files**:
 
-- `CI_CD.md`: CI/CD infrastructure
-- `REPOSITORY_STRUCTURE.md`: This file
-- `RUNBOOK.md`: Operations guide
+- `ci-cd.md`: CI/CD infrastructure
+- `repository-structure.md`: This file
+- `release-process.md`: Release operations guide
 - `DEVELOPMENT.md`: Development guide (root)
 
 ## Work Item Organization
@@ -312,25 +320,35 @@ git commit -m "chore: archive work item NNN"
 
 ### Files
 
-| Type          | Convention           | Example                     |
-| ------------- | -------------------- | --------------------------- |
-| Source files  | `kebab-case.ts`      | `template-tokenizer.ts`     |
-| Test files    | `*.test.ts`          | `lexer.test.ts`             |
-| Config files  | `lowercase.json`     | `tsconfig.json`             |
-| Documentation | `SCREAMING_KEBAB.md` | `README.md`, `CI_CD.md`     |
-| Work items    | `NNN_description.md` | `005_chevrotain_lexer.md`   |
-| ADRs          | `NNN-title.md`       | `001-language-migration.md` |
-| Examples      | `descriptive.templ`  | `user-profile.templ`        |
+| Type          | Convention           | Example                          |
+| ------------- | -------------------- | -------------------------------- |
+| Source files  | `kebab-case.ts`      | `template-tokenizer.ts`          |
+| Test files    | `*.test.ts`          | `lexer.test.ts`                  |
+| Config files  | `lowercase.json`     | `tsconfig.json`                  |
+| Documentation | `kebab-case.md`      | `release-process.md`, `ci-cd.md` |
+| Work items    | `NNN_description.md` | `005_chevrotain_lexer.md`        |
+| ADRs          | `NNN-title.md`       | `001-language-migration.md`      |
+| Examples      | `descriptive.templ`  | `user-profile.templ`             |
+
+Exceptions:
+
+- keep canonical special filenames uppercase where the toolchain expects them, such as `README.md` and `AGENTS.md`
 
 ### Branches
 
 | Type    | Convention                | Example                        |
 | ------- | ------------------------- | ------------------------------ |
+| Staging | `staging`                 | `staging`                      |
+| Main    | `main`                    | `main`                         |
 | Feature | `feature/NNN-description` | `feature/005-chevrotain-lexer` |
 | Bugfix  | `fix/NNN-description`     | `fix/042-parser-edge-case`     |
-| Release | `release/vX.Y.Z`          | `release/v1.0.0`               |
-| Hotfix  | `hotfix/vX.Y.Z`           | `hotfix/v1.0.1`                |
+| Hotfix  | `hotfix/NNN-description`  | `hotfix/101-critical-parser`   |
 | Chore   | `chore/description`       | `chore/update-deps`            |
+
+Release publication is tag-based, not branch-based:
+
+- npm package releases use `vX.Y.Z`
+- VS Code extension releases use `vscode-vX.Y.Z`
 
 ### Commits
 

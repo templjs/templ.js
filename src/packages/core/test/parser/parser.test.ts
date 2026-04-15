@@ -1239,24 +1239,34 @@ describe('parse', () => {
   });
 
   describe('Parser - Performance', () => {
-    it('should parse simple template within 5ms', () => {
-      const tokens = tokenize('Simple text here');
-      const start = performance.now();
+    const measureAverageParseMs = (
+      tokens: ReturnType<typeof tokenize>,
+      iterations = 100
+    ): number => {
       parse(tokens);
-      const elapsed = performance.now() - start;
+
+      const start = performance.now();
+      for (let i = 0; i < iterations; i++) {
+        parse(tokens);
+      }
+
+      return (performance.now() - start) / iterations;
+    };
+
+    it('should parse simple template within 5ms on average', () => {
+      const tokens = tokenize('Simple text here');
+      const elapsed = measureAverageParseMs(tokens);
       expect(elapsed).toBeLessThan(5);
     });
 
-    it('should parse 4KB template within 5ms', () => {
+    it('should parse 4KB template within 5ms on average', () => {
       const template = 'x'.repeat(4096);
       const tokens = tokenize(template);
-      const start = performance.now();
-      parse(tokens);
-      const elapsed = performance.now() - start;
+      const elapsed = measureAverageParseMs(tokens);
       expect(elapsed).toBeLessThan(5);
     });
 
-    it('should parse complex template efficiently', () => {
+    it('should parse complex template within 15ms on average', () => {
       const template = `
       {% for i in items %}
         {% if i.active %}
@@ -1269,10 +1279,8 @@ describe('parse', () => {
     `.repeat(10);
 
       const tokens = tokenize(template);
-      const start = performance.now();
-      parse(tokens);
-      const elapsed = performance.now() - start;
-      expect(elapsed).toBeLessThan(50);
+      const elapsed = measureAverageParseMs(tokens, 50);
+      expect(elapsed).toBeLessThan(15);
     });
   });
 
