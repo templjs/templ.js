@@ -111,6 +111,9 @@ jobs:
           const expected = process.env.EXPECTED_VERSION;
           const changesetConfig = JSON.parse(readFileSync('.changeset/config.json', 'utf8'));
           const fixedPackages = changesetConfig.fixed?.[0] ?? [];
+          // Keep this mapping aligned with the fixed package list in
+          // .changeset/config.json so the safeguard below can fail loudly if
+          // either side drifts.
           const packageJsonByName = {
             '@templjs/core': 'src/packages/core/package.json',
             '@templjs/cli': 'src/packages/cli/package.json',

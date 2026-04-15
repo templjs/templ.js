@@ -232,7 +232,7 @@ vsce publish
 - Track npm download metrics
 - Gather user feedback
 - Fix critical bugs within 24 hours
-- Plan v1.1 improvements
+- Plan v0.2.0 improvements
 
 ## References
 
