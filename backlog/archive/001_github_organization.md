@@ -47,7 +47,7 @@ Establish templjs organization for professional presentation and team collaborat
   - [x] Link to related issues
   - [x] Performance impact section
 - [x] Create automation script for branch protection (`.github/scripts/setup-branch-protection.sh`)
-- [x] Document manual setup steps (`.github/ORGANIZATION_SETUP.md`)
+- [x] Document manual setup steps (`.github/organization-setup.md`)
 - [x] Setup GitHub Pages for documentation site (`docs/` folder)
 - [x] Configure repository settings:
   - [x] Disable squash and rebase merges (require squash commits)

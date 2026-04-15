@@ -2,12 +2,20 @@
 
 This document lists all required secrets for the templjs GitHub Actions workflows.
 
-Release automation now follows a two-stage model:
+This document is the credential reference.
 
+- use [../docs/release-process.md](../docs/release-process.md) for the recurring branch and release workflow
+- use [organization-setup.md](./organization-setup.md) for one-time GitHub, environment, and protection setup
+
+Release automation now follows a branch-aware model:
+
+- Pushes to `staging` publish prerelease artifacts automatically:
+  - npm packages publish to dist-tag `next`
+  - VS Code publishes as Marketplace prereleases
 - Pushes to `main` maintain the Changesets version pull request.
-- Tags created from `main` publish artifacts:
-  - `pre-vX.Y.Z` publishes prerelease artifacts
-  - `vX.Y.Z` publishes stable artifacts
+- Published GitHub Releases created from stable release tags on `main` publish stable artifacts:
+  - `vX.Y.Z` tags publish npm package releases
+  - `vscode-vX.Y.Z` tags publish VS Code extension releases
 
 ## Required Secrets
 
@@ -15,15 +23,33 @@ Configure these secrets in your GitHub repository settings: Settings → Secrets
 
 ### NPM Publishing
 
-**`NPM_TOKEN`** (Required for tag-driven npm publishing)
+**`NPM_TOKEN`** (Optional fallback for npm publishing)
 
-- **Purpose**: Publish packages to npm under the `@templjs` scope and maintain `next`/`latest` dist-tags during tagged releases
+- **Purpose**: Publish packages to npm under the `@templjs` scope and maintain `next`/`latest` dist-tags when npm trusted publishing is not configured
 - **How to obtain**:
   1. Log in to npm: `npm login`
   2. Generate a token: Visit [Creating and viewing access tokens](https://docs.npmjs.com/creating-and-viewing-access-tokens)
   3. Create an "Automation" token (recommended) or "Publish" token
   4. Copy the token
 - **Where to set**: Repository Settings → Secrets and variables → Actions → New repository secret
+
+### Preferred npm Publishing Setup
+
+**Trusted publishing via GitHub OIDC** (Preferred, no secret required)
+
+- **Purpose**: Let GitHub Actions publish to npm without storing a long-lived npm token in repository secrets
+- **How to configure**:
+  1. In npm, configure this repository as a trusted publisher
+  2. Ensure the workflow has `id-token: write` permission
+  3. Allow publishing from GitHub Actions runs in this repository
+  4. Configure both workflow environments used by release automation:
+     - `prerelease`
+     - `release`
+- **Why preferred**:
+  - no long-lived publish token stored in GitHub
+  - better provenance and maintainability
+  - simpler secret rotation story
+- **Fallback**: If trusted publishing is not available yet, keep `NPM_TOKEN` configured
 
 ### VS Code Extension Publishing
 
@@ -37,6 +63,10 @@ Configure these secrets in your GitHub repository settings: Settings → Secrets
   4. Copy the token
 - **Where to set**: Repository Settings → Secrets and variables → Actions → New repository secret
 - **Documentation**: [Publishing Extensions](https://code.visualstudio.com/api/working-with-extensions/publishing-extension)
+- **Important versioning note**:
+  - VS Code prerelease and stable extension publishes should use different plain semver versions
+  - `staging` prereleases use CI-generated next-minor plain semver versions
+  - `vscode-vX.Y.Z` tags on `main` are for stable releases only
 
 ### Code Coverage
 
@@ -52,11 +82,11 @@ Configure these secrets in your GitHub repository settings: Settings → Secrets
 
 ## Secrets Summary
 
-| Secret Name              | Required    | Used In     | Purpose                   |
-| ------------------------ | ----------- | ----------- | ------------------------- |
-| `NPM_TOKEN`              | Yes         | release.yml | Publish npm packages      |
-| `VSCODE_PUBLISHER_TOKEN` | Yes         | release.yml | Publish VS Code extension |
-| `CODECOV_TOKEN`          | Recommended | ci.yml      | Upload coverage reports   |
+| Secret Name              | Required    | Used In     | Purpose                                                        |
+| ------------------------ | ----------- | ----------- | -------------------------------------------------------------- |
+| `NPM_TOKEN`              | Fallback    | release.yml | Publish npm packages when trusted publishing is not configured |
+| `VSCODE_PUBLISHER_TOKEN` | Yes         | release.yml | Publish VS Code prerelease and stable extension builds         |
+| `CODECOV_TOKEN`          | Recommended | ci.yml      | Upload coverage reports                                        |
 
 ## Default GitHub Secrets
 
@@ -90,18 +120,21 @@ Use release tags only when you are intentionally performing a real release.
 
 ### NPM Publishing Fails
 
-- Verify token has "Publish" scope
+- If using `NPM_TOKEN`, verify the token has "Publish" scope
+- If using trusted publishing, verify npm trusted publisher configuration matches this repository/workflow
 - Check package names aren't already taken
 - Ensure `@templjs` scope is registered to your npm account
-- For prerelease tags (`pre-vX.Y.Z`), packages publish to npm dist-tag `next`
-- For stable tags (`vX.Y.Z`), packages publish to npm dist-tag `latest`
+- For `staging` prereleases, packages publish to npm dist-tag `next`
+- For stable package releases from `main`, packages publish to npm dist-tag `latest`
 
 ### VS Code Extension Publishing Fails
 
 - Verify PAT has "Marketplace: Manage" scope
 - Check publisher ID exists and matches package.json
 - Ensure PAT hasn't expired
-- Ensure the tagged version in `src/extensions/vscode/package.json` is plain semver (`X.Y.Z`), not a prerelease suffix
+- For `staging`, remember the workflow computes an ephemeral plain semver prerelease version in CI
+- For stable releases, ensure the tagged version in `src/extensions/vscode/package.json` matches the `vscode-vX.Y.Z` release tag and is plain semver (`X.Y.Z`)
+- Ensure prerelease and stable publishes use distinct plain semver versions
 - The workflow packages the extension with `vsce package --no-dependencies` and publishes from `--packagePath`
 
 ### Codecov Upload Fails

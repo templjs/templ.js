@@ -48,7 +48,7 @@ test_results:
       WI-034 ADR alignment pass in cleanup branch (`cleanup/wi-034-coverage-gate`):
       - Updated coverage thresholds to ADR-006 targets in root and package vitest configs
       - Enabled `perFile: true` coverage enforcement across root, src workspace, and package configs
-      - Added `docs/COVERAGE_STRATEGY.md` to document threshold policy and remediation workflow
+      - Added `docs/coverage-strategy.md` to document threshold policy and remediation workflow
       - Re-ran package coverage commands under new thresholds:
         - `@templjs/core`: All files 96.30/91.31/99.41/96.50 (fails per-file and package branch threshold 95)
         - `@templjs/cli`: All files 96.32/88.29/100.00/96.30 (fails per-file branch thresholds in render/validate/xml/toml parsers)
@@ -145,7 +145,7 @@ Reconcile all coverage thresholds in vitest configs to align with ADR-006 target
      - Volar: lines 92%, functions 92%, branches 92%, statements 92%
      - VSCode: lines 90%, functions 90%, branches 90%, statements 90%
    - Remove inline documentation (clean separation of concerns)
-   - Document rationale in separate COVERAGE_STRATEGY.md ADR addendum
+   - Document rationale in separate `coverage-strategy.md` ADR addendum
 
 3. **Enable perFile coverage enforcement**
    - Set `perFile: true` in all vitest configs
@@ -182,7 +182,7 @@ Reconcile all coverage thresholds in vitest configs to align with ADR-006 target
 - GitHub issues or PR comments documenting coverage gaps (if any)
 - Additional test coverage to close identified gaps
 - Final coverage report confirming all packages meet ADR-006 targets
-- `COVERAGE_STRATEGY.md` document explaining threshold policy and per-file enforcement rationale
+- `coverage-strategy.md` document explaining threshold policy and per-file enforcement rationale
 
 ## Acceptance Criteria
 
@@ -202,7 +202,7 @@ Reconcile all coverage thresholds in vitest configs to align with ADR-006 target
 
 ## Coverage Variance Audit Report
 
-The WI-034 variance audit is captured in committed execution evidence under `test_results` and aligned with policy documentation in `docs/COVERAGE_STRATEGY.md`.
+The WI-034 variance audit is captured in committed execution evidence under `test_results` and aligned with policy documentation in `docs/coverage-strategy.md`.
 
 Observed variance snapshots:
 
