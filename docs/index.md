@@ -1,5 +1,5 @@
 ---
-id: docs-001
+id: docshome-001
 type: document
 subtype: guide
 lifecycle: active
