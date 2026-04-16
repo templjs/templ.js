@@ -2,8 +2,8 @@
   "generatedAt": "2026-04-13T08:30:08.769Z",
   "migrated": [
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/022_release_v1.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-022-release-v1.md",
+      "legacyPath": "backlog/022_release_v1.md",
+      "newPath": "backlog/active/work-item-022-release-v1.md",
       "legacyId": "wi-022",
       "newId": "work-item:022-release-v1",
       "generatedRecords": [
@@ -19,78 +19,78 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/023_syntax_themes_v1.1.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-023-syntax-themes-v1-1.md",
+      "legacyPath": "backlog/023_syntax_themes_v1.1.md",
+      "newPath": "backlog/active/work-item-023-syntax-themes-v1-1.md",
       "legacyId": "wi-023",
       "newId": "work-item:023-syntax-themes-v1-1",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/037_volar_crlf_offset_mapping.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-037-volar-crlf-offset-mapping.md",
+      "legacyPath": "backlog/037_volar_crlf_offset_mapping.md",
+      "newPath": "backlog/active/work-item-037-volar-crlf-offset-mapping.md",
       "legacyId": "wi-037",
       "newId": "work-item:037-volar-crlf-offset-mapping",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/041_cli_progress_zero_byte_guard.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-041-cli-progress-zero-byte-guard.md",
+      "legacyPath": "backlog/041_cli_progress_zero_byte_guard.md",
+      "newPath": "backlog/active/work-item-041-cli-progress-zero-byte-guard.md",
       "legacyId": "wi-041",
       "newId": "work-item:041-cli-progress-zero-byte-guard",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/042_cli_test_xml_override_coverage.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-042-cli-test-xml-override-coverage.md",
+      "legacyPath": "backlog/042_cli_test_xml_override_coverage.md",
+      "newPath": "backlog/active/work-item-042-cli-test-xml-override-coverage.md",
       "legacyId": "wi-042",
       "newId": "work-item:042-cli-test-xml-override-coverage",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/047_template_extraction.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-047-template-extraction.md",
+      "legacyPath": "backlog/047_template_extraction.md",
+      "newPath": "backlog/active/work-item-047-template-extraction.md",
       "legacyId": "wi-047",
       "newId": "work-item:047-template-extraction",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/048_extraction_algorithm_design.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-048-extraction-algorithm-design.md",
+      "legacyPath": "backlog/048_extraction_algorithm_design.md",
+      "newPath": "backlog/active/work-item-048-extraction-algorithm-design.md",
       "legacyId": "wi-048",
       "newId": "work-item:048-extraction-algorithm-design",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/049_extraction_engine.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-049-extraction-engine.md",
+      "legacyPath": "backlog/049_extraction_engine.md",
+      "newPath": "backlog/active/work-item-049-extraction-engine.md",
       "legacyId": "wi-049",
       "newId": "work-item:049-extraction-engine",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/050_extraction_validation.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-050-extraction-validation.md",
+      "legacyPath": "backlog/050_extraction_validation.md",
+      "newPath": "backlog/active/work-item-050-extraction-validation.md",
       "legacyId": "wi-050",
       "newId": "work-item:050-extraction-validation",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/051_extraction_cli.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-051-extraction-cli.md",
+      "legacyPath": "backlog/051_extraction_cli.md",
+      "newPath": "backlog/active/work-item-051-extraction-cli.md",
       "legacyId": "wi-051",
       "newId": "work-item:051-extraction-cli",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/052_extraction_tests.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-052-extraction-tests.md",
+      "legacyPath": "backlog/052_extraction_tests.md",
+      "newPath": "backlog/active/work-item-052-extraction-tests.md",
       "legacyId": "wi-052",
       "newId": "work-item:052-extraction-tests",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/056_context_graph_platform_epic.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-056-context-graph-platform-epic.md",
+      "legacyPath": "backlog/056_context_graph_platform_epic.md",
+      "newPath": "backlog/active/work-item-056-context-graph-platform-epic.md",
       "legacyId": "wi-056",
       "newId": "work-item:056-context-graph-platform-epic",
       "generatedRecords": [
@@ -100,8 +100,8 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/060_context_graph_hover_definition_exclusive_cutover.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-060-context-graph-hover-definition-exclusive-cutover.md",
+      "legacyPath": "backlog/060_context_graph_hover_definition_exclusive_cutover.md",
+      "newPath": "backlog/active/work-item-060-context-graph-hover-definition-exclusive-cutover.md",
       "legacyId": "wi-060",
       "newId": "work-item:060-context-graph-hover-definition-exclusive-cutover",
       "generatedRecords": [
@@ -111,155 +111,155 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/061_multiple_filter_signatures.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-061-multiple-filter-signatures.md",
+      "legacyPath": "backlog/061_multiple_filter_signatures.md",
+      "newPath": "backlog/active/work-item-061-multiple-filter-signatures.md",
       "legacyId": "wi-061",
       "newId": "work-item:061-multiple-filter-signatures",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/062_authoritative_template_parsing_and_delimiter_parity.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-062-authoritative-template-parsing-and-delimiter-parity.md",
+      "legacyPath": "backlog/062_authoritative_template_parsing_and_delimiter_parity.md",
+      "newPath": "backlog/active/work-item-062-authoritative-template-parsing-and-delimiter-parity.md",
       "legacyId": "wi-062",
       "newId": "work-item:062-authoritative-template-parsing-and-delimiter-parity",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/063_colocate_tests_with_primary_target_modules.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-063-colocate-tests-with-primary-target-modules.md",
+      "legacyPath": "backlog/063_colocate_tests_with_primary_target_modules.md",
+      "newPath": "backlog/active/work-item-063-colocate-tests-with-primary-target-modules.md",
       "legacyId": "wi-063",
       "newId": "work-item:063-colocate-tests-with-primary-target-modules",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/064_benchmark_first_repo_optimization_program.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-064-benchmark-first-repo-optimization-program.md",
+      "legacyPath": "backlog/064_benchmark_first_repo_optimization_program.md",
+      "newPath": "backlog/active/work-item-064-benchmark-first-repo-optimization-program.md",
       "legacyId": "wi-064",
       "newId": "work-item:064-benchmark-first-repo-optimization-program",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/067_extract_authoritative_core_statement_and_expression_analysis.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-067-extract-authoritative-core-statement-and-expression-analysis.md",
+      "legacyPath": "backlog/067_extract_authoritative_core_statement_and_expression_analysis.md",
+      "newPath": "backlog/active/work-item-067-extract-authoritative-core-statement-and-expression-analysis.md",
       "legacyId": "wi-067",
       "newId": "work-item:067-extract-authoritative-core-statement-and-expression-analysis",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/068_remove_remaining_volar_statement_semantic_duplication.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-068-remove-remaining-volar-statement-semantic-duplication.md",
+      "legacyPath": "backlog/068_remove_remaining_volar_statement_semantic_duplication.md",
+      "newPath": "backlog/active/work-item-068-remove-remaining-volar-statement-semantic-duplication.md",
       "legacyId": "wi-068",
       "newId": "work-item:068-remove-remaining-volar-statement-semantic-duplication",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/069_add_shared_schema_analysis_cache_in_core.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-069-add-shared-schema-analysis-cache-in-core.md",
+      "legacyPath": "backlog/069_add_shared_schema_analysis_cache_in_core.md",
+      "newPath": "backlog/active/work-item-069-add-shared-schema-analysis-cache-in-core.md",
       "legacyId": "wi-069",
       "newId": "work-item:069-add-shared-schema-analysis-cache-in-core",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/070_adopt_shared_schema_analysis_in_volar.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-070-adopt-shared-schema-analysis-in-volar.md",
+      "legacyPath": "backlog/070_adopt_shared_schema_analysis_in_volar.md",
+      "newPath": "backlog/active/work-item-070-adopt-shared-schema-analysis-in-volar.md",
       "legacyId": "wi-070",
       "newId": "work-item:070-adopt-shared-schema-analysis-in-volar",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/071_adopt_shared_schema_analysis_in_cli.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-071-adopt-shared-schema-analysis-in-cli.md",
+      "legacyPath": "backlog/071_adopt_shared_schema_analysis_in_cli.md",
+      "newPath": "backlog/active/work-item-071-adopt-shared-schema-analysis-in-cli.md",
       "legacyId": "wi-071",
       "newId": "work-item:071-adopt-shared-schema-analysis-in-cli",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/072_adopt_shared_schema_analysis_in_vscode_server.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-072-adopt-shared-schema-analysis-in-vscode-server.md",
+      "legacyPath": "backlog/072_adopt_shared_schema_analysis_in_vscode_server.md",
+      "newPath": "backlog/active/work-item-072-adopt-shared-schema-analysis-in-vscode-server.md",
       "legacyId": "wi-072",
       "newId": "work-item:072-adopt-shared-schema-analysis-in-vscode-server",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/073_optimize_context_graph_query_indexes_and_ordering.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-073-optimize-context-graph-query-indexes-and-ordering.md",
+      "legacyPath": "backlog/073_optimize_context_graph_query_indexes_and_ordering.md",
+      "newPath": "backlog/active/work-item-073-optimize-context-graph-query-indexes-and-ordering.md",
       "legacyId": "wi-073",
       "newId": "work-item:073-optimize-context-graph-query-indexes-and-ordering",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/074_reuse_query_engine_builtin_registry_and_metadata.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-074-reuse-query-engine-builtin-registry-and-metadata.md",
+      "legacyPath": "backlog/074_reuse_query_engine_builtin_registry_and_metadata.md",
+      "newPath": "backlog/active/work-item-074-reuse-query-engine-builtin-registry-and-metadata.md",
       "legacyId": "wi-074",
       "newId": "work-item:074-reuse-query-engine-builtin-registry-and-metadata",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/075_split_volar_context_graph_adapter_by_responsibility.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-075-split-volar-context-graph-adapter-by-responsibility.md",
+      "legacyPath": "backlog/075_split_volar_context_graph_adapter_by_responsibility.md",
+      "newPath": "backlog/active/work-item-075-split-volar-context-graph-adapter-by-responsibility.md",
       "legacyId": "wi-075",
       "newId": "work-item:075-split-volar-context-graph-adapter-by-responsibility",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/076_split_volar_intellisense_and_diagnostic_providers_by_responsibility.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-076-split-volar-intellisense-and-diagnostic-providers-by-responsibility.md",
+      "legacyPath": "backlog/076_split_volar_intellisense_and_diagnostic_providers_by_responsibility.md",
+      "newPath": "backlog/active/work-item-076-split-volar-intellisense-and-diagnostic-providers-by-responsibility.md",
       "legacyId": "wi-076",
       "newId": "work-item:076-split-volar-intellisense-and-diagnostic-providers-by-responsibility",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/077_split_vscode_server_into_schema_state_and_lsp_services.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-077-split-vscode-server-into-schema-state-and-lsp-services.md",
+      "legacyPath": "backlog/077_split_vscode_server_into_schema_state_and_lsp_services.md",
+      "newPath": "backlog/active/work-item-077-split-vscode-server-into-schema-state-and-lsp-services.md",
       "legacyId": "wi-077",
       "newId": "work-item:077-split-vscode-server-into-schema-state-and-lsp-services",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/078_colocate_core_and_context_graph_module_tests_with_sources.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-078-colocate-core-and-context-graph-module-tests-with-sources.md",
+      "legacyPath": "backlog/078_colocate_core_and_context_graph_module_tests_with_sources.md",
+      "newPath": "backlog/active/work-item-078-colocate-core-and-context-graph-module-tests-with-sources.md",
       "legacyId": "wi-078",
       "newId": "work-item:078-colocate-core-and-context-graph-module-tests-with-sources",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/079_colocate_volar_and_vscode_module_tests_with_sources.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-079-colocate-volar-and-vscode-module-tests-with-sources.md",
+      "legacyPath": "backlog/079_colocate_volar_and_vscode_module_tests_with_sources.md",
+      "newPath": "backlog/active/work-item-079-colocate-volar-and-vscode-module-tests-with-sources.md",
       "legacyId": "wi-079",
       "newId": "work-item:079-colocate-volar-and-vscode-module-tests-with-sources",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/080_rewrite_cli_tests_toward_behavior_first_public_workflows.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-080-rewrite-cli-tests-toward-behavior-first-public-workflows.md",
+      "legacyPath": "backlog/080_rewrite_cli_tests_toward_behavior_first_public_workflows.md",
+      "newPath": "backlog/active/work-item-080-rewrite-cli-tests-toward-behavior-first-public-workflows.md",
       "legacyId": "wi-080",
       "newId": "work-item:080-rewrite-cli-tests-toward-behavior-first-public-workflows",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/081_rewrite_volar_and_vscode_tests_toward_behavior_first_request_result_coverage.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-081-rewrite-volar-and-vscode-tests-toward-behavior-first-request-result-coverage.md",
+      "legacyPath": "backlog/081_rewrite_volar_and_vscode_tests_toward_behavior_first_request_result_coverage.md",
+      "newPath": "backlog/active/work-item-081-rewrite-volar-and-vscode-tests-toward-behavior-first-request-result-coverage.md",
       "legacyId": "wi-081",
       "newId": "work-item:081-rewrite-volar-and-vscode-tests-toward-behavior-first-request-result-coverage",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/082_remove_overlapping_test_coverage_and_add_shared_semantic_schema_fixtures.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-082-remove-overlapping-test-coverage-and-add-shared-semantic-schema-fixtures.md",
+      "legacyPath": "backlog/082_remove_overlapping_test_coverage_and_add_shared_semantic_schema_fixtures.md",
+      "newPath": "backlog/active/work-item-082-remove-overlapping-test-coverage-and-add-shared-semantic-schema-fixtures.md",
       "legacyId": "wi-082",
       "newId": "work-item:082-remove-overlapping-test-coverage-and-add-shared-semantic-schema-fixtures",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/083_document_benchmark_workflow_semantic_ownership_schema_cache_and_test_conventions.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-083-document-benchmark-workflow-semantic-ownership-schema-cache-and-test-conventions.md",
+      "legacyPath": "backlog/083_document_benchmark_workflow_semantic_ownership_schema_cache_and_test_conventions.md",
+      "newPath": "backlog/active/work-item-083-document-benchmark-workflow-semantic-ownership-schema-cache-and-test-conventions.md",
       "legacyId": "wi-083",
       "newId": "work-item:083-document-benchmark-workflow-semantic-ownership-schema-cache-and-test-conventions",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/084_template_render_whitespace_controls.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-084-template-render-whitespace-controls.md",
+      "legacyPath": "backlog/084_template_render_whitespace_controls.md",
+      "newPath": "backlog/active/work-item-084-template-render-whitespace-controls.md",
       "legacyId": "wi-084",
       "newId": "work-item:084-template-render-whitespace-controls",
       "generatedRecords": [
@@ -269,64 +269,64 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/085_structured_expression_parser_ast_migration_epic.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-085-structured-expression-parser-ast-migration-epic.md",
+      "legacyPath": "backlog/085_structured_expression_parser_ast_migration_epic.md",
+      "newPath": "backlog/active/work-item-085-structured-expression-parser-ast-migration-epic.md",
       "legacyId": "wi-085",
       "newId": "work-item:085-structured-expression-parser-ast-migration-epic",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/086_expression_ast_contract_and_semantic_ir.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-086-expression-ast-contract-and-semantic-ir.md",
+      "legacyPath": "backlog/086_expression_ast_contract_and_semantic_ir.md",
+      "newPath": "backlog/active/work-item-086-expression-ast-contract-and-semantic-ir.md",
       "legacyId": "wi-086",
       "newId": "work-item:086-expression-ast-contract-and-semantic-ir",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/087_token_driven_expression_parser_cutover.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-087-token-driven-expression-parser-cutover.md",
+      "legacyPath": "backlog/087_token_driven_expression_parser_cutover.md",
+      "newPath": "backlog/active/work-item-087-token-driven-expression-parser-cutover.md",
       "legacyId": "wi-087",
       "newId": "work-item:087-token-driven-expression-parser-cutover",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/088_multi_grammar_expression_overlay_support.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-088-multi-grammar-expression-overlay-support.md",
+      "legacyPath": "backlog/088_multi_grammar_expression_overlay_support.md",
+      "newPath": "backlog/active/work-item-088-multi-grammar-expression-overlay-support.md",
       "legacyId": "wi-088",
       "newId": "work-item:088-multi-grammar-expression-overlay-support",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/090_typedoc_coverage_ratcheting.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/active/work-item-090-typedoc-coverage-ratcheting.md",
+      "legacyPath": "backlog/090_typedoc_coverage_ratcheting.md",
+      "newPath": "backlog/active/work-item-090-typedoc-coverage-ratcheting.md",
       "legacyId": "wi-090",
       "newId": "work-item:090-typedoc-coverage-ratcheting",
       "generatedRecords": []
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/001_github_organization.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-001-github-organization.md",
+      "legacyPath": "backlog/archive/001_github_organization.md",
+      "newPath": "backlog/archive/work-item-001-github-organization.md",
       "legacyId": "wi-001",
       "newId": "work-item:001-github-organization",
       "generatedRecords": ["record-001-github-organization-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/002_monorepo_setup.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-002-monorepo-setup.md",
+      "legacyPath": "backlog/archive/002_monorepo_setup.md",
+      "newPath": "backlog/archive/work-item-002-monorepo-setup.md",
       "legacyId": "wi-002",
       "newId": "work-item:002-monorepo-setup",
       "generatedRecords": ["record-002-monorepo-setup-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/003_github_actions.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-003-github-actions.md",
+      "legacyPath": "backlog/archive/003_github_actions.md",
+      "newPath": "backlog/archive/work-item-003-github-actions.md",
       "legacyId": "wi-003",
       "newId": "work-item:003-github-actions",
       "generatedRecords": ["record-003-github-actions-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/004_precommit_hooks.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-004-precommit-hooks.md",
+      "legacyPath": "backlog/archive/004_precommit_hooks.md",
+      "newPath": "backlog/archive/work-item-004-precommit-hooks.md",
       "legacyId": "wi-004",
       "newId": "work-item:004-precommit-hooks",
       "generatedRecords": [
@@ -335,15 +335,15 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/005_chevrotain_lexer.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-005-chevrotain-lexer.md",
+      "legacyPath": "backlog/archive/005_chevrotain_lexer.md",
+      "newPath": "backlog/archive/work-item-005-chevrotain-lexer.md",
       "legacyId": "wi-005",
       "newId": "work-item:005-chevrotain-lexer",
       "generatedRecords": ["record-005-chevrotain-lexer-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/006_chevrotain_parser.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-006-chevrotain-parser.md",
+      "legacyPath": "backlog/archive/006_chevrotain_parser.md",
+      "newPath": "backlog/archive/work-item-006-chevrotain-parser.md",
       "legacyId": "wi-006",
       "newId": "work-item:006-chevrotain-parser",
       "generatedRecords": [
@@ -352,8 +352,8 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/007_ast_renderer.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-007-ast-renderer.md",
+      "legacyPath": "backlog/archive/007_ast_renderer.md",
+      "newPath": "backlog/archive/work-item-007-ast-renderer.md",
       "legacyId": "wi-007",
       "newId": "work-item:007-ast-renderer",
       "generatedRecords": [
@@ -364,8 +364,8 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/008_query_engine.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-008-query-engine.md",
+      "legacyPath": "backlog/archive/008_query_engine.md",
+      "newPath": "backlog/archive/work-item-008-query-engine.md",
       "legacyId": "wi-008",
       "newId": "work-item:008-query-engine",
       "generatedRecords": [
@@ -376,22 +376,22 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/009_lexer_tests.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-009-lexer-tests.md",
+      "legacyPath": "backlog/archive/009_lexer_tests.md",
+      "newPath": "backlog/archive/work-item-009-lexer-tests.md",
       "legacyId": "wi-009",
       "newId": "work-item:009-lexer-tests",
       "generatedRecords": ["record-009-lexer-tests-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/010_parser_tests.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-010-parser-tests.md",
+      "legacyPath": "backlog/archive/010_parser_tests.md",
+      "newPath": "backlog/archive/work-item-010-parser-tests.md",
       "legacyId": "wi-010",
       "newId": "work-item:010-parser-tests",
       "generatedRecords": ["record-010-parser-tests-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/011_renderer_tests.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-011-renderer-tests.md",
+      "legacyPath": "backlog/archive/011_renderer_tests.md",
+      "newPath": "backlog/archive/work-item-011-renderer-tests.md",
       "legacyId": "wi-011",
       "newId": "work-item:011-renderer-tests",
       "generatedRecords": [
@@ -400,64 +400,64 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/012_volar_plugin.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-012-volar-plugin.md",
+      "legacyPath": "backlog/archive/012_volar_plugin.md",
+      "newPath": "backlog/archive/work-item-012-volar-plugin.md",
       "legacyId": "wi-012",
       "newId": "work-item:012-volar-plugin",
       "generatedRecords": ["record-012-volar-plugin-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/013_syntax_highlighting.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-013-syntax-highlighting.md",
+      "legacyPath": "backlog/archive/013_syntax_highlighting.md",
+      "newPath": "backlog/archive/work-item-013-syntax-highlighting.md",
       "legacyId": "wi-013",
       "newId": "work-item:013-syntax-highlighting",
       "generatedRecords": ["record-013-syntax-highlighting-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/014_diagnostics.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-014-diagnostics.md",
+      "legacyPath": "backlog/archive/014_diagnostics.md",
+      "newPath": "backlog/archive/work-item-014-diagnostics.md",
       "legacyId": "wi-014",
       "newId": "work-item:014-diagnostics",
       "generatedRecords": ["record-014-diagnostics-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/015_intellisense.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-015-intellisense.md",
+      "legacyPath": "backlog/archive/015_intellisense.md",
+      "newPath": "backlog/archive/work-item-015-intellisense.md",
       "legacyId": "wi-015",
       "newId": "work-item:015-intellisense",
       "generatedRecords": ["record-015-intellisense-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/016_extension_tests.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-016-extension-tests.md",
+      "legacyPath": "backlog/archive/016_extension_tests.md",
+      "newPath": "backlog/archive/work-item-016-extension-tests.md",
       "legacyId": "wi-016",
       "newId": "work-item:016-extension-tests",
       "generatedRecords": ["record-016-extension-tests-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/017_cli_commands.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-017-cli-commands.md",
+      "legacyPath": "backlog/archive/017_cli_commands.md",
+      "newPath": "backlog/archive/work-item-017-cli-commands.md",
       "legacyId": "wi-017",
       "newId": "work-item:017-cli-commands",
       "generatedRecords": ["record-017-cli-commands-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/018_cli_watch_mode.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-018-cli-watch-mode.md",
+      "legacyPath": "backlog/archive/018_cli_watch_mode.md",
+      "newPath": "backlog/archive/work-item-018-cli-watch-mode.md",
       "legacyId": "wi-018",
       "newId": "work-item:018-cli-watch-mode",
       "generatedRecords": ["record-018-cli-watch-mode-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/019_cli_tests.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-019-cli-tests.md",
+      "legacyPath": "backlog/archive/019_cli_tests.md",
+      "newPath": "backlog/archive/work-item-019-cli-tests.md",
       "legacyId": "wi-019",
       "newId": "work-item:019-cli-tests",
       "generatedRecords": ["record-019-cli-tests-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/020_documentation.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-020-documentation.md",
+      "legacyPath": "backlog/archive/020_documentation.md",
+      "newPath": "backlog/archive/work-item-020-documentation.md",
       "legacyId": "wi-020",
       "newId": "work-item:020-documentation",
       "generatedRecords": [
@@ -469,8 +469,8 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/021_examples_demo.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-021-examples-demo.md",
+      "legacyPath": "backlog/archive/021_examples_demo.md",
+      "newPath": "backlog/archive/work-item-021-examples-demo.md",
       "legacyId": "wi-021",
       "newId": "work-item:021-examples-demo",
       "generatedRecords": [
@@ -480,8 +480,8 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/024_work_item_guardrails.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-024-work-item-guardrails.md",
+      "legacyPath": "backlog/archive/024_work_item_guardrails.md",
+      "newPath": "backlog/archive/work-item-024-work-item-guardrails.md",
       "legacyId": "wi-024",
       "newId": "work-item:024-work-item-guardrails",
       "generatedRecords": [
@@ -490,8 +490,8 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/025_schema_validation.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-025-schema-validation.md",
+      "legacyPath": "backlog/archive/025_schema_validation.md",
+      "newPath": "backlog/archive/work-item-025-schema-validation.md",
       "legacyId": "wi-025",
       "newId": "work-item:025-schema-validation",
       "generatedRecords": [
@@ -500,29 +500,29 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/026_cicd_scaffolding_artifact.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-026-cicd-scaffolding-artifact.md",
+      "legacyPath": "backlog/archive/026_cicd_scaffolding_artifact.md",
+      "newPath": "backlog/archive/work-item-026-cicd-scaffolding-artifact.md",
       "legacyId": "wi-026",
       "newId": "work-item:026-cicd-scaffolding-artifact",
       "generatedRecords": ["record-026-cicd-scaffolding-artifact-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/027_virtual_code_mapping.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-027-virtual-code-mapping.md",
+      "legacyPath": "backlog/archive/027_virtual_code_mapping.md",
+      "newPath": "backlog/archive/work-item-027-virtual-code-mapping.md",
       "legacyId": "wi-027",
       "newId": "work-item:027-virtual-code-mapping",
       "generatedRecords": ["record-027-virtual-code-mapping-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/028_textmate_grammar.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-028-textmate-grammar.md",
+      "legacyPath": "backlog/archive/028_textmate_grammar.md",
+      "newPath": "backlog/archive/work-item-028-textmate-grammar.md",
       "legacyId": "wi-028",
       "newId": "work-item:028-textmate-grammar",
       "generatedRecords": ["record-028-textmate-grammar-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/029_cli_signal_handling.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-029-cli-signal-handling.md",
+      "legacyPath": "backlog/archive/029_cli_signal_handling.md",
+      "newPath": "backlog/archive/work-item-029-cli-signal-handling.md",
       "legacyId": "wi-029",
       "newId": "work-item:029-cli-signal-handling",
       "generatedRecords": [
@@ -534,22 +534,22 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/030_reenable_coverage_thresholds.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-030-reenable-coverage-thresholds.md",
+      "legacyPath": "backlog/archive/030_reenable_coverage_thresholds.md",
+      "newPath": "backlog/archive/work-item-030-reenable-coverage-thresholds.md",
       "legacyId": "wi-030",
       "newId": "work-item:030-reenable-coverage-thresholds",
       "generatedRecords": ["record-030-reenable-coverage-thresholds-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/031_language_feature_tests.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-031-language-feature-tests.md",
+      "legacyPath": "backlog/archive/031_language_feature_tests.md",
+      "newPath": "backlog/archive/work-item-031-language-feature-tests.md",
       "legacyId": "wi-031",
       "newId": "work-item:031-language-feature-tests",
       "generatedRecords": ["record-031-language-feature-tests-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/032_cli_config_files.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-032-cli-config-files.md",
+      "legacyPath": "backlog/archive/032_cli_config_files.md",
+      "newPath": "backlog/archive/work-item-032-cli-config-files.md",
       "legacyId": "wi-032",
       "newId": "work-item:032-cli-config-files",
       "generatedRecords": [
@@ -559,8 +559,8 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/033_schema_parity.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-033-schema-parity.md",
+      "legacyPath": "backlog/archive/033_schema_parity.md",
+      "newPath": "backlog/archive/work-item-033-schema-parity.md",
       "legacyId": "wi-033",
       "newId": "work-item:033-schema-parity",
       "generatedRecords": [
@@ -569,8 +569,8 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/034_prerelease_coverage_quality_gate.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-034-prerelease-coverage-quality-gate.md",
+      "legacyPath": "backlog/archive/034_prerelease_coverage_quality_gate.md",
+      "newPath": "backlog/archive/work-item-034-prerelease-coverage-quality-gate.md",
       "legacyId": "wi-034",
       "newId": "work-item:034-prerelease-coverage-quality-gate",
       "generatedRecords": [
@@ -582,78 +582,78 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/035_volar_delimiter_prefix_overlap.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-035-volar-delimiter-prefix-overlap.md",
+      "legacyPath": "backlog/archive/035_volar_delimiter_prefix_overlap.md",
+      "newPath": "backlog/archive/work-item-035-volar-delimiter-prefix-overlap.md",
       "legacyId": "wi-035",
       "newId": "work-item:035-volar-delimiter-prefix-overlap",
       "generatedRecords": ["record-035-volar-delimiter-prefix-overlap-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/036_cli_short_flag_operand_parsing.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-036-cli-short-flag-operand-parsing.md",
+      "legacyPath": "backlog/archive/036_cli_short_flag_operand_parsing.md",
+      "newPath": "backlog/archive/work-item-036-cli-short-flag-operand-parsing.md",
       "legacyId": "wi-036",
       "newId": "work-item:036-cli-short-flag-operand-parsing",
       "generatedRecords": ["record-036-cli-short-flag-operand-parsing-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/038_volar_incremental_update_efficiency.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-038-volar-incremental-update-efficiency.md",
+      "legacyPath": "backlog/archive/038_volar_incremental_update_efficiency.md",
+      "newPath": "backlog/archive/work-item-038-volar-incremental-update-efficiency.md",
       "legacyId": "wi-038",
       "newId": "work-item:038-volar-incremental-update-efficiency",
       "generatedRecords": ["record-038-volar-incremental-update-efficiency-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/039_cli_validate_schema_error_messaging.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-039-cli-validate-schema-error-messaging.md",
+      "legacyPath": "backlog/archive/039_cli_validate_schema_error_messaging.md",
+      "newPath": "backlog/archive/work-item-039-cli-validate-schema-error-messaging.md",
       "legacyId": "wi-039",
       "newId": "work-item:039-cli-validate-schema-error-messaging",
       "generatedRecords": ["record-039-cli-validate-schema-error-messaging-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/040_cli_watch_mode_output_policy.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-040-cli-watch-mode-output-policy.md",
+      "legacyPath": "backlog/archive/040_cli_watch_mode_output_policy.md",
+      "newPath": "backlog/archive/work-item-040-cli-watch-mode-output-policy.md",
       "legacyId": "wi-040",
       "newId": "work-item:040-cli-watch-mode-output-policy",
       "generatedRecords": ["record-040-cli-watch-mode-output-policy-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/043_volar_delimiter_type_validation.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-043-volar-delimiter-type-validation.md",
+      "legacyPath": "backlog/archive/043_volar_delimiter_type_validation.md",
+      "newPath": "backlog/archive/work-item-043-volar-delimiter-type-validation.md",
       "legacyId": "wi-043",
       "newId": "work-item:043-volar-delimiter-type-validation",
       "generatedRecords": ["record-043-volar-delimiter-type-validation-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/044_volar_offset_mapping_fallback_staleness.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-044-volar-offset-mapping-fallback-staleness.md",
+      "legacyPath": "backlog/archive/044_volar_offset_mapping_fallback_staleness.md",
+      "newPath": "backlog/archive/work-item-044-volar-offset-mapping-fallback-staleness.md",
       "legacyId": "wi-044",
       "newId": "work-item:044-volar-offset-mapping-fallback-staleness",
       "generatedRecords": ["record-044-volar-offset-mapping-fallback-staleness-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/045_cli_remove_dead_streaming_json_code.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-045-cli-remove-dead-streaming-json-code.md",
+      "legacyPath": "backlog/archive/045_cli_remove_dead_streaming_json_code.md",
+      "newPath": "backlog/archive/work-item-045-cli-remove-dead-streaming-json-code.md",
       "legacyId": "wi-045",
       "newId": "work-item:045-cli-remove-dead-streaming-json-code",
       "generatedRecords": ["record-045-cli-remove-dead-streaming-json-code-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/046_cli_progress_reporter_newline_convention.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-046-cli-progress-reporter-newline-convention.md",
+      "legacyPath": "backlog/archive/046_cli_progress_reporter_newline_convention.md",
+      "newPath": "backlog/archive/work-item-046-cli-progress-reporter-newline-convention.md",
       "legacyId": "wi-046",
       "newId": "work-item:046-cli-progress-reporter-newline-convention",
       "generatedRecords": ["record-046-cli-progress-reporter-newline-convention-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/053_validate_schema_input_integration.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-053-validate-schema-input-integration.md",
+      "legacyPath": "backlog/archive/053_validate_schema_input_integration.md",
+      "newPath": "backlog/archive/work-item-053-validate-schema-input-integration.md",
       "legacyId": "wi-053",
       "newId": "work-item:053-validate-schema-input-integration",
       "generatedRecords": ["record-053-validate-schema-input-integration-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/054_bug_no_schema_aware_authoring.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-054-bug-no-schema-aware-authoring.md",
+      "legacyPath": "backlog/archive/054_bug_no_schema_aware_authoring.md",
+      "newPath": "backlog/archive/work-item-054-bug-no-schema-aware-authoring.md",
       "legacyId": "wi-054",
       "newId": "work-item:054-bug-no-schema-aware-authoring",
       "generatedRecords": [
@@ -668,22 +668,22 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/055_bug_no_md_lang_server_support.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-055-bug-no-md-lang-server-support.md",
+      "legacyPath": "backlog/archive/055_bug_no_md_lang_server_support.md",
+      "newPath": "backlog/archive/work-item-055-bug-no-md-lang-server-support.md",
       "legacyId": "wi-055",
       "newId": "work-item:055-bug-no-md-lang-server-support",
       "generatedRecords": ["record-055-bug-no-md-lang-server-support-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/057_context_graph_kernel_and_api.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-057-context-graph-kernel-and-api.md",
+      "legacyPath": "backlog/archive/057_context_graph_kernel_and_api.md",
+      "newPath": "backlog/archive/work-item-057-context-graph-kernel-and-api.md",
       "legacyId": "wi-057",
       "newId": "work-item:057-context-graph-kernel-and-api",
       "generatedRecords": ["record-057-context-graph-kernel-and-api-evidence-1.md"]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/058_context_graph_volar_adapter_and_semantic_reads.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-058-context-graph-volar-adapter-and-semantic-reads.md",
+      "legacyPath": "backlog/archive/058_context_graph_volar_adapter_and_semantic_reads.md",
+      "newPath": "backlog/archive/work-item-058-context-graph-volar-adapter-and-semantic-reads.md",
       "legacyId": "wi-058",
       "newId": "work-item:058-context-graph-volar-adapter-and-semantic-reads",
       "generatedRecords": [
@@ -696,8 +696,8 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/059_context_graph_api_boundary_and_rust_ready_contracts.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-059-context-graph-api-boundary-and-rust-ready-contracts.md",
+      "legacyPath": "backlog/archive/059_context_graph_api_boundary_and_rust_ready_contracts.md",
+      "newPath": "backlog/archive/work-item-059-context-graph-api-boundary-and-rust-ready-contracts.md",
       "legacyId": "wi-059",
       "newId": "work-item:059-context-graph-api-boundary-and-rust-ready-contracts",
       "generatedRecords": [
@@ -708,8 +708,8 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/065_repo_wide_benchmark_harness_and_deterministic_fixtures.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-065-repo-wide-benchmark-harness-and-deterministic-fixtures.md",
+      "legacyPath": "backlog/archive/065_repo_wide_benchmark_harness_and_deterministic_fixtures.md",
+      "newPath": "backlog/archive/work-item-065-repo-wide-benchmark-harness-and-deterministic-fixtures.md",
       "legacyId": "wi-065",
       "newId": "work-item:065-repo-wide-benchmark-harness-and-deterministic-fixtures",
       "generatedRecords": [
@@ -718,8 +718,8 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/066_publish_benchmark_baselines_and_pr_comparisons_in_cicd.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-066-publish-benchmark-baselines-and-pr-comparisons-in-cicd.md",
+      "legacyPath": "backlog/archive/066_publish_benchmark_baselines_and_pr_comparisons_in_cicd.md",
+      "newPath": "backlog/archive/work-item-066-publish-benchmark-baselines-and-pr-comparisons-in-cicd.md",
       "legacyId": "wi-066",
       "newId": "work-item:066-publish-benchmark-baselines-and-pr-comparisons-in-cicd",
       "generatedRecords": [
@@ -728,8 +728,8 @@
       ]
     },
     {
-      "legacyPath": "/Users/macos/dev/templjs/backlog/archive/089_md_host_language_activation_validation_matrix.md",
-      "newPath": "/Users/macos/dev/templjs/backlog/archive/work-item-089-md-host-language-activation-validation-matrix.md",
+      "legacyPath": "backlog/archive/089_md_host_language_activation_validation_matrix.md",
+      "newPath": "backlog/archive/work-item-089-md-host-language-activation-validation-matrix.md",
       "legacyId": "wi-089",
       "newId": "work-item:089-md-host-language-activation-validation-matrix",
       "generatedRecords": ["record-089-md-host-language-activation-validation-matrix-evidence-1.md"]

@@ -35,6 +35,10 @@ PR 23 unresolved comments:
 
 ## Tasks
 
+> **Obsolete** — This work item was closed as obsolete before tasks were completed. The planned
+> schema-validation messaging approach was superseded by a separate implementation strategy.
+> Tasks below are intentionally incomplete.
+
 - [ ] Separate "template syntax validity" from "schema validation not supported"
 - [ ] Keep `valid` reflecting syntax validation, add separate `schemaWarning`/`warnings` field OR
 - [ ] Throw explicit "schema validation not supported" error when `--schema` provided
@@ -42,6 +46,8 @@ PR 23 unresolved comments:
 - [ ] Add test cases for schema flag behavior
 
 ## Acceptance Criteria
+
+> **Obsolete** — Acceptance criteria were not evaluated; the item was closed before implementation.
 
 - [ ] Syntactically valid templates with `--schema` don't report as "has errors"
 - [ ] Clear error message explains schema validation not yet implemented

@@ -21,7 +21,7 @@ Maintain work items following structured lifecycle and validation rules.
 - **Directory layout**:
   - Active work items: `backlog/active/`
   - Archived work items: `backlog/archive/`
-  - Evidence records: `backlog/records/`
+  - Evidence records: `backlog/records/` _(planned; not yet created — wikilink refs are forward-looking)_
   - Migration/audit artifacts: `backlog/audit/`
 - **Closure evidence**: linked records in `links.evidence` replace inline `test_results`
 
