@@ -1,0 +1,18 @@
+{
+  "roots": {
+    "backlog": "backlog",
+    "active": "backlog/active",
+    "archive": "backlog/archive",
+    "records": "backlog/records",
+    "audit": "backlog/audit"
+  },
+  "automation": {
+    "autoCloseOnMerge": false,
+    "autoEvidenceFromWorkflowRuns": true,
+    "preserveCommitMap": true
+  },
+  "migration": {
+    "legacyActive": "backlog",
+    "legacyArchive": "backlog/archive"
+  }
+}

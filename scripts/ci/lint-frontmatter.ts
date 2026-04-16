@@ -1,13 +1,18 @@
 import { existsSync, readFileSync, readdirSync } from 'fs';
-import { isAbsolute, join, normalize, relative, resolve } from 'path';
+import { dirname, isAbsolute, join, normalize, relative, resolve } from 'path';
 import { spawnSync } from 'child_process';
 import * as yaml from 'yaml';
-import { Ajv, ValidateFunction } from 'ajv';
+import { Ajv as LegacyAjv } from 'ajv';
+import type { ValidateFunction } from 'ajv';
+import Ajv from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import { fileURLToPath } from 'url';
 
+const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const BACKLOG_DIR = join(process.cwd(), 'backlog');
-const SCHEMA_DIR = join(fileURLToPath(import.meta.url), '..', '..', '..', 'schemas', 'frontmatter');
+const SCHEMAS_ROOT = join(SCRIPT_DIR, '..', '..', 'schemas');
+const SCHEMA_DIR = join(SCHEMAS_ROOT, 'frontmatter');
+const WORK_MANAGEMENT_SCHEMA_DIR = join(SCHEMAS_ROOT, 'work-management');
 
 interface SchemaMap {
   byType: Record<string, string>;
@@ -22,6 +27,12 @@ interface WorkItemRef {
   file: string;
   id: string;
   title: string;
+}
+
+interface AjvLike {
+  addSchema: (schema: Record<string, unknown>) => AjvLike;
+  getSchema: (keyRef: string) => ValidateFunction<unknown> | undefined;
+  compile: (schema: Record<string, unknown>) => ValidateFunction<unknown>;
 }
 
 /**
@@ -42,7 +53,19 @@ function parseJsonFile<T>(filePath: string): T {
 }
 
 function resolveSchemaPath(schemaPath: string): string {
-  return join(SCHEMA_DIR, schemaPath.replace(/^\.\/+/, ''));
+  const normalized = schemaPath.replace(/^\.\/+/, '');
+  const workspaceCandidate = join(process.cwd(), normalized);
+  if (existsSync(workspaceCandidate)) {
+    return workspaceCandidate;
+  }
+
+  const schemaRelative = normalized.replace(/^schemas\//, '');
+  const rootCandidate = join(SCHEMAS_ROOT, schemaRelative);
+  if (existsSync(rootCandidate)) {
+    return rootCandidate;
+  }
+
+  return join(SCHEMA_DIR, schemaRelative);
 }
 
 function collectSchemaFiles(dirPath: string): string[] {
@@ -58,6 +81,25 @@ function collectSchemaFiles(dirPath: string): string[] {
   }
 
   return files;
+}
+
+function extractCanonicalRelationshipDependencies(content: string): string[] {
+  const sectionMatch = content.match(/^## Relationships\s*\n([\s\S]*?)(?=^##\s|$)/m);
+  if (!sectionMatch) {
+    return [];
+  }
+
+  const refs: string[] = [];
+  const wikilinkRegex = /\[\[([^\]]+)\]\]/g;
+
+  for (const match of sectionMatch[1].matchAll(wikilinkRegex)) {
+    const canonicalRef = match[1].split('|', 1)[0].trim();
+    if (canonicalRef) {
+      refs.push(canonicalRef);
+    }
+  }
+
+  return refs;
 }
 
 function collectBacklogMarkdownFiles(dirPath: string, relativePrefix = ''): string[] {
@@ -84,7 +126,7 @@ function collectBacklogMarkdownFiles(dirPath: string, relativePrefix = ''): stri
  * Load and compile JSON schemas with Ajv
  */
 function loadSchemas() {
-  const ajv = new Ajv({
+  const ajv = new LegacyAjv({
     schemas: [],
     strict: false,
     allErrors: true,
@@ -92,12 +134,24 @@ function loadSchemas() {
     validateSchema: false, // Skip meta-schema validation (we trust our schemas)
   });
 
+  const workManagementAjv = new Ajv({
+    schemas: [],
+    strict: false,
+    allErrors: true,
+    verbose: true,
+    validateSchema: false,
+  });
+
   addFormats(ajv);
+  addFormats(workManagementAjv);
 
   const schemaMapPath = join(SCHEMA_DIR, 'schema-map.json');
   const schemaMap = parseJsonFile<SchemaMap>(schemaMapPath);
   const supportedTypes = Object.keys(schemaMap.byType).sort();
-  const schemaFiles = collectSchemaFiles(SCHEMA_DIR).sort();
+  const schemaFiles = [
+    ...collectSchemaFiles(SCHEMA_DIR),
+    ...collectSchemaFiles(WORK_MANAGEMENT_SCHEMA_DIR),
+  ].sort();
 
   for (const schemaFile of schemaFiles) {
     const relativePath = toPosixPath(relative(SCHEMA_DIR, schemaFile));
@@ -111,6 +165,7 @@ function loadSchemas() {
 
     const schema = parseJsonFile<Record<string, unknown>>(schemaFile);
     ajv.addSchema(schema);
+    workManagementAjv.addSchema(schema);
   }
 
   const baseSchema = parseJsonFile<{ $defs?: { statusTransitions?: { properties?: object } } }>(
@@ -122,6 +177,7 @@ function loadSchemas() {
   >;
 
   const validators = new Map<string, ValidateFunction<unknown>>();
+  const schemaValidators = new Map<string, ValidateFunction<unknown>>();
   for (const type of supportedTypes) {
     const latestSchemaPath = join(SCHEMA_DIR, 'by-type', type, 'latest.json');
     if (!existsSync(latestSchemaPath)) {
@@ -132,7 +188,60 @@ function loadSchemas() {
     validators.set(type, ajv.compile(schema));
   }
 
-  return { validators, statusTransitions, supportedTypes };
+  return {
+    ajv,
+    workManagementAjv,
+    validators,
+    schemaValidators,
+    statusTransitions,
+    supportedTypes,
+  };
+}
+
+function selectAjvForSchemaPath(
+  schemaPath: string,
+  ajv: AjvLike,
+  workManagementAjv: AjvLike
+): AjvLike {
+  return schemaPath.startsWith(WORK_MANAGEMENT_SCHEMA_DIR) ? workManagementAjv : ajv;
+}
+
+function resolveValidatorForFrontmatter(
+  ajv: AjvLike,
+  workManagementAjv: AjvLike,
+  validators: Map<string, ValidateFunction<unknown>>,
+  schemaValidators: Map<string, ValidateFunction<unknown>>,
+  frontmatter: Record<string, unknown>
+): ValidateFunction<unknown> | undefined {
+  const schemaRef = typeof frontmatter.$schema === 'string' ? frontmatter.$schema : null;
+
+  if (schemaRef) {
+    const resolvedPath = resolveSchemaPath(schemaRef);
+    if (existsSync(resolvedPath)) {
+      const selectedAjv = selectAjvForSchemaPath(resolvedPath, ajv, workManagementAjv);
+      const cachedValidator = schemaValidators.get(resolvedPath);
+      if (cachedValidator) {
+        return cachedValidator;
+      }
+
+      const schema = parseJsonFile<Record<string, unknown>>(resolvedPath);
+      const schemaId = typeof schema.$id === 'string' ? schema.$id : null;
+      if (schemaId) {
+        const registeredValidator = selectedAjv.getSchema(schemaId);
+        if (registeredValidator) {
+          schemaValidators.set(resolvedPath, registeredValidator);
+          return registeredValidator;
+        }
+      }
+
+      const compiledValidator = selectedAjv.compile(schema);
+      schemaValidators.set(resolvedPath, compiledValidator);
+      return compiledValidator;
+    }
+  }
+
+  const type = typeof frontmatter.type === 'string' ? frontmatter.type : null;
+  return type ? validators.get(type) : undefined;
 }
 
 /**
@@ -245,7 +354,14 @@ function resolveFilesToValidate(allBacklogFiles: string[], cliArgs: string[]): s
  * Main validation function
  */
 function validateFrontmatter(): boolean {
-  const { validators, statusTransitions, supportedTypes } = loadSchemas();
+  const {
+    ajv,
+    workManagementAjv,
+    validators,
+    schemaValidators,
+    statusTransitions,
+    supportedTypes,
+  } = loadSchemas();
   const allBacklogFiles = collectBacklogMarkdownFiles(BACKLOG_DIR);
   const files = resolveFilesToValidate(allBacklogFiles, process.argv.slice(2));
   let hasViolations = false;
@@ -302,7 +418,13 @@ function validateFrontmatter(): boolean {
       const content = readFileSync(filePath, 'utf-8');
       const frontmatter = parseFrontmatter(content);
       const type = frontmatter.type;
-      const validator = typeof type === 'string' ? validators.get(type) : undefined;
+      const validator = resolveValidatorForFrontmatter(
+        ajv,
+        workManagementAjv,
+        validators,
+        schemaValidators,
+        frontmatter
+      );
       let hasItemViolations = false;
 
       if (!validator) {
@@ -358,16 +480,20 @@ function validateFrontmatter(): boolean {
           console.error(`   /status: ${transitionError}`);
         }
 
-        const dependsOn = Array.isArray(frontmatter.links?.depends_on)
+        const legacyDependsOn = Array.isArray(frontmatter.links?.depends_on)
           ? (frontmatter.links.depends_on as string[])
           : [];
+        const canonicalDependsOn = extractCanonicalRelationshipDependencies(content).map(
+          (ref) => `[[${ref}]]`
+        );
+        const dependsOn = [...legacyDependsOn, ...canonicalDependsOn];
 
         if (dependsOn.length > 0) {
           for (const dep of dependsOn) {
             // Extract work item reference from wikilink format [[xxx]]
             const wikilinkMatch = dep.match(/^\[\[([^\]]+)\]\]$/);
             if (wikilinkMatch) {
-              const depRef = wikilinkMatch[1];
+              const depRef = wikilinkMatch[1].split('|', 1)[0].trim();
               const depItem = workItemsMap.get(depRef);
 
               if (!depItem) {
@@ -387,6 +513,19 @@ function validateFrontmatter(): boolean {
 
                 console.error(
                   `   /links/depends_on: Dependency '${dep}' (${depItem.id}: ${depItem.title}) must be 'closed' but is '${depItem.status}'`
+                );
+              } else if (
+                status === 'in-progress' &&
+                !['in-progress', 'ready-for-review', 'closed'].includes(depItem.status)
+              ) {
+                hasViolations = true;
+                hasItemViolations = true;
+                if (!validator.errors || validator.errors.length === 0) {
+                  console.error(`❌ ${file}`);
+                }
+
+                console.error(
+                  `   /links/depends_on: Dependency '${dep}' (${depItem.id}: ${depItem.title}) must be 'in-progress', 'ready-for-review', or 'closed' but is '${depItem.status}'`
                 );
               }
             }
