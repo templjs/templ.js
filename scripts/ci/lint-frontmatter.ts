@@ -188,7 +188,14 @@ function loadSchemas() {
     validators.set(type, ajv.compile(schema));
   }
 
-  return { ajv, workManagementAjv, validators, schemaValidators, statusTransitions, supportedTypes };
+  return {
+    ajv,
+    workManagementAjv,
+    validators,
+    schemaValidators,
+    statusTransitions,
+    supportedTypes,
+  };
 }
 
 function selectAjvForSchemaPath(
@@ -347,7 +354,14 @@ function resolveFilesToValidate(allBacklogFiles: string[], cliArgs: string[]): s
  * Main validation function
  */
 function validateFrontmatter(): boolean {
-  const { ajv, workManagementAjv, validators, schemaValidators, statusTransitions, supportedTypes } = loadSchemas();
+  const {
+    ajv,
+    workManagementAjv,
+    validators,
+    schemaValidators,
+    statusTransitions,
+    supportedTypes,
+  } = loadSchemas();
   const allBacklogFiles = collectBacklogMarkdownFiles(BACKLOG_DIR);
   const files = resolveFilesToValidate(allBacklogFiles, process.argv.slice(2));
   let hasViolations = false;
