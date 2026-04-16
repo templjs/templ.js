@@ -1,0 +1,830 @@
+{
+  "generatedAt": "2026-04-13T08:30:08.769Z",
+  "migrated": [
+    {
+      "legacyPath": "backlog/022_release_v1.md",
+      "newPath": "backlog/active/work-item-022-release-v1.md",
+      "legacyId": "wi-022",
+      "newId": "work-item:022-release-v1",
+      "generatedRecords": [
+        "record-022-release-v1-evidence-1.md",
+        "record-022-release-v1-evidence-2.md",
+        "record-022-release-v1-evidence-3.md",
+        "record-022-release-v1-evidence-4.md",
+        "record-022-release-v1-evidence-5.md",
+        "record-022-release-v1-evidence-6.md",
+        "record-022-release-v1-evidence-7.md",
+        "record-022-release-v1-evidence-8.md",
+        "record-022-release-v1-evidence-9.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/023_syntax_themes_v1.1.md",
+      "newPath": "backlog/active/work-item-023-syntax-themes-v1-1.md",
+      "legacyId": "wi-023",
+      "newId": "work-item:023-syntax-themes-v1-1",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/037_volar_crlf_offset_mapping.md",
+      "newPath": "backlog/active/work-item-037-volar-crlf-offset-mapping.md",
+      "legacyId": "wi-037",
+      "newId": "work-item:037-volar-crlf-offset-mapping",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/041_cli_progress_zero_byte_guard.md",
+      "newPath": "backlog/active/work-item-041-cli-progress-zero-byte-guard.md",
+      "legacyId": "wi-041",
+      "newId": "work-item:041-cli-progress-zero-byte-guard",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/042_cli_test_xml_override_coverage.md",
+      "newPath": "backlog/active/work-item-042-cli-test-xml-override-coverage.md",
+      "legacyId": "wi-042",
+      "newId": "work-item:042-cli-test-xml-override-coverage",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/047_template_extraction.md",
+      "newPath": "backlog/active/work-item-047-template-extraction.md",
+      "legacyId": "wi-047",
+      "newId": "work-item:047-template-extraction",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/048_extraction_algorithm_design.md",
+      "newPath": "backlog/active/work-item-048-extraction-algorithm-design.md",
+      "legacyId": "wi-048",
+      "newId": "work-item:048-extraction-algorithm-design",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/049_extraction_engine.md",
+      "newPath": "backlog/active/work-item-049-extraction-engine.md",
+      "legacyId": "wi-049",
+      "newId": "work-item:049-extraction-engine",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/050_extraction_validation.md",
+      "newPath": "backlog/active/work-item-050-extraction-validation.md",
+      "legacyId": "wi-050",
+      "newId": "work-item:050-extraction-validation",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/051_extraction_cli.md",
+      "newPath": "backlog/active/work-item-051-extraction-cli.md",
+      "legacyId": "wi-051",
+      "newId": "work-item:051-extraction-cli",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/052_extraction_tests.md",
+      "newPath": "backlog/active/work-item-052-extraction-tests.md",
+      "legacyId": "wi-052",
+      "newId": "work-item:052-extraction-tests",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/056_context_graph_platform_epic.md",
+      "newPath": "backlog/active/work-item-056-context-graph-platform-epic.md",
+      "legacyId": "wi-056",
+      "newId": "work-item:056-context-graph-platform-epic",
+      "generatedRecords": [
+        "record-056-context-graph-platform-epic-evidence-1.md",
+        "record-056-context-graph-platform-epic-evidence-2.md",
+        "record-056-context-graph-platform-epic-evidence-3.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/060_context_graph_hover_definition_exclusive_cutover.md",
+      "newPath": "backlog/active/work-item-060-context-graph-hover-definition-exclusive-cutover.md",
+      "legacyId": "wi-060",
+      "newId": "work-item:060-context-graph-hover-definition-exclusive-cutover",
+      "generatedRecords": [
+        "record-060-context-graph-hover-definition-exclusive-cutover-evidence-1.md",
+        "record-060-context-graph-hover-definition-exclusive-cutover-evidence-2.md",
+        "record-060-context-graph-hover-definition-exclusive-cutover-evidence-3.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/061_multiple_filter_signatures.md",
+      "newPath": "backlog/active/work-item-061-multiple-filter-signatures.md",
+      "legacyId": "wi-061",
+      "newId": "work-item:061-multiple-filter-signatures",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/062_authoritative_template_parsing_and_delimiter_parity.md",
+      "newPath": "backlog/active/work-item-062-authoritative-template-parsing-and-delimiter-parity.md",
+      "legacyId": "wi-062",
+      "newId": "work-item:062-authoritative-template-parsing-and-delimiter-parity",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/063_colocate_tests_with_primary_target_modules.md",
+      "newPath": "backlog/active/work-item-063-colocate-tests-with-primary-target-modules.md",
+      "legacyId": "wi-063",
+      "newId": "work-item:063-colocate-tests-with-primary-target-modules",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/064_benchmark_first_repo_optimization_program.md",
+      "newPath": "backlog/active/work-item-064-benchmark-first-repo-optimization-program.md",
+      "legacyId": "wi-064",
+      "newId": "work-item:064-benchmark-first-repo-optimization-program",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/067_extract_authoritative_core_statement_and_expression_analysis.md",
+      "newPath": "backlog/active/work-item-067-extract-authoritative-core-statement-and-expression-analysis.md",
+      "legacyId": "wi-067",
+      "newId": "work-item:067-extract-authoritative-core-statement-and-expression-analysis",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/068_remove_remaining_volar_statement_semantic_duplication.md",
+      "newPath": "backlog/active/work-item-068-remove-remaining-volar-statement-semantic-duplication.md",
+      "legacyId": "wi-068",
+      "newId": "work-item:068-remove-remaining-volar-statement-semantic-duplication",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/069_add_shared_schema_analysis_cache_in_core.md",
+      "newPath": "backlog/active/work-item-069-add-shared-schema-analysis-cache-in-core.md",
+      "legacyId": "wi-069",
+      "newId": "work-item:069-add-shared-schema-analysis-cache-in-core",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/070_adopt_shared_schema_analysis_in_volar.md",
+      "newPath": "backlog/active/work-item-070-adopt-shared-schema-analysis-in-volar.md",
+      "legacyId": "wi-070",
+      "newId": "work-item:070-adopt-shared-schema-analysis-in-volar",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/071_adopt_shared_schema_analysis_in_cli.md",
+      "newPath": "backlog/active/work-item-071-adopt-shared-schema-analysis-in-cli.md",
+      "legacyId": "wi-071",
+      "newId": "work-item:071-adopt-shared-schema-analysis-in-cli",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/072_adopt_shared_schema_analysis_in_vscode_server.md",
+      "newPath": "backlog/active/work-item-072-adopt-shared-schema-analysis-in-vscode-server.md",
+      "legacyId": "wi-072",
+      "newId": "work-item:072-adopt-shared-schema-analysis-in-vscode-server",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/073_optimize_context_graph_query_indexes_and_ordering.md",
+      "newPath": "backlog/active/work-item-073-optimize-context-graph-query-indexes-and-ordering.md",
+      "legacyId": "wi-073",
+      "newId": "work-item:073-optimize-context-graph-query-indexes-and-ordering",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/074_reuse_query_engine_builtin_registry_and_metadata.md",
+      "newPath": "backlog/active/work-item-074-reuse-query-engine-builtin-registry-and-metadata.md",
+      "legacyId": "wi-074",
+      "newId": "work-item:074-reuse-query-engine-builtin-registry-and-metadata",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/075_split_volar_context_graph_adapter_by_responsibility.md",
+      "newPath": "backlog/active/work-item-075-split-volar-context-graph-adapter-by-responsibility.md",
+      "legacyId": "wi-075",
+      "newId": "work-item:075-split-volar-context-graph-adapter-by-responsibility",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/076_split_volar_intellisense_and_diagnostic_providers_by_responsibility.md",
+      "newPath": "backlog/active/work-item-076-split-volar-intellisense-and-diagnostic-providers-by-responsibility.md",
+      "legacyId": "wi-076",
+      "newId": "work-item:076-split-volar-intellisense-and-diagnostic-providers-by-responsibility",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/077_split_vscode_server_into_schema_state_and_lsp_services.md",
+      "newPath": "backlog/active/work-item-077-split-vscode-server-into-schema-state-and-lsp-services.md",
+      "legacyId": "wi-077",
+      "newId": "work-item:077-split-vscode-server-into-schema-state-and-lsp-services",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/078_colocate_core_and_context_graph_module_tests_with_sources.md",
+      "newPath": "backlog/active/work-item-078-colocate-core-and-context-graph-module-tests-with-sources.md",
+      "legacyId": "wi-078",
+      "newId": "work-item:078-colocate-core-and-context-graph-module-tests-with-sources",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/079_colocate_volar_and_vscode_module_tests_with_sources.md",
+      "newPath": "backlog/active/work-item-079-colocate-volar-and-vscode-module-tests-with-sources.md",
+      "legacyId": "wi-079",
+      "newId": "work-item:079-colocate-volar-and-vscode-module-tests-with-sources",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/080_rewrite_cli_tests_toward_behavior_first_public_workflows.md",
+      "newPath": "backlog/active/work-item-080-rewrite-cli-tests-toward-behavior-first-public-workflows.md",
+      "legacyId": "wi-080",
+      "newId": "work-item:080-rewrite-cli-tests-toward-behavior-first-public-workflows",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/081_rewrite_volar_and_vscode_tests_toward_behavior_first_request_result_coverage.md",
+      "newPath": "backlog/active/work-item-081-rewrite-volar-and-vscode-tests-toward-behavior-first-request-result-coverage.md",
+      "legacyId": "wi-081",
+      "newId": "work-item:081-rewrite-volar-and-vscode-tests-toward-behavior-first-request-result-coverage",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/082_remove_overlapping_test_coverage_and_add_shared_semantic_schema_fixtures.md",
+      "newPath": "backlog/active/work-item-082-remove-overlapping-test-coverage-and-add-shared-semantic-schema-fixtures.md",
+      "legacyId": "wi-082",
+      "newId": "work-item:082-remove-overlapping-test-coverage-and-add-shared-semantic-schema-fixtures",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/083_document_benchmark_workflow_semantic_ownership_schema_cache_and_test_conventions.md",
+      "newPath": "backlog/active/work-item-083-document-benchmark-workflow-semantic-ownership-schema-cache-and-test-conventions.md",
+      "legacyId": "wi-083",
+      "newId": "work-item:083-document-benchmark-workflow-semantic-ownership-schema-cache-and-test-conventions",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/084_template_render_whitespace_controls.md",
+      "newPath": "backlog/active/work-item-084-template-render-whitespace-controls.md",
+      "legacyId": "wi-084",
+      "newId": "work-item:084-template-render-whitespace-controls",
+      "generatedRecords": [
+        "record-084-template-render-whitespace-controls-evidence-1.md",
+        "record-084-template-render-whitespace-controls-evidence-2.md",
+        "record-084-template-render-whitespace-controls-evidence-3.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/085_structured_expression_parser_ast_migration_epic.md",
+      "newPath": "backlog/active/work-item-085-structured-expression-parser-ast-migration-epic.md",
+      "legacyId": "wi-085",
+      "newId": "work-item:085-structured-expression-parser-ast-migration-epic",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/086_expression_ast_contract_and_semantic_ir.md",
+      "newPath": "backlog/active/work-item-086-expression-ast-contract-and-semantic-ir.md",
+      "legacyId": "wi-086",
+      "newId": "work-item:086-expression-ast-contract-and-semantic-ir",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/087_token_driven_expression_parser_cutover.md",
+      "newPath": "backlog/active/work-item-087-token-driven-expression-parser-cutover.md",
+      "legacyId": "wi-087",
+      "newId": "work-item:087-token-driven-expression-parser-cutover",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/088_multi_grammar_expression_overlay_support.md",
+      "newPath": "backlog/active/work-item-088-multi-grammar-expression-overlay-support.md",
+      "legacyId": "wi-088",
+      "newId": "work-item:088-multi-grammar-expression-overlay-support",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/090_typedoc_coverage_ratcheting.md",
+      "newPath": "backlog/active/work-item-090-typedoc-coverage-ratcheting.md",
+      "legacyId": "wi-090",
+      "newId": "work-item:090-typedoc-coverage-ratcheting",
+      "generatedRecords": []
+    },
+    {
+      "legacyPath": "backlog/archive/001_github_organization.md",
+      "newPath": "backlog/archive/work-item-001-github-organization.md",
+      "legacyId": "wi-001",
+      "newId": "work-item:001-github-organization",
+      "generatedRecords": ["record-001-github-organization-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/002_monorepo_setup.md",
+      "newPath": "backlog/archive/work-item-002-monorepo-setup.md",
+      "legacyId": "wi-002",
+      "newId": "work-item:002-monorepo-setup",
+      "generatedRecords": ["record-002-monorepo-setup-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/003_github_actions.md",
+      "newPath": "backlog/archive/work-item-003-github-actions.md",
+      "legacyId": "wi-003",
+      "newId": "work-item:003-github-actions",
+      "generatedRecords": ["record-003-github-actions-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/004_precommit_hooks.md",
+      "newPath": "backlog/archive/work-item-004-precommit-hooks.md",
+      "legacyId": "wi-004",
+      "newId": "work-item:004-precommit-hooks",
+      "generatedRecords": [
+        "record-004-precommit-hooks-evidence-1.md",
+        "record-004-precommit-hooks-evidence-2.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/archive/005_chevrotain_lexer.md",
+      "newPath": "backlog/archive/work-item-005-chevrotain-lexer.md",
+      "legacyId": "wi-005",
+      "newId": "work-item:005-chevrotain-lexer",
+      "generatedRecords": ["record-005-chevrotain-lexer-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/006_chevrotain_parser.md",
+      "newPath": "backlog/archive/work-item-006-chevrotain-parser.md",
+      "legacyId": "wi-006",
+      "newId": "work-item:006-chevrotain-parser",
+      "generatedRecords": [
+        "record-006-chevrotain-parser-evidence-1.md",
+        "record-006-chevrotain-parser-evidence-2.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/archive/007_ast_renderer.md",
+      "newPath": "backlog/archive/work-item-007-ast-renderer.md",
+      "legacyId": "wi-007",
+      "newId": "work-item:007-ast-renderer",
+      "generatedRecords": [
+        "record-007-ast-renderer-evidence-1.md",
+        "record-007-ast-renderer-evidence-2.md",
+        "record-007-ast-renderer-evidence-3.md",
+        "record-007-ast-renderer-evidence-4.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/archive/008_query_engine.md",
+      "newPath": "backlog/archive/work-item-008-query-engine.md",
+      "legacyId": "wi-008",
+      "newId": "work-item:008-query-engine",
+      "generatedRecords": [
+        "record-008-query-engine-evidence-1.md",
+        "record-008-query-engine-evidence-2.md",
+        "record-008-query-engine-evidence-3.md",
+        "record-008-query-engine-evidence-4.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/archive/009_lexer_tests.md",
+      "newPath": "backlog/archive/work-item-009-lexer-tests.md",
+      "legacyId": "wi-009",
+      "newId": "work-item:009-lexer-tests",
+      "generatedRecords": ["record-009-lexer-tests-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/010_parser_tests.md",
+      "newPath": "backlog/archive/work-item-010-parser-tests.md",
+      "legacyId": "wi-010",
+      "newId": "work-item:010-parser-tests",
+      "generatedRecords": ["record-010-parser-tests-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/011_renderer_tests.md",
+      "newPath": "backlog/archive/work-item-011-renderer-tests.md",
+      "legacyId": "wi-011",
+      "newId": "work-item:011-renderer-tests",
+      "generatedRecords": [
+        "record-011-renderer-tests-evidence-1.md",
+        "record-011-renderer-tests-evidence-2.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/archive/012_volar_plugin.md",
+      "newPath": "backlog/archive/work-item-012-volar-plugin.md",
+      "legacyId": "wi-012",
+      "newId": "work-item:012-volar-plugin",
+      "generatedRecords": ["record-012-volar-plugin-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/013_syntax_highlighting.md",
+      "newPath": "backlog/archive/work-item-013-syntax-highlighting.md",
+      "legacyId": "wi-013",
+      "newId": "work-item:013-syntax-highlighting",
+      "generatedRecords": ["record-013-syntax-highlighting-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/014_diagnostics.md",
+      "newPath": "backlog/archive/work-item-014-diagnostics.md",
+      "legacyId": "wi-014",
+      "newId": "work-item:014-diagnostics",
+      "generatedRecords": ["record-014-diagnostics-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/015_intellisense.md",
+      "newPath": "backlog/archive/work-item-015-intellisense.md",
+      "legacyId": "wi-015",
+      "newId": "work-item:015-intellisense",
+      "generatedRecords": ["record-015-intellisense-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/016_extension_tests.md",
+      "newPath": "backlog/archive/work-item-016-extension-tests.md",
+      "legacyId": "wi-016",
+      "newId": "work-item:016-extension-tests",
+      "generatedRecords": ["record-016-extension-tests-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/017_cli_commands.md",
+      "newPath": "backlog/archive/work-item-017-cli-commands.md",
+      "legacyId": "wi-017",
+      "newId": "work-item:017-cli-commands",
+      "generatedRecords": ["record-017-cli-commands-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/018_cli_watch_mode.md",
+      "newPath": "backlog/archive/work-item-018-cli-watch-mode.md",
+      "legacyId": "wi-018",
+      "newId": "work-item:018-cli-watch-mode",
+      "generatedRecords": ["record-018-cli-watch-mode-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/019_cli_tests.md",
+      "newPath": "backlog/archive/work-item-019-cli-tests.md",
+      "legacyId": "wi-019",
+      "newId": "work-item:019-cli-tests",
+      "generatedRecords": ["record-019-cli-tests-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/020_documentation.md",
+      "newPath": "backlog/archive/work-item-020-documentation.md",
+      "legacyId": "wi-020",
+      "newId": "work-item:020-documentation",
+      "generatedRecords": [
+        "record-020-documentation-evidence-1.md",
+        "record-020-documentation-evidence-2.md",
+        "record-020-documentation-evidence-3.md",
+        "record-020-documentation-evidence-4.md",
+        "record-020-documentation-evidence-5.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/archive/021_examples_demo.md",
+      "newPath": "backlog/archive/work-item-021-examples-demo.md",
+      "legacyId": "wi-021",
+      "newId": "work-item:021-examples-demo",
+      "generatedRecords": [
+        "record-021-examples-demo-evidence-1.md",
+        "record-021-examples-demo-evidence-2.md",
+        "record-021-examples-demo-evidence-3.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/archive/024_work_item_guardrails.md",
+      "newPath": "backlog/archive/work-item-024-work-item-guardrails.md",
+      "legacyId": "wi-024",
+      "newId": "work-item:024-work-item-guardrails",
+      "generatedRecords": [
+        "record-024-work-item-guardrails-evidence-1.md",
+        "record-024-work-item-guardrails-evidence-2.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/archive/025_schema_validation.md",
+      "newPath": "backlog/archive/work-item-025-schema-validation.md",
+      "legacyId": "wi-025",
+      "newId": "work-item:025-schema-validation",
+      "generatedRecords": [
+        "record-025-schema-validation-evidence-1.md",
+        "record-025-schema-validation-evidence-2.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/archive/026_cicd_scaffolding_artifact.md",
+      "newPath": "backlog/archive/work-item-026-cicd-scaffolding-artifact.md",
+      "legacyId": "wi-026",
+      "newId": "work-item:026-cicd-scaffolding-artifact",
+      "generatedRecords": ["record-026-cicd-scaffolding-artifact-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/027_virtual_code_mapping.md",
+      "newPath": "backlog/archive/work-item-027-virtual-code-mapping.md",
+      "legacyId": "wi-027",
+      "newId": "work-item:027-virtual-code-mapping",
+      "generatedRecords": ["record-027-virtual-code-mapping-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/028_textmate_grammar.md",
+      "newPath": "backlog/archive/work-item-028-textmate-grammar.md",
+      "legacyId": "wi-028",
+      "newId": "work-item:028-textmate-grammar",
+      "generatedRecords": ["record-028-textmate-grammar-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/029_cli_signal_handling.md",
+      "newPath": "backlog/archive/work-item-029-cli-signal-handling.md",
+      "legacyId": "wi-029",
+      "newId": "work-item:029-cli-signal-handling",
+      "generatedRecords": [
+        "record-029-cli-signal-handling-evidence-1.md",
+        "record-029-cli-signal-handling-evidence-2.md",
+        "record-029-cli-signal-handling-evidence-3.md",
+        "record-029-cli-signal-handling-evidence-4.md",
+        "record-029-cli-signal-handling-evidence-5.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/archive/030_reenable_coverage_thresholds.md",
+      "newPath": "backlog/archive/work-item-030-reenable-coverage-thresholds.md",
+      "legacyId": "wi-030",
+      "newId": "work-item:030-reenable-coverage-thresholds",
+      "generatedRecords": ["record-030-reenable-coverage-thresholds-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/031_language_feature_tests.md",
+      "newPath": "backlog/archive/work-item-031-language-feature-tests.md",
+      "legacyId": "wi-031",
+      "newId": "work-item:031-language-feature-tests",
+      "generatedRecords": ["record-031-language-feature-tests-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/032_cli_config_files.md",
+      "newPath": "backlog/archive/work-item-032-cli-config-files.md",
+      "legacyId": "wi-032",
+      "newId": "work-item:032-cli-config-files",
+      "generatedRecords": [
+        "record-032-cli-config-files-evidence-1.md",
+        "record-032-cli-config-files-evidence-2.md",
+        "record-032-cli-config-files-evidence-3.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/archive/033_schema_parity.md",
+      "newPath": "backlog/archive/work-item-033-schema-parity.md",
+      "legacyId": "wi-033",
+      "newId": "work-item:033-schema-parity",
+      "generatedRecords": [
+        "record-033-schema-parity-evidence-1.md",
+        "record-033-schema-parity-evidence-2.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/archive/034_prerelease_coverage_quality_gate.md",
+      "newPath": "backlog/archive/work-item-034-prerelease-coverage-quality-gate.md",
+      "legacyId": "wi-034",
+      "newId": "work-item:034-prerelease-coverage-quality-gate",
+      "generatedRecords": [
+        "record-034-prerelease-coverage-quality-gate-evidence-1.md",
+        "record-034-prerelease-coverage-quality-gate-evidence-2.md",
+        "record-034-prerelease-coverage-quality-gate-evidence-3.md",
+        "record-034-prerelease-coverage-quality-gate-evidence-4.md",
+        "record-034-prerelease-coverage-quality-gate-evidence-5.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/archive/035_volar_delimiter_prefix_overlap.md",
+      "newPath": "backlog/archive/work-item-035-volar-delimiter-prefix-overlap.md",
+      "legacyId": "wi-035",
+      "newId": "work-item:035-volar-delimiter-prefix-overlap",
+      "generatedRecords": ["record-035-volar-delimiter-prefix-overlap-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/036_cli_short_flag_operand_parsing.md",
+      "newPath": "backlog/archive/work-item-036-cli-short-flag-operand-parsing.md",
+      "legacyId": "wi-036",
+      "newId": "work-item:036-cli-short-flag-operand-parsing",
+      "generatedRecords": ["record-036-cli-short-flag-operand-parsing-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/038_volar_incremental_update_efficiency.md",
+      "newPath": "backlog/archive/work-item-038-volar-incremental-update-efficiency.md",
+      "legacyId": "wi-038",
+      "newId": "work-item:038-volar-incremental-update-efficiency",
+      "generatedRecords": ["record-038-volar-incremental-update-efficiency-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/039_cli_validate_schema_error_messaging.md",
+      "newPath": "backlog/archive/work-item-039-cli-validate-schema-error-messaging.md",
+      "legacyId": "wi-039",
+      "newId": "work-item:039-cli-validate-schema-error-messaging",
+      "generatedRecords": ["record-039-cli-validate-schema-error-messaging-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/040_cli_watch_mode_output_policy.md",
+      "newPath": "backlog/archive/work-item-040-cli-watch-mode-output-policy.md",
+      "legacyId": "wi-040",
+      "newId": "work-item:040-cli-watch-mode-output-policy",
+      "generatedRecords": ["record-040-cli-watch-mode-output-policy-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/043_volar_delimiter_type_validation.md",
+      "newPath": "backlog/archive/work-item-043-volar-delimiter-type-validation.md",
+      "legacyId": "wi-043",
+      "newId": "work-item:043-volar-delimiter-type-validation",
+      "generatedRecords": ["record-043-volar-delimiter-type-validation-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/044_volar_offset_mapping_fallback_staleness.md",
+      "newPath": "backlog/archive/work-item-044-volar-offset-mapping-fallback-staleness.md",
+      "legacyId": "wi-044",
+      "newId": "work-item:044-volar-offset-mapping-fallback-staleness",
+      "generatedRecords": ["record-044-volar-offset-mapping-fallback-staleness-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/045_cli_remove_dead_streaming_json_code.md",
+      "newPath": "backlog/archive/work-item-045-cli-remove-dead-streaming-json-code.md",
+      "legacyId": "wi-045",
+      "newId": "work-item:045-cli-remove-dead-streaming-json-code",
+      "generatedRecords": ["record-045-cli-remove-dead-streaming-json-code-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/046_cli_progress_reporter_newline_convention.md",
+      "newPath": "backlog/archive/work-item-046-cli-progress-reporter-newline-convention.md",
+      "legacyId": "wi-046",
+      "newId": "work-item:046-cli-progress-reporter-newline-convention",
+      "generatedRecords": ["record-046-cli-progress-reporter-newline-convention-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/053_validate_schema_input_integration.md",
+      "newPath": "backlog/archive/work-item-053-validate-schema-input-integration.md",
+      "legacyId": "wi-053",
+      "newId": "work-item:053-validate-schema-input-integration",
+      "generatedRecords": ["record-053-validate-schema-input-integration-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/054_bug_no_schema_aware_authoring.md",
+      "newPath": "backlog/archive/work-item-054-bug-no-schema-aware-authoring.md",
+      "legacyId": "wi-054",
+      "newId": "work-item:054-bug-no-schema-aware-authoring",
+      "generatedRecords": [
+        "record-054-bug-no-schema-aware-authoring-evidence-1.md",
+        "record-054-bug-no-schema-aware-authoring-evidence-2.md",
+        "record-054-bug-no-schema-aware-authoring-evidence-3.md",
+        "record-054-bug-no-schema-aware-authoring-evidence-4.md",
+        "record-054-bug-no-schema-aware-authoring-evidence-5.md",
+        "record-054-bug-no-schema-aware-authoring-evidence-6.md",
+        "record-054-bug-no-schema-aware-authoring-evidence-7.md",
+        "record-054-bug-no-schema-aware-authoring-evidence-8.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/archive/055_bug_no_md_lang_server_support.md",
+      "newPath": "backlog/archive/work-item-055-bug-no-md-lang-server-support.md",
+      "legacyId": "wi-055",
+      "newId": "work-item:055-bug-no-md-lang-server-support",
+      "generatedRecords": ["record-055-bug-no-md-lang-server-support-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/057_context_graph_kernel_and_api.md",
+      "newPath": "backlog/archive/work-item-057-context-graph-kernel-and-api.md",
+      "legacyId": "wi-057",
+      "newId": "work-item:057-context-graph-kernel-and-api",
+      "generatedRecords": ["record-057-context-graph-kernel-and-api-evidence-1.md"]
+    },
+    {
+      "legacyPath": "backlog/archive/058_context_graph_volar_adapter_and_semantic_reads.md",
+      "newPath": "backlog/archive/work-item-058-context-graph-volar-adapter-and-semantic-reads.md",
+      "legacyId": "wi-058",
+      "newId": "work-item:058-context-graph-volar-adapter-and-semantic-reads",
+      "generatedRecords": [
+        "record-058-context-graph-volar-adapter-and-semantic-reads-evidence-1.md",
+        "record-058-context-graph-volar-adapter-and-semantic-reads-evidence-2.md",
+        "record-058-context-graph-volar-adapter-and-semantic-reads-evidence-3.md",
+        "record-058-context-graph-volar-adapter-and-semantic-reads-evidence-4.md",
+        "record-058-context-graph-volar-adapter-and-semantic-reads-evidence-5.md",
+        "record-058-context-graph-volar-adapter-and-semantic-reads-evidence-6.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/archive/059_context_graph_api_boundary_and_rust_ready_contracts.md",
+      "newPath": "backlog/archive/work-item-059-context-graph-api-boundary-and-rust-ready-contracts.md",
+      "legacyId": "wi-059",
+      "newId": "work-item:059-context-graph-api-boundary-and-rust-ready-contracts",
+      "generatedRecords": [
+        "record-059-context-graph-api-boundary-and-rust-ready-contracts-evidence-1.md",
+        "record-059-context-graph-api-boundary-and-rust-ready-contracts-evidence-2.md",
+        "record-059-context-graph-api-boundary-and-rust-ready-contracts-evidence-3.md",
+        "record-059-context-graph-api-boundary-and-rust-ready-contracts-evidence-4.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/archive/065_repo_wide_benchmark_harness_and_deterministic_fixtures.md",
+      "newPath": "backlog/archive/work-item-065-repo-wide-benchmark-harness-and-deterministic-fixtures.md",
+      "legacyId": "wi-065",
+      "newId": "work-item:065-repo-wide-benchmark-harness-and-deterministic-fixtures",
+      "generatedRecords": [
+        "record-065-repo-wide-benchmark-harness-and-deterministic-fixtures-evidence-1.md",
+        "record-065-repo-wide-benchmark-harness-and-deterministic-fixtures-evidence-2.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/archive/066_publish_benchmark_baselines_and_pr_comparisons_in_cicd.md",
+      "newPath": "backlog/archive/work-item-066-publish-benchmark-baselines-and-pr-comparisons-in-cicd.md",
+      "legacyId": "wi-066",
+      "newId": "work-item:066-publish-benchmark-baselines-and-pr-comparisons-in-cicd",
+      "generatedRecords": [
+        "record-066-publish-benchmark-baselines-and-pr-comparisons-in-cicd-evidence-1.md",
+        "record-066-publish-benchmark-baselines-and-pr-comparisons-in-cicd-evidence-2.md"
+      ]
+    },
+    {
+      "legacyPath": "backlog/archive/089_md_host_language_activation_validation_matrix.md",
+      "newPath": "backlog/archive/work-item-089-md-host-language-activation-validation-matrix.md",
+      "legacyId": "wi-089",
+      "newId": "work-item:089-md-host-language-activation-validation-matrix",
+      "generatedRecords": ["record-089-md-host-language-activation-validation-matrix-evidence-1.md"]
+    }
+  ],
+  "basenameMap": {
+    "022_release_v1": "work-item-022-release-v1",
+    "023_syntax_themes_v1.1": "work-item-023-syntax-themes-v1-1",
+    "037_volar_crlf_offset_mapping": "work-item-037-volar-crlf-offset-mapping",
+    "041_cli_progress_zero_byte_guard": "work-item-041-cli-progress-zero-byte-guard",
+    "042_cli_test_xml_override_coverage": "work-item-042-cli-test-xml-override-coverage",
+    "047_template_extraction": "work-item-047-template-extraction",
+    "048_extraction_algorithm_design": "work-item-048-extraction-algorithm-design",
+    "049_extraction_engine": "work-item-049-extraction-engine",
+    "050_extraction_validation": "work-item-050-extraction-validation",
+    "051_extraction_cli": "work-item-051-extraction-cli",
+    "052_extraction_tests": "work-item-052-extraction-tests",
+    "056_context_graph_platform_epic": "work-item-056-context-graph-platform-epic",
+    "060_context_graph_hover_definition_exclusive_cutover": "work-item-060-context-graph-hover-definition-exclusive-cutover",
+    "061_multiple_filter_signatures": "work-item-061-multiple-filter-signatures",
+    "062_authoritative_template_parsing_and_delimiter_parity": "work-item-062-authoritative-template-parsing-and-delimiter-parity",
+    "063_colocate_tests_with_primary_target_modules": "work-item-063-colocate-tests-with-primary-target-modules",
+    "064_benchmark_first_repo_optimization_program": "work-item-064-benchmark-first-repo-optimization-program",
+    "067_extract_authoritative_core_statement_and_expression_analysis": "work-item-067-extract-authoritative-core-statement-and-expression-analysis",
+    "068_remove_remaining_volar_statement_semantic_duplication": "work-item-068-remove-remaining-volar-statement-semantic-duplication",
+    "069_add_shared_schema_analysis_cache_in_core": "work-item-069-add-shared-schema-analysis-cache-in-core",
+    "070_adopt_shared_schema_analysis_in_volar": "work-item-070-adopt-shared-schema-analysis-in-volar",
+    "071_adopt_shared_schema_analysis_in_cli": "work-item-071-adopt-shared-schema-analysis-in-cli",
+    "072_adopt_shared_schema_analysis_in_vscode_server": "work-item-072-adopt-shared-schema-analysis-in-vscode-server",
+    "073_optimize_context_graph_query_indexes_and_ordering": "work-item-073-optimize-context-graph-query-indexes-and-ordering",
+    "074_reuse_query_engine_builtin_registry_and_metadata": "work-item-074-reuse-query-engine-builtin-registry-and-metadata",
+    "075_split_volar_context_graph_adapter_by_responsibility": "work-item-075-split-volar-context-graph-adapter-by-responsibility",
+    "076_split_volar_intellisense_and_diagnostic_providers_by_responsibility": "work-item-076-split-volar-intellisense-and-diagnostic-providers-by-responsibility",
+    "077_split_vscode_server_into_schema_state_and_lsp_services": "work-item-077-split-vscode-server-into-schema-state-and-lsp-services",
+    "078_colocate_core_and_context_graph_module_tests_with_sources": "work-item-078-colocate-core-and-context-graph-module-tests-with-sources",
+    "079_colocate_volar_and_vscode_module_tests_with_sources": "work-item-079-colocate-volar-and-vscode-module-tests-with-sources",
+    "080_rewrite_cli_tests_toward_behavior_first_public_workflows": "work-item-080-rewrite-cli-tests-toward-behavior-first-public-workflows",
+    "081_rewrite_volar_and_vscode_tests_toward_behavior_first_request_result_coverage": "work-item-081-rewrite-volar-and-vscode-tests-toward-behavior-first-request-result-coverage",
+    "082_remove_overlapping_test_coverage_and_add_shared_semantic_schema_fixtures": "work-item-082-remove-overlapping-test-coverage-and-add-shared-semantic-schema-fixtures",
+    "083_document_benchmark_workflow_semantic_ownership_schema_cache_and_test_conventions": "work-item-083-document-benchmark-workflow-semantic-ownership-schema-cache-and-test-conventions",
+    "084_template_render_whitespace_controls": "work-item-084-template-render-whitespace-controls",
+    "085_structured_expression_parser_ast_migration_epic": "work-item-085-structured-expression-parser-ast-migration-epic",
+    "086_expression_ast_contract_and_semantic_ir": "work-item-086-expression-ast-contract-and-semantic-ir",
+    "087_token_driven_expression_parser_cutover": "work-item-087-token-driven-expression-parser-cutover",
+    "088_multi_grammar_expression_overlay_support": "work-item-088-multi-grammar-expression-overlay-support",
+    "090_typedoc_coverage_ratcheting": "work-item-090-typedoc-coverage-ratcheting",
+    "001_github_organization": "work-item-001-github-organization",
+    "002_monorepo_setup": "work-item-002-monorepo-setup",
+    "003_github_actions": "work-item-003-github-actions",
+    "004_precommit_hooks": "work-item-004-precommit-hooks",
+    "005_chevrotain_lexer": "work-item-005-chevrotain-lexer",
+    "006_chevrotain_parser": "work-item-006-chevrotain-parser",
+    "007_ast_renderer": "work-item-007-ast-renderer",
+    "008_query_engine": "work-item-008-query-engine",
+    "009_lexer_tests": "work-item-009-lexer-tests",
+    "010_parser_tests": "work-item-010-parser-tests",
+    "011_renderer_tests": "work-item-011-renderer-tests",
+    "012_volar_plugin": "work-item-012-volar-plugin",
+    "013_syntax_highlighting": "work-item-013-syntax-highlighting",
+    "014_diagnostics": "work-item-014-diagnostics",
+    "015_intellisense": "work-item-015-intellisense",
+    "016_extension_tests": "work-item-016-extension-tests",
+    "017_cli_commands": "work-item-017-cli-commands",
+    "018_cli_watch_mode": "work-item-018-cli-watch-mode",
+    "019_cli_tests": "work-item-019-cli-tests",
+    "020_documentation": "work-item-020-documentation",
+    "021_examples_demo": "work-item-021-examples-demo",
+    "024_work_item_guardrails": "work-item-024-work-item-guardrails",
+    "025_schema_validation": "work-item-025-schema-validation",
+    "026_cicd_scaffolding_artifact": "work-item-026-cicd-scaffolding-artifact",
+    "027_virtual_code_mapping": "work-item-027-virtual-code-mapping",
+    "028_textmate_grammar": "work-item-028-textmate-grammar",
+    "029_cli_signal_handling": "work-item-029-cli-signal-handling",
+    "030_reenable_coverage_thresholds": "work-item-030-reenable-coverage-thresholds",
+    "031_language_feature_tests": "work-item-031-language-feature-tests",
+    "032_cli_config_files": "work-item-032-cli-config-files",
+    "033_schema_parity": "work-item-033-schema-parity",
+    "034_prerelease_coverage_quality_gate": "work-item-034-prerelease-coverage-quality-gate",
+    "035_volar_delimiter_prefix_overlap": "work-item-035-volar-delimiter-prefix-overlap",
+    "036_cli_short_flag_operand_parsing": "work-item-036-cli-short-flag-operand-parsing",
+    "038_volar_incremental_update_efficiency": "work-item-038-volar-incremental-update-efficiency",
+    "039_cli_validate_schema_error_messaging": "work-item-039-cli-validate-schema-error-messaging",
+    "040_cli_watch_mode_output_policy": "work-item-040-cli-watch-mode-output-policy",
+    "043_volar_delimiter_type_validation": "work-item-043-volar-delimiter-type-validation",
+    "044_volar_offset_mapping_fallback_staleness": "work-item-044-volar-offset-mapping-fallback-staleness",
+    "045_cli_remove_dead_streaming_json_code": "work-item-045-cli-remove-dead-streaming-json-code",
+    "046_cli_progress_reporter_newline_convention": "work-item-046-cli-progress-reporter-newline-convention",
+    "053_validate_schema_input_integration": "work-item-053-validate-schema-input-integration",
+    "054_bug_no_schema_aware_authoring": "work-item-054-bug-no-schema-aware-authoring",
+    "055_bug_no_md_lang_server_support": "work-item-055-bug-no-md-lang-server-support",
+    "057_context_graph_kernel_and_api": "work-item-057-context-graph-kernel-and-api",
+    "058_context_graph_volar_adapter_and_semantic_reads": "work-item-058-context-graph-volar-adapter-and-semantic-reads",
+    "059_context_graph_api_boundary_and_rust_ready_contracts": "work-item-059-context-graph-api-boundary-and-rust-ready-contracts",
+    "065_repo_wide_benchmark_harness_and_deterministic_fixtures": "work-item-065-repo-wide-benchmark-harness-and-deterministic-fixtures",
+    "066_publish_benchmark_baselines_and_pr_comparisons_in_cicd": "work-item-066-publish-benchmark-baselines-and-pr-comparisons-in-cicd",
+    "089_md_host_language_activation_validation_matrix": "work-item-089-md-host-language-activation-validation-matrix"
+  }
+}

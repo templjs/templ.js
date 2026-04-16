@@ -605,8 +605,7 @@
         "assignee": {
           "$ref": "#/$defs/nonEmptyString"
         }
-      },
-      "additionalProperties": false
+      }
     }
   }
 }

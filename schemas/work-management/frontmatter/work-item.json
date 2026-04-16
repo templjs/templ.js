@@ -19,7 +19,7 @@
     },
     {
       "type": "object",
-      "required": ["$schema", "summary", "priority", "estimated", "assignee", "actual"],
+      "required": ["$schema", "summary", "priority", "estimated"],
       "properties": {
         "$schema": {
           "const": "schemas/work-management/frontmatter/work-item.json"
