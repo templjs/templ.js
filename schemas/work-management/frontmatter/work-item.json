@@ -6,10 +6,10 @@
   "unevaluatedProperties": false,
   "allOf": [
     {
-      "$ref": "../../frontmatter/support/base/current.json#/$defs/core"
+      "$ref": "https://raw.githubusercontent.com/templjs/templ.js/main/schemas/frontmatter/support/base/current.json#/$defs/core"
     },
     {
-      "$ref": "../../frontmatter/support/base/current.json#/$defs/lifecycleStatusCompatibility"
+      "$ref": "https://raw.githubusercontent.com/templjs/templ.js/main/schemas/frontmatter/support/base/current.json#/$defs/lifecycleStatusCompatibility"
     },
     {
       "$ref": "../support/common.json#/$defs/correlationFields"
@@ -19,7 +19,7 @@
     },
     {
       "type": "object",
-      "required": ["$schema", "summary", "priority", "estimated", "assignee", "actual"],
+      "required": ["$schema", "summary", "priority", "estimated"],
       "properties": {
         "$schema": {
           "const": "schemas/work-management/frontmatter/work-item.json"
@@ -72,10 +72,10 @@
                   "enum": ["needs-triage", "awaiting-approval", "deferred", "blocked-by-dependency"]
                 },
                 {
-                  "$ref": "../../frontmatter/support/base/current.json#/$defs/statusReasonExtensionToken"
+                  "$ref": "https://raw.githubusercontent.com/templjs/templ.js/main/schemas/frontmatter/support/base/current.json#/$defs/statusReasonExtensionToken"
                 },
                 {
-                  "$ref": "../../frontmatter/support/base/current.json#/$defs/statusReasonFreeform"
+                  "$ref": "https://raw.githubusercontent.com/templjs/templ.js/main/schemas/frontmatter/support/base/current.json#/$defs/statusReasonFreeform"
                 }
               ]
             }
@@ -94,10 +94,10 @@
                   "enum": ["prioritized", "scheduled", "dependencies-cleared"]
                 },
                 {
-                  "$ref": "../../frontmatter/support/base/current.json#/$defs/statusReasonExtensionToken"
+                  "$ref": "https://raw.githubusercontent.com/templjs/templ.js/main/schemas/frontmatter/support/base/current.json#/$defs/statusReasonExtensionToken"
                 },
                 {
-                  "$ref": "../../frontmatter/support/base/current.json#/$defs/statusReasonFreeform"
+                  "$ref": "https://raw.githubusercontent.com/templjs/templ.js/main/schemas/frontmatter/support/base/current.json#/$defs/statusReasonFreeform"
                 }
               ]
             }
@@ -116,10 +116,10 @@
                   "enum": ["implementation", "investigation", "blocked", "waiting-on-feedback"]
                 },
                 {
-                  "$ref": "../../frontmatter/support/base/current.json#/$defs/statusReasonExtensionToken"
+                  "$ref": "https://raw.githubusercontent.com/templjs/templ.js/main/schemas/frontmatter/support/base/current.json#/$defs/statusReasonExtensionToken"
                 },
                 {
-                  "$ref": "../../frontmatter/support/base/current.json#/$defs/statusReasonFreeform"
+                  "$ref": "https://raw.githubusercontent.com/templjs/templ.js/main/schemas/frontmatter/support/base/current.json#/$defs/statusReasonFreeform"
                 }
               ]
             }
@@ -138,10 +138,10 @@
                   "enum": ["awaiting-review", "changes-requested", "verification-pending"]
                 },
                 {
-                  "$ref": "../../frontmatter/support/base/current.json#/$defs/statusReasonExtensionToken"
+                  "$ref": "https://raw.githubusercontent.com/templjs/templ.js/main/schemas/frontmatter/support/base/current.json#/$defs/statusReasonExtensionToken"
                 },
                 {
-                  "$ref": "../../frontmatter/support/base/current.json#/$defs/statusReasonFreeform"
+                  "$ref": "https://raw.githubusercontent.com/templjs/templ.js/main/schemas/frontmatter/support/base/current.json#/$defs/statusReasonFreeform"
                 }
               ]
             }
@@ -161,10 +161,10 @@
                   "enum": ["completed", "rejected", "duplicate", "obsolete", "cancelled"]
                 },
                 {
-                  "$ref": "../../frontmatter/support/base/current.json#/$defs/statusReasonExtensionToken"
+                  "$ref": "https://raw.githubusercontent.com/templjs/templ.js/main/schemas/frontmatter/support/base/current.json#/$defs/statusReasonExtensionToken"
                 },
                 {
-                  "$ref": "../../frontmatter/support/base/current.json#/$defs/statusReasonFreeform"
+                  "$ref": "https://raw.githubusercontent.com/templjs/templ.js/main/schemas/frontmatter/support/base/current.json#/$defs/statusReasonFreeform"
                 }
               ]
             }
