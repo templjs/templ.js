@@ -32,7 +32,7 @@ links:
 
 Publish templ.js v0.1.0 to npm and VS Code Marketplace with announcement.
 
-Note: The `022_release_v1.md` filename is retained for work-item continuity from the original v1 planning phase; the authoritative target version for this work item is v0.1.0 in frontmatter, title, and task content.
+Note: This work item was migrated from the legacy `backlog/022_release_v1.md` filename to `backlog/active/work-item-022-release-v1.md`; the authoritative target version remains v0.1.0 in frontmatter, title, and task content.
 
 ## Background
 

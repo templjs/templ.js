@@ -107,8 +107,8 @@ See [ADR-006: Testing Strategy](../docs/adr/006-testing.md#public-api-integratio
 ## Commands
 
 - Validate: `pnpm run lint:frontmatter`
-- Run doc-vader commands: `pnpm run backlog:doc-vader -- ...`
-- Dry-run migration: `pnpm run backlog:migrate:dry-run`
+- Run doc-vader commands: `scripts/backlog/run-doc-vader.sh ...`
+- Review migration map: `cat backlog/audit/work-management-migration-map.json`
 - Create: Use `create-work-item` skill
 - Update: Use `update-work-item` skill
 - Finalize: Use `finalize-work-item` skill
