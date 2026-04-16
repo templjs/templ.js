@@ -53,6 +53,11 @@ templjs uses GitHub Actions for automated testing, linting, security analysis, b
 │  ├─ Run CI Benchmark Harness                        │
 │  └─ Publish Artifacts and PR Comparison             │
 │                                                      │
+│  backlog-automation.yml                             │
+│  ├─ Ingest pull request events into backlog         │
+│  ├─ Ingest CI workflow_run events into backlog      │
+│  └─ Auto-link record:* evidence back to work items  │
+│                                                      │
 └─────────────────────────────────────────────────────┘
          │              │                │
          ↓              ↓                ↓
@@ -218,6 +223,22 @@ templjs uses GitHub Actions for automated testing, linting, security analysis, b
 ### 4. Benchmark Workflow (`benchmark.yml`)
 
 **Trigger**: Pull requests to `main`/`staging`, pushes to `main`, nightly schedule, manual dispatch
+
+### 5. Backlog Automation (`backlog-automation.yml`)
+
+**Trigger**: Pull request activity on `main`/`staging`, completed `CI` workflow runs, manual dispatch
+
+**Purpose**: Keep canonical backlog work items and evidence records synchronized with GitHub PR and CI events using `doc-vader`.
+
+**Behavior**:
+
+- Checks out the `templjs` repository branch that received the event
+- Checks out and builds `doc-vader` from its source repository
+- Runs `doc-vader backlog ingest-event --provider github ...`
+- Updates work-item PR links, merge commit metadata, and CI-derived `record:*` evidence where applicable
+- Commits generated backlog changes back to the source branch when the event came from the same repository
+
+**Status**: Informational automation, not a required merge gate
 
 **Purpose**: Track deterministic benchmark performance and compare PRs against the latest successful `main` baseline when available.
 

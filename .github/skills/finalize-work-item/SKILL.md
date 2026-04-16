@@ -16,11 +16,11 @@ Before setting status: closed, verify all of the following:
 - links.pull_requests contains the implementing PRs.
 - Linked PRs are actually merged.
 - Merged PRs completed with passing checks.
-- test_results contains concrete evidence.
+- links.evidence contains concrete `record:*` evidence.
 - actual is populated.
 - For the normal done/merged case, status_reason is set to completed when setting status: closed.
 - completed_date is set.
-- For items that introduce public API changes, include explicit manual verification evidence in test_results.
+- For items that introduce public API changes, include explicit manual verification evidence in a linked `record:*`.
 - pnpm run lint:frontmatter passes.
 
 ## Recommended verification commands

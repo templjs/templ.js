@@ -6,15 +6,15 @@ labels: ['bug', 'needs-triage']
 assignees: ''
 
 # Custom work-item metadata
-id: wi-00000
+id: work-item:00000-placeholder
 title: 'BUG: ' # add descriptive summary title
+summary: '' # concise backlog summary used during triage
 type: work-item
 subtype: bug
 lifecycle: active
 status: proposed
 priority: high
 estimated: 0 # estimated points
-assignee: ''
 tags:
   - bug
   - needs-triage

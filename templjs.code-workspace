@@ -1,8 +1,8 @@
 {
   "folders": [
     {
-      "path": "."
-    }
+      "path": ".",
+    },
   ],
   "settings": {
     "python.testing.pytestEnabled": true,
@@ -21,10 +21,10 @@
       "git add": true,
       "pnpm": true,
       "test": true,
-      "act": true
+      "act": true,
     },
     "chat.agentSkillsLocations": {
-      "./.agents/skills/": true
+      "./.agents/skills/": true,
     },
     "github.copilot.chat.agent.autoFix": true,
     "github.copilot.chat.generateTests.codeLens": true,
@@ -34,9 +34,6 @@
     "github.copilot.chat.switchAgent.enabled": true,
   },
   "extensions": {
-    "recommendations": [
-      "bierner.github-markdown-preview",
-      "timonwong.shellcheck",
-    ],
+    "recommendations": ["bierner.github-markdown-preview", "timonwong.shellcheck"],
   },
 }

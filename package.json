@@ -15,6 +15,10 @@
     "src/extensions/*"
   ],
   "scripts": {
+    "backlog:doc-vader": "sh scripts/backlog/run-doc-vader.sh",
+    "backlog:ingest-event": "pnpm run backlog:doc-vader -- backlog ingest-event",
+    "backlog:migrate": "pnpm run backlog:doc-vader -- backlog migrate --dir backlog --write",
+    "backlog:migrate:dry-run": "pnpm run backlog:doc-vader -- backlog migrate --dir backlog --dry-run",
     "build": "nx run-many -t build",
     "build:affected": "pnpm run build:affected:local",
     "build:affected:ci": "nx affected -t build --base=origin/main --outputStyle=static",

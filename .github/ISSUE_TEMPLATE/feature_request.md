@@ -6,15 +6,15 @@ labels: ['enhancement', 'needs-triage']
 assignees: ''
 
 # Custom work-item metadata
-id: wi-00000
+id: work-item:00000-placeholder
 title: 'FEAT: ' # add descriptive summary title
+summary: '' # concise backlog summary used during triage
 type: work-item
-subtype: feature-request
+subtype: x-feature-request
 lifecycle: active
 status: proposed
 priority: medium
 estimated: 0 # estimated points
-assignee: ''
 tags:
   - enhancement
   - needs-triage

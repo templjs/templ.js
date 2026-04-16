@@ -1,0 +1,136 @@
+name: Backlog Automation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, closed]
+    branches:
+      - main
+      - staging
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  DOC_VADER_REPOSITORY: squirrel289/doc-vader
+  DOC_VADER_REF: main
+  DOC_VADER_DIR: .tools/doc-vader
+
+jobs:
+  ingest-pull-request:
+    name: Ingest Pull Request Event
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      secrets.DOC_VADER_CHECKOUT_TOKEN != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Checkout doc-vader
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.DOC_VADER_REPOSITORY }}
+          ref: ${{ env.DOC_VADER_REF }}
+          path: ${{ env.DOC_VADER_DIR }}
+          fetch-depth: 1
+          token: ${{ secrets.DOC_VADER_CHECKOUT_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.0 --activate
+
+      - name: Install and build doc-vader
+        run: |
+          pnpm --dir "$DOC_VADER_DIR" install --frozen-lockfile
+          pnpm --dir "$DOC_VADER_DIR" run build
+
+      - name: Ingest pull request event
+        run: |
+          node "$DOC_VADER_DIR/dist/cli/doc-vader.js" backlog ingest-event \
+            --provider github \
+            --event "pull_request.${{ github.event.action }}" \
+            --payload "$GITHUB_EVENT_PATH" \
+            --consumer-config .doc-vader/backlog-consumer.json
+
+      - name: Commit backlog changes
+        run: |
+          if [ -z "$(git status --porcelain -- backlog .doc-vader)" ]; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backlog .doc-vader
+          git commit -m "chore(backlog): ingest pull request event"
+          git push
+
+  ingest-workflow-run:
+    name: Ingest Workflow Run Event
+    if: >
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      secrets.DOC_VADER_CHECKOUT_TOKEN != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Checkout doc-vader
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.DOC_VADER_REPOSITORY }}
+          ref: ${{ env.DOC_VADER_REF }}
+          path: ${{ env.DOC_VADER_DIR }}
+          fetch-depth: 1
+          token: ${{ secrets.DOC_VADER_CHECKOUT_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.0 --activate
+
+      - name: Install and build doc-vader
+        run: |
+          pnpm --dir "$DOC_VADER_DIR" install --frozen-lockfile
+          pnpm --dir "$DOC_VADER_DIR" run build
+
+      - name: Ingest workflow run event
+        run: |
+          node "$DOC_VADER_DIR/dist/cli/doc-vader.js" backlog ingest-event \
+            --provider github \
+            --event "workflow_run.completed" \
+            --payload "$GITHUB_EVENT_PATH" \
+            --consumer-config .doc-vader/backlog-consumer.json
+
+      - name: Commit backlog changes
+        run: |
+          if [ -z "$(git status --porcelain -- backlog .doc-vader)" ]; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backlog .doc-vader
+          git commit -m "chore(backlog): ingest workflow run event"
+          git push
