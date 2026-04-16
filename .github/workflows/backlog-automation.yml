@@ -32,7 +32,7 @@ jobs:
       - name: Checkout repository branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
       - name: Checkout doc-vader
@@ -89,7 +89,7 @@ jobs:
       - name: Checkout repository branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_branch }}
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
       - name: Checkout doc-vader
