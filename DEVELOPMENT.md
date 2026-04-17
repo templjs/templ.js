@@ -551,7 +551,7 @@ pnpm clean                         # Clean all build outputs
 
 ## Overview
 
-This monorepo uses **[Changesets](https://github.com/changesets/changesets)** for automated version management. All 5 packages (`@templjs/core`, `@templjs/cli`, `@templjs/volar`, `@templjs/context-graph`, `vscode-templjs`) are configured with **fixed versioning**—they must always release with the same version number.
+This monorepo uses **[Changesets](https://github.com/changesets/changesets)** for automated version management. The four npm packages (`@templjs/core`, `@templjs/cli`, `@templjs/volar`, `@templjs/context-graph`) are configured with **fixed versioning**—they must always release with the same version number. The VS Code extension (`vscode-templjs`) is versioned independently.
 
 ### Why Fixed Versioning?
 
@@ -565,9 +565,7 @@ See [`.changeset/config.json`](.changeset/config.json):
 
 ```json
 {
-  "fixed": [
-    ["@templjs/core", "@templjs/cli", "@templjs/volar", "@templjs/context-graph", "vscode-templjs"]
-  ],
+  "fixed": [["@templjs/core", "@templjs/cli", "@templjs/volar", "@templjs/context-graph"]],
   "updateInternalDependencies": "patch"
 }
 ```

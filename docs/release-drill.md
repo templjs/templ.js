@@ -1,6 +1,15 @@
-# Release Drill — Prerelease Execution Playbook (Full)
+---
+id: release-drill-001
+type: document
+subtype: guide
+lifecycle: active
+status: ready
+title: Release Drill — Prerelease Execution Playbook
+---
 
-## Purpose
+## Release Drill — Prerelease Execution Playbook
+
+### Purpose
 
 Drive the repository from unknown or partially-ready state to a validated prerelease publish across npm, VS Code Marketplace, and GitHub.
 
@@ -83,7 +92,7 @@ rtk pnpm install
 rtk pnpm build
 rtk pnpm test
 rtk npm pack --dry-run
-rtk npx vsce package --pre-release
+rtk pnpm dlx @vscode/vsce package --pre-release
 
 Classify failures:
 

@@ -277,7 +277,7 @@ Routine staging prereleases do not use tags.
 
 ## Related Docs
 
-- [CI/CD Infrastructure](./CI_CD.md)
+- [CI/CD Infrastructure](./ci-cd.md)
 - [GitHub Actions Workflows](../.github/workflows/README.md)
 - [GitHub Organization Setup](../.github/organization-setup.md)
 - [Secrets Configuration](../.github/SECRETS.md)

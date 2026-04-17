@@ -454,8 +454,10 @@ export function resolveSemanticZone(text: string, offset: number): SemanticZone 
 /**
  * Infer the host document language from the file URI extension.
  *
- * Recognises `.md.templ`, `.yaml.templ`, `.json.templ`, `.toml.templ`,
- * `.html.templ`, and `.xml.templ` double-extension conventions.
+ * Recognises `.md.templ` / `.md.tmpl`, `.yaml.templ` / `.yaml.tmpl`,
+ * `.json.templ` / `.json.tmpl`, `.toml.templ` / `.toml.tmpl`,
+ * `.html.templ` / `.html.tmpl`, and `.xml.templ` / `.xml.tmpl`
+ * double-extension conventions (and their reversed forms).
  *
  * @param documentUri - Optional document URI or path
  * @returns `SemanticHostLanguage` string (`"markdown"`, `"json"`, etc.)
@@ -468,27 +470,56 @@ export function resolveSemanticHostLanguage(documentUri?: string): SemanticHostL
 
   const normalized = documentUri.toLowerCase();
 
-  if (normalized.includes('.md.templ') || normalized.includes('.templ.md')) {
+  if (
+    normalized.includes('.md.templ') ||
+    normalized.includes('.templ.md') ||
+    normalized.includes('.md.tmpl') ||
+    normalized.includes('.tmpl.md')
+  ) {
     return 'markdown';
   }
   if (
     normalized.includes('.yaml.templ') ||
     normalized.includes('.yml.templ') ||
     normalized.includes('.templ.yaml') ||
-    normalized.includes('.templ.yml')
+    normalized.includes('.templ.yml') ||
+    normalized.includes('.yaml.tmpl') ||
+    normalized.includes('.yml.tmpl') ||
+    normalized.includes('.tmpl.yaml') ||
+    normalized.includes('.tmpl.yml')
   ) {
     return 'yaml';
   }
-  if (normalized.includes('.json.templ') || normalized.includes('.templ.json')) {
+  if (
+    normalized.includes('.json.templ') ||
+    normalized.includes('.templ.json') ||
+    normalized.includes('.json.tmpl') ||
+    normalized.includes('.tmpl.json')
+  ) {
     return 'json';
   }
-  if (normalized.includes('.toml.templ') || normalized.includes('.templ.toml')) {
+  if (
+    normalized.includes('.toml.templ') ||
+    normalized.includes('.templ.toml') ||
+    normalized.includes('.toml.tmpl') ||
+    normalized.includes('.tmpl.toml')
+  ) {
     return 'toml';
   }
-  if (normalized.includes('.html.templ') || normalized.includes('.templ.html')) {
+  if (
+    normalized.includes('.html.templ') ||
+    normalized.includes('.templ.html') ||
+    normalized.includes('.html.tmpl') ||
+    normalized.includes('.tmpl.html')
+  ) {
     return 'html';
   }
-  if (normalized.includes('.xml.templ') || normalized.includes('.templ.xml')) {
+  if (
+    normalized.includes('.xml.templ') ||
+    normalized.includes('.templ.xml') ||
+    normalized.includes('.xml.tmpl') ||
+    normalized.includes('.tmpl.xml')
+  ) {
     return 'xml';
   }
 

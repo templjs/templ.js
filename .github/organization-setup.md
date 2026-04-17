@@ -94,7 +94,6 @@ This alignment matters because rulesets can restrict allowed merge methods per b
 Run the setup script from the repo root:
 
 ```bash
-cd /Users/macos/dev/templjs
 ./.github/scripts/setup-branch-protection.sh templjs templ.js
 ```
 
@@ -215,7 +214,6 @@ Published npm packages:
 Before opening npm settings pages, generate the exact checklist from the repo:
 
 ```bash
-cd /Users/macos/dev/templjs
 ./.github/scripts/prepare-npm-trusted-publishing.sh
 ```
 
