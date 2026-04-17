@@ -29,6 +29,7 @@
     "benchmark:summary": "tsx benchmarks/summary.ts",
     "ci:build": "pnpm run build:affected:ci",
     "ci:changeset-guard": "tsx scripts/ci/require-changeset.ts",
+    "ci:release-note-guard": "tsx scripts/ci/require-release-note.ts",
     "ci:docs-api": "pnpm run docs:api && test -f docs/api/index.html && test -z \"$(git status --porcelain --untracked-files=all -- docs/api ':(exclude)docs/api/assets/*.js')\" && git diff --exit-code -- docs/api ':(exclude)docs/api/assets/*.js'",
     "ci:frontmatter": "pnpm run lint:frontmatter",
     "ci:lint": "pnpm run lint:ci",
