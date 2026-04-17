@@ -262,11 +262,18 @@ function extractReleaseNote(body: string): string | null {
 
   for (const line of lines) {
     if (!collecting) {
-      const match = line.match(/^\s*release(?:[- ]notes?)?\s*:\s*(.+)\s*$/i);
+      const match = line.match(/^\s*release(?:[- ]notes?)?\s*:\s*(.*)\s*$/i);
       if (match) {
-        chunks.push(match[1].trim());
+        const inlineValue = match[1]?.trim();
+        if (inlineValue) {
+          chunks.push(inlineValue);
+        }
         collecting = true;
       }
+      continue;
+    }
+
+    if (line.trim() === '') {
       continue;
     }
 
@@ -452,7 +459,9 @@ export function upsertVersionSection(
         .trimStart()}`.trimEnd();
   } else {
     const firstVersionHeading = headingMatches.find((match) =>
-      /^\[\d+\.\d+\.\d+\](?:\s*-\s*.+)?$/.test(match.heading)
+      /^\[\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?\](?:\s*-\s*.+)?$/.test(
+        match.heading
+      )
     );
     if (firstVersionHeading) {
       nextContent =

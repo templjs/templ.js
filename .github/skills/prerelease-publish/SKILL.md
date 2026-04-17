@@ -69,7 +69,10 @@ If repo defines narrower release validation commands → prefer those.
 #### NPM packages
 
 ```bash
-rtk npm pack --dry-run
+rtk pnpm --filter @templjs/core exec npm pack --dry-run
+rtk pnpm --filter @templjs/cli exec npm pack --dry-run
+rtk pnpm --filter @templjs/volar exec npm pack --dry-run
+rtk pnpm --filter @templjs/context-graph exec npm pack --dry-run
 ```
 
 Validate:
