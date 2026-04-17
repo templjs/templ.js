@@ -87,6 +87,26 @@ jobs:
             --run-number=${{ github.run_number }} \
             --run-attempt=${{ github.run_attempt }}
 
+      - name: Generate staging prerelease notes
+        run: |
+          pnpm exec tsx scripts/release/generate-prerelease-notes.ts \
+            --base=${{ steps.refs.outputs.base_ref }} \
+            --head=${{ github.sha }} \
+            --package-version=${{ steps.scope.outputs.package_version }} \
+            --vscode-version=${{ steps.scope.outputs.vscode_version }} \
+            --publish-packages=${{ steps.scope.outputs.publish_packages }} \
+            --publish-vscode=${{ steps.scope.outputs.publish_vscode }} \
+            --output=artifacts/prerelease/release-notes.md
+
+      - name: Upload staging prerelease notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-prerelease-notes
+          path: artifacts/prerelease/release-notes.md
+
+      - name: Add prerelease notes to run summary
+        run: cat artifacts/prerelease/release-notes.md >> "$GITHUB_STEP_SUMMARY"
+
   build-staging-vscode-prerelease-assets:
     name: Build Staging VS Code Prerelease Assets
     if: github.event_name == 'push' && github.ref_name == 'staging' && needs.prepare-staging-prerelease.outputs.publish_vscode == 'true'
@@ -213,7 +233,7 @@ jobs:
           VSCE_PAT: ${{ secrets.VSCODE_PUBLISHER_TOKEN }}
           VSCODE_VERSION: ${{ needs.prepare-staging-prerelease.outputs.vscode_version }}
         run: |
-          npx --yes @vscode/vsce publish --pre-release --packagePath "artifacts/prerelease/vscode-templjs-$VSCODE_VERSION.vsix"
+          pnpm dlx @vscode/vsce publish --pre-release --packagePath "artifacts/prerelease/vscode-templjs-$VSCODE_VERSION.vsix"
 
   prepare-release:
     name: Prepare Published Release
@@ -466,9 +486,9 @@ jobs:
           VSCODE_VERSION: ${{ needs.prepare-release.outputs.vscode_version }}
         run: |
           if [ "$VSCODE_PRERELEASE" = 'true' ]; then
-            npx --yes @vscode/vsce publish --pre-release --packagePath "artifacts/release/vscode-templjs-$VSCODE_VERSION.vsix"
+            pnpm dlx @vscode/vsce publish --pre-release --packagePath "artifacts/release/vscode-templjs-$VSCODE_VERSION.vsix"
           else
-            npx --yes @vscode/vsce publish --packagePath "artifacts/release/vscode-templjs-$VSCODE_VERSION.vsix"
+            pnpm dlx @vscode/vsce publish --packagePath "artifacts/release/vscode-templjs-$VSCODE_VERSION.vsix"
           fi
 
   finalize-release:

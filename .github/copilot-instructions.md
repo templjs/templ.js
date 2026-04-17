@@ -9,18 +9,18 @@
 
 - Monorepo structure uses pnpm workspaces + Nx, with packages for core, CLI, Volar plugin, and VS Code extension as documented in [docs/adr/005-monorepo.md](docs/adr/005-monorepo.md).
 - VS Code integration is Volar-based with virtual code mapping and base-format delegation per [docs/adr/003-vscode-architecture.md](docs/adr/003-vscode-architecture.md).
-- Migration plan and phase ordering are the source of truth in [MIGRATION_PLAN.md](MIGRATION_PLAN.md).
+- Migration plan and phase ordering are the source of truth in [migration-plan.md](migration-plan.md).
 
 ## Build and Test
 
-- Install dependencies from the repo root: `pnpm install`.
-- Build from the repo root: `pnpm build` (see [MIGRATION_PLAN.md](MIGRATION_PLAN.md)).
+- Install dependencies from the repo root: `rtk pnpm install`.
+- Build from the repo root: `rtk pnpm build` (see [migration-plan.md](migration-plan.md)).
 - Testing strategy and locations are defined in [docs/adr/006-testing.md](docs/adr/006-testing.md).
 
 ## Project Conventions
 
 - Backlog artifacts live under [backlog/](backlog/): active work items in `backlog/active/`, archived work items in `backlog/archive/`, and evidence records in `backlog/records/`.
-- Prefer `pnpm run backlog:doc-vader -- ...` for backlog mutations so PR links, evidence records, and archival stay aligned with the canonical `doc-vader` workflow.
+- Prefer `rtk pnpm run backlog:doc-vader -- ...` for backlog mutations so PR links, evidence records, and archival stay aligned with the canonical `doc-vader` workflow.
 - ADRs are in [docs/adr/](docs/adr/) and are treated as accepted decisions for architecture.
 - Documentation files must include document frontmatter and remain schema-valid.
 - Branch and release workflow is defined in [docs/release-process.md](docs/release-process.md).
@@ -42,22 +42,32 @@
 
 ## Rule
 
-Always prefix shell commands with `rtk`:
+Always prefix shell commands with `rtk`.
 
 ```bash
-# Instead of:              Use:
-git status                 rtk git status
-git log -10                rtk git log -10
-cargo test                 rtk cargo test
-docker ps                  rtk docker ps
-kubectl get pods           rtk kubectl pods
+git status                 -> rtk git status
+git log -10                -> rtk git log -10
+pnpm install               -> rtk pnpm install
+pnpm build                 -> rtk pnpm build
+pnpm test                  -> rtk pnpm test
+npx vsce package           -> rtk npx vsce package
+npx vsce publish           -> rtk npx vsce publish
+npm publish                -> rtk npm publish
 ```
 
-## Meta commands (use directly)
+## Meta commands
 
 ```bash
-rtk gain              # Token savings dashboard
-rtk gain --history    # Per-command savings history
-rtk discover          # Find missed rtk opportunities
-rtk proxy <cmd>       # Run raw (no filtering) but track usage
+rtk gain
+rtk gain --history
+rtk discover
+rtk proxy <cmd>
 ```
+
+## Autonomous Release Guidance
+
+- For release and publishing work, consult the nearest applicable `AGENTS.md` and relevant `SKILL.md` files before making changes.
+- Prefer the smallest change that unblocks release or prerelease publication.
+- Do not refactor unrelated code during release work.
+- Prefer dry runs and packaging verification before any publish attempt.
+- Summarize commands run, files changed, versions produced, and blockers remaining.

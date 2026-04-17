@@ -10,10 +10,15 @@ description: Guardrails for syntax-aware changes inside src/extensions/vscode/sr
 
 You are editing source files under `src/extensions/vscode/src/`.
 
+Also follow:
+
+- `AGENTS.md` at the repository root
+- `src/extensions/vscode/AGENTS.md` for extension-level packaging/release guardrails
+
 ## Commands
 
-- Server tests: `pnpm --filter vscode-templjs test -- test/server.test.ts test/server-inprocess.integration.test.ts`
-- Build: `pnpm --filter vscode-templjs build`
+- Server tests: `rtk pnpm --filter vscode-templjs test -- test/server.test.ts test/server-inprocess.integration.test.ts`
+- Build: `rtk pnpm --filter vscode-templjs build`
 
 ## Role
 

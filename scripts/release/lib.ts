@@ -255,6 +255,36 @@ function parseConventionalSummary(subject: string): ConventionalParts {
   };
 }
 
+function extractReleaseNote(body: string): string | null {
+  const lines = body.split(/\r?\n/);
+  const chunks: string[] = [];
+  let collecting = false;
+
+  for (const line of lines) {
+    if (!collecting) {
+      const match = line.match(/^\s*release(?:[- ]notes?)?\s*:\s*(.+)\s*$/i);
+      if (match) {
+        chunks.push(match[1].trim());
+        collecting = true;
+      }
+      continue;
+    }
+
+    if (/^\s+\S/.test(line)) {
+      chunks.push(line.trim());
+      continue;
+    }
+
+    break;
+  }
+
+  if (chunks.length === 0) {
+    return null;
+  }
+
+  return chunks.join(' ').replace(/\s+/g, ' ').trim();
+}
+
 export function getCommits(options: {
   fromTag?: string | null;
   toRef?: string;
@@ -280,14 +310,16 @@ export function getCommits(options: {
     .filter(Boolean)
     .map((record) => {
       const [hash, subject, body] = record.split('\x1f');
+      const normalizedBody = body?.trim() ?? '';
       const conventional = parseConventionalSummary(subject);
+      const releaseNote = extractReleaseNote(normalizedBody);
       return {
         hash,
         subject,
-        body: body?.trim() ?? '',
+        body: normalizedBody,
         type: conventional.type,
         scope: conventional.scope,
-        summary: conventional.summary,
+        summary: releaseNote ?? conventional.summary,
         prNumber: conventional.prNumber,
       };
     });
