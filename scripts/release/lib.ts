@@ -434,9 +434,8 @@ export function upsertVersionSection(
     heading: match[1].trim(),
     index: match.index ?? 0,
   }));
-  const versionHeadingPattern = new RegExp(
-    `^\\[${version.replace(/\./g, '\\\\.')}\\](?:\\s*-\\s*.+)?$`
-  );
+  const escapedVersion = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const versionHeadingPattern = new RegExp(`^\\[${escapedVersion}\\](?:\\s*-\\s*.+)?$`);
   const matchingIndexes = headingMatches
     .map((match, index) =>
       match.heading === version || versionHeadingPattern.test(match.heading) ? index : -1

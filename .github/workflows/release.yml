@@ -233,7 +233,7 @@ jobs:
           VSCE_PAT: ${{ secrets.VSCODE_PUBLISHER_TOKEN }}
           VSCODE_VERSION: ${{ needs.prepare-staging-prerelease.outputs.vscode_version }}
         run: |
-          pnpm dlx @vscode/vsce publish --pre-release --packagePath "artifacts/prerelease/vscode-templjs-$VSCODE_VERSION.vsix"
+          pnpm dlx @vscode/vsce@3.7.1 publish --pre-release --packagePath "artifacts/prerelease/vscode-templjs-$VSCODE_VERSION.vsix"
 
   prepare-release:
     name: Prepare Published Release
@@ -486,9 +486,9 @@ jobs:
           VSCODE_VERSION: ${{ needs.prepare-release.outputs.vscode_version }}
         run: |
           if [ "$VSCODE_PRERELEASE" = 'true' ]; then
-            pnpm dlx @vscode/vsce publish --pre-release --packagePath "artifacts/release/vscode-templjs-$VSCODE_VERSION.vsix"
+            pnpm dlx @vscode/vsce@3.7.1 publish --pre-release --packagePath "artifacts/release/vscode-templjs-$VSCODE_VERSION.vsix"
           else
-            pnpm dlx @vscode/vsce publish --packagePath "artifacts/release/vscode-templjs-$VSCODE_VERSION.vsix"
+            pnpm dlx @vscode/vsce@3.7.1 publish --packagePath "artifacts/release/vscode-templjs-$VSCODE_VERSION.vsix"
           fi
 
   finalize-release:

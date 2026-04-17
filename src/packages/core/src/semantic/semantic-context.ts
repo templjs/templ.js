@@ -454,8 +454,8 @@ export function resolveSemanticZone(text: string, offset: number): SemanticZone 
 /**
  * Infer the host document language from the file URI extension.
  *
- * Recognises `.md.templ` / `.md.tmpl`, `.yaml.templ` / `.yaml.tmpl`,
- * `.json.templ` / `.json.tmpl`, `.toml.templ` / `.toml.tmpl`,
+ * Recognises `.md.templ` / `.md.tmpl`, `.yml.templ` / `.yml.tmpl`,
+ * `.yaml.templ` / `.yaml.tmpl`, `.json.templ` / `.json.tmpl`, `.toml.templ` / `.toml.tmpl`,
  * `.html.templ` / `.html.tmpl`, and `.xml.templ` / `.xml.tmpl`
  * double-extension conventions (and their reversed forms).
  *
