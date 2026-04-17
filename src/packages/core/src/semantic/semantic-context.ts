@@ -454,9 +454,13 @@ export function resolveSemanticZone(text: string, offset: number): SemanticZone 
 /**
  * Infer the host document language from the file URI extension.
  *
- * Recognises `.md.templ` / `.md.tmpl`, `.yml.templ` / `.yml.tmpl`,
- * `.yaml.templ` / `.yaml.tmpl`, `.json.templ` / `.json.tmpl`, `.toml.templ` / `.toml.tmpl`,
- * `.html.templ` / `.html.tmpl`, and `.xml.templ` / `.xml.tmpl`
+ * Recognises `.md.templ` / `.md.tmpl` / `.md.tpl`,
+ * `.yml.templ` / `.yml.tmpl` / `.yml.tpl`,
+ * `.yaml.templ` / `.yaml.tmpl` / `.yaml.tpl`,
+ * `.json.templ` / `.json.tmpl` / `.json.tpl`,
+ * `.toml.templ` / `.toml.tmpl` / `.toml.tpl`,
+ * `.html.templ` / `.html.tmpl` / `.html.tpl`,
+ * and `.xml.templ` / `.xml.tmpl` / `.xml.tpl`
  * double-extension conventions (and their reversed forms).
  *
  * @param documentUri - Optional document URI or path
@@ -474,7 +478,9 @@ export function resolveSemanticHostLanguage(documentUri?: string): SemanticHostL
     normalized.includes('.md.templ') ||
     normalized.includes('.templ.md') ||
     normalized.includes('.md.tmpl') ||
-    normalized.includes('.tmpl.md')
+    normalized.includes('.tmpl.md') ||
+    normalized.includes('.md.tpl') ||
+    normalized.includes('.tpl.md')
   ) {
     return 'markdown';
   }
@@ -486,7 +492,11 @@ export function resolveSemanticHostLanguage(documentUri?: string): SemanticHostL
     normalized.includes('.yaml.tmpl') ||
     normalized.includes('.yml.tmpl') ||
     normalized.includes('.tmpl.yaml') ||
-    normalized.includes('.tmpl.yml')
+    normalized.includes('.tmpl.yml') ||
+    normalized.includes('.yaml.tpl') ||
+    normalized.includes('.yml.tpl') ||
+    normalized.includes('.tpl.yaml') ||
+    normalized.includes('.tpl.yml')
   ) {
     return 'yaml';
   }
@@ -494,7 +504,9 @@ export function resolveSemanticHostLanguage(documentUri?: string): SemanticHostL
     normalized.includes('.json.templ') ||
     normalized.includes('.templ.json') ||
     normalized.includes('.json.tmpl') ||
-    normalized.includes('.tmpl.json')
+    normalized.includes('.tmpl.json') ||
+    normalized.includes('.json.tpl') ||
+    normalized.includes('.tpl.json')
   ) {
     return 'json';
   }
@@ -502,7 +514,9 @@ export function resolveSemanticHostLanguage(documentUri?: string): SemanticHostL
     normalized.includes('.toml.templ') ||
     normalized.includes('.templ.toml') ||
     normalized.includes('.toml.tmpl') ||
-    normalized.includes('.tmpl.toml')
+    normalized.includes('.tmpl.toml') ||
+    normalized.includes('.toml.tpl') ||
+    normalized.includes('.tpl.toml')
   ) {
     return 'toml';
   }
@@ -510,7 +524,9 @@ export function resolveSemanticHostLanguage(documentUri?: string): SemanticHostL
     normalized.includes('.html.templ') ||
     normalized.includes('.templ.html') ||
     normalized.includes('.html.tmpl') ||
-    normalized.includes('.tmpl.html')
+    normalized.includes('.tmpl.html') ||
+    normalized.includes('.html.tpl') ||
+    normalized.includes('.tpl.html')
   ) {
     return 'html';
   }
@@ -518,7 +534,9 @@ export function resolveSemanticHostLanguage(documentUri?: string): SemanticHostL
     normalized.includes('.xml.templ') ||
     normalized.includes('.templ.xml') ||
     normalized.includes('.xml.tmpl') ||
-    normalized.includes('.tmpl.xml')
+    normalized.includes('.tmpl.xml') ||
+    normalized.includes('.xml.tpl') ||
+    normalized.includes('.tpl.xml')
   ) {
     return 'xml';
   }
