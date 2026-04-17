@@ -155,6 +155,25 @@ jobs:
             --head-ref="$HEAD_REF" \
             --pr-title="$PR_TITLE"
 
+  require-release-note:
+    name: Require Release Metadata
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: [install, toolchain]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup workspace toolchain
+        uses: ./.github/actions/setup-workspace
+        with:
+          node-version: ${{ needs.toolchain.outputs.node_default }}
+
+      - name: Enforce release metadata for released artifacts
+        run: pnpm run ci:release-note-guard
+
   docs-api-guard:
     name: Docs API Guard
     runs-on: ubuntu-latest
@@ -233,6 +252,7 @@ jobs:
         test,
         lint-work-item-frontmatter,
         require-changeset,
+        require-release-note,
         docs-api-guard,
         toolchain,
       ]
@@ -245,7 +265,8 @@ jobs:
         needs.lint-work-item-frontmatter.result == 'success' &&
         needs.docs-api-guard.result == 'success' &&
         needs.toolchain.result == 'success' &&
-        (needs.require-changeset.result == 'success' || needs.require-changeset.result == 'skipped')
+        (needs.require-changeset.result == 'success' || needs.require-changeset.result == 'skipped') &&
+        (needs.require-release-note.result == 'success' || needs.require-release-note.result == 'skipped')
       }}
     steps:
       - name: Checkout code

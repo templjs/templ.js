@@ -1,8 +1,8 @@
-# Pull Request - <!-- Provide a descriptive summary title -->
+# Pull Request
 
-## Description
+## Summary
 
-<!-- Provide a clear and concise description of your changes -->
+<!-- Describe what changed and why. -->
 
 > **Branch target**: open routine feature, fix, and chore PRs against `staging`. Reserve direct PRs to `main` for promotion and hotfix flows.
 
@@ -12,91 +12,41 @@
 
 Fixes #
 
-## Type of Change
+## Release Metadata
 
-<!-- Mark the relevant option with an 'x' -->
+<!--
+Required when PR changes released artifacts under src/packages/** or src/extensions/vscode/**.
+Keep this YAML valid. CI parses it for release notes and changelog automation.
+-->
 
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation update
-- [ ] Refactoring (no functional changes)
-- [ ] Performance improvement
-- [ ] CI/CD or build configuration
-
-## Checklist
-
-<!-- Ensure all items are completed before requesting review -->
-
-- [ ] My code follows the project's style guidelines
-- [ ] I have performed a self-review of my code
-- [ ] I have commented my code, particularly in hard-to-understand areas
-- [ ] I have made corresponding changes to the documentation
-- [ ] My changes generate no new warnings or errors
-- [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] New and existing unit tests pass locally with my changes
-- [ ] Any dependent changes have been merged and published in downstream modules
-- [ ] I have added or updated a Changeset entry when this change affects released artifacts
+```yaml
+release_note:
+  type: feat # feat, fix, perf, refactor, docs, chore
+  scope:
+    - core # core, cli, volar, context-graph, vscode, docs, infra
+  summary: 'Describe the user-visible change in one sentence'
+  changelog:
+    - root # root, vscode, none
+  breaking: false
+```
 
 ## Breaking Changes
 
-<!-- If this PR introduces breaking changes, describe them and the migration path -->
-
-- [ ] This PR introduces breaking changes
-
-**Migration Guide**:
-
-```typescript
-// Before
-// ...
-
-// After
-// ...
-```
-
-## Performance Impact
-
-<!-- Describe any performance implications of these changes -->
-
-- [ ] Performance benchmarks run and documented
-- [ ] No significant performance impact
-- [ ] Performance improvement (describe below)
-- [ ] Performance regression (justified below)
-
-**Details**:
+<!-- If `breaking: true` above, describe the change and migration path. -->
 
 ## Testing
 
-<!-- Describe the tests you ran and how to reproduce them -->
-
-### Test Coverage
+<!-- Describe what was tested and how to reproduce. -->
 
 - [ ] Unit tests added/updated
 - [ ] Integration tests added/updated
-- [ ] E2E tests added/updated
 - [ ] Manual testing performed
 
-### Test Instructions
+## Checklist
 
-```bash
-# Commands to run tests
-pnpm test
-```
-
-## Screenshots / Videos
-
-<!-- If applicable, add screenshots or videos demonstrating the changes -->
-
-## Additional Context
-
-<!-- Add any other context about the PR here -->
-
-## Reviewer Checklist
-
-<!-- For reviewers - ensure these items are validated -->
-
-- [ ] Code changes are appropriate for the stated issue
-- [ ] Tests adequately cover the changes
-- [ ] Documentation is clear and complete
-- [ ] No security vulnerabilities introduced
-- [ ] Performance impact is acceptable
+- [ ] Code changes align with the stated scope
+- [ ] `pnpm test` passes
+- [ ] `pnpm lint` passes
+- [ ] I added a `.changeset/*.md` file when released artifacts changed
+- [ ] Documentation updated where relevant
+- [ ] No new warnings or errors introduced
