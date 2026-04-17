@@ -1,7 +1,7 @@
-## {{ version }} - {{ releaseDate }}
+## [{{ version }}] - {{ releaseDate }}
 
-{{? hasPreviousTag }}
+{%- if hasPreviousTag %}
 Changes since [{{ previousTag }}](https://github.com/templjs/templ.js/releases/tag/{{ previousTag }}).
-{{/}}
+{%- endif %}
 
 {{ changesMarkdown }}

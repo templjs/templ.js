@@ -434,8 +434,13 @@ export function upsertVersionSection(
     heading: match[1].trim(),
     index: match.index ?? 0,
   }));
+  const versionHeadingPattern = new RegExp(
+    `^\\[${version.replace(/\./g, '\\\\.')}\\](?:\\s*-\\s*.+)?$`
+  );
   const matchingIndexes = headingMatches
-    .map((match, index) => (match.heading === version ? index : -1))
+    .map((match, index) =>
+      match.heading === version || versionHeadingPattern.test(match.heading) ? index : -1
+    )
     .filter((index) => index >= 0);
 
   if (matchingIndexes.length > 0) {
@@ -447,9 +452,21 @@ export function upsertVersionSection(
         .slice(endIndex)
         .trimStart()}`.trimEnd();
   } else {
+    const firstVersionHeading = headingMatches.find((match) =>
+      /^\[\d+\.\d+\.\d+\](?:\s*-\s*.+)?$/.test(match.heading)
+    );
+    if (firstVersionHeading) {
+      nextContent =
+        `${currentContent.slice(0, firstVersionHeading.index).trimEnd()}\n\n${normalizedSection}\n\n${currentContent
+          .slice(firstVersionHeading.index)
+          .trimStart()}`.trimEnd();
+      writeFileSync(absolutePath, `${nextContent.trimEnd()}\n`, 'utf8');
+      return;
+    }
+
     const titleMatch = currentContent.match(/^# .+$/m);
     if (!titleMatch || titleMatch.index === undefined) {
-      nextContent = `${normalizedSection}\n`;
+      nextContent = `${currentContent}\n\n${normalizedSection}`;
     } else {
       const insertAt = titleMatch.index + titleMatch[0].length;
       nextContent = `${currentContent.slice(0, insertAt)}\n\n${normalizedSection}\n\n${currentContent

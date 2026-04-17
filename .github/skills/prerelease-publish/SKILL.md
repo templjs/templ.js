@@ -82,7 +82,7 @@ Validate:
 #### VS Code extension
 
 ```bash
-rtk npx vsce package --pre-release
+rtk pnpm dlx @vscode/vsce package --pre-release
 ```
 
 Validate:
