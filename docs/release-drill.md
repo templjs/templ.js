@@ -1,5 +1,5 @@
 ---
-id: release-drill-001
+id: releasedrill-001
 type: document
 subtype: guide
 lifecycle: active

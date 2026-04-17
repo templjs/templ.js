@@ -43,7 +43,8 @@ function main(): void {
     paths.push('src/extensions/vscode');
   }
 
-  const commits = getCommits({ fromTag: base, toRef: head, paths });
+  const hasPublishedArtifacts = paths.length > 0;
+  const commits = hasPublishedArtifacts ? getCommits({ fromTag: base, toRef: head, paths }) : [];
   const sections = buildSections(commits);
 
   const releaseKindLabel =

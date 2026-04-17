@@ -37,6 +37,7 @@ Shared long-lived branch checks:
 - `Type Check`
 - `Lint Work Item Frontmatter`
 - `Require Changeset`
+- `Require Release Metadata`
 - `Docs API Guard`
 - all required `Test` matrix jobs
 - `Build`

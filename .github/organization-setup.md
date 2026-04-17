@@ -141,6 +141,7 @@ Rules:
   - `Type Check`
   - `Lint Work Item Frontmatter`
   - `Require Changeset`
+  - `Require Release Metadata`
   - `Docs API Guard`
   - `Test (Node 22, ubuntu-latest)`
   - `Test (Node 22, macos-latest)`

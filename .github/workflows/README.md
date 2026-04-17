@@ -122,7 +122,7 @@ Current workflow credentials:
 - recurring release and promotion flow:
   - [../../docs/release-process.md](../../docs/release-process.md)
 - one-time repo setup and rulesets:
-  - [../ORGANIZATION_SETUP.md](../ORGANIZATION_SETUP.md)
+  - [../organization-setup.md](../organization-setup.md)
 - secret and credential setup:
   - [../SECRETS.md](../SECRETS.md)
 

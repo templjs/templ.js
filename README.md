@@ -152,10 +152,12 @@ The VS Code/Volar architecture is designed to preserve native tooling for base f
 
 Current extension targets:
 
-- `.yaml.tmpl` / `.yml.tmpl`
-- `.json.tmpl`
-- `.md.tmpl`
-- `.html.tmpl`
+- `.yaml.tmpl` / `.yml.tmpl` and `.templ.yaml` / `.templ.yml`
+- `.json.tmpl` and `.templ.json`
+- `.md.tmpl` and `.templ.md`
+- `.html.tmpl` and `.templ.html`
+
+The `.tmpl` suffix is the primary convention documented in this README, and `.templ.*` remains supported for compatibility.
 
 For troubleshooting language features, see [VS Code triage logs](src/extensions/vscode/README.md#triage-logs) for quick setup and symptom-specific checks for go-to-definition, hover, and IntelliSense duplicate entries.
 

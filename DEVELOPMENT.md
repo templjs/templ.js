@@ -349,7 +349,7 @@ Example: Adding a `capitalize` filter function
 
 ### Releasing a New Version
 
-See [RUNBOOK.md](docs/RUNBOOK.md#releasing-a-new-version) for complete release process.
+See [release-process.md](docs/release-process.md) for the complete release process.
 
 Quick version:
 
@@ -628,11 +628,12 @@ When merging a feature branch with a changeset:
 
 1. **Changesets bot** detects the changeset and creates an automated "Version Packages" PR
 2. **Review the Version PR**: Check proposed versions align with semver intent
-3. **Merge Version PR**: Triggers automated release workflow:
+3. **Merge Version PR**:
    - Updates all root + workspace `package.json` versions (synchronized)
    - Updates `CHANGELOG.md` entries
-   - Creates GitHub release
-   - Publishes to npm + VS Code Marketplace
+   - Pushes the release commit and tags for updated versions
+4. **Publish a GitHub Release from the appropriate tag** (`v*` / `vscode-v*`):
+   - Triggers the stable release workflow in `release.yml`
 
 ## Common Pitfalls
 

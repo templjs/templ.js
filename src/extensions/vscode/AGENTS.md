@@ -1,5 +1,5 @@
 ---
-id: vscode-root-001
+id: vscode-001
 type: document
 subtype: prompt
 lifecycle: active
