@@ -62,8 +62,15 @@ function parseReleaseMetadata(prBody: string): ReleaseNoteMetadata['release_note
     if (!raw || !raw.includes('release_note:')) {
       continue;
     }
-    const parsed = yaml.parse(raw) as ReleaseNoteMetadata;
-    return parsed.release_note;
+    try {
+      const parsed = yaml.parse(raw) as ReleaseNoteMetadata;
+      return parsed.release_note;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`invalid release metadata YAML block in PR body: ${message}`, {
+        cause: error,
+      });
+    }
   }
 
   return undefined;

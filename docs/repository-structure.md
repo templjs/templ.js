@@ -117,7 +117,7 @@ templjs/
 ├── .prettierrc.json            # Prettier configuration
 ├── codecov.yml                 # Codecov configuration
 ├── DEVELOPMENT.md              # Development guide
-├── MIGRATION_PLAN.md           # Migration from Python version
+├── migration-plan.md           # Migration from Python version
 ├── nx.json                     # Nx configuration
 ├── package.json                # Root package configuration
 ├── pnpm-lock.yaml              # Dependency lockfile
@@ -583,7 +583,7 @@ This repository is the TypeScript rewrite of the original Python temple project.
 **Legacy Repository**: `/Users/macos/dev/temple/` (Python)  
 **New Repository**: `/Users/macos/dev/templjs/` (TypeScript)
 
-**Migration Plan**: See `MIGRATION_PLAN.md` for detailed roadmap
+**Migration Plan**: See `migration-plan.md` for detailed roadmap
 
 **Coexistence**: Both versions exist during migration period
 
@@ -605,4 +605,4 @@ This repository is the TypeScript rewrite of the original Python temple project.
 - **Package Manager**: pnpm (`pnpm-workspace.yaml`)
 - **Work Item Schema**: `schemas/frontmatter/by-type/work-item/latest.json`
 - **Document Schema**: `schemas/frontmatter/by-type/document/latest.json`
-- **Migration Plan**: `MIGRATION_PLAN.md`
+- **Migration Plan**: `migration-plan.md`

@@ -5,29 +5,31 @@ subtype: prompt
 lifecycle: active
 status: ready
 title: Workspace Manager
-description: Agent for managing work items in backlog/
+description: Agent for managing work items in backlog/ and coordinating repository-safe work, including release-oriented execution.
 ---
 
 ## Agent Routing Rules
 
-- **Proximity Principle**: ALWAYS check for AGENTS.md files in the directory closest to your working context
-- **Backlog Work**: If editing `backlog/**`, read `backlog/AGENTS.md` first
-- **Source Code**: If editing `src/packages/{core,cli,volar}`, read respective package AGENTS.md
-- **Documentation**: If editing `docs/**`, read `docs/AGENTS.md`
-- **Skills Development**: If editing `skills/**`, read `skills/AGENTS.md`
+- **Proximity Principle**: ALWAYS check for `AGENTS.md` files in the directory closest to your working context.
+- **Backlog Work**: If editing `backlog/**`, read `backlog/AGENTS.md` first.
+- **Source Code**: If editing `src/packages/{core,cli,volar}`, read the respective package `AGENTS.md`.
+- **VS Code Extension Packaging / Release Work**: If editing or operating within `src/extensions/vscode/**`, read `src/extensions/vscode/AGENTS.md` first if present.
+- **VS Code Extension Source Code**: If editing `src/extensions/vscode/src/**`, read `src/extensions/vscode/src/AGENTS.md` first.
+- **Documentation**: If editing `docs/**`, read `docs/AGENTS.md`.
+- **Skills Development**: If editing `skills/**`, read `skills/AGENTS.md`.
 
 ## Fallback Instructions
 
-If no specific AGENTS.md exists for your working context:
+If no specific `AGENTS.md` exists for your working context:
 
-1. Check parent directories for AGENTS.md files
-2. Do NOT modify AGENTS.md files without explicit consent
-3. Do NOT modify _config_ files (e.g. vitest.config.ts) without explicit consent
-4. For skills that delegate work, run in parallel, or split efforts across workspaces, compose `skills/aspects/sandboxing-workspace/SKILL.md`
-5. NEVER use --no-verify to bypass local hooks
-6. Manage atomic, discrete version control changesets
-7. Follow project conventions in MIGRATION_PLAN.md and relevant ADRs
-8. Maintain work item frontmatter alignment with schemas in `schemas/frontmatter/`
+1. Check parent directories for `AGENTS.md` files.
+2. Do NOT modify `AGENTS.md` files without explicit consent.
+3. Do NOT modify _config_ files (e.g. `vitest.config.ts`) without explicit consent.
+4. For skills that delegate work, run in parallel, or split efforts across workspaces, compose `skills/aspects/sandboxing-workspace/SKILL.md`.
+5. NEVER use `--no-verify` to bypass local hooks.
+6. Manage atomic, discrete version control changesets.
+7. Follow project conventions in `migration-plan.md` and relevant ADRs.
+8. Maintain work item frontmatter alignment with schemas in `schemas/frontmatter/`.
 
 ## Version Management
 
@@ -54,7 +56,6 @@ Configuration: [`.changeset/config.json`](.changeset/config.json)
 pnpm changeset
 # Select all affected packages
 # Choose semver bump (patch|minor|major)
-# Commit .changeset/*.md
 ```
 
 **❌ NEVER**: Manually edit `package.json` versions directly
@@ -68,13 +69,13 @@ This breaks automation and creates version misalignment. Example anti-patterns:
 
 ### Workflow for Agents Implementing Features
 
-1. **Make code changes** in feature branch
-2. **Run tests & linting** before PR
+1. **Make code changes** in a feature branch.
+2. **Run tests & linting** before PR.
 3. **Create changeset**: `pnpm changeset`
    - If multiple unrelated changes: one changeset per logical change
    - For npm package work, keep `@templjs/core`, `@templjs/cli`, `@templjs/volar`, and `@templjs/context-graph` aligned
    - For extension-only work, select `vscode-templjs` independently
-   - Write changelog entry from user perspective
+   - Write changelog entry from the user perspective
 4. **Commit changeset**: `git add .changeset/ && git commit`
 5. **Push feature branch** with changeset included
 6. **Do NOT merge Version Packages PR** yourself—maintain versions; let maintainers handle release automation
@@ -83,7 +84,7 @@ This breaks automation and creates version misalignment. Example anti-patterns:
 
 - npm package releases use `vX.Y.Z`
 - VS Code extension releases use `vscode-vX.Y.Z`
-- The GitHub Release prerelease flag controls prerelease vs stable channel behavior
+- prereleases are published automatically from `staging` using CI-generated versions, not the GitHub prerelease checkbox
 
 ### Verification Before Pushing
 
@@ -94,11 +95,66 @@ ls -la .changeset/*.md
 # Verify content includes all changed packages
 cat .changeset/<name>.md
 
-# Verify no manual package.json edits
-git diff package.json  # should show no version changes
+# Verify no manual package.json version edits
+git diff package.json
 ```
+
+## Release-Oriented Operating Mode
+
+When the user’s goal is to get a build, prerelease, or publish flow over the finish line:
+
+1. Prefer a **release finisher** posture:
+   - validate repo state
+   - build
+   - test
+   - package
+   - identify the smallest blocker
+   - fix only low-risk release plumbing issues
+   - rerun the narrowest necessary validation
+2. Prefer **minimal, targeted changes** over cleanup or refactors.
+3. Use repository docs as source of truth before improvising:
+   - `docs/release-process.md`
+   - `docs/ci-cd.md`
+   - `migration-plan.md`
+4. For npm package versioning and extension versioning, preserve the split versioning model above.
+5. For prerelease work, do **not** force stable release conventions onto prerelease workflows.
+
+## Release Safety Boundaries
+
+During release-oriented work:
+
+- ✅ Allowed:
+  - run install/build/test/package commands
+  - fix release metadata, scripts, changelog, README, and packaging configuration
+  - create or update changesets when required by project policy
+  - create a release branch if needed
+  - prepare release notes and publish summaries
+
+- ⚠️ Ask first:
+  - modifying config files such as `vitest.config.ts`, Nx config, workspace config, or CI workflows
+  - source-code changes larger than a narrow release unblock
+  - changes to release strategy that conflict with documented process
+
+- 🚫 Never:
+  - manually edit package versions in `package.json`
+  - use `--no-verify`
+  - bypass changeset/versioning policy
+  - publish stable releases when the user asked for prerelease
+  - perform unrelated refactors during release work
+
+## Reporting Expectations
+
+For release-oriented tasks, end with:
+
+- summary
+- commands run
+- files changed
+- artifacts produced
+- publish or dry-run results
+- blockers remaining
+- exact next human action, if needed
 
 ## Commands
 
-- Commit: Use `git-commit` skill
-- **Version management**: Always use `pnpm changeset`, never manual edits
+- Commit: use `git-commit` skill
+- **Version management**: always use `pnpm changeset`, never manual edits

@@ -551,16 +551,13 @@ pnpm clean                         # Clean all build outputs
 
 ## Overview
 
-This monorepo uses **[Changesets](https://github.com/changesets/changesets)** for automated version management.
+This monorepo uses **[Changesets](https://github.com/changesets/changesets)** for automated version management. The four npm packages (`@templjs/core`, `@templjs/cli`, `@templjs/volar`, `@templjs/context-graph`) are configured with **fixed versioning**—they must always release with the same version number. The VS Code extension (`vscode-templjs`) is versioned independently.
 
-- The npm packages (`@templjs/core`, `@templjs/cli`, `@templjs/volar`, `@templjs/context-graph`) share one **fixed version train**.
-- The VS Code extension (`vscode-templjs`) is **versioned independently** so Marketplace prerelease/stable rules do not constrain npm release conventions.
+### Why Fixed Versioning?
 
-### Why Split Versioning?
-
-- Coordinated npm releases: the published packages still ship together as one release train
-- Cleaner VS Code prereleases: Marketplace can use its own plain-semver version line
-- Less friction: npm prerelease conventions and VS Code Marketplace rules no longer fight each other
+- Coordinated releases: all packages ship v1.0.0, not v1.0.0, v0.9.5, v1.1.0
+- Simplified user experience: one version to track
+- Clearer dependency management across the monorepo
 
 ### Configuration
 
@@ -600,6 +597,7 @@ $ pnpm changeset
   ◉ @templjs/cli
   ◉ @templjs/volar
   ◉ @templjs/context-graph
+  ◉ vscode-templjs
 
 ? What kind of change is this for @templjs/core (Currently at 1.0.0)?
   ◯ patch (bugfix)
@@ -612,8 +610,6 @@ $ pnpm changeset
 
 This creates `.changeset/<id>-<desc>.md` with your change details.
 
-When a change affects only the VS Code extension, select `vscode-templjs` by itself. The version PR workflow will regenerate `src/extensions/vscode/CHANGELOG.md` automatically from commit history when the extension version changes.
-
 ### 3. Commit the changeset
 
 ```bash
@@ -622,24 +618,22 @@ git commit -m "chore: add changeset for feature description"
 git push
 ```
 
-### 4. Create PR to `staging`
+### 4. Create PR normally
 
 The changeset goes in the PR; CI validates it.
-
-If your PR touches `src/packages/**` or `src/extensions/vscode/**`, the `Require Changeset` CI job will fail unless a `.changeset/*.md` file is included. The automated version PR on `main` is exempt.
 
 ### For Release (Maintainers Only)
 
 When merging a feature branch with a changeset:
 
-1. **Merge to `staging`**: prerelease publishing happens automatically for the affected lane
-2. **Promote `staging` to `main`** when the branch is ready for stable release
-3. **Changesets bot** detects the promoted changes and creates an automated "Version Packages" PR on `main`
-4. **Review the Version PR**: Check proposed versions align with semver intent
-5. **Merge Version PR**: prepares the stable release commit on `main`
-6. **Create the stable tag and publish the GitHub Release**:
-   - `vX.Y.Z` for npm packages
-   - `vscode-vX.Y.Z` for the VS Code extension
+1. **Changesets bot** detects the changeset and creates an automated "Version Packages" PR
+2. **Review the Version PR**: Check proposed versions align with semver intent
+3. **Merge Version PR**:
+   - Updates all root + workspace `package.json` versions (synchronized)
+   - Updates `CHANGELOG.md` entries
+   - Pushes the release commit and tags for updated versions
+4. **Publish a GitHub Release from the appropriate tag** (`v*` / `vscode-v*`):
+   - Triggers the stable release workflow in `release.yml`
 
 ## Common Pitfalls
 
@@ -672,8 +666,7 @@ git add .changeset/ && git commit
 **Result**:
 
 - ✅ Changelog auto-generated
-- ✅ npm package versions stay synchronized
-- ✅ VS Code extension versioning stays compatible with Marketplace
+- ✅ All versions sync perfectly
 - ✅ Release workflow triggers correctly
 - ✅ GitHub release created automatically
 

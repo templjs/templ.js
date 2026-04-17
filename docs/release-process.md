@@ -9,68 +9,65 @@ title: Release Process
 
 ## Release Process
 
-This guide defines the canonical branch strategy and release process for templjs.
-
-Use this document as the source of truth for:
-
-- which branch to target
-- how prereleases are published
-- how stable releases are promoted and published
-- which steps are automated versus manual
+This guide is the canonical source of truth for templjs branching, prerelease publishing, promotion, and stable release publication.
 
 ## Branch Strategy
 
-templjs uses one stable branch and one long-lived prerelease branch:
+templjs uses two long-lived branches:
 
-- `main`
-  - stable integration branch
-  - the only branch from which stable releases are cut
-  - the only branch where Changesets version PRs are consumed
 - `staging`
   - prerelease integration branch
-  - the default target for feature, fix, and chore PRs
-  - every merge can publish prerelease artifacts automatically, depending on scope
-- short-lived branches
-  - `feature/*`
-  - `fix/*`
-  - `chore/*`
-  - branch from `staging` and merge back into `staging`
+  - default target for normal contributor PRs
+- `main`
+  - stable promotion branch
+  - only branch from which stable releases are cut
+  - only branch where the Changesets version PR is consumed
 
-Optional emergency flow:
+Short-lived branches should branch from `staging`:
 
-- `hotfix/*`
-  - branch from `main`
-  - merge into `main`
-  - back-merge into `staging`
+- `feature/*`
+- `fix/*`
+- `chore/*`
 
-Merge method policy:
+Emergency hotfixes may branch from `main`, then back-merge into `staging`.
 
-- contributor PRs into `staging`: `squash`
-- promotion PRs into `main`: `rebase`
-- plain `merge` commits are disallowed on long-lived branches because the repo requires linear history
+Merge policy:
 
-Rationale:
-
-- `staging` uses `squash` so prerelease integration history stays PR-shaped, compact, and easy to bisect
-- `main` uses `rebase` so promotion from `staging` preserves the already-curated linear commit sequence without introducing a merge commit
+- PRs into `staging`: `squash`
+- PRs into `main`: `rebase`
+- merge commits are disallowed on long-lived branches
 
 ## Version Authority
 
-The repository uses two different version authorities for two different purposes:
+templjs intentionally splits prerelease and stable version authority.
 
-- stable release authority:
-  - Changesets
-  - consumed only on `main`
-- prerelease version authority:
-  - CI-generated ephemeral versions
-  - applied only inside GitHub Actions on `staging`
-  - never committed back to the repository
+Stable version authority:
 
-This split keeps prerelease publishing automatic without consuming or mutating the authoritative Changesets state before stable promotion.
+- Changesets
+- consumed only on `main`
 
-## Release Lanes
+Prerelease version authority:
 
-### Staging Prerelease Lane
+- CI-generated ephemeral versions
+- applied only inside GitHub Actions on `staging`
+- never committed back to the repository
+
+## Versioning Model
+
+Changesets configuration lives in [../.changeset/config.json](../.changeset/config.json).
+
+Fixed npm train:
+
+- `@templjs/core`
+- `@templjs/cli`
+- `@templjs/volar`
+- `@templjs/context-graph`
+
+Independent extension:
+
+- `vscode-templjs`
+
+## Staging Prerelease Lane
 
 Pushes to `staging` can publish prerelease artifacts automatically.
 
@@ -83,184 +80,104 @@ Scope rules:
   - `src/packages/volar/**`
   - `src/packages/context-graph/**`
 
-Versioning rules:
+Version rules:
 
-- npm packages use an ephemeral synchronized prerelease version:
+- npm packages use:
   - `0.0.0-staging.<run_number>.<run_attempt>`
-- VS Code uses an ephemeral plain semver prerelease line:
-  - current stable extension version `X.Y.Z`
+- VS Code uses a CI-generated next-minor plain semver:
+  - stable version `X.Y.Z`
   - staging prerelease version `X.(Y+1).N`
-  - `N` is derived from the GitHub Actions run number and attempt
+  - `N` derived from workflow run number and attempt
 
 Publishing rules:
 
-- npm packages publish to dist-tag `next`
-- VS Code publishes with `vsce publish --pre-release`
-- no release tags are created for routine staging prereleases
-- no manual GitHub Release prerelease checkbox is required for staging prereleases
+- npm publishes to dist-tag `next`
+- VS Code publishes with `--pre-release`
+- no routine staging tags are created
+- no GitHub Release prerelease checkbox is involved
 
-### Main Stable Lane
+## Main Stable Lane
 
-Stable releases remain tag-driven from `main`.
+Stable releases are tag-driven from `main`.
 
-Release tags:
+Stable tag lanes:
 
 - npm packages: `vX.Y.Z`
 - VS Code extension: `vscode-vX.Y.Z`
 
-Publishing rules:
+Publishing starts only after a GitHub Release is published from one of those tags.
 
-- stable publishing starts only after a GitHub Release is published from one of those tags
-- package releases publish to npm dist-tag `latest`
-- VS Code stable releases publish without `--pre-release`
+Stable outputs:
 
-## Fixed vs Independent Versioning
+- npm publishes to dist-tag `latest`
+- VS Code publishes without `--pre-release`
 
-The release model is split:
+## Contributor Flow
 
-- fixed npm train:
-  - `@templjs/core`
-  - `@templjs/cli`
-  - `@templjs/volar`
-  - `@templjs/context-graph`
-- independent extension:
-  - `vscode-templjs`
+1. Branch from `staging`
+2. Implement the change
+3. Add a Changeset if the change affects released artifacts
+4. Open a PR to `staging`
+5. Merge after required CI passes
 
-Changesets configuration lives in [`.changeset/config.json`](../.changeset/config.json).
+Changeset rule:
 
-## End-to-End Flow
+- if a PR changes `src/packages/**` or `src/extensions/vscode/**`, it must include at least one `.changeset/*.md`
+- CI enforces this through `Require Changeset`
+- the automated version PR on `main` is exempt
 
-```mermaid
-flowchart TD
-    A[Contributor branches from staging] --> B[Open PR to staging]
-    B --> C[Required CI passes]
-    C --> D[Merge to staging]
-    D --> E[Push to staging triggers release.yml]
-    E --> F{Changed scope}
-    F -->|npm packages| G[Apply ephemeral 0.0.0-staging.* versions]
-    F -->|VS Code| H[Apply ephemeral next-minor plain semver]
-    F -->|both| I[Apply both prerelease version schemes]
-    G --> J[Publish npm prereleases to next]
-    H --> K[Package VSIX and publish Marketplace prerelease]
-    I --> J
-    I --> K
-    J --> L[Artifacts available for soak and validation]
-    K --> L
-    L --> M[Maintainer opens promotion PR: staging -> main]
-    M --> N[Promotion PR passes required CI]
-    N --> O[Maintainer merges to main]
-    O --> P[Push to main updates or opens Version Packages PR]
-    P --> Q[Maintainer reviews and merges Version Packages PR]
-    Q --> R{Choose stable release lane}
-    R -->|npm packages| S[Create tag vX.Y.Z]
-    R -->|VS Code extension| T[Create tag vscode-vX.Y.Z]
-    S --> U[Publish GitHub Release]
-    T --> U
-    U --> V[release.yml verifies tag and branch ancestry]
-    V --> W[Build release assets and generate md.tmpl release notes]
-    W --> X{Lane}
-    X -->|npm packages| Y[Publish npm stable release to latest]
-    X -->|VS Code extension| Z[Publish VS Code stable release]
-    Y --> AA[Update GitHub Release body]
-    Z --> AB[Attach VSIX and checksum to GitHub Release]
-    AB --> AA
-```
+## Staging Validation Posture
 
-## Contributor Workflow
+`staging` is the prerelease soak branch.
 
-### 1. Branch From `staging`
+Required on `staging`:
 
-Create a short-lived branch from `staging`.
+- core CI jobs from `ci.yml`
 
-### 2. Make Changes
+Informational on `staging`:
 
-Implement the feature, fix, or chore.
+- `Benchmark Suite`
+- `Analyze (javascript-typescript)`
 
-### 3. Add Changesets
+Those checks still run on `staging`, but they do not block prerelease integration there.
 
-If the change affects published packages or the VS Code extension, add a Changeset in the PR:
+## Promotion Flow: `staging` to `main`
 
-```bash
-pnpm changeset
-git add .changeset/
-git commit -m "chore: add changeset for feature description"
-```
+Promotion is intentional and maintainer-driven.
 
-Changesets are still required even though staging prerelease versions are CI-generated, because stable release authority remains on `main`.
-
-### 4. Open PR to `staging`
-
-All normal CI gates must pass before merge.
-
-Contributor PR policy:
-
-- if the PR changes `src/packages/**` or `src/extensions/vscode/**`, it must include at least one `.changeset/*.md` file
-- CI enforces this with the `Require Changeset` job
-- the automated `main` version PR is exempt from that guard
-
-## Staging Prerelease Workflow
-
-### Automated Steps
-
-After a PR merges to `staging`, `release.yml` automatically:
-
-1. determines whether the merge affects the npm release lane, the VS Code release lane, or both
-2. computes CI-only prerelease versions
-3. applies those versions in the runner workspace only
-4. builds the workspace
-5. publishes prerelease artifacts for the affected lane only
-
-### Manual Steps
-
-There are no routine manual publishing steps for staging prereleases.
-
-Maintainers still perform manual validation outside the workflow, for example:
-
-- install npm packages from `next`
-- test the VS Code prerelease from Marketplace
-- confirm quality, compatibility, and soak behavior
-
-## Promotion Workflow: `staging` to `main`
-
-Promotion is manual and intentional.
-
-### Maintainer Steps
+Maintainer steps:
 
 1. Open a PR from `staging` to `main`
-2. Confirm the promotion PR passes required CI
-3. Apply any release guardrails the team defines for stable promotion
-4. Merge the promotion PR into `main`
+2. Wait for all required `main` checks to pass
+3. Merge using `rebase`
 
-Current status:
+Required on `main` promotion PRs:
 
-- the same core merge gates apply to `staging` and `main`
-- additional promotion guardrails for `main` are a policy layer the team still needs to formalize
-- until then, promotion remains a maintainer judgement call backed by prerelease soak results
+- all core CI checks from `ci.yml`
+- `Benchmark Suite`
+- `Analyze (javascript-typescript)`
 
-Recommended future guardrails:
+This encodes the intended policy:
 
-- minimum soak time on `staging`
-- benchmark regression threshold
-- manual install smoke tests
-- release-blocker issue sweep
-- maintainer sign-off count higher than ordinary feature PRs
+- benchmark and CodeQL are informational on `staging`
+- benchmark and CodeQL become gating only when promoting to `main`
 
-## Stable Release Workflow
+## Stable Release Flow
 
 ### 1. Merge the Version PR on `main`
 
-The `Release` workflow maintains a Changesets-driven "Version Packages" PR on `main`.
+The release workflow maintains an automated Changesets version PR on `main`.
 
 That PR:
 
 - applies pending Changesets
-- keeps the 4 npm packages aligned
+- keeps the four npm packages aligned
 - updates the VS Code extension independently when selected
 - regenerates `src/extensions/vscode/CHANGELOG.md` when the extension version changes
 
-### 2. Create the Stable Release Tag
+### 2. Create the Stable Tag
 
-Choose the correct stable lane:
+Choose the correct lane:
 
 ```bash
 # npm packages
@@ -272,125 +189,96 @@ git tag vscode-v0.3.0
 git push origin vscode-v0.3.0
 ```
 
-### 3. Publish a GitHub Release
+### 3. Publish the GitHub Release
 
 In GitHub:
 
-- create or publish a release from the stable tag
-- do not use the prerelease checkbox for stable releases
+- publish a release from the stable tag
+- do not mark it as a prerelease
 
-### 4. Let Automation Publish the Stable Lane
+### 4. Let Automation Publish
 
 The workflow then:
 
-- verifies the tag format and selected release lane
+- verifies the tag format and release lane
 - verifies the tagged commit is already reachable from `main`
-- verifies the tag version matches the workspace version for that lane
+- verifies the tagged version matches the workspace version for that lane
 - builds the workspace
-- generates GitHub release notes from commit history using `md.tmpl`
+- generates release notes
 - publishes only the selected lane
 - updates the GitHub Release body
-- attaches VSIX artifacts for extension releases
-
-## Manual Steps Summary
-
-### Recurring Maintainer Steps
-
-- merge PRs into `staging`
-- validate prerelease artifacts
-- open and merge promotion PRs from `staging` to `main`
-- review and merge the `main` version PR
-- create stable release tags
-- publish stable GitHub Releases
-
-### One-Time / Infrequent Setup Steps
-
-- create and protect `main`
-- create and protect `staging`
-- configure GitHub environments
-- configure npm publishing
-- configure VS Code Marketplace publishing
-- configure repository secrets
+- attaches VSIX assets and checksums for extension releases
 
 ## Required Configuration
 
-### GitHub Branch Protection
+### Branch Protection
 
 Protect both long-lived branches:
 
-- `main`
 - `staging`
+- `main`
 
-For both branches:
+Shared required checks:
 
-- require pull requests
-- require approvals
-- require required CI checks
-- require branches to be up to date
-- require linear history
+- `Install Dependencies`
+- `Lint`
+- `Type Check`
+- `Lint Work Item Frontmatter`
+- `Require Changeset`
+- `Require Release Metadata`
+- `Docs API Guard`
+- all required matrix `Test` jobs
+- `Build`
+
+`main`-only additional required checks:
+
+- `Benchmark Suite`
+- `Analyze (javascript-typescript)`
 
 ### GitHub Environments
 
-Create these environments:
+Create:
 
 - `prerelease`
-  - used by automatic staging publishes
-  - usually no manual approval gate
 - `release`
-  - used by stable publishing from tags
-  - optional required reviewers are recommended
 
-### npm
+### npm Trusted Publishing
 
-- configure npm trusted publishing for:
-  - `@templjs/core`
-  - `@templjs/cli`
-  - `@templjs/volar`
-  - `@templjs/context-graph`
-- run `./.github/scripts/prepare-npm-trusted-publishing.sh` to print the exact package URLs and expected trusted publisher values from the repo
-- set GitHub repository to `templjs/templ.js`
-- set workflow filename to `release.yml`
-- leave the npm trusted publisher environment name blank so both staging prereleases and stable releases can publish through the same workflow file
-- the remaining manual work is the npm web UI step for each package
+Configure trusted publishing for:
+
+- `@templjs/core`
+- `@templjs/cli`
+- `@templjs/volar`
+- `@templjs/context-graph`
+
+Use [../.github/scripts/prepare-npm-trusted-publishing.sh](../.github/scripts/prepare-npm-trusted-publishing.sh) to print the exact package URLs and trusted-publisher values.
+
+Use:
+
+- owner: `templjs`
+- repository: `templ.js`
+- workflow filename: `release.yml`
+- environment name: leave blank
 
 ### VS Code Marketplace
 
-- set `VSCODE_PUBLISHER_TOKEN`
-- ensure the PAT owner can publish under the `templjs` publisher
+Configure:
+
+- `VSCODE_PUBLISHER_TOKEN`
+- publisher membership and publish rights for `templjs`
 
 ### Tag Protection
 
-Protect stable tag lanes:
+Protect:
 
 - `v*`
 - `vscode-v*`
 
-These protections are for stable releases only. Routine staging prereleases do not use tags.
-
-## Source of Truth
-
-Authoritative release intent comes from:
-
-1. code merged to `staging`
-2. Changesets files committed with that code
-3. the promotion PR from `staging` to `main`
-4. the stable version PR on `main`
-
-Authoritative stable release publication comes from:
-
-- stable tags on `main`
-- published GitHub Releases from those tags
-
-Authoritative prerelease publication comes from:
-
-- pushes to `staging`
-- CI-computed ephemeral prerelease versions
+Routine staging prereleases do not use tags.
 
 ## Related Docs
 
 - [CI/CD Infrastructure](./ci-cd.md)
-- [Repository Structure](./repository-structure.md)
-- [Development Guide](../DEVELOPMENT.md)
 - [GitHub Actions Workflows](../.github/workflows/README.md)
-- [Organization Setup](../.github/organization-setup.md)
+- [GitHub Organization Setup](../.github/organization-setup.md)
 - [Secrets Configuration](../.github/SECRETS.md)

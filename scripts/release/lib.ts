@@ -255,6 +255,43 @@ function parseConventionalSummary(subject: string): ConventionalParts {
   };
 }
 
+function extractReleaseNote(body: string): string | null {
+  const lines = body.split(/\r?\n/);
+  const chunks: string[] = [];
+  let collecting = false;
+
+  for (const line of lines) {
+    if (!collecting) {
+      const match = line.match(/^\s*release(?:[- ]notes?)?\s*:\s*(.*)\s*$/i);
+      if (match) {
+        const inlineValue = match[1]?.trim();
+        if (inlineValue) {
+          chunks.push(inlineValue);
+        }
+        collecting = true;
+      }
+      continue;
+    }
+
+    if (line.trim() === '') {
+      continue;
+    }
+
+    if (/^\s+\S/.test(line)) {
+      chunks.push(line.trim());
+      continue;
+    }
+
+    break;
+  }
+
+  if (chunks.length === 0) {
+    return null;
+  }
+
+  return chunks.join(' ').replace(/\s+/g, ' ').trim();
+}
+
 export function getCommits(options: {
   fromTag?: string | null;
   toRef?: string;
@@ -280,14 +317,16 @@ export function getCommits(options: {
     .filter(Boolean)
     .map((record) => {
       const [hash, subject, body] = record.split('\x1f');
+      const normalizedBody = body?.trim() ?? '';
       const conventional = parseConventionalSummary(subject);
+      const releaseNote = extractReleaseNote(normalizedBody);
       return {
         hash,
         subject,
-        body: body?.trim() ?? '',
+        body: normalizedBody,
         type: conventional.type,
         scope: conventional.scope,
-        summary: conventional.summary,
+        summary: releaseNote ?? conventional.summary,
         prNumber: conventional.prNumber,
       };
     });
@@ -402,8 +441,12 @@ export function upsertVersionSection(
     heading: match[1].trim(),
     index: match.index ?? 0,
   }));
+  const escapedVersion = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const versionHeadingPattern = new RegExp(`^\\[${escapedVersion}\\](?:\\s*-\\s*.+)?$`);
   const matchingIndexes = headingMatches
-    .map((match, index) => (match.heading === version ? index : -1))
+    .map((match, index) =>
+      match.heading === version || versionHeadingPattern.test(match.heading) ? index : -1
+    )
     .filter((index) => index >= 0);
 
   if (matchingIndexes.length > 0) {
@@ -415,9 +458,23 @@ export function upsertVersionSection(
         .slice(endIndex)
         .trimStart()}`.trimEnd();
   } else {
+    const firstVersionHeading = headingMatches.find((match) =>
+      /^\[\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?\](?:\s*-\s*.+)?$/.test(
+        match.heading
+      )
+    );
+    if (firstVersionHeading) {
+      nextContent =
+        `${currentContent.slice(0, firstVersionHeading.index).trimEnd()}\n\n${normalizedSection}\n\n${currentContent
+          .slice(firstVersionHeading.index)
+          .trimStart()}`.trimEnd();
+      writeFileSync(absolutePath, `${nextContent.trimEnd()}\n`, 'utf8');
+      return;
+    }
+
     const titleMatch = currentContent.match(/^# .+$/m);
     if (!titleMatch || titleMatch.index === undefined) {
-      nextContent = `${normalizedSection}\n`;
+      nextContent = `${currentContent}\n\n${normalizedSection}`;
     } else {
       const insertAt = titleMatch.index + titleMatch[0].length;
       nextContent = `${currentContent.slice(0, insertAt)}\n\n${normalizedSection}\n\n${currentContent

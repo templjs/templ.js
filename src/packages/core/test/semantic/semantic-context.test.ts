@@ -353,6 +353,40 @@ describe('semantic-context core helpers', () => {
     expect(resolveSemanticHostLanguage('file:///workspace/file.templ')).toBe('unknown');
   });
 
+  it('detects host language from tmpl document URI', () => {
+    expect(resolveSemanticHostLanguage('file:///workspace/note.md.tmpl')).toBe('markdown');
+    expect(resolveSemanticHostLanguage('file:///workspace/note.tmpl.md')).toBe('markdown');
+    expect(resolveSemanticHostLanguage('file:///workspace/spec.yaml.tmpl')).toBe('yaml');
+    expect(resolveSemanticHostLanguage('file:///workspace/spec.yml.tmpl')).toBe('yaml');
+    expect(resolveSemanticHostLanguage('file:///workspace/spec.tmpl.yml')).toBe('yaml');
+    expect(resolveSemanticHostLanguage('file:///workspace/data.json.tmpl')).toBe('json');
+    expect(resolveSemanticHostLanguage('file:///workspace/data.tmpl.json')).toBe('json');
+    expect(resolveSemanticHostLanguage('file:///workspace/template.html.tmpl')).toBe('html');
+    expect(resolveSemanticHostLanguage('file:///workspace/template.tmpl.html')).toBe('html');
+    expect(resolveSemanticHostLanguage('file:///workspace/config.toml.tmpl')).toBe('toml');
+    expect(resolveSemanticHostLanguage('file:///workspace/config.tmpl.toml')).toBe('toml');
+    expect(resolveSemanticHostLanguage('file:///workspace/layout.xml.tmpl')).toBe('xml');
+    expect(resolveSemanticHostLanguage('file:///workspace/layout.tmpl.xml')).toBe('xml');
+    expect(resolveSemanticHostLanguage('file:///workspace/file.tmpl')).toBe('unknown');
+  });
+
+  it('detects host language from tpl document URI', () => {
+    expect(resolveSemanticHostLanguage('file:///workspace/note.md.tpl')).toBe('markdown');
+    expect(resolveSemanticHostLanguage('file:///workspace/note.tpl.md')).toBe('markdown');
+    expect(resolveSemanticHostLanguage('file:///workspace/spec.yaml.tpl')).toBe('yaml');
+    expect(resolveSemanticHostLanguage('file:///workspace/spec.yml.tpl')).toBe('yaml');
+    expect(resolveSemanticHostLanguage('file:///workspace/spec.tpl.yml')).toBe('yaml');
+    expect(resolveSemanticHostLanguage('file:///workspace/data.json.tpl')).toBe('json');
+    expect(resolveSemanticHostLanguage('file:///workspace/data.tpl.json')).toBe('json');
+    expect(resolveSemanticHostLanguage('file:///workspace/template.html.tpl')).toBe('html');
+    expect(resolveSemanticHostLanguage('file:///workspace/template.tpl.html')).toBe('html');
+    expect(resolveSemanticHostLanguage('file:///workspace/config.toml.tpl')).toBe('toml');
+    expect(resolveSemanticHostLanguage('file:///workspace/config.tpl.toml')).toBe('toml');
+    expect(resolveSemanticHostLanguage('file:///workspace/layout.xml.tpl')).toBe('xml');
+    expect(resolveSemanticHostLanguage('file:///workspace/layout.tpl.xml')).toBe('xml');
+    expect(resolveSemanticHostLanguage('file:///workspace/file.tpl')).toBe('unknown');
+  });
+
   it('uses host language to resolve semantic zone with markdown compatibility', () => {
     const text = ['---', '$schema: ./frontmatter.json', '---', 'body'].join('\n');
     const metadataOffset = text.indexOf('$schema') + 2;
