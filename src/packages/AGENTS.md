@@ -1,5 +1,5 @@
 ---
-id: packages-001
+id: packages-root-001
 type: document
 subtype: prompt
 lifecycle: active
