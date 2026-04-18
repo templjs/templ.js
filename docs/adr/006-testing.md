@@ -123,7 +123,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 
 describe('Diagnostics', () => {
   beforeAll(async () => {
-    await vscode.extensions.getExtension('templjs.vscode-templjs')?.activate();
+    await vscode.extensions.getExtension('templjs.templjs')?.activate();
   });
 
   it('should report missing variable', async () => {

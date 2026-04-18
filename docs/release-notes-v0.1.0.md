@@ -35,7 +35,7 @@ npm install -D @templjs/cli@0.1.0
 
 Install the templjs extension from the marketplace:
 
-- <https://marketplace.visualstudio.com/items?itemName=templjs.vscode-templjs>
+- <https://marketplace.visualstudio.com/items?itemName=templjs.templjs>
 
 ### Documentation
 

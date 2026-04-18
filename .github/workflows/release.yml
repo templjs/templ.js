@@ -143,9 +143,9 @@ jobs:
           mkdir -p artifacts/prerelease
           cd src/extensions/vscode
           npx --yes @vscode/vsce package --no-dependencies --pre-release
-          cp "vscode-templjs-$VSCODE_VERSION.vsix" ../../../artifacts/prerelease/
+          cp "templjs-$VSCODE_VERSION.vsix" ../../../artifacts/prerelease/
           cd ../../..
-          shasum -a 256 "artifacts/prerelease/vscode-templjs-$VSCODE_VERSION.vsix" > "artifacts/prerelease/vscode-templjs-$VSCODE_VERSION.vsix.sha256"
+          shasum -a 256 "artifacts/prerelease/templjs-$VSCODE_VERSION.vsix" > "artifacts/prerelease/templjs-$VSCODE_VERSION.vsix.sha256"
 
       - name: Upload prerelease assets
         uses: actions/upload-artifact@v4
@@ -233,7 +233,7 @@ jobs:
           VSCE_PAT: ${{ secrets.VSCODE_PUBLISHER_TOKEN }}
           VSCODE_VERSION: ${{ needs.prepare-staging-prerelease.outputs.vscode_version }}
         run: |
-          pnpm dlx @vscode/vsce@3.7.1 publish --pre-release --packagePath "artifacts/prerelease/vscode-templjs-$VSCODE_VERSION.vsix"
+          pnpm dlx @vscode/vsce@3.7.1 publish --pre-release --packagePath "artifacts/prerelease/templjs-$VSCODE_VERSION.vsix"
 
   prepare-release:
     name: Prepare Published Release
@@ -397,8 +397,8 @@ jobs:
           VSCODE_VERSION: ${{ needs.prepare-release.outputs.vscode_version }}
         run: |
           mkdir -p artifacts/release
-          cp "src/extensions/vscode/vscode-templjs-$VSCODE_VERSION.vsix" artifacts/release/
-          shasum -a 256 "artifacts/release/vscode-templjs-$VSCODE_VERSION.vsix" > "artifacts/release/vscode-templjs-$VSCODE_VERSION.vsix.sha256"
+          cp "src/extensions/vscode/templjs-$VSCODE_VERSION.vsix" artifacts/release/
+          shasum -a 256 "artifacts/release/templjs-$VSCODE_VERSION.vsix" > "artifacts/release/templjs-$VSCODE_VERSION.vsix.sha256"
 
       - name: Upload release assets
         uses: actions/upload-artifact@v4
@@ -486,9 +486,9 @@ jobs:
           VSCODE_VERSION: ${{ needs.prepare-release.outputs.vscode_version }}
         run: |
           if [ "$VSCODE_PRERELEASE" = 'true' ]; then
-            pnpm dlx @vscode/vsce@3.7.1 publish --pre-release --packagePath "artifacts/release/vscode-templjs-$VSCODE_VERSION.vsix"
+            pnpm dlx @vscode/vsce@3.7.1 publish --pre-release --packagePath "artifacts/release/templjs-$VSCODE_VERSION.vsix"
           else
-            pnpm dlx @vscode/vsce@3.7.1 publish --packagePath "artifacts/release/vscode-templjs-$VSCODE_VERSION.vsix"
+            pnpm dlx @vscode/vsce@3.7.1 publish --packagePath "artifacts/release/templjs-$VSCODE_VERSION.vsix"
           fi
 
   finalize-release:
