@@ -472,76 +472,101 @@ export function resolveSemanticHostLanguage(documentUri?: string): SemanticHostL
     return 'unknown';
   }
 
-  const normalized = documentUri.toLowerCase();
+  const normalized = normalizeSemanticDocumentPath(documentUri);
 
   if (
-    normalized.includes('.md.templ') ||
-    normalized.includes('.templ.md') ||
-    normalized.includes('.md.tmpl') ||
-    normalized.includes('.tmpl.md') ||
-    normalized.includes('.md.tpl') ||
-    normalized.includes('.tpl.md')
+    hasSemanticHostLanguageSuffix(normalized, [
+      '.md.templ',
+      '.templ.md',
+      '.md.tmpl',
+      '.tmpl.md',
+      '.md.tpl',
+      '.tpl.md',
+    ])
   ) {
     return 'markdown';
   }
   if (
-    normalized.includes('.yaml.templ') ||
-    normalized.includes('.yml.templ') ||
-    normalized.includes('.templ.yaml') ||
-    normalized.includes('.templ.yml') ||
-    normalized.includes('.yaml.tmpl') ||
-    normalized.includes('.yml.tmpl') ||
-    normalized.includes('.tmpl.yaml') ||
-    normalized.includes('.tmpl.yml') ||
-    normalized.includes('.yaml.tpl') ||
-    normalized.includes('.yml.tpl') ||
-    normalized.includes('.tpl.yaml') ||
-    normalized.includes('.tpl.yml')
+    hasSemanticHostLanguageSuffix(normalized, [
+      '.yaml.templ',
+      '.yml.templ',
+      '.templ.yaml',
+      '.templ.yml',
+      '.yaml.tmpl',
+      '.yml.tmpl',
+      '.tmpl.yaml',
+      '.tmpl.yml',
+      '.yaml.tpl',
+      '.yml.tpl',
+      '.tpl.yaml',
+      '.tpl.yml',
+    ])
   ) {
     return 'yaml';
   }
   if (
-    normalized.includes('.json.templ') ||
-    normalized.includes('.templ.json') ||
-    normalized.includes('.json.tmpl') ||
-    normalized.includes('.tmpl.json') ||
-    normalized.includes('.json.tpl') ||
-    normalized.includes('.tpl.json')
+    hasSemanticHostLanguageSuffix(normalized, [
+      '.json.templ',
+      '.templ.json',
+      '.json.tmpl',
+      '.tmpl.json',
+      '.json.tpl',
+      '.tpl.json',
+    ])
   ) {
     return 'json';
   }
   if (
-    normalized.includes('.toml.templ') ||
-    normalized.includes('.templ.toml') ||
-    normalized.includes('.toml.tmpl') ||
-    normalized.includes('.tmpl.toml') ||
-    normalized.includes('.toml.tpl') ||
-    normalized.includes('.tpl.toml')
+    hasSemanticHostLanguageSuffix(normalized, [
+      '.toml.templ',
+      '.templ.toml',
+      '.toml.tmpl',
+      '.tmpl.toml',
+      '.toml.tpl',
+      '.tpl.toml',
+    ])
   ) {
     return 'toml';
   }
   if (
-    normalized.includes('.html.templ') ||
-    normalized.includes('.templ.html') ||
-    normalized.includes('.html.tmpl') ||
-    normalized.includes('.tmpl.html') ||
-    normalized.includes('.html.tpl') ||
-    normalized.includes('.tpl.html')
+    hasSemanticHostLanguageSuffix(normalized, [
+      '.html.templ',
+      '.templ.html',
+      '.html.tmpl',
+      '.tmpl.html',
+      '.html.tpl',
+      '.tpl.html',
+    ])
   ) {
     return 'html';
   }
   if (
-    normalized.includes('.xml.templ') ||
-    normalized.includes('.templ.xml') ||
-    normalized.includes('.xml.tmpl') ||
-    normalized.includes('.tmpl.xml') ||
-    normalized.includes('.xml.tpl') ||
-    normalized.includes('.tpl.xml')
+    hasSemanticHostLanguageSuffix(normalized, [
+      '.xml.templ',
+      '.templ.xml',
+      '.xml.tmpl',
+      '.tmpl.xml',
+      '.xml.tpl',
+      '.tpl.xml',
+    ])
   ) {
     return 'xml';
   }
 
   return 'unknown';
+}
+
+function normalizeSemanticDocumentPath(documentUri: string): string {
+  try {
+    const pathname = new URL(documentUri).pathname;
+    return decodeURIComponent(pathname).replace(/\\/g, '/').toLowerCase();
+  } catch {
+    return documentUri.replace(/\\/g, '/').toLowerCase();
+  }
+}
+
+function hasSemanticHostLanguageSuffix(documentPath: string, suffixes: readonly string[]): boolean {
+  return suffixes.some((suffix) => documentPath.endsWith(suffix));
 }
 
 /**

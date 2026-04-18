@@ -46,6 +46,12 @@ function main(): void {
   const hasPublishedArtifacts = paths.length > 0;
   const commits = hasPublishedArtifacts ? getCommits({ fromTag: base, toRef: head, paths }) : [];
   const sections = buildSections(commits);
+  const changesMarkdown = hasPublishedArtifacts
+    ? renderSectionsMarkdown(
+        sections,
+        'Automated staging prerelease alignment and dependency updates.'
+      )
+    : '### Changed\n\n- No publishable npm package or VS Code extension changes were detected for this staging run.';
 
   const releaseKindLabel =
     publishPackages && publishVscode
@@ -66,18 +72,15 @@ function main(): void {
           : 'n/a';
 
   const rendered = renderTemplateFile(RELEASE_NOTES_TEMPLATE, {
-    changesMarkdown: renderSectionsMarkdown(
-      sections,
-      'Automated staging prerelease alignment and dependency updates.'
-    ),
+    changesMarkdown,
     releaseKindLabel,
     channelLabel: 'Prerelease',
     packageVersion: packageVersion || 'n/a',
     vscodeVersion: vscodeVersion || 'n/a',
     distributionNote: 'Staging prerelease candidate awaiting maintainer approval',
     hasDistributionNote: true,
-    previousTag: base.slice(0, 12),
-    hasPreviousTag: true,
+    previousTag: hasPublishedArtifacts ? base.slice(0, 12) : '',
+    hasPreviousTag: hasPublishedArtifacts,
   });
 
   const notes = `${rendered.trim()}\n\n<!-- commit-count: ${commits.length}; version: ${versionLabel} -->\n`;

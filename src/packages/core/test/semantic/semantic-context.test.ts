@@ -387,6 +387,14 @@ describe('semantic-context core helpers', () => {
     expect(resolveSemanticHostLanguage('file:///workspace/file.tpl')).toBe('unknown');
   });
 
+  it('matches host language only on actual suffixes', () => {
+    expect(resolveSemanticHostLanguage('file:///workspace/note.md.tmplx')).toBe('unknown');
+    expect(resolveSemanticHostLanguage('file:///workspace/.md.tmpl/folder/file.txt')).toBe(
+      'unknown'
+    );
+    expect(resolveSemanticHostLanguage('C:\\workspace\\note.md.tpl')).toBe('markdown');
+  });
+
   it('uses host language to resolve semantic zone with markdown compatibility', () => {
     const text = ['---', '$schema: ./frontmatter.json', '---', 'body'].join('\n');
     const metadataOffset = text.indexOf('$schema') + 2;

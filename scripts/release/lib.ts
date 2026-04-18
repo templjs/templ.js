@@ -262,7 +262,7 @@ function extractReleaseNote(body: string): string | null {
 
   for (const line of lines) {
     if (!collecting) {
-      const match = line.match(/^\s*release(?:[- ]notes?)?\s*:\s*(.*)\s*$/i);
+      const match = line.match(/^\s*release(?:[- ]note|[- ]notes)\s*:\s*(.*)\s*$/i);
       if (match) {
         const inlineValue = match[1]?.trim();
         if (inlineValue) {
