@@ -1,0 +1,11 @@
+.pnpm-store/**
+coverage/**
+src/**
+scripts/**
+test/**
+test-fixtures/**
+.deploy/**
+AGENTS.md
+tsconfig.json
+tsconfig.tsbuildinfo
+vitest.config.ts
