@@ -176,13 +176,13 @@
   },
   "scripts": {
     "vscode:prepublish": "pnpm run build",
-    "build": "tsc -p ./",
+    "build": "tsc -p ./ && node ./scripts/build.mjs",
     "watch": "tsc -watch -p ./",
     "test": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "test:coverage": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts --coverage",
     "lint": "echo \"No linting configured yet\" && exit 0",
-    "clean": "rm -rf dist tsconfig.tsbuildinfo"
+    "clean": "rm -rf dist tsconfig.tsbuildinfo templjs-*.vsix"
   },
   "dependencies": {
     "@templjs/core": "workspace:*",
@@ -195,7 +195,8 @@
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",
-    "@vscode/vsce": "3.7.1"
+    "@vscode/vsce": "3.7.1",
+    "esbuild": "0.27.7"
   },
   "repository": {
     "type": "git",

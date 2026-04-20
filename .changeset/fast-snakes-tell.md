@@ -4,4 +4,4 @@
 
 # Release Note
 
-Rename the VS Code extension package identity to templjs, add activationEvents required by vsce, and align release workflow VSIX artifact paths.
+The VS Code extension is now published as `templjs`, activates correctly in VS Code, and uses cleaner installer artifact naming for more reliable installs.
