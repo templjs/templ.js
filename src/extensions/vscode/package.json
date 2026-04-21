@@ -1,7 +1,7 @@
 {
   "name": "templjs",
   "private": true,
-  "displayName": "TemplJS",
+  "displayName": "TemplJS Language Support",
   "description": "Language support for templjs meta-templates",
   "version": "0.1.0",
   "publisher": "templjs",
