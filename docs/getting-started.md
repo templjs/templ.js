@@ -23,7 +23,7 @@ title: Getting Started with templjs
    pnpm build
    ```
 
-3. Create a template file `hello.md.templ`:
+3. Create a template file `hello.md.tmpl`:
 
    ```templ
    # Hello {{ user.name }}
@@ -48,13 +48,13 @@ title: Getting Started with templjs
    From monorepo root (development):
 
    ```bash
-   node src/packages/cli/dist/cli.js render -t hello.md.templ -i data.json
+   node src/packages/cli/dist/cli.js render -t hello.md.tmpl -i data.json
    ```
 
    After publishing (end users):
 
    ```bash
-   npx @templjs/cli render -t hello.md.templ -i data.json
+   npx @templjs/cli render -t hello.md.tmpl -i data.json
    ```
 
 ## Core Library Quick Start
@@ -88,12 +88,13 @@ Implementation references:
 ## VS Code Setup
 
 1. Install the templjs VS Code extension package in this repository.
-2. Open files with template suffixes:
-   - `.md.templ`, `.md.tmpl`, `.md.tpl`
-   - `.json.templ`, `.json.tmpl`, `.json.tpl`
-   - `.yaml.templ`, `.yaml.tmpl`, `.yaml.tpl`
-   - `.html.templ`, `.html.tmpl`, `.html.tpl`
-3. Optionally configure schema-aware authoring:
+2. Prefer the `.tmpl` suffix when creating template files:
+   - `.md.tmpl`, `.json.tmpl`, `.yaml.tmpl`, `.html.tmpl`
+3. Compatibility suffixes remain supported when needed:
+   - `.md.templ`, `.json.templ`, `.yaml.templ`, `.html.templ`
+   - `.md.tpl`, `.json.tpl`, `.yaml.tpl`, `.html.tpl`
+   - `.templ.md`, `.templ.json`, `.templ.yaml`, `.templ.html`
+4. Optionally configure schema-aware authoring:
 
    ```json
    {

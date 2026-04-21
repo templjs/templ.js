@@ -13,7 +13,6 @@ title: Configuration Guide
 
 templjs CLI configuration is loaded from a `.templjs.json` file discovered by walking upward from the current working directory.
 
-Source implementation:
 Source implementation: [src/packages/cli/src/config/loader.ts](../src/packages/cli/src/config/loader.ts), [src/packages/cli/src/config/schema.ts](../src/packages/cli/src/config/schema.ts), [src/packages/cli/src/config/types.ts](../src/packages/cli/src/config/types.ts)
 
 ## Discovery Rules
@@ -32,7 +31,7 @@ Behavior summary:
 {
   "inputFormat": "json",
   "outputFormat": "markdown",
-  "defaultTemplate": "templates/report.md.templ",
+  "defaultTemplate": "templates/report.md.tmpl",
   "defaultOutput": "dist/report.md",
   "templateDelimiters": {
     "statement_start": "{%",
@@ -138,7 +137,7 @@ Example:
 {
   "inputFormat": "json",
   "outputFormat": "markdown",
-  "defaultTemplate": "examples/markdown-report/template.md.templ"
+  "defaultTemplate": "examples/markdown-report/template.md.tmpl"
 }
 ```
 
@@ -163,6 +162,6 @@ Example:
 
 - [CLI Reference](./cli.md)
 - [Query Language Guide](./query-language.md)
-- [Getting Started with templjs](./getting-started.md)
+- [Getting Started](./getting-started.md)
 
 {% endraw %}

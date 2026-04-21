@@ -105,7 +105,7 @@ PY
 make_slide 1 40 "templjs demo" "A short walkthrough for WI-021\n\nThis video covers:\n- install and build\n- first render\n- example templates\n- VS Code workflow\n- CLI usage\n- next steps" "#16324f"
 make_slide 2 40 "1. Installation" "From the repo root:\n\npnpm install\npnpm --filter @templjs/core build\npnpm --filter @templjs/cli build\n\nThis prepares the core renderer and CLI for the examples pack." "#284b63"
 make_slide 3 50 "2. First render" "Render the markdown example:\n\nnode src/packages/cli/dist/cli.js render \\
-  -t examples/markdown-report/template.md.templ \\
+  -t examples/markdown-report/template.md.tmpl \\
   -i examples/markdown-report/data.json\n\nResult: a rendered analytics report from structured JSON data." "#355c7d"
 make_slide 4 50 "3. Example pack" "Included examples in this release-ready pack:\n\n- markdown-report\n- html-email\n- json-api\n- config-files\n- documentation\n\nEach ships with template, data, and README instructions." "#3f6f8c"
 make_slide 5 45 "4. VS Code workflow" "Open a .templ file in VS Code and use the extension workflow:\n\n- template authoring in the editor\n- completion for paths and filters\n- hover help for built-ins\n- diagnostics for malformed statements\n\nUse src/extensions/vscode/test-fixtures/index.html.tmpl as a quick demo target." "#467f96"

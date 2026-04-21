@@ -261,6 +261,6 @@ Supported comparison forms include:
 
 - [Core and CLI API Reference](./api-reference.md)
 - [Configuration Guide](./configuration.md)
-- [Getting Started with templjs](./getting-started.md)
+- [Getting Started](./getting-started.md)
 
 {% endraw %}

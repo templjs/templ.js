@@ -121,7 +121,7 @@ Generated: {{ generated_at | date }}
 ## Demo Video Content
 
 1. **Installation and Build**: `pnpm install`, then build core and CLI packages
-2. **First Render**: Render `examples/markdown-report/template.md.templ` with CLI
+2. **First Render**: Render `examples/markdown-report/template.md.tmpl` with CLI
 3. **Example Pack Overview**: markdown-report, html-email, json-api, config-files, documentation
 4. **VS Code Workflow**: authoring, completion, hover help, and diagnostics
 5. **CLI Workflow**: scriptable render command for local and CI usage

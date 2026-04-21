@@ -9,7 +9,7 @@ This script accompanies `assets/demo/templjs-demo.mp4`.
    - `pnpm --filter @templjs/core build`
    - `pnpm --filter @templjs/cli build`
 2. First render
-   - Render `examples/markdown-report/template.md.templ` with `examples/markdown-report/data.json`
+   - Render `examples/markdown-report/template.md.tmpl` with `examples/markdown-report/data.json`
 3. Example pack overview
    - markdown-report
    - html-email

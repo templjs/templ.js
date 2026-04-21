@@ -14,7 +14,7 @@ summary: Run and understand the JSON API transformation templating example.
 pnpm --filter @templjs/core build
 pnpm --filter @templjs/cli build
 node src/packages/cli/dist/cli.js render \
-  -t examples/json-api/template.json.templ \
+  -t examples/json-api/template.json.tmpl \
   -i examples/json-api/data.json \
   --output-format json
 ```

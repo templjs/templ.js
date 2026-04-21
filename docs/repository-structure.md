@@ -167,18 +167,19 @@ Backlog automation uses the canonical `doc-vader` work-management model.
 
 **Key Directories**:
 
-- `src/commands/`: CLI commands (render, watch, validate)
-- `src/utils/`: CLI utilities (file I/O, formatting)
-- `src/__tests__/`: CLI tests
-- `bin/`: CLI entry point script
+- `src/commands/`: CLI command implementations (`render`, `validate`, `init`)
+- `src/config/`: `.templjs.json` config loading and schema validation
+- `src/formats/`: JSON/YAML/TOML/XML input parsers
+- `test/`: CLI integration and behavior tests
 
-**Entry Point**: `bin/templjs`
+**Entry Point**: `src/cli.ts`
 
 **Commands**:
 
-- `templjs render <template> <data>`: Render template
-- `templjs watch <dir>`: Watch mode
-- `templjs validate <template>`: Validate syntax
+- `templjs render --template <path> --input <path|->`: Render template
+- `templjs render --watch`: Watch template/input files and re-render on changes
+- `templjs validate --template <path>`: Validate syntax and optional schema/input
+- `templjs init --format <markdown|html|json|yaml>`: Generate starter templates
 
 ### Volar Plugin (`@templjs/volar`)
 

@@ -1,5 +1,7 @@
 # @templjs/core
 
+![TemplJS logo](https://raw.githubusercontent.com/templjs/templ.js/refs/heads/staging/assets/templjs.png)
+
 Core template parser, renderer, and query engine for the templjs meta-templating system.
 
 ## Overview
@@ -20,17 +22,21 @@ pnpm add @templjs/core
 ## Usage
 
 ```typescript
-import { createLexer, createParser, createRenderer } from '@templjs/core';
+import { render, tokenize, parse } from '@templjs/core';
 
-// Example usage (to be implemented)
-const lexer = createLexer();
-const parser = createParser();
-const renderer = createRenderer();
+const template = 'Hello {{ user.name }}';
+const output = render(template, { user: { name: 'Ada' } });
+const tokens = tokenize(template);
+const ast = parse(tokens);
+
+console.log(output, ast.errors.length);
 ```
 
 ## Status
 
-🚧 **Under Development** - This package is part of the initial monorepo setup and core functionality is being implemented.
+Implemented in the current monorepo baseline, with public APIs continuing to stabilize. See [README.md](../../../README.md) and [docs/api-reference.md](../../../docs/api-reference.md) for current surface area.
+
+For full project documentation, start at [docs/index.md](../../../docs/index.md).
 
 ## License
 

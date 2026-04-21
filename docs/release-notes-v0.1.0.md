@@ -40,7 +40,7 @@ Install the templjs extension from the marketplace:
 ### Documentation
 
 - [Getting Started](./getting-started.md)
-- [API Reference](./api-reference.md)
+- [Core and CLI API Reference](./api-reference.md)
 - [CLI Reference](./cli.md)
 - [Examples](./examples.md)
 

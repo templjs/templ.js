@@ -38,26 +38,25 @@ Implemented today in `@templjs/core`:
 
 In progress across the repo:
 
-- Public rendering/query APIs stabilization
-- Full CLI commands
-- Volar-based language server integration
-- VS Code extension end-to-end diagnostics/completion mapping
+- Output-format config beyond `.templjs.json` JSON files
+- Output validation pipeline end-to-end
+- Multi-syntax themes/adapters (v1.1+)
 
 ## Feature Matrix
 
-| Area          | Capability                                            | Status      | Notes                                                                  |
-| ------------- | ----------------------------------------------------- | ----------- | ---------------------------------------------------------------------- |
-| Core          | Configurable delimiter tokenization                   | Implemented | `tokenize()` supports custom statement/expression/comment delimiters   |
-| Core          | AST parser (text, expressions, if/for/set/block)      | Implemented | Typed AST and parser tests are present                                 |
-| Core          | Renderer internals (control flow + filters)           | Partial     | Implemented internally; public API still stabilizing                   |
-| Core          | JSON Schema input validation                          | Implemented | `SchemaValidator` with Ajv                                             |
-| Core          | Query-path validation + fuzzy suggestions             | Implemented | Schema-derived path checks with typo suggestions                       |
-| Core          | Output validation pipeline                            | Planned     | In architecture/PRD, not yet end-to-end in runtime                     |
-| CLI           | `process` / `validate` / watch workflows              | Planned     | Current CLI is scaffold-level                                          |
-| IDE           | Volar language plugin                                 | Partial     | Plugin scaffold exists; virtual mapping/diagnostics still in progress  |
-| IDE           | VS Code extension + `.templ.*` file support           | Partial     | Language IDs/extensions registered; full language features in progress |
-| Extensibility | Multi-syntax themes/adapters (Jinja2/Handlebars/etc.) | Planned     | v1.0 focuses on one syntax style; architecture allows expansion        |
-| CI/CD         | Lint/type-check/test/build workflows                  | Implemented | GitHub Actions pipelines configured                                    |
+| Area          | Capability                                            | Status      | Notes                                                                |
+| ------------- | ----------------------------------------------------- | ----------- | -------------------------------------------------------------------- |
+| Core          | Configurable delimiter tokenization                   | Implemented | `tokenize()` supports custom statement/expression/comment delimiters |
+| Core          | AST parser (text, expressions, if/for/set/block)      | Implemented | Typed AST and parser tests are present                               |
+| Core          | Renderer internals (control flow + filters)           | Implemented | `render()` public API available; further stabilization in progress   |
+| Core          | JSON Schema input validation                          | Implemented | `SchemaValidator` with Ajv                                           |
+| Core          | Query-path validation + fuzzy suggestions             | Implemented | Schema-derived path checks with typo suggestions                     |
+| Core          | Output validation pipeline                            | Planned     | In architecture/PRD, not yet end-to-end in runtime                   |
+| CLI           | `render` / `validate` / `init` commands               | Implemented | JSON/YAML/TOML/XML input; `.templjs.json`; `--watch` supported       |
+| IDE           | Volar language plugin                                 | Implemented | Virtual mapping, diagnostics, completions, hover, definitions        |
+| IDE           | VS Code extension + `.tmpl` support                   | Implemented | Preferred `.tmpl`; `.templ.*` stays supported for compatibility      |
+| Extensibility | Multi-syntax themes/adapters (Jinja2/Handlebars/etc.) | Planned     | v1.0 focuses on one syntax style; architecture allows expansion      |
+| CI/CD         | Lint/type-check/test/build workflows                  | Implemented | GitHub Actions pipelines configured                                  |
 
 ## Monorepo Structure
 
@@ -70,12 +69,14 @@ In progress across the repo:
 
 ## Quick Start
 
-### Prerequisites
+For full setup, first render, and VS Code authoring guidance, see [Getting Started](docs/getting-started.md).
+
+Monorepo prerequisites:
 
 - Node.js `>=22.12.0 <23 || >=24.0.0 <25`
 - pnpm `8.15.0`
 
-### Setup
+Repository setup:
 
 ```bash
 pnpm install
@@ -83,20 +84,18 @@ pnpm test
 pnpm build
 ```
 
-### Install Published Packages (After Publishing)
+Published packages:
 
 ```bash
 npm install @templjs/core
 npm install -D @templjs/cli
 ```
 
-For beta releases, install the published beta dist-tag/version when available.
-
 VS Code extension:
 
 - <https://marketplace.visualstudio.com/items?itemName=templjs.vscode-templjs>
 
-### Useful Commands
+Useful monorepo commands:
 
 ```bash
 pnpm lint
@@ -107,12 +106,10 @@ pnpm graph
 
 ## Documentation
 
+- [Documentation Home](docs/index.md) (recommended entrypoint)
 - [Getting Started](docs/getting-started.md)
-- [Core and CLI API Reference](docs/api-reference.md)
-- [Query Language Guide](docs/query-language.md)
-- [Configuration Guide](docs/configuration.md)
 - [CLI Reference](docs/cli.md)
-- [Examples](docs/examples.md)
+- [Core and CLI API Reference](docs/api-reference.md)
 
 ## Template Syntax (Current)
 
@@ -150,14 +147,14 @@ Delimiters are configurable to avoid collisions with host/base languages.
 
 The VS Code/Volar architecture is designed to preserve native tooling for base formats (Markdown, JSON, YAML, HTML) while overlaying template semantics.
 
-Current extension targets:
+Current extension targets prefer the `.tmpl` suffix:
 
-- `.yaml.tmpl` / `.yml.tmpl` and `.templ.yaml` / `.templ.yml`
-- `.json.tmpl` and `.templ.json`
-- `.md.tmpl` and `.templ.md`
-- `.html.tmpl` and `.templ.html`
+- `.yaml.tmpl` / `.yml.tmpl`
+- `.json.tmpl`
+- `.md.tmpl`
+- `.html.tmpl`
 
-The `.tmpl` suffix is the primary convention documented in this README, and `.templ.*` remains supported for compatibility.
+Compatibility suffixes such as `.templ.yaml`, `.templ.json`, `.templ.md`, and `.templ.html` remain supported, but `.tmpl` is the preferred convention in this repository.
 
 For troubleshooting language features, see [VS Code triage logs](src/extensions/vscode/README.md#triage-logs) for quick setup and symptom-specific checks for go-to-definition, hover, and IntelliSense duplicate entries.
 

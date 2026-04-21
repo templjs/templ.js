@@ -7,6 +7,10 @@ status: ready
 title: Core and CLI API Reference
 ---
 
+## Status
+
+⚠️ **Public APIs are stabilizing**: Core rendering and query APIs are under active refinement. Expect minor changes in method signatures and return types through Phase 4 completion. See [migration plan](../migration-plan.md) for phase tracking.
+
 {% raw %}
 
 ## `@templjs/core`
@@ -99,7 +103,7 @@ Extracts scope-relevant variable bindings for semantic tooling.
 ### Render
 
 ```bash
-templjs render -t template.md.templ -i data.json
+templjs render -t template.md.tmpl -i data.json
 ```
 
 Important flags:
@@ -113,13 +117,13 @@ Important flags:
 ### Validate
 
 ```bash
-templjs validate -t template.md.templ [-s schema.json] [-i data.json]
+templjs validate -t template.md.tmpl [-s schema.json] [-i data.json]
 ```
 
 ### Init
 
 ```bash
-templjs init -f markdown [-o starter.md.templ]
+templjs init -f markdown [-o starter.md.tmpl]
 ```
 
 ## Stability Notes

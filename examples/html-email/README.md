@@ -14,7 +14,7 @@ summary: Run and understand the transactional HTML email templating example.
 pnpm --filter @templjs/core build
 pnpm --filter @templjs/cli build
 node src/packages/cli/dist/cli.js render \
-  -t examples/html-email/template.html.templ \
+  -t examples/html-email/template.html.tmpl \
   -i examples/html-email/data.json
 ```
 

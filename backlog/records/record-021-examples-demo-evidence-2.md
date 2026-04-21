@@ -30,12 +30,12 @@ Expanded WI-021 example coverage and revalidated the full example pack:
   Validation:
 - `pnpm --filter @templjs/core build`
 - `pnpm --filter @templjs/cli build`
-- `node src/packages/cli/dist/cli.js render -t examples/markdown-report/template.md.templ -i examples/markdown-report/data.json`
-- `node src/packages/cli/dist/cli.js render -t examples/html-email/template.html.templ -i examples/html-email/data.json`
-- `node src/packages/cli/dist/cli.js render -t examples/json-api/template.json.templ -i examples/json-api/data.json`
+- `node src/packages/cli/dist/cli.js render -t examples/markdown-report/template.md.tmpl -i examples/markdown-report/data.json`
+- `node src/packages/cli/dist/cli.js render -t examples/html-email/template.html.tmpl -i examples/html-email/data.json`
+- `node src/packages/cli/dist/cli.js render -t examples/json-api/template.json.tmpl -i examples/json-api/data.json`
 - `node src/packages/cli/dist/cli.js render -t examples/config-files/.env.tmpl -i examples/config-files/data.json`
 - `node src/packages/cli/dist/cli.js render -t examples/config-files/docker-compose.tmpl -i examples/config-files/data.json`
-- `node src/packages/cli/dist/cli.js render -t examples/documentation/template.md.templ -i examples/documentation/data.json`
+- `node src/packages/cli/dist/cli.js render -t examples/documentation/template.md.tmpl -i examples/documentation/data.json`
 
 ## Subject References
 
