@@ -1,7 +1,7 @@
 {
   "name": "templjs",
   "private": true,
-  "displayName": "Templjs",
+  "displayName": "TemplJS",
   "description": "Language support for templjs meta-templates",
   "version": "0.1.0",
   "publisher": "templjs",
@@ -23,14 +23,14 @@
     "commands": [
       {
         "command": "templjs.test",
-        "title": "Templjs: Test Extension"
+        "title": "TemplJS: Test Extension"
       }
     ],
     "languages": [
       {
         "id": "templjs-yaml",
         "aliases": [
-          "Templjs YAML",
+          "TemplJS YAML",
           "templjs-yaml"
         ],
         "extensions": [
@@ -46,7 +46,7 @@
       {
         "id": "templjs-json",
         "aliases": [
-          "Templjs JSON",
+          "TemplJS JSON",
           "templjs-json"
         ],
         "extensions": [
@@ -59,7 +59,7 @@
       {
         "id": "templjs-markdown",
         "aliases": [
-          "Templjs Markdown",
+          "TemplJS Markdown",
           "templjs-md"
         ],
         "extensions": [
@@ -72,7 +72,7 @@
       {
         "id": "templjs-html",
         "aliases": [
-          "Templjs HTML",
+          "TemplJS HTML",
           "templjs-html"
         ],
         "extensions": [
@@ -123,7 +123,7 @@
     ],
     "configuration": {
       "type": "object",
-      "title": "Templjs",
+      "title": "TemplJS",
       "properties": {
         "templjs.trace.server": {
           "scope": "window",

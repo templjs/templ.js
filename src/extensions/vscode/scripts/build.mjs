@@ -26,7 +26,10 @@ const createRequireCompatPlugin = {
       const contents = await fs.readFile(filePath, 'utf8');
 
       return {
-        contents: contents.replaceAll('createRequire(import.meta.url)', 'createRequire(__filename)'),
+        contents: contents.replaceAll(
+          'createRequire(import.meta.url)',
+          'createRequire(__filename)'
+        ),
         loader: 'js',
       };
     });
