@@ -4,4 +4,4 @@
 
 <!-- markdownlint-disable MD041 -->
 
-Use a unique VS Code Marketplace display name to avoid publish conflicts with previously reserved names.
+The extension now appears as "TemplJS Language Support" in VS Code to better describe its functionality.
