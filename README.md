@@ -147,14 +147,14 @@ Delimiters are configurable to avoid collisions with host/base languages.
 
 The VS Code/Volar architecture is designed to preserve native tooling for base formats (Markdown, JSON, YAML, HTML) while overlaying template semantics.
 
-Current extension targets prefer the `.tmpl` suffix:
+Current extension targets commonly use the `.tmpl` suffix:
 
 - `.yaml.tmpl` / `.yml.tmpl`
 - `.json.tmpl`
 - `.md.tmpl`
 - `.html.tmpl`
 
-Compatibility suffixes such as `.templ.yaml`, `.templ.json`, `.templ.md`, and `.templ.html` remain supported, but `.tmpl` is the preferred convention in this repository.
+Compatibility suffixes such as `.templ.yaml`, `.templ.json`, `.templ.md`, and `.templ.html` remain fully supported. Detection behavior can vary slightly by integration surface, so `.tmpl` and `.templ.*` should both be treated as first-class supported conventions.
 
 For troubleshooting language features, see [VS Code triage logs](src/extensions/vscode/README.md#triage-logs) for quick setup and symptom-specific checks for go-to-definition, hover, and IntelliSense duplicate entries.
 
@@ -204,10 +204,10 @@ console.log(ast.errors, dataResult.valid, pathResult.valid);
 
 Apache-2.0
 
-[packages-core]: packages/core 'Package: @templjs/core'
-[packages-cli]: packages/cli 'Package: @templjs/cli'
-[packages-volar]: packages/volar 'Package: @templjs/volar'
-[extensions-vscode]: extensions/vscode 'Extension: VS Code integration'
+[packages-core]: src/packages/core 'Package: @templjs/core'
+[packages-cli]: src/packages/cli 'Package: @templjs/cli'
+[packages-volar]: src/packages/volar 'Package: @templjs/volar'
+[extensions-vscode]: src/extensions/vscode 'Extension: VS Code integration'
 [docs-adr]: docs/adr 'Architecture Decision Records'
 [docs-prd]: docs/prd 'Product Requirements Documents'
 [v1.0-requirements]: docs/prd/v1.0-requirements.md 'templ.js v1.0 - Product Requirements Document'

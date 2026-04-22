@@ -1,6 +1,6 @@
 # vscode-templjs
 
-![TemplJS logo](https://raw.githubusercontent.com/templjs/templ.js/refs/heads/staging/assets/templjs.png)
+![TemplJS logo](https://raw.githubusercontent.com/templjs/templ.js/refs/heads/main/assets/templjs.png)
 
 VS Code extension for templjs meta-template language support.
 

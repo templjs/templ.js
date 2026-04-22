@@ -172,7 +172,9 @@ Backlog automation uses the canonical `doc-vader` work-management model.
 - `src/formats/`: JSON/YAML/TOML/XML input parsers
 - `test/`: CLI integration and behavior tests
 
-**Entry Point**: `src/cli.ts`
+**Entry Point**: `src/packages/cli/src/cli.ts`
+
+Path convention in this section: entry-point paths are repository-root relative (for package code, that means `src/packages/<name>/...`).
 
 **Commands**:
 
