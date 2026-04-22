@@ -22,12 +22,11 @@ pnpm add @templjs/core
 ## Usage
 
 ```typescript
-import { render, tokenize, parse } from '@templjs/core';
+import { renderTemplate, tokenize, parse } from '@templjs/core';
 
 const template = 'Hello {{ user.name }}';
-const output = render(template, { user: { name: 'Ada' } });
-const tokens = tokenize(template);
-const ast = parse(tokens);
+const output = renderTemplate(template, { user: { name: 'Ada' } });
+const ast = parse(tokenize(template));
 
 console.log(output, ast.errors.length);
 ```
