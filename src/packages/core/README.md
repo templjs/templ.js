@@ -1,6 +1,6 @@
 # @templjs/core
 
-![TemplJS logo](https://raw.githubusercontent.com/templjs/templ.js/refs/heads/staging/assets/templjs.png)
+![TemplJS logo](https://raw.githubusercontent.com/templjs/templ.js/refs/heads/main/assets/templjs.png)
 
 Core template parser, renderer, and query engine for the templjs meta-templating system.
 
@@ -33,9 +33,9 @@ console.log(output, ast.errors.length);
 
 ## Status
 
-Implemented in the current monorepo baseline, with public APIs continuing to stabilize. See [README.md](../../../README.md) and [docs/api-reference.md](../../../docs/api-reference.md) for current surface area.
+Implemented in the current monorepo baseline, with public APIs continuing to stabilize. See [README.md](https://github.com/templjs/templ.js/blob/main/README.md) and [docs/api-reference.md](https://github.com/templjs/templ.js/blob/main/docs/api-reference.md) for current surface area.
 
-For full project documentation, start at [docs/index.md](../../../docs/index.md).
+For full project documentation, start at [docs/index.md](https://github.com/templjs/templ.js/blob/main/docs/index.md).
 
 ## License
 

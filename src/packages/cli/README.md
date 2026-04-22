@@ -1,6 +1,6 @@
 # @templjs/cli
 
-![TemplJS logo](https://raw.githubusercontent.com/templjs/templ.js/refs/heads/staging/assets/templjs.png)
+![TemplJS logo](https://raw.githubusercontent.com/templjs/templ.js/refs/heads/main/assets/templjs.png)
 
 Command-line interface for templjs rendering, validation, and starter generation.
 
@@ -59,9 +59,9 @@ TEMPLJS_EXPERIMENTAL_STREAM_JSON=1 templjs render --template template.tmpl --inp
 
 ## Status
 
-Implemented in the current monorepo release baseline. See [docs/cli.md](../../../docs/cli.md) for the canonical command reference.
+Implemented in the current monorepo release baseline. See [docs/cli.md](https://github.com/templjs/templ.js/blob/main/docs/cli.md) for the canonical command reference.
 
-For full project documentation, start at [docs/index.md](../../../docs/index.md).
+For full project documentation, start at [docs/index.md](https://github.com/templjs/templ.js/blob/main/docs/index.md).
 
 ## License
 
