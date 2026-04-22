@@ -14,7 +14,7 @@ summary: Generate API-style markdown documentation from structured metadata.
 pnpm --filter @templjs/core build
 pnpm --filter @templjs/cli build
 node src/packages/cli/dist/cli.js render \
-  -t examples/documentation/template.md.templ \
+  -t examples/documentation/template.md.tmpl \
   -i examples/documentation/data.json
 ```
 

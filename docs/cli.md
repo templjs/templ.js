@@ -61,6 +61,8 @@ Watch mode behavior:
 
 ## `validate`
 
+Validates template syntax and optionally validates input data against a schema.
+
 Implementation:
 
 - Command registration/action: [src/packages/cli/src/cli.ts](../src/packages/cli/src/cli.ts#L322)
@@ -71,6 +73,8 @@ templjs validate --template <path> [--schema <path>] [--input <path>]
 ```
 
 ## `init`
+
+Bootstraps a starter template in your chosen format (Markdown, HTML, JSON, or YAML).
 
 Implementation:
 
@@ -91,17 +95,17 @@ Implementation jump points:
 Render to stdout:
 
 ```bash
-templjs render -t examples/markdown-report/template.md.templ -i examples/markdown-report/data.json
+templjs render -t examples/markdown-report/template.md.tmpl -i examples/markdown-report/data.json
 ```
 
 Render to file:
 
 ```bash
-templjs render -t template.md.templ -i data.json -o out.md
+templjs render -t template.md.tmpl -i data.json -o out.md
 ```
 
 Watch mode JSON output:
 
 ```bash
-templjs --json render -t template.md.templ -i data.json --watch
+templjs --json render -t template.md.tmpl -i data.json --watch
 ```

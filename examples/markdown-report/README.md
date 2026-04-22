@@ -15,7 +15,7 @@ node examples/markdown-report/validate-data.mjs
 pnpm --filter @templjs/core build
 pnpm --filter @templjs/cli build
 node src/packages/cli/dist/cli.js render \
-  -t examples/markdown-report/template.md.templ \
+  -t examples/markdown-report/template.md.tmpl \
   -i examples/markdown-report/data.json
 ```
 

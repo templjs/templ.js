@@ -1,5 +1,7 @@
 # @templjs/volar
 
+![TemplJS logo](https://raw.githubusercontent.com/templjs/templ.js/refs/heads/main/assets/templjs.png)
+
 Volar language server plugin for templjs template support in IDEs.
 
 ## Overview
@@ -38,7 +40,9 @@ const plugin = createTempljsLanguagePlugin();
 
 ## Status
 
-🚧 **Under Development** - This package is part of the initial monorepo setup and Volar integration is being implemented.
+Implemented in the current monorepo baseline. The package backs the VS Code extension and provides virtual-code mapping, diagnostics, completions, hover, and definition support.
+
+For full project documentation, start at [docs/index.md](https://github.com/templjs/templ.js/blob/main/docs/index.md).
 
 ## License
 

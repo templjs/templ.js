@@ -21,19 +21,19 @@ This guide now covers the full example pack currently shipped for release readin
 
 ### markdown-report/
 
-- [template.md.templ](../examples/markdown-report/template.md.templ)
+- [template.md.tmpl](../examples/markdown-report/template.md.tmpl)
 - [data.json](../examples/markdown-report/data.json)
 - [README.md](../examples/markdown-report/README.md)
 
 ### html-email/
 
-- [template.html.templ](../examples/html-email/template.html.templ)
+- [template.html.tmpl](../examples/html-email/template.html.tmpl)
 - [data.json](../examples/html-email/data.json)
 - [README.md](../examples/html-email/README.md)
 
 ### json-api/
 
-- [template.json.templ](../examples/json-api/template.json.templ)
+- [template.json.tmpl](../examples/json-api/template.json.tmpl)
 - [data.json](../examples/json-api/data.json)
 - [README.md](../examples/json-api/README.md)
 
@@ -46,7 +46,7 @@ This guide now covers the full example pack currently shipped for release readin
 
 ### documentation/
 
-- [template.md.templ](../examples/documentation/template.md.templ)
+- [template.md.tmpl](../examples/documentation/template.md.tmpl)
 - [data.json](../examples/documentation/data.json)
 - [README.md](../examples/documentation/README.md)
 
@@ -69,7 +69,7 @@ This guide now covers the full example pack currently shipped for release readin
 pnpm --filter @templjs/core build
 pnpm --filter @templjs/cli build
 node src/packages/cli/dist/cli.js render \
-  -t examples/markdown-report/template.md.templ \
+  -t examples/markdown-report/template.md.tmpl \
   -i examples/markdown-report/data.json
 ```
 
