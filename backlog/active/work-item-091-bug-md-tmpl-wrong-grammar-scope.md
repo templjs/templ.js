@@ -6,12 +6,13 @@ summary: md.tmpl files show no Markdown syntax highlighting (wrong grammar scope
 type: work-item
 subtype: bug
 lifecycle: active
-status: ready
-status_reason: prioritized
+status: ready-for-review
 priority: high
 estimated: 1
 actual: 1
 links:
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/63'
   evidence:
     - '[[record-091-bug-md-tmpl-wrong-grammar-scope-evidence-1]]'
 ---
@@ -70,14 +71,14 @@ Extension rebuilt: `dist/server.js` 1.5 MB, `dist/extension.js` 790 KB.
 - [x] Replace `source.gfm` with `text.html.markdown` in `injection-markdown.json`
 - [x] Rebuild extension (`pnpm build` — all 5 projects succeeded)
 - [x] Reload VS Code extension host and confirm Markdown highlighting in `*.md.tmpl`
-- [ ] Add regression test asserting grammar scope correctness for `.md.tmpl`
+- [x] Add regression test asserting grammar scope correctness for `.md.tmpl`
 
 ## Acceptance Criteria
 
 - [x] `.md.tmpl`, `.md.templ`, and `.md.tpl` files display full Markdown syntax highlighting
 - [x] No regression in `.html.tmpl` or `.json.tmpl` highlighting
-- [ ] Grammar injection test or snapshot validates `text.html.markdown` scope inclusion
-- [ ] `pnpm build` passes with zero errors
+- [x] Grammar injection test or snapshot validates `text.html.markdown` scope inclusion
+- [x] `pnpm build` passes with zero errors
 
 ## Relationships
 
