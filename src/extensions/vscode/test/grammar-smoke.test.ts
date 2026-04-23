@@ -1,8 +1,9 @@
 import { readFileSync } from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { describe, expect, it } from 'vitest';
 
-const extensionRoot = path.resolve(process.cwd(), 'src/extensions/vscode');
+const extensionRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 type InjectionGrammar = {
   patterns: Array<{ include?: string }>;
