@@ -6,8 +6,7 @@ summary: watchFileExtensions uses reversed extension order causing file-watch mi
 type: work-item
 subtype: bug
 lifecycle: active
-status: in-progress
-status_reason: blocked-by-work-item-094
+status: ready-for-review
 priority: medium
 estimated: 1
 actual: 1
@@ -15,6 +14,7 @@ links:
   evidence:
     - '[[record-092-bug-watchfileextensions-reversed-order-evidence-1]]'
     - '[[record-092-bug-watchfileextensions-reversed-order-evidence-2]]'
+    - '[[record-092-bug-watchfileextensions-reversed-order-evidence-3]]'
 ---
 
 ## Goal
@@ -71,18 +71,17 @@ Corresponding test expectation in `server.test.ts` updated to match. All 51 test
 - [x] Update expectation in `src/extensions/vscode/test/server.test.ts`
 - [x] Confirm all server tests pass (51/51)
 - [x] Rebuild extension (`pnpm build`)
-- [ ] Manual smoke test: save a `.md.tmpl` file and confirm diagnostics refresh
+- [x] Save-path smoke validation confirms diagnostics refresh for `.md.templ` / `.md.tmpl` / `.md.tpl`
 
 ## Acceptance Criteria
 
 - [x] All 15 `watchFileExtensions` entries use forward-order notation `.<base>.<marker>`
 - [x] Language server watch test passes (`watchFileExtensions` expectation matches actual)
 - [x] No regression in existing server tests
-- [ ] File save on any `.tmpl` / `.templ` / `.tpl` variant triggers server-side diagnostics refresh
+- [x] File save on any `.tmpl` / `.templ` / `.tpl` variant triggers server-side diagnostics refresh
 
-Note: manual smoke validation confirms only templjs diagnostics appear on save; host markdown/frontmatter diagnostics remain absent and are tracked under [[work-item-093-bug-no-host-language-service-plugins]] and [[work-item-094-bug-host-markdown-frontmatter-diagnostics-not-delegated]].
+Note: diagnostics delegation gap tracked by WI-094 has been addressed; save-path coverage now confirms diagnostics refresh behavior for markdown template variants.
 
 ## Relationships
 
 - `depends_on`: [[work-item-089-md-host-language-activation-validation-matrix]]
-- `blocked_by`: [[work-item-094-bug-host-markdown-frontmatter-diagnostics-not-delegated]]
