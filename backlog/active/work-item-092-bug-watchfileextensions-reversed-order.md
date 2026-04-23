@@ -6,14 +6,15 @@ summary: watchFileExtensions uses reversed extension order causing file-watch mi
 type: work-item
 subtype: bug
 lifecycle: active
-status: ready
-status_reason: prioritized
+status: in-progress
+status_reason: blocked-by-work-item-094
 priority: medium
 estimated: 1
 actual: 1
 links:
   evidence:
     - '[[record-092-bug-watchfileextensions-reversed-order-evidence-1]]'
+    - '[[record-092-bug-watchfileextensions-reversed-order-evidence-2]]'
 ---
 
 ## Goal
@@ -74,11 +75,14 @@ Corresponding test expectation in `server.test.ts` updated to match. All 51 test
 
 ## Acceptance Criteria
 
-- [ ] All 15 `watchFileExtensions` entries use forward-order notation `.<base>.<marker>`
-- [ ] Language server watch test passes (`watchFileExtensions` expectation matches actual)
-- [ ] No regression in existing server tests
+- [x] All 15 `watchFileExtensions` entries use forward-order notation `.<base>.<marker>`
+- [x] Language server watch test passes (`watchFileExtensions` expectation matches actual)
+- [x] No regression in existing server tests
 - [ ] File save on any `.tmpl` / `.templ` / `.tpl` variant triggers server-side diagnostics refresh
+
+Note: manual smoke validation confirms only templjs diagnostics appear on save; host markdown/frontmatter diagnostics remain absent and are tracked under [[work-item-093-bug-no-host-language-service-plugins]].
 
 ## Relationships
 
 - `depends_on`: [[work-item-089-md-host-language-activation-validation-matrix]]
+- `blocked_by`: [[work-item-094-bug-host-markdown-frontmatter-diagnostics-not-delegated]]
