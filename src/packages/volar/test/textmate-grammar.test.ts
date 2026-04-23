@@ -21,7 +21,7 @@ const injectionCases = [
     name: 'markdown',
     grammar: markdownInjection,
     scopeName: 'text.templjs.markdown',
-    baseScope: 'source.gfm',
+    baseScope: 'text.html.markdown',
     language: 'templjs-markdown',
     path: './syntaxes/injection-markdown.json',
     embeddedScope: 'meta.embedded.block.markdown',
