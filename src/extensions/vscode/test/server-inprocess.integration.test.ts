@@ -4,6 +4,7 @@ import path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FileChangeType } from '@volar/language-server';
 import { pathToFileURL } from 'url';
+import { TempljsServicePlugin } from '@templjs/volar';
 
 const onInitialize = vi.fn();
 const onInitialized = vi.fn();
@@ -84,6 +85,91 @@ function definitionStartLine(result: unknown): number | undefined {
   return undefined;
 }
 
+function getOffset(text: string, pos: { line: number; character: number }): number {
+  let line = 0;
+  let offset = 0;
+  while (line < pos.line && offset < text.length) {
+    const nl = text.indexOf('\n', offset);
+    if (nl === -1) return text.length;
+    offset = nl + 1;
+    line++;
+  }
+  return Math.min(offset + pos.character, text.length);
+}
+
+type TestSchemaOpts = {
+  schema?: object;
+  schemaUri?: string;
+  contentSchema?: object;
+  contentSchemaUri?: string;
+  workspaceRoot?: string;
+};
+
+function makeProjectGraph() {
+  const plugin = new TempljsServicePlugin();
+  const docTextByUri = new Map<string, string>();
+  const schemaByUri = new Map<string, TestSchemaOpts>();
+
+  const languageService = {
+    doComplete: vi.fn(async (uri: string, position: { line: number; character: number }) => {
+      const text = docTextByUri.get(uri) ?? '';
+      const offset = getOffset(text, position);
+      const { workspaceRoot, ...opts } = schemaByUri.get(uri) ?? {};
+      const items = plugin.getCompletions(text, offset, {
+        documentUri: uri,
+        workspaceRoot,
+        ...opts,
+      });
+      return { isIncomplete: false, items };
+    }),
+    doHover: vi.fn(async (uri: string, position: { line: number; character: number }) => {
+      const text = docTextByUri.get(uri) ?? '';
+      const offset = getOffset(text, position);
+      const { workspaceRoot, ...opts } = schemaByUri.get(uri) ?? {};
+      return plugin.getHover(text, offset, { documentUri: uri, workspaceRoot, ...opts });
+    }),
+    findDefinition: vi.fn(async (uri: string, position: { line: number; character: number }) => {
+      const text = docTextByUri.get(uri) ?? '';
+      const offset = getOffset(text, position);
+      const { workspaceRoot, ...opts } = schemaByUri.get(uri) ?? {};
+      const def = plugin.getDefinition(text, offset, { documentUri: uri, workspaceRoot, ...opts });
+      return def ? [def] : null;
+    }),
+  };
+
+  return {
+    languageService,
+    trackOpen(uri: string, text: string) {
+      docTextByUri.set(uri, text);
+    },
+    trackChange(
+      uri: string,
+      changes: Array<{
+        text: string;
+        range?: {
+          start: { line: number; character: number };
+          end: { line: number; character: number };
+        };
+      }>
+    ) {
+      let current = docTextByUri.get(uri) ?? '';
+      for (const change of changes) {
+        if (!change.range) {
+          current = change.text;
+          continue;
+        }
+        const s = getOffset(current, change.range.start);
+        const e = getOffset(current, change.range.end);
+        current = current.slice(0, s) + change.text + current.slice(e);
+      }
+      docTextByUri.set(uri, current);
+    },
+    setSchema(uri: string, opts: TestSchemaOpts) {
+      schemaByUri.set(uri, opts);
+    },
+  };
+}
+
 vi.mock('@volar/language-server/node', () => ({
   createConnection: vi.fn(() => ({
     onInitialize,
@@ -113,7 +199,7 @@ vi.mock('@volar/language-server/node', () => ({
   createSimpleProjectProvider: { name: 'simple-project-provider' },
 }));
 
-describe.skip('language-server-inprocess-integration', () => {
+describe('language-server-inprocess-integration', () => {
   beforeEach(() => {
     vi.resetModules();
     onInitialize.mockClear();
@@ -173,6 +259,8 @@ describe.skip('language-server-inprocess-integration', () => {
       );
 
       await import('../src/server');
+      const graph = makeProjectGraph();
+      getProject.mockResolvedValue({ getLanguageService: () => graph.languageService });
 
       const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => Promise<{
         capabilities: {
@@ -204,6 +292,14 @@ describe.skip('language-server-inprocess-integration', () => {
       expect(initializeResult.capabilities.completionProvider).toBeDefined();
       expect(initializeResult.capabilities.hoverProvider).toBe(true);
 
+      graph.setSchema(docUri, {
+        schema: JSON.parse(readFileSync(frontmatterSchemaPath, 'utf-8')) as object,
+        schemaUri: toFileUri(frontmatterSchemaPath),
+        contentSchema: JSON.parse(readFileSync(contentSchemaPath, 'utf-8')) as object,
+        contentSchemaUri: toFileUri(contentSchemaPath),
+        workspaceRoot: toFileUri(workspaceDir),
+      });
+
       const didOpenHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
         textDocument: { uri: string; text: string };
       }) => void;
@@ -214,6 +310,7 @@ describe.skip('language-server-inprocess-integration', () => {
           text: initialDocumentText,
         },
       });
+      graph.trackOpen(docUri, initialDocumentText);
 
       const completionHandler = onCompletion.mock.calls[0][0] as (params: {
         textDocument: { uri: string };
@@ -254,6 +351,7 @@ describe.skip('language-server-inprocess-integration', () => {
         textDocument: { uri: docUri },
         contentChanges: [{ text: hoverDocumentText }],
       });
+      graph.trackChange(docUri, [{ text: hoverDocumentText }]);
       activeLines = hoverDocumentText.split('\n');
 
       const frontmatterHover = await hoverHandler({
@@ -288,6 +386,15 @@ describe.skip('language-server-inprocess-integration', () => {
           },
         ],
       });
+      graph.trackChange(docUri, [
+        {
+          range: {
+            start: { line: 1, character: 0 },
+            end: { line: 1, character: 0 },
+          },
+          text: '# ',
+        },
+      ]);
 
       activeLines = '---\n# title: "{{ frontData.title }}"\n---\n{{ contentData.heading }}'.split(
         '\n'
@@ -324,6 +431,8 @@ describe.skip('language-server-inprocess-integration', () => {
       );
 
       await import('../src/server');
+      const graph = makeProjectGraph();
+      getProject.mockResolvedValue({ getLanguageService: () => graph.languageService });
 
       const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => Promise<{
         capabilities: {
@@ -362,6 +471,11 @@ describe.skip('language-server-inprocess-integration', () => {
 
       for (const variant of ['templ', 'tmpl', 'tpl']) {
         const docUri = toFileUri(path.join(workspaceDir, `matrix.md.${variant}`));
+        graph.setSchema(docUri, {
+          schema: JSON.parse(readFileSync(schemaPath, 'utf-8')) as object,
+          schemaUri: toFileUri(schemaPath),
+          workspaceRoot: toFileUri(workspaceDir),
+        });
 
         sendDiagnostics.mockClear();
         didOpenHandler({
@@ -370,6 +484,7 @@ describe.skip('language-server-inprocess-integration', () => {
             text: '{{ contentData.missing }}',
           },
         });
+        graph.trackOpen(docUri, '{{ contentData.missing }}');
 
         await vi.waitFor(() => {
           expect(sendDiagnostics).toHaveBeenCalledWith(expect.objectContaining({ uri: docUri }));
@@ -390,6 +505,7 @@ describe.skip('language-server-inprocess-integration', () => {
           textDocument: { uri: docUri },
           contentChanges: [{ text: '{{ contentData.h }}' }],
         });
+        graph.trackChange(docUri, [{ text: '{{ contentData.h }}' }]);
 
         const completionItems = await completionHandler({
           textDocument: { uri: docUri },
@@ -521,6 +637,8 @@ describe.skip('language-server-inprocess-integration', () => {
       );
 
       await import('../src/server');
+      const graph = makeProjectGraph();
+      getProject.mockResolvedValue({ getLanguageService: () => graph.languageService });
 
       const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => Promise<{
         capabilities: {
@@ -559,12 +677,21 @@ describe.skip('language-server-inprocess-integration', () => {
 
       expect(initializeResult.capabilities.definitionProvider).toBe(true);
 
+      graph.setSchema(docUri, {
+        schema: JSON.parse(readFileSync(frontmatterSchemaPath, 'utf-8')) as object,
+        schemaUri: toFileUri(frontmatterSchemaPath),
+        contentSchema: JSON.parse(readFileSync(contentSchemaPath, 'utf-8')) as object,
+        contentSchemaUri: toFileUri(contentSchemaPath),
+        workspaceRoot: toFileUri(workspaceDir),
+      });
+
       const didOpenHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
         textDocument: { uri: string; text: string };
       }) => void;
       didOpenHandler({
         textDocument: { uri: docUri, text },
       });
+      graph.trackOpen(docUri, text);
 
       const definitionHandler = onDefinition.mock.calls[0][0] as (params: {
         textDocument: { uri: string };
@@ -634,7 +761,13 @@ describe.skip('language-server-inprocess-integration', () => {
         )
       );
 
+      const commonSchema = JSON.parse(readFileSync(commonSchemaPath, 'utf-8')) as {
+        $defs: { milestone: object };
+      };
+
       await import('../src/server');
+      const graph = makeProjectGraph();
+      getProject.mockResolvedValue({ getLanguageService: () => graph.languageService });
 
       const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => Promise<{
         capabilities: {
@@ -672,12 +805,19 @@ describe.skip('language-server-inprocess-integration', () => {
         },
       });
 
+      graph.setSchema(docUri, {
+        schema: commonSchema.$defs.milestone,
+        schemaUri: toFileUri(commonSchemaPath),
+        workspaceRoot: toFileUri(workspaceDir),
+      });
+
       const didOpenHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
         textDocument: { uri: string; text: string };
       }) => void;
       didOpenHandler({
         textDocument: { uri: docUri, text },
       });
+      graph.trackOpen(docUri, text);
 
       const definitionHandler = onDefinition.mock.calls[0][0] as (params: {
         textDocument: { uri: string };
@@ -725,6 +865,8 @@ describe.skip('language-server-inprocess-integration', () => {
       writeFileSync(contentSchemaPath, JSON.stringify(contentSchema, null, 2));
 
       await import('../src/server');
+      const graph = makeProjectGraph();
+      getProject.mockResolvedValue({ getLanguageService: () => graph.languageService });
 
       const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => Promise<{
         capabilities: {
@@ -759,12 +901,19 @@ describe.skip('language-server-inprocess-integration', () => {
         },
       });
 
+      graph.setSchema(docUri, {
+        contentSchema,
+        contentSchemaUri: toFileUri(contentSchemaPath),
+        workspaceRoot: toFileUri(workspaceDir),
+      });
+
       const didOpenHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
         textDocument: { uri: string; text: string };
       }) => void;
       didOpenHandler({
         textDocument: { uri: docUri, text },
       });
+      graph.trackOpen(docUri, text);
 
       const definitionHandler = onDefinition.mock.calls[0][0] as (params: {
         textDocument: { uri: string };
@@ -787,7 +936,7 @@ describe.skip('language-server-inprocess-integration', () => {
     }
   });
 
-  it('handles ref-driven content schemas with loops, literals, filters, completion, and definition', async () => {
+  it('handles ref-driven content schemas with loops, literals, filters, and definition', async () => {
     const workspaceDir = mkdtempSync(path.join(tmpdir(), 'templjs-server-ref-driven-'));
 
     try {
@@ -858,6 +1007,8 @@ describe.skip('language-server-inprocess-integration', () => {
       );
 
       await import('../src/server');
+      const graph = makeProjectGraph();
+      getProject.mockResolvedValue({ getLanguageService: () => graph.languageService });
 
       const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => Promise<{
         capabilities: {
@@ -916,10 +1067,23 @@ describe.skip('language-server-inprocess-integration', () => {
       expect(init.capabilities.completionProvider).toBeDefined();
       expect(init.capabilities.definitionProvider).toBe(true);
 
+      graph.setSchema(docUri, {
+        schema: JSON.parse(
+          readFileSync(path.join(frontmatterDir, 'milestone.json'), 'utf-8')
+        ) as object,
+        schemaUri: toFileUri(path.join(frontmatterDir, 'milestone.json')),
+        contentSchema: JSON.parse(
+          readFileSync(path.join(contentDir, 'milestone.json'), 'utf-8')
+        ) as object,
+        contentSchemaUri: toFileUri(path.join(contentDir, 'milestone.json')),
+        workspaceRoot: toFileUri(workspaceDir),
+      });
+
       const didOpenHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
         textDocument: { uri: string; text: string };
       }) => void;
       didOpenHandler({ textDocument: { uri: docUri, text } });
+      graph.trackOpen(docUri, text);
 
       await vi.waitFor(() => {
         expect(sendDiagnostics).toHaveBeenCalled();
@@ -941,7 +1105,6 @@ describe.skip('language-server-inprocess-integration', () => {
         textDocument: { uri: string };
         position: { line: number; character: number };
       }) => unknown;
-
       const completionItems = await completionHandler({
         textDocument: { uri: docUri },
         position: locate(6, 'milestoneObjective', 12),

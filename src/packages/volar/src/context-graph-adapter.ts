@@ -1082,11 +1082,16 @@ function getSnapshotSchemaToken(schema: unknown): string {
   return `hash:${computedHash}`;
 }
 
-function buildSnapshotCacheKey(options: { schema?: object; contentSchema?: object }): string {
+function buildSnapshotCacheKey(options: {
+  schema?: object;
+  contentSchema?: object;
+  contentSchemaUri?: string;
+}): string {
   const frontmatterHash = getSnapshotSchemaToken(options.schema);
   const contentOrFallbackSchema = options.contentSchema ?? options.schema;
   const contentHash = getSnapshotSchemaToken(contentOrFallbackSchema);
-  return `${frontmatterHash}::${contentHash}`;
+  const uriSuffix = options.contentSchemaUri ? `::${options.contentSchemaUri}` : '';
+  return `${frontmatterHash}::${contentHash}${uriSuffix}`;
 }
 
 function getParentPath(path: string): string {
@@ -1270,7 +1275,11 @@ export class ContextGraphSemanticReadAdapter {
       : readFileSync(filePath, 'utf-8');
   }
 
-  private getSnapshot(options: { schema?: object; contentSchema?: object }): GraphSnapshot {
+  private getSnapshot(options: {
+    schema?: object;
+    contentSchema?: object;
+    contentSchemaUri?: string;
+  }): GraphSnapshot {
     const cacheKey = buildSnapshotCacheKey(options);
     const cachedSnapshot = this.snapshotCache.get(cacheKey);
     if (cachedSnapshot) {
@@ -1317,16 +1326,93 @@ export class ContextGraphSemanticReadAdapter {
     return resolved;
   }
 
-  private buildSnapshot(options: { schema?: object; contentSchema?: object }): GraphSnapshot {
+  private buildSnapshot(options: {
+    schema?: object;
+    contentSchema?: object;
+    contentSchemaUri?: string;
+  }): GraphSnapshot {
+    const rawContentSchema = options.contentSchema ?? options.schema;
+    const contentSchemaUri = options.contentSchemaUri;
+    const contentSchema =
+      rawContentSchema && contentSchemaUri
+        ? this.resolveAllOfRefs(rawContentSchema, contentSchemaUri)
+        : rawContentSchema;
     return {
       version: 'v1',
       revision: 1,
       nodes: [
         ...buildPathNodes('frontmatter', options.schema),
-        ...buildPathNodes('content', options.contentSchema ?? options.schema),
+        ...buildPathNodes('content', contentSchema),
       ],
       edges: [],
     };
+  }
+
+  private resolveAllOfRefs(schema: object, schemaUri: string): object {
+    const record = schema as Record<string, unknown>;
+    if (!Array.isArray(record.allOf)) {
+      return schema;
+    }
+
+    const mergedProperties: Record<string, unknown> = {
+      ...(record.properties as Record<string, unknown> | undefined),
+    };
+    let resolved = false;
+
+    for (const entry of record.allOf as unknown[]) {
+      if (!entry || typeof entry !== 'object') {
+        continue;
+      }
+      const refRecord = entry as Record<string, unknown>;
+      if (typeof refRecord.$ref !== 'string') {
+        continue;
+      }
+      const refSchema = this.loadSchemaRef(schemaUri, refRecord.$ref);
+      if (refSchema && typeof refSchema === 'object') {
+        const refProps = (refSchema as Record<string, unknown>).properties;
+        if (refProps && typeof refProps === 'object' && !Array.isArray(refProps)) {
+          Object.assign(mergedProperties, refProps);
+          resolved = true;
+        }
+      }
+    }
+
+    if (!resolved) {
+      return schema;
+    }
+    return { ...record, properties: mergedProperties };
+  }
+
+  private loadSchemaRef(baseUri: string, ref: string): unknown {
+    const hashIdx = ref.indexOf('#');
+    const source = hashIdx === -1 ? ref : ref.slice(0, hashIdx);
+    const fragment = hashIdx === -1 ? '' : ref.slice(hashIdx + 1);
+
+    const targetUri = source ? resolveRefTargetUri(baseUri, source) : baseUri;
+    if (!targetUri || !targetUri.startsWith('file://')) {
+      return undefined;
+    }
+
+    let parsed: unknown;
+    try {
+      const text = this.readTextFile(fileURLToPath(targetUri));
+      parsed = JSON.parse(text);
+    } catch {
+      return undefined;
+    }
+
+    if (!fragment) {
+      return parsed;
+    }
+
+    let current: unknown = parsed;
+    for (const seg of fragment.split('/').filter(Boolean)) {
+      if (!current || typeof current !== 'object') {
+        return undefined;
+      }
+      current = (current as Record<string, unknown>)[seg];
+    }
+    return current;
   }
 
   getPathDetails(
@@ -1627,7 +1713,7 @@ export class ContextGraphSemanticReadAdapter {
   }
 
   query(
-    options: { schema?: object; contentSchema?: object },
+    options: { schema?: object; contentSchema?: object; contentSchemaUri?: string },
     request: QueryRequest,
     context?: SemanticQueryContext
   ): QueryResponse {

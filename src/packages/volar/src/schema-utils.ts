@@ -112,5 +112,14 @@ export function resolveSchemaFilePathSync(
     return undefined;
   }
 
-  return path.resolve(workspaceRoot, source);
+  let rootPath = workspaceRoot;
+  if (rootPath.startsWith('file://')) {
+    try {
+      rootPath = fileURLToPath(rootPath);
+    } catch {
+      return undefined;
+    }
+  }
+
+  return path.resolve(rootPath, source);
 }
