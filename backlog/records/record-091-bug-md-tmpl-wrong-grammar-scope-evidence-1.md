@@ -41,8 +41,8 @@ Analogous working scopes in the same extension: `text.html.basic` (HTML) and `so
 
 ### Remaining Verification
 
-Manual reload of the extension development host is required to confirm visual Markdown highlighting.
-A regression test asserting the grammar scope should be added (tracked in WI-091 open tasks).
+Manual reload of the extension development host is required to confirm visual Markdown highlighting in `*.md.tmpl` files.
+Regression coverage for markdown grammar scope and frontmatter anchoring is now present in `src/packages/volar/test/textmate-grammar.test.ts`.
 
 ## Subject References
 
