@@ -132,6 +132,12 @@ describe('TextMateGrammarIntegration', () => {
     }
   );
 
+  it('anchors markdown frontmatter begin to document start', () => {
+    const repository = markdownInjection.repository as Record<string, JsonRecord>;
+    const frontmatter = repository.frontmatter;
+    expect(frontmatter.begin).toBe('\\A---\\s*$');
+  });
+
   it('contributes a base grammar registration in extension manifest', () => {
     const contributes = vscodePackage.contributes as JsonRecord;
     const grammars = contributes.grammars as Array<JsonRecord>;

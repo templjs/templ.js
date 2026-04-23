@@ -31,12 +31,13 @@ Result:
 - Templjs diagnostics are reported on save
 - Host markdown/frontmatter diagnostics are not reported
 
-This confirms the `watchFileExtensions` correction is not sufficient to provide host-language diagnostics. The remaining gap aligns with [[work-item-093-bug-no-host-language-service-plugins]] (missing Volar host-language service plugin delegation).
+This confirms the `watchFileExtensions` correction is not sufficient to provide host-language diagnostics. The remaining gap aligns with [[work-item-093-bug-no-host-language-service-plugins]] and [[work-item-094-bug-host-markdown-frontmatter-diagnostics-not-delegated]] (missing Volar host-language service plugin delegation and host diagnostics delegation).
 
 ## Subject References
 
 - [[work-item-092-bug-watchfileextensions-reversed-order]]
 - [[work-item-093-bug-no-host-language-service-plugins]]
+- [[work-item-094-bug-host-markdown-frontmatter-diagnostics-not-delegated]]
 
 ## Artifact References
 

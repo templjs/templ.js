@@ -70,16 +70,12 @@ Extension rebuilt: `dist/server.js` 1.5 MB, `dist/extension.js` 790 KB.
 
 - [x] Replace `source.gfm` with `text.html.markdown` in `injection-markdown.json`
 - [x] Rebuild extension (`pnpm build` — all 5 projects succeeded)
-- [x] Reload VS Code extension host and confirm Markdown highlighting in `*.md.tmpl`
+- [ ] Reload VS Code extension host and confirm Markdown highlighting in `*.md.tmpl`
 - [x] Add regression test asserting grammar scope correctness for `.md.tmpl`
 
 ## Acceptance Criteria
 
-- [x] `.md.tmpl`, `.md.templ`, and `.md.tpl` files display full Markdown syntax highlighting
+- [ ] `.md.tmpl`, `.md.templ`, and `.md.tpl` files display full Markdown syntax highlighting
 - [x] No regression in `.html.tmpl` or `.json.tmpl` highlighting
 - [x] Grammar injection test or snapshot validates `text.html.markdown` scope inclusion
 - [x] `pnpm build` passes with zero errors
-
-## Relationships
-
-- `depends_on`: [[work-item-089-md-host-language-activation-validation-matrix]]

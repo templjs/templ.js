@@ -80,7 +80,7 @@ Corresponding test expectation in `server.test.ts` updated to match. All 51 test
 - [x] No regression in existing server tests
 - [ ] File save on any `.tmpl` / `.templ` / `.tpl` variant triggers server-side diagnostics refresh
 
-Note: manual smoke validation confirms only templjs diagnostics appear on save; host markdown/frontmatter diagnostics remain absent and are tracked under [[work-item-093-bug-no-host-language-service-plugins]].
+Note: manual smoke validation confirms only templjs diagnostics appear on save; host markdown/frontmatter diagnostics remain absent and are tracked under [[work-item-093-bug-no-host-language-service-plugins]] and [[work-item-094-bug-host-markdown-frontmatter-diagnostics-not-delegated]].
 
 ## Relationships
 
