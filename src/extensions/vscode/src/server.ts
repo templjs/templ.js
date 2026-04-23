@@ -206,27 +206,59 @@ function toDiagnosticOptions(uri: string): DiagnosticOptions {
   };
 }
 
-function publishDiagnosticsForDocument(uri: string): void {
+async function collectHostDiagnosticsForDocument(uri: string): Promise<unknown[]> {
+  try {
+    const project = await server.projects.getProject(uri);
+    const languageService = project?.getLanguageService();
+    const doValidation = (languageService as { doValidation?: (uri: string) => unknown })
+      ?.doValidation;
+
+    if (typeof doValidation !== 'function') {
+      return [];
+    }
+
+    const hostDiagnostics = await Promise.resolve(doValidation(uri));
+    return Array.isArray(hostDiagnostics) ? hostDiagnostics : [];
+  } catch (error) {
+    connection.console.log(
+      `[templjs] Host diagnostics skipped for ${uri}: ${error instanceof Error ? error.message : String(error)}`
+    );
+    return [];
+  }
+}
+
+async function publishDiagnosticsForDocument(uri: string): Promise<void> {
   const text = documentTextByUri.get(uri);
   if (text === undefined) {
     return;
   }
 
+  let templjsDiagnostics: any[] = [];
+
   try {
-    const diagnostics = collectDiagnostics(text, toDiagnosticOptions(uri)).map((diagnostic) => ({
+    templjsDiagnostics = collectDiagnostics(text, toDiagnosticOptions(uri)).map((diagnostic) => ({
       message: diagnostic.message,
       severity: diagnostic.severity,
       range: diagnostic.range,
       source: diagnostic.source ?? 'templjs',
       code: diagnostic.code,
     }));
-    connection.sendDiagnostics({ uri, diagnostics });
   } catch (error) {
     connection.console.log(
       `[templjs] Diagnostics skipped for ${uri}: ${error instanceof Error ? error.message : String(error)}`
     );
-    connection.sendDiagnostics({ uri, diagnostics: [] });
   }
+
+  const hostDiagnostics = (await collectHostDiagnosticsForDocument(uri)) as any[];
+  connection.sendDiagnostics({ uri, diagnostics: [...templjsDiagnostics, ...hostDiagnostics] });
+}
+
+function refreshDiagnostics(uri: string): void {
+  void publishDiagnosticsForDocument(uri).catch((error) => {
+    connection.console.log(
+      `[templjs] Diagnostics publish failed for ${uri}: ${error instanceof Error ? error.message : String(error)}`
+    );
+  });
 }
 
 async function loadSchemasForDocumentContext(
@@ -372,7 +404,7 @@ connection.onDidOpenTextDocument((event) => {
     storedWorkspaceRoot,
     storedInitializationOptions
   ).then(() => {
-    publishDiagnosticsForDocument(uri);
+    refreshDiagnostics(uri);
   });
 });
 
@@ -388,7 +420,7 @@ connection.onDidChangeTextDocument((event) => {
   const newSchemaKey = extractDocumentSchemaKey(updated);
   if (newSchemaKey === schemaKeyByUri.get(uri)) {
     // Schema references unchanged — skip the expensive reload, just re-run diagnostics.
-    publishDiagnosticsForDocument(uri);
+    refreshDiagnostics(uri);
     return;
   }
 
@@ -401,7 +433,7 @@ connection.onDidChangeTextDocument((event) => {
       if (schemaLoadGenerationByUri.get(uri) !== generation) {
         return; // A newer load was scheduled while this one was in-flight; discard its result.
       }
-      publishDiagnosticsForDocument(uri);
+      refreshDiagnostics(uri);
     })
     .catch((err: unknown) => {
       const message = err instanceof Error ? err.message : String(err);
@@ -430,7 +462,7 @@ connection.onDidChangeWatchedFiles((event) => {
         if (schemaLoadGenerationByUri.get(uri) !== generation) {
           return;
         }
-        publishDiagnosticsForDocument(uri);
+        refreshDiagnostics(uri);
       })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : String(err);
