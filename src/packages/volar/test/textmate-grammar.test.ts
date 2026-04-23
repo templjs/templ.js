@@ -21,7 +21,7 @@ const injectionCases = [
     name: 'markdown',
     grammar: markdownInjection,
     scopeName: 'text.templjs.markdown',
-    baseScope: 'source.gfm',
+    baseScope: 'text.html.markdown',
     language: 'templjs-markdown',
     path: './syntaxes/injection-markdown.json',
     embeddedScope: 'meta.embedded.block.markdown',
@@ -131,6 +131,12 @@ describe('TextMateGrammarIntegration', () => {
       expect(includes).toContain('source.templjs');
     }
   );
+
+  it('anchors markdown frontmatter begin to document start', () => {
+    const repository = markdownInjection.repository as Record<string, JsonRecord>;
+    const frontmatter = repository.frontmatter;
+    expect(frontmatter.begin).toBe('\\A---\\s*$');
+  });
 
   it('contributes a base grammar registration in extension manifest', () => {
     const contributes = vscodePackage.contributes as JsonRecord;

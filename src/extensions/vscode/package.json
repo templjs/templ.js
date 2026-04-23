@@ -178,6 +178,7 @@
   "scripts": {
     "vscode:prepublish": "pnpm run build",
     "build": "tsc -p ./ && node ./scripts/build.mjs",
+    "package": "vsce package --no-dependencies --out templjs-verify.vsix",
     "watch": "tsc -watch -p ./",
     "test": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",

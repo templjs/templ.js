@@ -4,7 +4,7 @@
   "scopeName": "text.templjs.markdown",
   "repository": {
     "frontmatter": {
-      "begin": "^---\\s*$",
+      "begin": "\\A---\\s*$",
       "end": "^---\\s*$",
       "name": "meta.frontmatter.templjs",
       "patterns": [
@@ -33,7 +33,7 @@
       "include": "#frontmatter"
     },
     {
-      "include": "source.gfm"
+      "include": "text.html.markdown"
     },
     {
       "include": "source.templjs"
