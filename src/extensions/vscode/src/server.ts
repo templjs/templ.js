@@ -7,19 +7,18 @@ import {
 import {
   collectDiagnostics,
   createTempljsLanguagePlugin,
-  TempljsServicePlugin,
   type DiagnosticOptions,
   type IntellisenseOptions,
 } from '@templjs/volar';
 import {
   extractDocumentSchemaKey,
   loadSchemaSource,
-  loadSchemaSourceSync,
   resolveDocumentSchemaSources,
   resolveWorkspaceRoot,
   type InitializeParamsLike,
   type ServerInitializationOptions,
 } from './schema-loading.js';
+import { createServicePlugins } from './service-plugins.js';
 
 // Write to stderr for debugging server startup
 console.error('[templjs-server] Starting instantiation...');
@@ -27,9 +26,6 @@ console.error('[templjs-server] Starting instantiation...');
 const connection = createConnection();
 const server = createServer(connection);
 console.error('[templjs-server] Connection and server created');
-
-const servicePlugin = new TempljsServicePlugin();
-console.error('[templjs-server] TempljsServicePlugin instantiated successfully');
 
 const documentTextByUri = new Map<string, string>();
 let storedWorkspaceRoot: string | undefined;
@@ -72,19 +68,6 @@ function trace(message: string, level: 'messages' | 'verbose' = 'messages'): voi
   connection.console.log(`[templjs-trace] ${message}`);
 }
 
-function summarizeDuplicateLabels(labels: string[]): string[] {
-  const counts = new Map<string, number>();
-  for (const label of labels) {
-    const key = label.toLowerCase();
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-
-  return [...counts.entries()]
-    .filter(([, total]) => total > 1)
-    .map(([label, total]) => `${label}×${total}`)
-    .sort((left, right) => left.localeCompare(right));
-}
-
 function refreshRuntimeSchemaOptions(nextOptions: SchemaRuntimeOptions): void {
   delete runtimeSchemaOptions.schema;
   delete runtimeSchemaOptions.schemaUri;
@@ -119,50 +102,29 @@ interface TextDocumentContentChangeLike {
   range?: RangeLike;
 }
 
-type InternalCompletionKind = 'variable' | 'property' | 'keyword' | 'filter';
-type LspCompletionKind = 2 | 3 | 6 | 10 | 14;
-
-function mapInternalKindToLsp(kind: InternalCompletionKind | number): LspCompletionKind {
-  if (typeof kind === 'number') {
-    if (kind === 2 || kind === 3 || kind === 6 || kind === 10 || kind === 14) {
-      return kind;
-    }
-
-    return 6;
-  }
-
-  switch (kind) {
-    case 'variable':
-      return 6;
-    case 'property':
-      return 10;
-    case 'keyword':
-      return 14;
-    case 'filter':
-      return 3;
-  }
-}
-
 const serverOptions = {
   watchFileExtensions: [
-    '.templ.md',
-    '.templ.json',
-    '.templ.yaml',
-    '.templ.yml',
-    '.templ.html',
-    '.tmpl.md',
-    '.tmpl.json',
-    '.tmpl.yaml',
-    '.tmpl.yml',
-    '.tmpl.html',
-    '.tpl.md',
-    '.tpl.json',
-    '.tpl.yaml',
-    '.tpl.yml',
-    '.tpl.html',
+    '.html.templ',
+    '.html.tmpl',
+    '.html.tpl',
+    '.json.templ',
+    '.json.tmpl',
+    '.json.tpl',
+    '.md.templ',
+    '.md.tmpl',
+    '.md.tpl',
+    '.yaml.templ',
+    '.yaml.tmpl',
+    '.yaml.tpl',
+    '.yml.templ',
+    '.yml.tmpl',
+    '.yml.tpl',
   ],
   getServicePlugins() {
-    return [];
+    return createServicePlugins({
+      getIntellisenseOptions: toIntellisenseOptions,
+      workspaceFolder: storedWorkspaceRoot,
+    });
   },
 };
 
@@ -218,56 +180,6 @@ function isLikelySchemaUri(uri: string): boolean {
 
   const fileName = normalized.split('/').pop() ?? normalized;
   return !/\.(templ|template|tpl|tmpl)\.(json|ya?ml)$/.test(fileName);
-}
-
-function ensureSchemaOptionsForUri(uri: string, text: string): SchemaRuntimeOptions {
-  const contentHash = hashTextContent(text);
-  const existing = schemaOptionsByUri.get(uri);
-  if (
-    existing &&
-    (existing.schema || existing.contentSchema) &&
-    existing.contentHash === contentHash
-  ) {
-    return existing;
-  }
-
-  const pseudoParams: InitializeParamsLike = {
-    rootUri: storedWorkspaceRoot ? pathToFileURL(storedWorkspaceRoot).toString() : undefined,
-    initializationOptions: {
-      ...storedInitializationOptions,
-      documentContext: {
-        uri,
-        content: text,
-      },
-    },
-  };
-
-  const resolvedSources = resolveDocumentSchemaSources(pseudoParams);
-  const loadedSchemaOptions = resolvedSources.schemaPath
-    ? loadSchemaSourceSync(resolvedSources.schemaPath, storedWorkspaceRoot, uri, {
-        cache: schemaFileCache,
-      })
-    : {};
-  const loadedContentResult = resolvedSources.contentSchemaPath
-    ? loadSchemaSourceSync(resolvedSources.contentSchemaPath, storedWorkspaceRoot, uri, {
-        cache: schemaFileCache,
-      })
-    : undefined;
-
-  const schemaOptions: SchemaRuntimeOptions = {
-    ...loadedSchemaOptions,
-    ...(loadedContentResult
-      ? {
-          contentSchema: loadedContentResult.schema,
-          contentSchemaUri: loadedContentResult.schemaUri,
-        }
-      : {}),
-    contentHash,
-  };
-
-  schemaOptionsByUri.set(uri, schemaOptions);
-  refreshRuntimeSchemaOptions(schemaOptions);
-  return schemaOptions;
 }
 
 function toIntellisenseOptions(uri: string): IntellisenseOptions {
@@ -415,118 +327,24 @@ connection.onInitialize(async (params) => {
     },
   });
 
-  // Re-register our handlers AFTER server.initialize() so they overwrite
-  // Volar's registerLanguageFeatures() registrations made during initialize().
-  connection.onCompletion((completionParams) => {
-    const startedAt = Date.now();
-    trace(
-      `completion requested: ${completionParams.textDocument.uri} @ ${completionParams.position.line}:${completionParams.position.character}`
-    );
-    const completionText = documentTextByUri.get(completionParams.textDocument.uri);
-    if (!completionText) {
-      trace('completion skipped: document text not found in cache');
-      return [];
-    }
-
-    ensureSchemaOptionsForUri(completionParams.textDocument.uri, completionText);
-
-    const completionOffset = getOffsetForPosition(completionText, completionParams.position);
-    const completions = servicePlugin.getCompletions(
-      completionText,
-      completionOffset,
-      toIntellisenseOptions(completionParams.textDocument.uri)
-    );
-
-    const durationMs = Date.now() - startedAt;
-    trace(`completion result count=${completions.length} durationMs=${durationMs}`);
-
-    const labels = completions
-      .map((item) => item.label)
-      .filter((label) => typeof label === 'string');
-    const duplicateLabels = summarizeDuplicateLabels(labels);
-    if (duplicateLabels.length > 0) {
-      trace(`completion duplicate labels: ${duplicateLabels.slice(0, 10).join(', ')}`, 'messages');
-    }
-
-    if (labels.length > 0) {
-      trace(
-        `completion top labels: ${labels
-          .slice(0, 8)
-          .map((label) => JSON.stringify(label))
-          .join(', ')}`,
-        'verbose'
-      );
-    }
-
-    return completions.map((item) => ({
-      label: item.label,
-      detail: item.detail,
-      documentation: item.documentation,
-      kind: mapInternalKindToLsp(item.kind),
-    }));
+  // Delegate authoring requests to Volar language service from this transport layer.
+  // This keeps a single implementation of semantics while ensuring requests are handled.
+  connection.onCompletion(async (request, token) => {
+    const uri = request.textDocument.uri;
+    const languageService = (await server.projects.getProject(uri)).getLanguageService();
+    return await languageService.doComplete(uri, request.position, request.context, token);
   });
 
-  connection.onHover((hoverParams) => {
-    const startedAt = Date.now();
-    trace(
-      `hover requested: ${hoverParams.textDocument.uri} @ ${hoverParams.position.line}:${hoverParams.position.character}`
-    );
-    const hoverText = documentTextByUri.get(hoverParams.textDocument.uri);
-    if (!hoverText) {
-      trace('hover skipped: document text not found in cache');
-      return null;
-    }
-
-    ensureSchemaOptionsForUri(hoverParams.textDocument.uri, hoverText);
-
-    const hoverOffset = getOffsetForPosition(hoverText, hoverParams.position);
-    const hover = servicePlugin.getHover(
-      hoverText,
-      hoverOffset,
-      toIntellisenseOptions(hoverParams.textDocument.uri)
-    );
-
-    const durationMs = Date.now() - startedAt;
-    trace(`hover result=${hover ? 'present' : 'none'} durationMs=${durationMs}`);
-    if (hover?.contents?.value) {
-      trace(`hover markdown length=${hover.contents.value.length}`, 'verbose');
-    }
-
-    return hover;
+  connection.onHover(async (request, token) => {
+    const uri = request.textDocument.uri;
+    const languageService = (await server.projects.getProject(uri)).getLanguageService();
+    return await languageService.doHover(uri, request.position, token);
   });
 
-  connection.onDefinition((definitionParams) => {
-    const startedAt = Date.now();
-    trace(
-      `definition requested: ${definitionParams.textDocument.uri} @ ${definitionParams.position.line}:${definitionParams.position.character}`
-    );
-    const definitionText = documentTextByUri.get(definitionParams.textDocument.uri);
-    if (!definitionText) {
-      trace('definition skipped: document text not found in cache');
-      return null;
-    }
-
-    ensureSchemaOptionsForUri(definitionParams.textDocument.uri, definitionText);
-
-    const definitionOffset = getOffsetForPosition(definitionText, definitionParams.position);
-
-    const definition = servicePlugin.getDefinition(
-      definitionText,
-      definitionOffset,
-      toIntellisenseOptions(definitionParams.textDocument.uri)
-    );
-
-    if (definition) {
-      const durationMs = Date.now() - startedAt;
-      trace(
-        `definition resolved via provider: uri=${definition.uri} range=[${definition.range.start.line}:${definition.range.start.character}] durationMs=${durationMs}`
-      );
-    } else {
-      const durationMs = Date.now() - startedAt;
-      trace(`definition result=none durationMs=${durationMs}`);
-    }
-
-    return definition;
+  connection.onDefinition(async (request, token) => {
+    const uri = request.textDocument.uri;
+    const languageService = (await server.projects.getProject(uri)).getLanguageService();
+    return await languageService.findDefinition(uri, request.position, token);
   });
 
   return {

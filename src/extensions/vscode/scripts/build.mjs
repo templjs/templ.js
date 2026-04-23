@@ -1,16 +1,26 @@
 import fs from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import esbuild from 'esbuild';
 
+const require = createRequire(import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
 const extensionRoot = path.resolve(here, '..');
 const packageRoot = path.resolve(extensionRoot, '..', '..', 'packages');
+const jsonLanguageServiceRoot = path.dirname(
+  require.resolve('vscode-json-languageservice/package.json')
+);
+const jsoncParserEntry = require.resolve('jsonc-parser', {
+  paths: [jsonLanguageServiceRoot],
+});
+const jsoncParserRoot = path.resolve(jsoncParserEntry, '..', '..', '..');
 
 const alias = {
   '@templjs/context-graph': path.join(packageRoot, 'context-graph', 'dist', 'index.js'),
   '@templjs/core': path.join(packageRoot, 'core', 'dist', 'index.js'),
   '@templjs/volar': path.join(packageRoot, 'volar', 'dist', 'index.js'),
+  'jsonc-parser': path.join(jsoncParserRoot, 'lib', 'esm', 'main.js'),
 };
 
 const createRequireCompatPlugin = {
@@ -41,6 +51,7 @@ const sharedOptions = {
   alias,
   bundle: true,
   format: 'cjs',
+  mainFields: ['module', 'main'],
   platform: 'node',
   target: 'node18',
   minify: false,
