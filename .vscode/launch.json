@@ -1,0 +1,21 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/src/extensions/vscode"
+      ],
+      "name": "Launch TemplJS Extension",
+      "outFiles": [
+        "${workspaceFolder}/src/extensions/vscode/dist/extension.js",
+        "${workspaceFolder}/src/extensions/vscode/dist/server.js"
+      ],
+      "preLaunchTask": "Build TemplJS Extension (dist)",
+      "request": "launch",
+      "type": "extensionHost"
+    }
+  ]
+}

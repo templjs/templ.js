@@ -1,0 +1,26 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build TemplJS Extension (dist)",
+      "type": "shell",
+      "command": "pnpm",
+      "args": [
+        "--dir",
+        "src/extensions/vscode",
+        "run",
+        "build"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$tsc"
+      ]
+    }
+  ]
+}
