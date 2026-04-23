@@ -5,12 +5,14 @@ title: '094: Host markdown/frontmatter diagnostics are not delegated for tmpl fi
 summary: Host markdown/frontmatter diagnostics are missing for tmpl files even when file-watch notifications fire
 type: work-item
 subtype: bug
-lifecycle: draft
-status: proposed
-status_reason: needs-triage
+lifecycle: active
+status: ready-for-review
 priority: high
 estimated: 3
-actual: 0
+actual: 1
+links:
+  evidence:
+    - '[[record-094-bug-host-markdown-frontmatter-diagnostics-not-delegated-evidence-1]]'
 ---
 
 ## Goal
@@ -42,18 +44,18 @@ Only templjs diagnostics are reported; host markdown/frontmatter diagnostics are
 
 ## Tasks
 
-- [ ] Trace diagnostics pipeline from document save to `publishDiagnosticsForDocument`
-- [ ] Verify host-language service plugin registration for diagnostics path
-- [ ] Implement host diagnostics delegation for markdown/frontmatter documents
-- [ ] Add integration coverage validating markdown/frontmatter diagnostics in `.md.tmpl`
-- [ ] Confirm no regression in templjs diagnostics
+- [x] Trace diagnostics pipeline from document save to `publishDiagnosticsForDocument`
+- [x] Verify host-language service plugin registration for diagnostics path
+- [x] Implement host diagnostics delegation for markdown/frontmatter documents
+- [x] Add integration coverage validating markdown/frontmatter diagnostics in `.md.tmpl`
+- [x] Confirm no regression in templjs diagnostics
 
 ## Acceptance Criteria
 
-- [ ] Save on `.md.tmpl` triggers templjs and host markdown/frontmatter diagnostics
-- [ ] Diagnostics appear in Problems panel for host markdown/frontmatter violations
-- [ ] Existing templjs diagnostics behavior remains unchanged
-- [ ] Relevant integration tests pass
+- [x] Save on `.md.tmpl` triggers templjs and host markdown/frontmatter diagnostics
+- [x] Diagnostics appear in Problems panel for host markdown/frontmatter violations
+- [x] Existing templjs diagnostics behavior remains unchanged
+- [x] Relevant integration tests pass
 
 ## Relationships
 

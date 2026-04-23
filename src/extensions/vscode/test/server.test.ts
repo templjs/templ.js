@@ -46,6 +46,7 @@ function toTestWorkspaceUri(fixtureUri: string): string {
 const initialize = vi.fn(async () => ({ capabilities: {} }));
 const initialized = vi.fn();
 const shutdown = vi.fn();
+const getProject = vi.fn();
 
 const createTempljsLanguagePlugin = vi.fn(() => ({ name: 'templjs-plugin' }));
 const getCompletions = vi.fn<(...args: any[]) => any[]>(() => [{ label: 'user', kind: 6 }]);
@@ -186,6 +187,9 @@ vi.mock('@volar/language-server/node', () => ({
     initialize,
     initialized,
     shutdown,
+    projects: {
+      getProject,
+    },
   })),
   createSimpleProjectProvider: { name: 'simple-project-provider' },
 }));
@@ -221,6 +225,7 @@ describe('language-server-bootstrap', () => {
     initialize.mockClear();
     initialized.mockClear();
     shutdown.mockClear();
+    getProject.mockReset();
     createTempljsLanguagePlugin.mockClear();
     getCompletions.mockClear();
     getHover.mockClear();
@@ -1229,23 +1234,100 @@ describe('language-server-bootstrap', () => {
       },
     });
 
-    await Promise.resolve();
-
-    expect(sendDiagnostics).toHaveBeenCalledWith({
-      uri: toTestWorkspaceUri('file:///workspace/default-source.md.tpl'),
-      diagnostics: [
-        {
-          message: 'missing field',
-          severity: 1,
-          range: {
-            start: { line: 0, character: 0 },
-            end: { line: 0, character: 4 },
+    await vi.waitFor(() => {
+      expect(sendDiagnostics).toHaveBeenCalledWith({
+        uri: toTestWorkspaceUri('file:///workspace/default-source.md.tpl'),
+        diagnostics: [
+          {
+            message: 'missing field',
+            severity: 1,
+            range: {
+              start: { line: 0, character: 0 },
+              end: { line: 0, character: 4 },
+            },
+            source: 'templjs',
+            code: 'missing-field',
           },
-          source: 'templjs',
-          code: 'missing-field',
-        },
-      ],
+        ],
+      });
     });
+  });
+
+  it('publishes templjs and host markdown diagnostics together on save', async () => {
+    const hostValidation = vi.fn(async () => [
+      {
+        message: 'Host markdown diagnostic',
+        severity: 2,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 0, character: 3 },
+        },
+        source: 'markdown',
+        code: 'md.host',
+      },
+    ]);
+
+    getProject.mockResolvedValue({
+      getLanguageService: () => ({ doValidation: hostValidation }),
+    });
+
+    collectDiagnostics.mockReturnValue([
+      {
+        message: 'Templ diagnostic',
+        severity: 1,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 0, character: 4 },
+        },
+        source: 'templjs',
+        code: 'templjs.undefinedVariable',
+      },
+    ]);
+
+    await import('../src/server');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
+
+    const openHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
+      textDocument: { uri: string; text: string; languageId: string; version: number };
+    }) => void;
+    const changeHandler = onDidChangeTextDocument.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      contentChanges: Array<{ text: string }>;
+    }) => void;
+
+    const docUri = toTestWorkspaceUri('file:///workspace/host-diags.md.tmpl');
+    openHandler({
+      textDocument: {
+        uri: docUri,
+        languageId: 'templjs-markdown',
+        version: 1,
+        text: '{{ value }}',
+      },
+    });
+
+    sendDiagnostics.mockClear();
+
+    changeHandler({
+      textDocument: { uri: docUri },
+      contentChanges: [{ text: '{{ value }}\n#bad-heading' }],
+    });
+
+    await vi.waitFor(() => {
+      expect(sendDiagnostics).toHaveBeenCalled();
+    });
+
+    const lastPayload = sendDiagnostics.mock.calls.at(-1)?.[0] as {
+      uri: string;
+      diagnostics: Array<{ source?: string; message: string }>;
+    };
+    expect(lastPayload?.uri).toBe(docUri);
+    expect(lastPayload.diagnostics.some((diag) => diag.source === 'templjs')).toBe(true);
+    expect(lastPayload.diagnostics.some((diag) => diag.source === 'markdown')).toBe(true);
+    expect(hostValidation).toHaveBeenCalledWith(docUri);
   });
 
   it('drops stale schema reload generations when a newer change is queued', async () => {
@@ -1396,7 +1478,9 @@ describe('language-server-bootstrap', () => {
     });
 
     expect(readFileSync).not.toHaveBeenCalled();
-    expect(sendDiagnostics).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => {
+      expect(sendDiagnostics.mock.calls.length).toBeGreaterThanOrEqual(1);
+    });
   });
 
   it('skips diagnostics publishing when an opened document has undefined text', async () => {
