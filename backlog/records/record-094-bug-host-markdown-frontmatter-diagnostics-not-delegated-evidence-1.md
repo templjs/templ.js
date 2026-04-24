@@ -16,25 +16,27 @@ status_reason: recorded
 
 ## Outcome
 
-passed
+partial — delegation wiring only (false positive on frontmatter claim)
 
 ## Observation
 
-Implemented host diagnostics delegation in `src/extensions/vscode/src/server.ts` by combining:
+Implemented host diagnostics delegation in `src/extensions/vscode/src/server.ts` by calling
+`languageService.doValidation(uri)` and merging its result with templjs diagnostics on every
+diagnostics publish cycle for opened/changed/watched documents.
 
-- templjs diagnostics from `collectDiagnostics(...)`
-- host-language diagnostics from Volar language service `doValidation(uri)`
-
-on every diagnostics publish cycle for opened/changed/watched documents.
-
-Added regression test coverage in `src/extensions/vscode/test/server.test.ts`:
+Added unit test in `src/extensions/vscode/test/server.test.ts`:
 
 - `publishes templjs and host markdown diagnostics together on save`
 
-Validation command executed:
+This test mocks `doValidation` to return a synthetic `markdown` diagnostic. It validates
+**delegation wiring** only — that `doValidation` is called and its result is merged into
+`sendDiagnostics`. It does **not** exercise the actual YAML frontmatter parse path inside
+`createMarkdownPlugin.provideDiagnostics`.
 
-- `rtk pnpm --dir src/extensions/vscode test -- test/server.test.ts test/server-inprocess.integration.test.ts`
-- Result: 2 files passed, 47 tests passed.
+**Correction:** An earlier version of this record claimed YAML frontmatter diagnostics were
+working. This was incorrect; the test mock bypassed the real parse logic entirely. The actual
+YAML frontmatter validation (via `gray-matter`) was not yet implemented at this evidence point.
+See evidence-2 for the real frontmatter validation implementation and test coverage.
 
 ## Subject References
 
@@ -44,4 +46,3 @@ Validation command executed:
 
 - `src/extensions/vscode/src/server.ts`
 - `src/extensions/vscode/test/server.test.ts`
-- `src/extensions/vscode/test/server-inprocess.integration.test.ts`

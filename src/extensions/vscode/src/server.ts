@@ -209,16 +209,8 @@ function toDiagnosticOptions(uri: string): DiagnosticOptions {
 async function collectHostDiagnosticsForDocument(uri: string): Promise<unknown[]> {
   try {
     const project = await server.projects.getProject(uri);
-    const languageService = project?.getLanguageService();
-    const doValidation = (languageService as { doValidation?: (uri: string) => unknown })
-      ?.doValidation;
-
-    if (typeof doValidation !== 'function') {
-      return [];
-    }
-
-    const hostDiagnostics = await Promise.resolve(doValidation(uri));
-    return Array.isArray(hostDiagnostics) ? hostDiagnostics : [];
+    const languageService = project.getLanguageService();
+    return await languageService.doValidation(uri);
   } catch (error) {
     connection.console.log(
       `[templjs] Host diagnostics skipped for ${uri}: ${error instanceof Error ? error.message : String(error)}`

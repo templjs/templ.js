@@ -176,16 +176,15 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "pnpm run build",
     "build": "tsc -p ./ && node ./scripts/build.mjs",
-    "package": "vsce package --no-dependencies --out templjs-verify.vsix",
-    "watch": "tsc -watch -p ./",
-    "test": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts",
-    "test:watch": "vitest --config vitest.config.ts",
-    "test:coverage": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts --coverage",
-    "lint": "echo \"No linting configured yet\" && exit 0",
     "clean": "rm -rf dist tsconfig.tsbuildinfo templjs-*.vsix",
-    "package": "mkdir -p ../../../out && vsce package --no-dependencies --out ../../../out/templjs-verify.vsix"
+    "lint": "echo \"No linting configured yet\" && exit 0",
+    "package": "mkdir -p ../../../out && vsce package --no-dependencies --out ../../../out/templjs-verify.vsix",
+    "test": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts",
+    "test:coverage": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts --coverage",
+    "test:watch": "vitest --config vitest.config.ts",
+    "vscode:prepublish": "pnpm run build",
+    "watch": "tsc -watch -p ./"
   },
   "dependencies": {
     "@templjs/core": "workspace:*",
