@@ -1721,3 +1721,69 @@ describe('language-server-bootstrap', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Pure-function unit tests - no mock infrastructure needed
+// ---------------------------------------------------------------------------
+
+describe('isMdTemplateUri', () => {
+  let isMdTemplateUri: (uri: string) => boolean;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    const mod = await import('../src/server');
+    isMdTemplateUri = mod.isMdTemplateUri;
+  });
+
+  it('returns true for .md.templ URIs', () => {
+    expect(isMdTemplateUri('file:///workspace/doc.md.templ')).toBe(true);
+  });
+
+  it('returns true for .md.tmpl and .md.tpl URIs', () => {
+    expect(isMdTemplateUri('file:///a.md.tmpl')).toBe(true);
+    expect(isMdTemplateUri('file:///a.md.tpl')).toBe(true);
+  });
+
+  it('returns false for non-template markdown URIs', () => {
+    expect(isMdTemplateUri('file:///doc.md')).toBe(false);
+  });
+
+  it('returns false for non-markdown template URIs', () => {
+    expect(isMdTemplateUri('file:///doc.html.templ')).toBe(false);
+  });
+});
+
+describe('collectFrontmatterDiagnosticsForText', () => {
+  let collectFrontmatterDiagnosticsForText: (text: string) => Array<{
+    message: string;
+    severity: number;
+    source: string;
+    code: string;
+  }>;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    const mod = await import('../src/server');
+    collectFrontmatterDiagnosticsForText = mod.collectFrontmatterDiagnosticsForText;
+  });
+
+  it('returns a diagnostic for invalid YAML frontmatter', () => {
+    const text = '---\ntitle: {\n---\n# Content';
+    const diags = collectFrontmatterDiagnosticsForText(text);
+    expect(diags).toHaveLength(1);
+    expect(diags[0].code).toBe('templjs.frontmatter.yaml');
+    expect(diags[0].severity).toBe(1);
+    expect(diags[0].source).toBe('templjs');
+    expect(diags[0].message).toMatch(/YAML frontmatter/);
+  });
+
+  it('returns no diagnostic for valid YAML frontmatter', () => {
+    const text = '---\ntitle: "Hello"\n---\n# Content';
+    expect(collectFrontmatterDiagnosticsForText(text)).toHaveLength(0);
+  });
+
+  it('returns no diagnostic for text without frontmatter', () => {
+    const text = '# Just a heading\n\nContent.';
+    expect(collectFrontmatterDiagnosticsForText(text)).toHaveLength(0);
+  });
+});

@@ -1,5 +1,4 @@
 import type { ServicePlugin, ServiceEnvironment, ServiceContext } from '@volar/language-service';
-import type { Diagnostic } from '@volar/language-service';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { getLanguageService as getHtmlLanguageService } from 'vscode-html-languageservice/lib/esm/htmlLanguageService';
@@ -11,7 +10,6 @@ import {
   DiagnosticLevel,
 } from 'vscode-markdown-languageservice';
 import MarkdownIt from 'markdown-it';
-import matter from 'gray-matter';
 import { TempljsServicePlugin, type IntellisenseOptions } from '@templjs/volar';
 
 type PluginOptions = {
@@ -372,34 +370,7 @@ function createMarkdownPlugin(workspaceFolder: string | undefined): ServicePlugi
               token
             )) ?? [];
 
-          const frontmatterDiagnostics: Diagnostic[] = [];
-          const content = document.getText();
-          if (content.startsWith('---')) {
-            try {
-              matter(content);
-            } catch (err) {
-              if (err instanceof Error) {
-                const yamlErr = err as Error & {
-                  mark?: { line: number; column: number };
-                  reason?: string;
-                };
-                const line = yamlErr.mark?.line ?? 0;
-                const col = yamlErr.mark?.column ?? 0;
-                frontmatterDiagnostics.push({
-                  message: `YAML frontmatter: ${yamlErr.reason ?? err.message}`,
-                  severity: 1, // DiagnosticSeverity.Error
-                  range: {
-                    start: { line, character: col },
-                    end: { line, character: col + 1 },
-                  },
-                  source: 'markdown',
-                  code: 'md.frontmatter.yaml',
-                });
-              }
-            }
-          }
-
-          return [...linkDiagnostics, ...frontmatterDiagnostics];
+          return linkDiagnostics;
         },
         async provideFoldingRanges(document, token) {
           if (!isLanguageDocument(context, document, 'markdown')) {

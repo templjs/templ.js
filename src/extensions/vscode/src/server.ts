@@ -10,6 +10,7 @@ import {
   type DiagnosticOptions,
   type IntellisenseOptions,
 } from '@templjs/volar';
+import matter from 'gray-matter';
 import {
   extractDocumentSchemaKey,
   loadSchemaSource,
@@ -206,6 +207,45 @@ function toDiagnosticOptions(uri: string): DiagnosticOptions {
   };
 }
 
+export function isMdTemplateUri(uri: string): boolean {
+  return /\.(md|markdown)\.(templ|tmpl|tpl)($|\?)/i.test(uri);
+}
+
+export function collectFrontmatterDiagnosticsForText(text: string): Array<{
+  message: string;
+  severity: number;
+  range: { start: { line: number; character: number }; end: { line: number; character: number } };
+  source: string;
+  code: string;
+}> {
+  if (!text.startsWith('---')) {
+    return [];
+  }
+  try {
+    matter(text);
+    return [];
+  } catch (err) {
+    if (!(err instanceof Error)) {
+      return [];
+    }
+    const yamlErr = err as Error & { mark?: { line: number; column: number }; reason?: string };
+    const line = yamlErr.mark?.line ?? 0;
+    const col = yamlErr.mark?.column ?? 0;
+    return [
+      {
+        message: `YAML frontmatter: ${yamlErr.reason ?? err.message}`,
+        severity: 1, // DiagnosticSeverity.Error
+        range: {
+          start: { line, character: col },
+          end: { line, character: col + 1 },
+        },
+        source: 'templjs',
+        code: 'templjs.frontmatter.yaml',
+      },
+    ];
+  }
+}
+
 async function collectHostDiagnosticsForDocument(uri: string): Promise<unknown[]> {
   try {
     const project = await server.projects.getProject(uri);
@@ -241,8 +281,14 @@ async function publishDiagnosticsForDocument(uri: string): Promise<void> {
     );
   }
 
+  const frontmatterDiagnostics = isMdTemplateUri(uri)
+    ? collectFrontmatterDiagnosticsForText(text)
+    : [];
   const hostDiagnostics = (await collectHostDiagnosticsForDocument(uri)) as any[];
-  connection.sendDiagnostics({ uri, diagnostics: [...templjsDiagnostics, ...hostDiagnostics] });
+  connection.sendDiagnostics({
+    uri,
+    diagnostics: [...templjsDiagnostics, ...frontmatterDiagnostics, ...hostDiagnostics],
+  });
 }
 
 function refreshDiagnostics(uri: string): void {
