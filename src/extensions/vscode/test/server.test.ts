@@ -273,12 +273,7 @@ describe('language-server-bootstrap', () => {
     const serverOptions = initializeCalls[0][2];
 
     const servicePlugins = serverOptions.getServicePlugins() as Array<{ name?: string }>;
-    expect(servicePlugins.map((plugin) => plugin.name)).toEqual([
-      'templjs-html',
-      'templjs-json',
-      'templjs-markdown',
-      'templjs-intellisense',
-    ]);
+    expect(servicePlugins.map((plugin) => plugin.name)).toEqual(['templjs-intellisense']);
     serverOptions.getLanguagePlugins();
     expect(createTempljsLanguagePlugin).toHaveBeenCalledWith({});
   });
