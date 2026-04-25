@@ -1253,7 +1253,7 @@ describe('language-server-bootstrap', () => {
     });
   });
 
-  it('publishes templjs and host markdown diagnostics together on save', async () => {
+  it('publishes templjs and host markdown diagnostics together on change', async () => {
     const hostValidation = vi.fn(async () => [
       {
         message: 'Host markdown diagnostic',
@@ -1391,8 +1391,10 @@ describe('language-server-bootstrap', () => {
       await vi.runAllTimersAsync();
       await Promise.resolve();
 
-      // Stale a.json generation should be dropped; only the newest generation should publish.
-      expect(sendDiagnostics).toHaveBeenCalledTimes(1);
+      // Stale a.json generation should be dropped; only the newest generation may publish
+      // (once for local diagnostics and once after extended diagnostics complete).
+      expect(sendDiagnostics.mock.calls.length).toBeGreaterThanOrEqual(1);
+      expect(sendDiagnostics.mock.calls.length).toBeLessThanOrEqual(2);
     } finally {
       vi.useRealTimers();
     }
@@ -1642,10 +1644,9 @@ describe('language-server-bootstrap', () => {
 
       resolveFirstLoad?.();
 
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(sendDiagnostics).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => {
+        expect(sendDiagnostics.mock.calls.length).toBeGreaterThanOrEqual(1);
+      });
     } finally {
       vi.doUnmock('../src/schema-loading.js');
     }
@@ -1750,40 +1751,5 @@ describe('isMdTemplateUri', () => {
 
   it('returns false for non-markdown template URIs', () => {
     expect(isMdTemplateUri('file:///doc.html.templ')).toBe(false);
-  });
-});
-
-describe('collectFrontmatterDiagnosticsForText', () => {
-  let collectFrontmatterDiagnosticsForText: (text: string) => Array<{
-    message: string;
-    severity: number;
-    source: string;
-    code: string;
-  }>;
-
-  beforeEach(async () => {
-    vi.resetModules();
-    const mod = await import('../src/server');
-    collectFrontmatterDiagnosticsForText = mod.collectFrontmatterDiagnosticsForText;
-  });
-
-  it('returns a diagnostic for invalid YAML frontmatter', () => {
-    const text = '---\ntitle: {\n---\n# Content';
-    const diags = collectFrontmatterDiagnosticsForText(text);
-    expect(diags).toHaveLength(1);
-    expect(diags[0].code).toBe('templjs.frontmatter.yaml');
-    expect(diags[0].severity).toBe(1);
-    expect(diags[0].source).toBe('templjs');
-    expect(diags[0].message).toMatch(/YAML frontmatter/);
-  });
-
-  it('returns no diagnostic for valid YAML frontmatter', () => {
-    const text = '---\ntitle: "Hello"\n---\n# Content';
-    expect(collectFrontmatterDiagnosticsForText(text)).toHaveLength(0);
-  });
-
-  it('returns no diagnostic for text without frontmatter', () => {
-    const text = '# Just a heading\n\nContent.';
-    expect(collectFrontmatterDiagnosticsForText(text)).toHaveLength(0);
   });
 });

@@ -10,7 +10,6 @@ import {
   type DiagnosticOptions,
   type IntellisenseOptions,
 } from '@templjs/volar';
-import matter from 'gray-matter';
 import {
   extractDocumentSchemaKey,
   loadSchemaSource,
@@ -20,6 +19,7 @@ import {
   type ServerInitializationOptions,
 } from './schema-loading.js';
 import { createServicePlugins } from './service-plugins.js';
+import { createDeterministicDiagnosticsOrchestrator } from './diagnostics-orchestrator.js';
 
 // Write to stderr for debugging server startup
 console.error('[templjs-server] Starting instantiation...');
@@ -211,41 +211,6 @@ export function isMdTemplateUri(uri: string): boolean {
   return /\.(md|markdown)\.(templ|tmpl|tpl)($|\?)/i.test(uri);
 }
 
-export function collectFrontmatterDiagnosticsForText(text: string): Array<{
-  message: string;
-  severity: number;
-  range: { start: { line: number; character: number }; end: { line: number; character: number } };
-  source: string;
-  code: string;
-}> {
-  if (!text.startsWith('---')) {
-    return [];
-  }
-  try {
-    matter(text);
-    return [];
-  } catch (err) {
-    if (!(err instanceof Error)) {
-      return [];
-    }
-    const yamlErr = err as Error & { mark?: { line: number; column: number }; reason?: string };
-    const line = yamlErr.mark?.line ?? 0;
-    const col = yamlErr.mark?.column ?? 0;
-    return [
-      {
-        message: `YAML frontmatter: ${yamlErr.reason ?? err.message}`,
-        severity: 1, // DiagnosticSeverity.Error
-        range: {
-          start: { line, character: col },
-          end: { line, character: col + 1 },
-        },
-        source: 'templjs',
-        code: 'templjs.frontmatter.yaml',
-      },
-    ];
-  }
-}
-
 async function collectHostDiagnosticsForDocument(uri: string): Promise<unknown[]> {
   try {
     const project = await server.projects.getProject(uri);
@@ -259,16 +224,9 @@ async function collectHostDiagnosticsForDocument(uri: string): Promise<unknown[]
   }
 }
 
-async function publishDiagnosticsForDocument(uri: string): Promise<void> {
-  const text = documentTextByUri.get(uri);
-  if (text === undefined) {
-    return;
-  }
-
-  let templjsDiagnostics: any[] = [];
-
+async function collectLocalDiagnosticsForDocument(uri: string, text: string): Promise<any[]> {
   try {
-    templjsDiagnostics = collectDiagnostics(text, toDiagnosticOptions(uri)).map((diagnostic) => ({
+    return collectDiagnostics(text, toDiagnosticOptions(uri)).map((diagnostic) => ({
       message: diagnostic.message,
       severity: diagnostic.severity,
       range: diagnostic.range,
@@ -279,24 +237,24 @@ async function publishDiagnosticsForDocument(uri: string): Promise<void> {
     connection.console.log(
       `[templjs] Diagnostics skipped for ${uri}: ${error instanceof Error ? error.message : String(error)}`
     );
+    return [];
   }
-
-  const frontmatterDiagnostics = isMdTemplateUri(uri)
-    ? collectFrontmatterDiagnosticsForText(text)
-    : [];
-  const hostDiagnostics = (await collectHostDiagnosticsForDocument(uri)) as any[];
-  connection.sendDiagnostics({
-    uri,
-    diagnostics: [...templjsDiagnostics, ...frontmatterDiagnostics, ...hostDiagnostics],
-  });
 }
 
+const diagnosticsOrchestrator = createDeterministicDiagnosticsOrchestrator<any>({
+  debounceMs: 120,
+  getDocumentText: (uri) => documentTextByUri.get(uri),
+  resolveRevisionKey: (_uri, text) => hashTextContent(text),
+  collectLocalDiagnostics: (uri, text) => collectLocalDiagnosticsForDocument(uri, text),
+  collectExtendedDiagnostics: (uri) => collectHostDiagnosticsForDocument(uri) as Promise<any[]>,
+  publishDiagnostics: (uri, diagnostics) => {
+    connection.sendDiagnostics({ uri, diagnostics });
+  },
+  log: (message) => connection.console.log(message),
+});
+
 function refreshDiagnostics(uri: string): void {
-  void publishDiagnosticsForDocument(uri).catch((error) => {
-    connection.console.log(
-      `[templjs] Diagnostics publish failed for ${uri}: ${error instanceof Error ? error.message : String(error)}`
-    );
-  });
+  diagnosticsOrchestrator.schedule(uri);
 }
 
 async function loadSchemasForDocumentContext(
