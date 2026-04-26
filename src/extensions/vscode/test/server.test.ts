@@ -1802,6 +1802,61 @@ describe('language-server-bootstrap', () => {
     }
   });
 
+  it('logs schema load failures for opened documents and refreshes diagnostics', async () => {
+    vi.doMock('../src/schema-loading.js', async () => {
+      const real = await vi.importActual<typeof import('../src/schema-loading.js')>(
+        '../src/schema-loading.js'
+      );
+      return {
+        ...real,
+        loadSchemaSource: vi.fn(async () => {
+          throw new Error('open load exploded');
+        }),
+      };
+    });
+
+    try {
+      await import('../src/server');
+
+      const initializeHandler = onInitialize.mock.calls[0][0] as (
+        params: unknown
+      ) => Promise<unknown>;
+      await initializeHandler({
+        rootUri: toTestWorkspaceUri('file:///workspace'),
+        initializationOptions: {},
+      });
+
+      const openHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
+        textDocument: { uri: string; text: string; languageId: string; version: number };
+      }) => void;
+
+      consoleLog.mockClear();
+      sendDiagnostics.mockClear();
+
+      openHandler({
+        textDocument: {
+          uri: toTestWorkspaceUri('file:///workspace/open-failure.md.tpl'),
+          languageId: 'templjs-markdown',
+          version: 1,
+          text: '---\n$schema: ./schema.json\n---\n{{ value }}',
+        },
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(consoleLog).toHaveBeenCalledWith(
+        `[templjs] Schema load failed for ${toTestWorkspaceUri('file:///workspace/open-failure.md.tpl')}: open load exploded`
+      );
+      expect(sendDiagnostics).toHaveBeenCalledWith({
+        uri: toTestWorkspaceUri('file:///workspace/open-failure.md.tpl'),
+        diagnostics: [],
+      });
+    } finally {
+      vi.doUnmock('../src/schema-loading.js');
+    }
+  });
+
   it('drops stale watched-file reload generations when a newer reload is queued', async () => {
     let resolveFirstLoad: (() => void) | undefined;
     const firstLoad = new Promise<void>((resolve) => {
@@ -2023,6 +2078,12 @@ describe('serverTesting helpers', () => {
       helpers.normalizeChangeNotification({ textDocument: { uri: 'file:///legacy.md.tpl' } })
     ).toBeUndefined();
     expect(
+      helpers.normalizeChangeNotification({
+        textDocument: { uri: 'file:///legacy.md.tpl' },
+        contentChanges: [],
+      })
+    ).toBeUndefined();
+    expect(
       helpers.normalizeChangeNotification(
         {
           textDocument: { uri: 'file:///legacy.md.tpl' },
@@ -2046,6 +2107,38 @@ describe('serverTesting helpers', () => {
         'legacy old'
       )
     ).toEqual({ uri: 'file:///legacy.md.tpl', text: 'legacy new value' });
+    expect(
+      helpers.normalizeChangeNotification({
+        textDocument: { uri: 'file:///legacy.md.tpl' },
+        contentChanges: [
+          {
+            range: {
+              start: { line: 0, character: 0 },
+              end: { line: 0, character: 6 },
+            },
+            text: 'rewired',
+          },
+        ],
+      })
+    ).toBeUndefined();
+    expect(
+      helpers.normalizeChangeNotification(
+        {
+          textDocument: { uri: 'file:///legacy.md.tpl' },
+          contentChanges: [
+            {
+              range: {
+                start: { line: 0, character: 0 },
+                end: { line: 0, character: 6 },
+              },
+              text: 'rewired',
+            },
+            { text: 'final text' },
+          ],
+        },
+        'legacy old'
+      )
+    ).toEqual({ uri: 'file:///legacy.md.tpl', text: 'final text' });
     expect(
       helpers.normalizeOpenNotification({ uri: 'file:///doc.md.tpl', text: undefined } as never)
     ).toBeUndefined();
