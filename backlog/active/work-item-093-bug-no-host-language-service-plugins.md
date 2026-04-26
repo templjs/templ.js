@@ -5,11 +5,11 @@ title: '093: No IntelliSense, formatting, or diagnostics from host language serv
 summary: No IntelliSense, formatting, or diagnostics from host language servers in tmpl files
 type: work-item
 subtype: bug
-lifecycle: draft
-status: proposed
-status_reason: needs-triage
+lifecycle: active
+status: ready
+status_reason: retriaged-after-wi-094-and-wi-092
 priority: high
-estimated: 8
+estimated: 5
 actual: 0
 ---
 
@@ -19,14 +19,15 @@ Restore host-language IntelliSense, formatting, and diagnostics (from VS Code's 
 
 ## Bug Summary
 
-The Volar language server is the integration point for host-language feature delegation (see ADR-003). In the current implementation, `getServicePlugins()` returns an empty array and `TempljsVirtualCode.embeddedCodes` is always an empty array. As a result:
+The Volar language server is the integration point for host-language feature delegation (see ADR-003). WI-094 and WI-092 restored a critical part of this path by ensuring diagnostics refresh on save and combining templjs + host diagnostics for markdown templates.
 
-- Markdown language server provides **no** diagnostics, no formatting, and no link suggestions for `.md.tmpl` files.
-- HTML language server provides **no** tag completion, attribute hints, or formatting for `.html.tmpl` files.
-- JSON language server provides **no** schema validation, key completion, or formatting for `.json.tmpl` files.
-- YAML language server provides **no** diagnostics or completion for `.yaml.tmpl` files.
+Remaining parity gaps still tracked under this work item:
 
-Only templjs-specific features (template expression completions, hover on filters/variables, template diagnostics) work. All host-format features are absent.
+- YAML host diagnostics/completion are not validated end-to-end for `.yaml.tmpl` files.
+- Full host formatting parity (especially markdown/yaml scenarios) is not yet covered by integration tests.
+- Delegation coverage needs to be explicit for all supported host formats and guarded by focused tests.
+
+Templjs-specific language features continue to work; this item now focuses on closing the remaining host-language parity surface rather than the original zero-plugin state.
 
 ## Reproduction Steps
 
@@ -45,58 +46,41 @@ Host-format language servers are active for embedded content, providing:
 
 ## Actual Behavior
 
-Zero host-language features. Only templjs expression features work.
+Partial host-language delegation works (markdown/html/json diagnostics and authoring paths have coverage), but host-language parity is still incomplete across all supported formats and formatting scenarios.
 
 ## Root Cause
 
-Two missing pieces in the Volar integration:
+The original missing-plugin failure mode has largely been addressed, but end-to-end host-language parity is still fragmented:
 
-### 1. `getServicePlugins()` returns `[]`
+### 1. Delegation is present but unevenly validated
 
-`src/extensions/vscode/src/server.ts`:
+`src/extensions/vscode/src/server.ts` now wires host plugins through service-plugin registration, and markdown host diagnostics are refreshed/published alongside templjs diagnostics.
 
-```typescript
-getServicePlugins() {
-  return [];
-}
-```
+### 2. Coverage gaps remain for full host-language parity
 
-Volar 2.x routes all host-language features through registered service plugins. With no service plugins registered, no host-language requests are processed.
-
-### 2. `embeddedCodes` always empty
-
-`src/packages/volar/src/index.ts` — `TempljsVirtualCode`:
-
-```typescript
-embeddedCodes: VirtualCode[] = [];
-```
-
-This array is never populated. For Volar to delegate to a host language server, the virtual code must emit embedded sub-documents with the correct `languageId` (e.g. `'html'`, `'markdown'`). The root virtual code already sets `languageId` to the correct host language, but without embedded code entries, Volar's language service pipeline has nothing to route.
+Current automated coverage does not yet guarantee complete YAML delegation and host formatting parity across every supported host format.
 
 ### Architecture Intent (ADR-003)
 
-ADR-003 states: "delegating base format linting to VS Code's native language servers." The current implementation does not fulfil this delegation.
+ADR-003 states: "delegating base format linting to VS Code's native language servers." This work item now tracks the remaining gap between partial delegation and complete parity.
 
 ## Tasks
 
-- [ ] Investigate Volar 2.x service plugin API and which built-in plugins (html, json, markdown) are available via `@volar/language-service` or community plugins
-- [ ] Implement or configure Volar service plugins for HTML, JSON, Markdown, and YAML
-- [ ] Register host-language service plugins in `getServicePlugins()` in `server.ts`
-- [ ] Populate `embeddedCodes` in `TempljsVirtualCode` with correctly mapped sub-documents per host format
-- [ ] Verify that host-language `languageId` on embedded codes matches what the service plugins expect
-- [ ] Add integration tests validating host-language feature delegation (completions, diagnostics, formatting) for each host format
-- [ ] Confirm templjs-specific features continue to work after service plugin registration
+- [x] Confirm Volar host-service plugin registration path for markdown/html/json delegation in the VS Code server
+- [x] Add regression coverage proving host diagnostics are published with templjs diagnostics on save
+- [x] Verify existing in-process integration coverage for markdown/html/json completion, hover, and definition paths
+- [ ] Add YAML host-language delegation coverage (diagnostics/completion) for `.yaml.tmpl`
+- [ ] Add explicit host formatting coverage for supported host formats (including markdown)
+- [ ] Validate templjs-specific features remain unaffected after parity expansions
 
 ## Acceptance Criteria
 
-- [ ] HTML completion (`class`, `href`, `src`) works in `.html.tmpl` files
-- [ ] JSON schema validation diagnostics appear in `.json.tmpl` files
-- [ ] Markdown formatting (`editor.formatDocument`) works in `.md.tmpl` files
-- [ ] YAML diagnostics appear in `.yaml.tmpl` files
-- [ ] Template expression completions and hover are unaffected
-- [ ] `getServicePlugins()` returns at least one plugin per supported host format
-- [ ] `embeddedCodes` in `TempljsVirtualCode` populated with correctly mapped content for each host format
-- [ ] All existing server tests continue to pass
+- [x] HTML host completion path is validated in integration tests for `.html.tmpl`
+- [x] JSON host diagnostics/authoring path is validated in integration tests for `.json.tmpl`
+- [ ] Markdown host formatting (`editor.formatDocument`) is validated for `.md.tmpl`
+- [ ] YAML host diagnostics/completion are validated for `.yaml.tmpl`
+- [ ] Template expression completions and hover remain unaffected
+- [ ] Existing server and in-process integration test suites continue to pass after parity additions
 
 ## References
 

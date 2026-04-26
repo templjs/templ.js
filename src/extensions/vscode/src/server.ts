@@ -5,21 +5,21 @@ import {
   createSimpleProjectProvider,
 } from '@volar/language-server/node';
 import {
-  collectDiagnostics,
   createTempljsLanguagePlugin,
-  TempljsServicePlugin,
   type DiagnosticOptions,
   type IntellisenseOptions,
 } from '@templjs/volar';
+import type { Diagnostic } from '@volar/language-service';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
   extractDocumentSchemaKey,
   loadSchemaSource,
-  loadSchemaSourceSync,
   resolveDocumentSchemaSources,
   resolveWorkspaceRoot,
   type InitializeParamsLike,
   type ServerInitializationOptions,
 } from './schema-loading.js';
+import { createServicePlugins } from './service-plugins.js';
 
 // Write to stderr for debugging server startup
 console.error('[templjs-server] Starting instantiation...');
@@ -27,9 +27,6 @@ console.error('[templjs-server] Starting instantiation...');
 const connection = createConnection();
 const server = createServer(connection);
 console.error('[templjs-server] Connection and server created');
-
-const servicePlugin = new TempljsServicePlugin();
-console.error('[templjs-server] TempljsServicePlugin instantiated successfully');
 
 const documentTextByUri = new Map<string, string>();
 let storedWorkspaceRoot: string | undefined;
@@ -72,19 +69,6 @@ function trace(message: string, level: 'messages' | 'verbose' = 'messages'): voi
   connection.console.log(`[templjs-trace] ${message}`);
 }
 
-function summarizeDuplicateLabels(labels: string[]): string[] {
-  const counts = new Map<string, number>();
-  for (const label of labels) {
-    const key = label.toLowerCase();
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-
-  return [...counts.entries()]
-    .filter(([, total]) => total > 1)
-    .map(([label, total]) => `${label}×${total}`)
-    .sort((left, right) => left.localeCompare(right));
-}
-
 function refreshRuntimeSchemaOptions(nextOptions: SchemaRuntimeOptions): void {
   delete runtimeSchemaOptions.schema;
   delete runtimeSchemaOptions.schemaUri;
@@ -104,107 +88,124 @@ function hashTextContent(text: string): string {
   return `h${(hash >>> 0).toString(16)}`;
 }
 
-interface PositionLike {
-  line: number;
-  character: number;
-}
-
-interface RangeLike {
-  start: PositionLike;
-  end: PositionLike;
-}
-
-interface TextDocumentContentChangeLike {
+interface DocumentOpenNotification {
+  uri: string;
   text: string;
-  range?: RangeLike;
 }
 
-type InternalCompletionKind = 'variable' | 'property' | 'keyword' | 'filter';
-type LspCompletionKind = 2 | 3 | 6 | 10 | 14;
+interface DocumentChangeNotification {
+  uri: string;
+  text: string;
+}
 
-function mapInternalKindToLsp(kind: InternalCompletionKind | number): LspCompletionKind {
-  if (typeof kind === 'number') {
-    if (kind === 2 || kind === 3 || kind === 6 || kind === 10 || kind === 14) {
-      return kind;
+interface TextDocumentContentChange {
+  text?: string;
+  range?: {
+    start: { line: number; character: number };
+    end: { line: number; character: number };
+  };
+  rangeLength?: number;
+}
+
+interface WatchedFilesNotification {
+  changes?: Array<{ uri: string; type: number }>;
+}
+
+const DOCUMENT_DID_OPEN_NOTIFICATION = 'templjs/documentDidOpen';
+const DOCUMENT_DID_CHANGE_NOTIFICATION = 'templjs/documentDidChange';
+const WATCHED_FILES_CHANGED_NOTIFICATION = 'templjs/watchedFilesChanged';
+
+function normalizeOpenNotification(
+  event: DocumentOpenNotification | { textDocument?: { uri?: string; text?: string } }
+): DocumentOpenNotification | undefined {
+  if ('uri' in event && typeof event.uri === 'string' && typeof event.text === 'string') {
+    return event;
+  }
+
+  const legacy = 'textDocument' in event ? event.textDocument : undefined;
+  if (legacy && typeof legacy.uri === 'string' && typeof legacy.text === 'string') {
+    return { uri: legacy.uri, text: legacy.text };
+  }
+
+  return undefined;
+}
+
+function normalizeChangeNotification(
+  event:
+    | DocumentChangeNotification
+    | { textDocument?: { uri?: string }; contentChanges?: TextDocumentContentChange[] },
+  currentText?: string
+): DocumentChangeNotification | undefined {
+  if ('uri' in event && typeof event.uri === 'string' && typeof event.text === 'string') {
+    return event;
+  }
+
+  const uri = 'textDocument' in event ? event.textDocument?.uri : undefined;
+  const changes = 'contentChanges' in event ? event.contentChanges : undefined;
+  if (typeof uri !== 'string' || !Array.isArray(changes) || changes.length === 0) {
+    return undefined;
+  }
+
+  if (!changes.every((change) => typeof change.text === 'string')) {
+    return undefined;
+  }
+
+  if (changes.every((change) => !change.range)) {
+    return { uri, text: changes[changes.length - 1]!.text! };
+  }
+
+  if (typeof currentText !== 'string') {
+    return undefined;
+  }
+
+  let updatedText = currentText;
+  for (const change of changes) {
+    if (!change.range) {
+      updatedText = change.text!;
+      continue;
     }
 
-    return 6;
+    const document = TextDocument.create(uri, 'plaintext', 0, updatedText);
+    const startOffset = document.offsetAt(change.range.start);
+    const endOffset = document.offsetAt(change.range.end);
+    updatedText = `${updatedText.slice(0, startOffset)}${change.text!}${updatedText.slice(endOffset)}`;
   }
 
-  switch (kind) {
-    case 'variable':
-      return 6;
-    case 'property':
-      return 10;
-    case 'keyword':
-      return 14;
-    case 'filter':
-      return 3;
-  }
+  return { uri, text: updatedText };
 }
 
 const serverOptions = {
   watchFileExtensions: [
-    '.templ.md',
-    '.templ.json',
-    '.templ.yaml',
-    '.templ.yml',
-    '.templ.html',
-    '.tmpl.md',
-    '.tmpl.json',
-    '.tmpl.yaml',
-    '.tmpl.yml',
-    '.tmpl.html',
-    '.tpl.md',
-    '.tpl.json',
-    '.tpl.yaml',
-    '.tpl.yml',
-    '.tpl.html',
+    '.html.templ',
+    '.html.tmpl',
+    '.html.tpl',
+    '.json.templ',
+    '.json.tmpl',
+    '.json.tpl',
+    '.md.templ',
+    '.md.tmpl',
+    '.md.tpl',
+    '.yaml.templ',
+    '.yaml.tmpl',
+    '.yaml.tpl',
+    '.yml.templ',
+    '.yml.tmpl',
+    '.yml.tpl',
   ],
   getServicePlugins() {
-    return [];
+    return createServicePlugins({
+      getIntellisenseOptions: toIntellisenseOptions,
+      getDiagnosticOptions: toDiagnosticOptions,
+      workspaceFolder: storedWorkspaceRoot,
+      traceYamlDiagnostics: serverTraceMode === 'verbose',
+      /* v8 ignore next */
+      log: (message) => connection.console.log(message),
+    });
   },
 };
 
-/** Shared across all loadSchemaSource/loadSchemaSourceSync calls to avoid re-parsing files. */
+/** Shared across async schema loads to avoid re-reading and re-parsing files. */
 const schemaFileCache = new Map<string, unknown>();
-
-function getOffsetForPosition(text: string, position: { line: number; character: number }): number {
-  let line = 0;
-  let offset = 0;
-
-  while (line < position.line && offset < text.length) {
-    const newlineIndex = text.indexOf('\n', offset);
-    if (newlineIndex === -1) {
-      return text.length;
-    }
-    offset = newlineIndex + 1;
-    line += 1;
-  }
-
-  return Math.min(offset + position.character, text.length);
-}
-
-function applyContentChanges(
-  existingText: string,
-  changes: TextDocumentContentChangeLike[]
-): string {
-  let nextText = existingText;
-
-  for (const change of changes) {
-    if (!change.range) {
-      nextText = change.text;
-      continue;
-    }
-
-    const startOffset = getOffsetForPosition(nextText, change.range.start);
-    const endOffset = getOffsetForPosition(nextText, change.range.end);
-
-    nextText = `${nextText.slice(0, startOffset)}${change.text}${nextText.slice(endOffset)}`;
-  }
-
-  return nextText;
-}
 
 function getSchemaOptionsForUri(uri: string): SchemaRuntimeOptions {
   return schemaOptionsByUri.get(uri) ?? runtimeSchemaOptions;
@@ -218,56 +219,6 @@ function isLikelySchemaUri(uri: string): boolean {
 
   const fileName = normalized.split('/').pop() ?? normalized;
   return !/\.(templ|template|tpl|tmpl)\.(json|ya?ml)$/.test(fileName);
-}
-
-function ensureSchemaOptionsForUri(uri: string, text: string): SchemaRuntimeOptions {
-  const contentHash = hashTextContent(text);
-  const existing = schemaOptionsByUri.get(uri);
-  if (
-    existing &&
-    (existing.schema || existing.contentSchema) &&
-    existing.contentHash === contentHash
-  ) {
-    return existing;
-  }
-
-  const pseudoParams: InitializeParamsLike = {
-    rootUri: storedWorkspaceRoot ? pathToFileURL(storedWorkspaceRoot).toString() : undefined,
-    initializationOptions: {
-      ...storedInitializationOptions,
-      documentContext: {
-        uri,
-        content: text,
-      },
-    },
-  };
-
-  const resolvedSources = resolveDocumentSchemaSources(pseudoParams);
-  const loadedSchemaOptions = resolvedSources.schemaPath
-    ? loadSchemaSourceSync(resolvedSources.schemaPath, storedWorkspaceRoot, uri, {
-        cache: schemaFileCache,
-      })
-    : {};
-  const loadedContentResult = resolvedSources.contentSchemaPath
-    ? loadSchemaSourceSync(resolvedSources.contentSchemaPath, storedWorkspaceRoot, uri, {
-        cache: schemaFileCache,
-      })
-    : undefined;
-
-  const schemaOptions: SchemaRuntimeOptions = {
-    ...loadedSchemaOptions,
-    ...(loadedContentResult
-      ? {
-          contentSchema: loadedContentResult.schema,
-          contentSchemaUri: loadedContentResult.schemaUri,
-        }
-      : {}),
-    contentHash,
-  };
-
-  schemaOptionsByUri.set(uri, schemaOptions);
-  refreshRuntimeSchemaOptions(schemaOptions);
-  return schemaOptions;
 }
 
 function toIntellisenseOptions(uri: string): IntellisenseOptions {
@@ -294,26 +245,89 @@ function toDiagnosticOptions(uri: string): DiagnosticOptions {
   };
 }
 
-function publishDiagnosticsForDocument(uri: string): void {
-  const text = documentTextByUri.get(uri);
-  if (text === undefined) {
-    return;
-  }
+export function isMdTemplateUri(uri: string): boolean {
+  return /\.(md|markdown)\.(templ|tmpl|tpl)$/i.test(uri.split(/[?#]/, 1)[0] ?? uri);
+}
 
+function isYamlTemplateUri(uri: string): boolean {
+  return /\.ya?ml\.(templ|tmpl|tpl)$/i.test(uri.split(/[?#]/, 1)[0] ?? uri);
+}
+
+async function collectServiceDiagnosticsForDocument(
+  uri: string,
+  _text: string
+): Promise<Diagnostic[]> {
   try {
-    const diagnostics = collectDiagnostics(text, toDiagnosticOptions(uri)).map((diagnostic) => ({
-      message: diagnostic.message,
-      severity: diagnostic.severity,
-      range: diagnostic.range,
-      source: diagnostic.source ?? 'templjs',
-      code: diagnostic.code,
-    }));
-    connection.sendDiagnostics({ uri, diagnostics });
+    const project = await server.projects.getProject(uri);
+    const languageService = project.getLanguageService();
+    const diagnostics = (await languageService.doValidation(uri)) as Diagnostic[];
+
+    if (isYamlTemplateUri(uri) && shouldTrace('verbose')) {
+      const context = (languageService as { context?: unknown }).context as
+        | {
+            language?: {
+              files?: {
+                get: (targetUri: string) =>
+                  | {
+                      languageId?: string;
+                      generated?: {
+                        code?: { id: string; languageId?: string; mappings?: unknown[] };
+                      };
+                    }
+                  | undefined;
+              };
+            };
+            documents?: {
+              getVirtualCodeUri?: (sourceFileUri: string, virtualCodeId: string) => string;
+              getMaps?: (virtualCode: unknown) => Iterable<unknown>;
+            };
+            disabledVirtualFileUris?: Set<string>;
+          }
+        | undefined;
+
+      const sourceFile = context?.language?.files?.get(uri);
+      const generatedCode = sourceFile?.generated?.code;
+      const virtualUri =
+        generatedCode && context?.documents?.getVirtualCodeUri
+          ? context.documents.getVirtualCodeUri(uri, generatedCode.id)
+          : undefined;
+      const mapCount =
+        generatedCode && context?.documents?.getMaps
+          ? [...context.documents.getMaps(generatedCode)].length
+          : 0;
+      const yamlCount = diagnostics.filter(
+        (diagnostic) =>
+          typeof diagnostic.source === 'string' && diagnostic.source.toLowerCase() === 'yaml'
+      ).length;
+
+      trace(
+        `[templjs-yaml-debug] uri=${uri} diagnostics=${diagnostics.length} yamlDiagnostics=${yamlCount}` +
+          ` sourceLanguageId=${sourceFile?.languageId ?? 'none'}` +
+          ` hasGenerated=${generatedCode ? 'yes' : 'no'}` +
+          ` generatedLanguageId=${generatedCode?.languageId ?? 'none'}` +
+          ` generatedMappings=${generatedCode?.mappings?.length ?? 0}` +
+          ` virtualUri=${virtualUri ?? 'none'}` +
+          ` virtualDisabled=${virtualUri ? (context?.disabledVirtualFileUris?.has(virtualUri) ?? false) : false}` +
+          ` mapCount=${mapCount}`,
+        'verbose'
+      );
+    }
+
+    return diagnostics;
   } catch (error) {
     connection.console.log(
-      `[templjs] Diagnostics skipped for ${uri}: ${error instanceof Error ? error.message : String(error)}`
+      `[templjs] Host diagnostics skipped for ${uri}: ${error instanceof Error ? error.message : String(error)}`
     );
-    connection.sendDiagnostics({ uri, diagnostics: [] });
+    return [];
+  }
+}
+
+async function refreshDiagnosticsAfterSchemaLoad(uri: string): Promise<void> {
+  try {
+    const diagnostics = await collectServiceDiagnosticsForDocument(uri, '');
+    connection.sendDiagnostics({ uri, diagnostics });
+  } catch (error) {
+    connection.console.log(`[templjs] Diagnostics refresh failed for ${uri}: ${String(error)}`);
   }
 }
 
@@ -415,118 +429,24 @@ connection.onInitialize(async (params) => {
     },
   });
 
-  // Re-register our handlers AFTER server.initialize() so they overwrite
-  // Volar's registerLanguageFeatures() registrations made during initialize().
-  connection.onCompletion((completionParams) => {
-    const startedAt = Date.now();
-    trace(
-      `completion requested: ${completionParams.textDocument.uri} @ ${completionParams.position.line}:${completionParams.position.character}`
-    );
-    const completionText = documentTextByUri.get(completionParams.textDocument.uri);
-    if (!completionText) {
-      trace('completion skipped: document text not found in cache');
-      return [];
-    }
-
-    ensureSchemaOptionsForUri(completionParams.textDocument.uri, completionText);
-
-    const completionOffset = getOffsetForPosition(completionText, completionParams.position);
-    const completions = servicePlugin.getCompletions(
-      completionText,
-      completionOffset,
-      toIntellisenseOptions(completionParams.textDocument.uri)
-    );
-
-    const durationMs = Date.now() - startedAt;
-    trace(`completion result count=${completions.length} durationMs=${durationMs}`);
-
-    const labels = completions
-      .map((item) => item.label)
-      .filter((label) => typeof label === 'string');
-    const duplicateLabels = summarizeDuplicateLabels(labels);
-    if (duplicateLabels.length > 0) {
-      trace(`completion duplicate labels: ${duplicateLabels.slice(0, 10).join(', ')}`, 'messages');
-    }
-
-    if (labels.length > 0) {
-      trace(
-        `completion top labels: ${labels
-          .slice(0, 8)
-          .map((label) => JSON.stringify(label))
-          .join(', ')}`,
-        'verbose'
-      );
-    }
-
-    return completions.map((item) => ({
-      label: item.label,
-      detail: item.detail,
-      documentation: item.documentation,
-      kind: mapInternalKindToLsp(item.kind),
-    }));
+  // Delegate authoring requests to Volar language service from this transport layer.
+  // This keeps a single implementation of semantics while ensuring requests are handled.
+  connection.onCompletion(async (request, token) => {
+    const uri = request.textDocument.uri;
+    const languageService = (await server.projects.getProject(uri)).getLanguageService();
+    return await languageService.doComplete(uri, request.position, request.context, token);
   });
 
-  connection.onHover((hoverParams) => {
-    const startedAt = Date.now();
-    trace(
-      `hover requested: ${hoverParams.textDocument.uri} @ ${hoverParams.position.line}:${hoverParams.position.character}`
-    );
-    const hoverText = documentTextByUri.get(hoverParams.textDocument.uri);
-    if (!hoverText) {
-      trace('hover skipped: document text not found in cache');
-      return null;
-    }
-
-    ensureSchemaOptionsForUri(hoverParams.textDocument.uri, hoverText);
-
-    const hoverOffset = getOffsetForPosition(hoverText, hoverParams.position);
-    const hover = servicePlugin.getHover(
-      hoverText,
-      hoverOffset,
-      toIntellisenseOptions(hoverParams.textDocument.uri)
-    );
-
-    const durationMs = Date.now() - startedAt;
-    trace(`hover result=${hover ? 'present' : 'none'} durationMs=${durationMs}`);
-    if (hover?.contents?.value) {
-      trace(`hover markdown length=${hover.contents.value.length}`, 'verbose');
-    }
-
-    return hover;
+  connection.onHover(async (request, token) => {
+    const uri = request.textDocument.uri;
+    const languageService = (await server.projects.getProject(uri)).getLanguageService();
+    return await languageService.doHover(uri, request.position, token);
   });
 
-  connection.onDefinition((definitionParams) => {
-    const startedAt = Date.now();
-    trace(
-      `definition requested: ${definitionParams.textDocument.uri} @ ${definitionParams.position.line}:${definitionParams.position.character}`
-    );
-    const definitionText = documentTextByUri.get(definitionParams.textDocument.uri);
-    if (!definitionText) {
-      trace('definition skipped: document text not found in cache');
-      return null;
-    }
-
-    ensureSchemaOptionsForUri(definitionParams.textDocument.uri, definitionText);
-
-    const definitionOffset = getOffsetForPosition(definitionText, definitionParams.position);
-
-    const definition = servicePlugin.getDefinition(
-      definitionText,
-      definitionOffset,
-      toIntellisenseOptions(definitionParams.textDocument.uri)
-    );
-
-    if (definition) {
-      const durationMs = Date.now() - startedAt;
-      trace(
-        `definition resolved via provider: uri=${definition.uri} range=[${definition.range.start.line}:${definition.range.start.character}] durationMs=${durationMs}`
-      );
-    } else {
-      const durationMs = Date.now() - startedAt;
-      trace(`definition result=none durationMs=${durationMs}`);
-    }
-
-    return definition;
+  connection.onDefinition(async (request, token) => {
+    const uri = request.textDocument.uri;
+    const languageService = (await server.projects.getProject(uri)).getLanguageService();
+    return await languageService.findDefinition(uri, request.position, token);
   });
 
   return {
@@ -543,34 +463,51 @@ connection.onInitialize(async (params) => {
   };
 });
 
-connection.onDidOpenTextDocument((event) => {
-  const { uri, text } = event.textDocument;
+const handleDocumentDidOpen = (
+  event: DocumentOpenNotification | { textDocument?: { uri?: string; text?: string } }
+) => {
+  const normalized = normalizeOpenNotification(event);
+  if (!normalized) {
+    return;
+  }
+
+  const { uri, text } = normalized;
   documentTextByUri.set(uri, text);
   connection.console.log(`[templjs] Opened document: ${uri}`);
 
-  void loadSchemasForDocumentContext(
-    uri,
-    text,
-    storedWorkspaceRoot,
-    storedInitializationOptions
-  ).then(() => {
-    publishDiagnosticsForDocument(uri);
-  });
-});
+  void loadSchemasForDocumentContext(uri, text, storedWorkspaceRoot, storedInitializationOptions)
+    .then(() => {
+      void refreshDiagnosticsAfterSchemaLoad(uri);
+    })
+    .catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      connection.console.log(`[templjs] Schema load failed for ${uri}: ${message}`);
+      void refreshDiagnosticsAfterSchemaLoad(uri);
+    });
+};
 
-connection.onDidChangeTextDocument((event) => {
-  const current = documentTextByUri.get(event.textDocument.uri) ?? '';
-  const updated = applyContentChanges(
-    current,
-    event.contentChanges as TextDocumentContentChangeLike[]
-  );
-  const uri = event.textDocument.uri;
+const handleDocumentDidChange = (
+  event:
+    | DocumentChangeNotification
+    | { textDocument?: { uri?: string }; contentChanges?: Array<{ text?: string }> }
+) => {
+  const currentText =
+    'uri' in event && typeof event.uri === 'string'
+      ? documentTextByUri.get(event.uri)
+      : 'textDocument' in event && typeof event.textDocument?.uri === 'string'
+        ? documentTextByUri.get(event.textDocument.uri)
+        : undefined;
+  const normalized = normalizeChangeNotification(event, currentText);
+  if (!normalized) {
+    return;
+  }
+
+  const { uri, text: updated } = normalized;
   documentTextByUri.set(uri, updated);
 
   const newSchemaKey = extractDocumentSchemaKey(updated);
   if (newSchemaKey === schemaKeyByUri.get(uri)) {
-    // Schema references unchanged — skip the expensive reload, just re-run diagnostics.
-    publishDiagnosticsForDocument(uri);
+    // Schema references unchanged — Volar's own pipeline handles content-change diagnostics.
     return;
   }
 
@@ -583,15 +520,15 @@ connection.onDidChangeTextDocument((event) => {
       if (schemaLoadGenerationByUri.get(uri) !== generation) {
         return; // A newer load was scheduled while this one was in-flight; discard its result.
       }
-      publishDiagnosticsForDocument(uri);
+      void refreshDiagnosticsAfterSchemaLoad(uri);
     })
     .catch((err: unknown) => {
       const message = err instanceof Error ? err.message : String(err);
       connection.console.log(`[templjs] Schema load failed for ${uri}: ${message}`);
     });
-});
+};
 
-connection.onDidChangeWatchedFiles((event) => {
+const handleWatchedFilesChanged = (event: WatchedFilesNotification) => {
   const changes = event.changes ?? [];
   const schemaChanged = changes.some((change) => isLikelySchemaUri(change.uri));
   if (!schemaChanged) {
@@ -612,15 +549,71 @@ connection.onDidChangeWatchedFiles((event) => {
         if (schemaLoadGenerationByUri.get(uri) !== generation) {
           return;
         }
-        publishDiagnosticsForDocument(uri);
+        void refreshDiagnosticsAfterSchemaLoad(uri);
       })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : String(err);
         connection.console.log(`[templjs] Schema reload failed for ${uri}: ${message}`);
       });
   }
-});
+};
+
+const notificationConnection = connection as unknown as {
+  onNotification?: (method: string, handler: (event: unknown) => void) => void;
+};
+
+/* v8 ignore next */
+connection.onDidOpenTextDocument((event) => handleDocumentDidOpen(event));
+/* v8 ignore next */
+connection.onDidChangeTextDocument((event) => handleDocumentDidChange(event));
+/* v8 ignore next */
+connection.onDidChangeWatchedFiles((event) => handleWatchedFilesChanged(event));
+
+if (typeof notificationConnection.onNotification === 'function') {
+  /* v8 ignore next */
+  notificationConnection.onNotification(DOCUMENT_DID_OPEN_NOTIFICATION, (event) =>
+    handleDocumentDidOpen(event as DocumentOpenNotification)
+  );
+  /* v8 ignore next */
+  notificationConnection.onNotification(DOCUMENT_DID_CHANGE_NOTIFICATION, (event) =>
+    handleDocumentDidChange(event as DocumentChangeNotification)
+  );
+  /* v8 ignore next */
+  notificationConnection.onNotification(WATCHED_FILES_CHANGED_NOTIFICATION, (event) =>
+    handleWatchedFilesChanged(event as WatchedFilesNotification)
+  );
+}
 
 connection.onInitialized(server.initialized);
 connection.onShutdown(server.shutdown);
 connection.listen();
+
+export const serverTesting = {
+  normalizeOpenNotification,
+  normalizeChangeNotification,
+  refreshRuntimeSchemaOptions,
+  getSchemaOptionsForUri,
+  isLikelySchemaUri,
+  toIntellisenseOptions,
+  toDiagnosticOptions,
+  isYamlTemplateUri,
+  collectServiceDiagnosticsForDocument,
+  resetRuntimeState() {
+    storedWorkspaceRoot = undefined;
+    storedInitializationOptions = undefined;
+    serverTraceMode = 'off';
+    refreshRuntimeSchemaOptions({});
+    schemaOptionsByUri.clear();
+    schemaKeyByUri.clear();
+    schemaLoadGenerationByUri.clear();
+  },
+  setStoredWorkspaceRoot(workspaceRoot: string | undefined) {
+    storedWorkspaceRoot = workspaceRoot;
+  },
+  setServerTraceMode(traceMode: TraceMode) {
+    serverTraceMode = traceMode;
+  },
+  setSchemaOptionsForUri(uri: string, options: SchemaRuntimeOptions) {
+    schemaOptionsByUri.set(uri, options);
+  },
+};

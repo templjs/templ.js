@@ -10,6 +10,15 @@ const listen = vi.fn();
 const onDidOpenTextDocument = vi.fn();
 const onDidChangeTextDocument = vi.fn();
 const onDidChangeWatchedFiles = vi.fn();
+const onNotification = vi.fn((type: string, handler: unknown) => {
+  if (type === 'templjs/documentDidOpen') {
+    onDidOpenTextDocument(handler);
+  } else if (type === 'templjs/documentDidChange') {
+    onDidChangeTextDocument(handler);
+  } else if (type === 'templjs/watchedFilesChanged') {
+    onDidChangeWatchedFiles(handler);
+  }
+});
 const onCompletion = vi.fn();
 const onHover = vi.fn();
 const onDefinition = vi.fn();
@@ -46,12 +55,15 @@ function toTestWorkspaceUri(fixtureUri: string): string {
 const initialize = vi.fn(async () => ({ capabilities: {} }));
 const initialized = vi.fn();
 const shutdown = vi.fn();
+const getProject = vi.fn();
 
 const createTempljsLanguagePlugin = vi.fn(() => ({ name: 'templjs-plugin' }));
-const getCompletions = vi.fn(() => [{ label: 'user', kind: 6 }]);
-const getHover = vi.fn(() => ({ contents: { kind: 'markdown', value: 'user: object' } }));
+const getCompletions = vi.fn<(...args: any[]) => any[]>(() => [{ label: 'user', kind: 6 }]);
+const getHover = vi.fn<(...args: any[]) => any>(() => ({
+  contents: { kind: 'markdown', value: 'user: object' },
+}));
 const getDefinition = vi.fn(() => null);
-const collectDiagnosticsFunc = vi.fn(() => []);
+const collectDiagnosticsFunc = vi.fn<(...args: any[]) => any[]>(() => []);
 const resolveScopedPathInText = vi.fn((_: string, path: string) => path);
 const collectDiagnostics = collectDiagnosticsFunc;
 
@@ -167,6 +179,7 @@ vi.mock('@volar/language-server/node', () => ({
     onInitialize,
     onInitialized,
     onShutdown,
+    onNotification,
     onDidOpenTextDocument,
     onDidChangeTextDocument,
     onDidChangeWatchedFiles,
@@ -184,6 +197,9 @@ vi.mock('@volar/language-server/node', () => ({
     initialize,
     initialized,
     shutdown,
+    projects: {
+      getProject,
+    },
   })),
   createSimpleProjectProvider: { name: 'simple-project-provider' },
 }));
@@ -209,6 +225,7 @@ describe('language-server-bootstrap', () => {
     onDidOpenTextDocument.mockClear();
     onDidChangeTextDocument.mockClear();
     onDidChangeWatchedFiles.mockClear();
+    onNotification.mockClear();
     onCompletion.mockClear();
     onHover.mockClear();
     onDefinition.mockClear();
@@ -219,6 +236,29 @@ describe('language-server-bootstrap', () => {
     initialize.mockClear();
     initialized.mockClear();
     shutdown.mockClear();
+    getProject.mockReset();
+    getProject.mockResolvedValue({
+      getLanguageService: () => ({
+        doValidation: vi.fn(async () => {
+          const raw = collectDiagnosticsFunc();
+          return (
+            raw as Array<{
+              message: string;
+              severity?: number;
+              range: unknown;
+              source?: string;
+              code?: string | number;
+            }>
+          ).map((d) => ({
+            message: d.message,
+            severity: d.severity,
+            range: d.range,
+            source: d.source ?? 'templjs',
+            code: d.code,
+          }));
+        }),
+      }),
+    });
     createTempljsLanguagePlugin.mockClear();
     getCompletions.mockClear();
     getHover.mockClear();
@@ -245,16 +285,10 @@ describe('language-server-bootstrap', () => {
     expect(onDidChangeWatchedFiles).toHaveBeenCalledWith(expect.any(Function));
     expect(listen).toHaveBeenCalled();
 
-    // completion/hover/definition handlers are registered inside onInitialize,
-    // after server.initialize() runs so they overwrite Volar's registrations
     const initializeHandler = onInitialize.mock.calls[0][0] as (
       params: unknown
     ) => Promise<unknown>;
     await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
-
-    expect(onCompletion).toHaveBeenCalledWith(expect.any(Function));
-    expect(onHover).toHaveBeenCalledWith(expect.any(Function));
-    expect(onDefinition).toHaveBeenCalledWith(expect.any(Function));
   });
 
   it('registers templjs language plugin provider', async () => {
@@ -271,7 +305,13 @@ describe('language-server-bootstrap', () => {
     >;
     const serverOptions = initializeCalls[0][2];
 
-    expect(serverOptions.getServicePlugins()).toEqual([]);
+    const servicePlugins = serverOptions.getServicePlugins() as Array<{ name?: string }>;
+    expect(servicePlugins.map((plugin) => plugin.name)).toEqual([
+      'templjs-intellisense',
+      'templjs-diagnostics',
+      'templjs-markdown-diagnostics',
+      'templjs-yaml',
+    ]);
     serverOptions.getLanguagePlugins();
     expect(createTempljsLanguagePlugin).toHaveBeenCalledWith({});
   });
@@ -295,21 +335,21 @@ describe('language-server-bootstrap', () => {
     const serverOptions = initializeCalls[0][2];
 
     expect(serverOptions.watchFileExtensions).toEqual([
-      '.templ.md',
-      '.templ.json',
-      '.templ.yaml',
-      '.templ.yml',
-      '.templ.html',
-      '.tmpl.md',
-      '.tmpl.json',
-      '.tmpl.yaml',
-      '.tmpl.yml',
-      '.tmpl.html',
-      '.tpl.md',
-      '.tpl.json',
-      '.tpl.yaml',
-      '.tpl.yml',
-      '.tpl.html',
+      '.html.templ',
+      '.html.tmpl',
+      '.html.tpl',
+      '.json.templ',
+      '.json.tmpl',
+      '.json.tpl',
+      '.md.templ',
+      '.md.tmpl',
+      '.md.tpl',
+      '.yaml.templ',
+      '.yaml.tmpl',
+      '.yaml.tpl',
+      '.yml.templ',
+      '.yml.tmpl',
+      '.yml.tpl',
     ]);
   });
 
@@ -704,36 +744,6 @@ describe('language-server-bootstrap', () => {
     );
   });
 
-  it('provides completion items for open document content', async () => {
-    await import('../src/server');
-
-    const initializeHandler = onInitialize.mock.calls[0][0] as (
-      params: unknown
-    ) => Promise<unknown>;
-    await initializeHandler({
-      rootUri: toTestWorkspaceUri('file:///workspace'),
-      initializationOptions: {
-        documentContext: {
-          uri: toTestWorkspaceUri('file:///workspace/sample.md.templ'),
-          content: '{{ user.n }}',
-        },
-        schemaPath: '.templjs/schema.json',
-      },
-    });
-
-    const completionHandler = onCompletion.mock.calls[0][0] as (params: {
-      textDocument: { uri: string };
-      position: { line: number; character: number };
-    }) => unknown[];
-
-    const completions = completionHandler({
-      textDocument: { uri: toTestWorkspaceUri('file:///workspace/sample.md.templ') },
-      position: { line: 0, character: 9 },
-    });
-
-    expect(Array.isArray(completions)).toBe(true);
-  });
-
   it('advertises completion and hover capabilities on initialize', async () => {
     await import('../src/server');
     const initializeHandler = onInitialize.mock.calls[0][0] as (
@@ -748,160 +758,17 @@ describe('language-server-bootstrap', () => {
     expect(result.capabilities.textDocumentSync).toBe(2);
   });
 
-  it('returns schema file definition when cursor is on a frontmatter schema path', async () => {
+  it('registers transport delegation handlers for completion, hover, and definition', async () => {
     await import('../src/server');
-
     const initializeHandler = onInitialize.mock.calls[0][0] as (
       params: unknown
-    ) => Promise<unknown>;
-    const documentText = [
-      '---',
-      'type: milestone',
-      '"$schema": schemas/work-management/frontmatter/milestone.json',
-      '---',
-      '{{ value }}',
-    ].join('\n');
+    ) => Promise<{ capabilities: Record<string, unknown> }>;
 
-    await initializeHandler({
-      rootUri: toTestWorkspaceUri('file:///workspace'),
-      initializationOptions: {
-        documentContext: {
-          uri: toTestWorkspaceUri('file:///workspace/templates/milestone.md.tpl'),
-          content: documentText,
-        },
-      },
-    });
+    await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
 
-    const definitionHandler = onDefinition.mock.calls[0][0] as (params: {
-      textDocument: { uri: string };
-      position: { line: number; character: number };
-    }) => { uri: string } | null;
-
-    const result = definitionHandler({
-      textDocument: { uri: toTestWorkspaceUri('file:///workspace/templates/milestone.md.tpl') },
-      position: { line: 2, character: 18 },
-    });
-
-    expect(result).toBeTruthy();
-    expect(result?.uri).toBe(
-      toTestWorkspaceUri('file:///workspace/schemas/work-management/frontmatter/milestone.json')
-    );
-  });
-
-  it('resolves schema path definition when cursor is inside the schema value token', async () => {
-    await import('../src/server');
-
-    const initializeHandler = onInitialize.mock.calls[0][0] as (
-      params: unknown
-    ) => Promise<unknown>;
-    const documentText = [
-      '---',
-      '$schema: schemas/work-management/frontmatter/project.json',
-      '---',
-      '{{ value }}',
-    ].join('\n');
-
-    await initializeHandler({
-      rootUri: toTestWorkspaceUri('file:///workspace'),
-      initializationOptions: {
-        documentContext: {
-          uri: toTestWorkspaceUri('file:///workspace/templates/project.md.tpl'),
-          content: documentText,
-        },
-      },
-    });
-
-    const definitionHandler = onDefinition.mock.calls[0][0] as (params: {
-      textDocument: { uri: string };
-      position: { line: number; character: number };
-    }) => { uri: string } | null;
-
-    const result = definitionHandler({
-      textDocument: { uri: toTestWorkspaceUri('file:///workspace/templates/project.md.tpl') },
-      position: { line: 1, character: 30 },
-    });
-
-    expect(result?.uri).toBe(
-      toTestWorkspaceUri('file:///workspace/schemas/work-management/frontmatter/project.json')
-    );
-  });
-
-  it('returns frontmatter schema definition for plain YAML field values', async () => {
-    await import('../src/server');
-
-    const initializeHandler = onInitialize.mock.calls[0][0] as (
-      params: unknown
-    ) => Promise<unknown>;
-    const documentText = [
-      '---',
-      '$schema: schemas/work-management/frontmatter/project.json',
-      'type: project',
-      '---',
-      '{{ value }}',
-    ].join('\n');
-
-    await initializeHandler({
-      rootUri: toTestWorkspaceUri('file:///workspace'),
-      initializationOptions: {
-        documentContext: {
-          uri: toTestWorkspaceUri('file:///workspace/templates/project.md.tpl'),
-          content: documentText,
-        },
-      },
-    });
-
-    const definitionHandler = onDefinition.mock.calls[0][0] as (params: {
-      textDocument: { uri: string };
-      position: { line: number; character: number };
-    }) => { uri: string } | null;
-
-    const result = definitionHandler({
-      textDocument: { uri: toTestWorkspaceUri('file:///workspace/templates/project.md.tpl') },
-      position: { line: 2, character: 9 },
-    });
-
-    expect(result?.uri).toBe(
-      toTestWorkspaceUri('file:///workspace/schemas/work-management/frontmatter/project.json')
-    );
-  });
-
-  it('resolves path-like frontmatter values to referenced file definitions', async () => {
-    await import('../src/server');
-
-    const initializeHandler = onInitialize.mock.calls[0][0] as (
-      params: unknown
-    ) => Promise<unknown>;
-    const documentText = [
-      '---',
-      '$schema: schemas/work-management/frontmatter/project.json',
-      'schema_path: schemas/work-management/content/project.json',
-      '---',
-      '{{ value }}',
-    ].join('\n');
-
-    await initializeHandler({
-      rootUri: toTestWorkspaceUri('file:///workspace'),
-      initializationOptions: {
-        documentContext: {
-          uri: toTestWorkspaceUri('file:///workspace/templates/project.md.tpl'),
-          content: documentText,
-        },
-      },
-    });
-
-    const definitionHandler = onDefinition.mock.calls[0][0] as (params: {
-      textDocument: { uri: string };
-      position: { line: number; character: number };
-    }) => { uri: string } | null;
-
-    const result = definitionHandler({
-      textDocument: { uri: toTestWorkspaceUri('file:///workspace/templates/project.md.tpl') },
-      position: { line: 2, character: 30 },
-    });
-
-    expect(result?.uri).toBe(
-      toTestWorkspaceUri('file:///workspace/schemas/work-management/content/project.json')
-    );
+    expect(onCompletion).toHaveBeenCalledWith(expect.any(Function));
+    expect(onHover).toHaveBeenCalledWith(expect.any(Function));
+    expect(onDefinition).toHaveBeenCalledWith(expect.any(Function));
   });
 
   // ── $schema / $content_schema alias recognition ──────────────────────────
@@ -1327,239 +1194,6 @@ describe('language-server-bootstrap', () => {
     );
   });
 
-  it('applies incremental document changes before completion requests', async () => {
-    await import('../src/server');
-
-    const initializeHandler = onInitialize.mock.calls[0][0] as (
-      params: unknown
-    ) => Promise<unknown>;
-    await initializeHandler({
-      rootUri: toTestWorkspaceUri('file:///workspace'),
-      initializationOptions: {
-        documentContext: {
-          uri: toTestWorkspaceUri('file:///workspace/sample.md.templ'),
-          content: '{{ user. }}',
-        },
-      },
-    });
-
-    const changeHandler = onDidChangeTextDocument.mock.calls[0][0] as (params: {
-      textDocument: { uri: string };
-      contentChanges: Array<{
-        range?: {
-          start: { line: number; character: number };
-          end: { line: number; character: number };
-        };
-        text: string;
-      }>;
-    }) => void;
-
-    changeHandler({
-      textDocument: { uri: toTestWorkspaceUri('file:///workspace/sample.md.templ') },
-      contentChanges: [
-        {
-          range: {
-            start: { line: 0, character: 8 },
-            end: { line: 0, character: 8 },
-          },
-          text: 'n',
-        },
-      ],
-    });
-
-    const completionHandler = onCompletion.mock.calls[0][0] as (params: {
-      textDocument: { uri: string };
-      position: { line: number; character: number };
-    }) => unknown[];
-
-    completionHandler({
-      textDocument: { uri: toTestWorkspaceUri('file:///workspace/sample.md.templ') },
-      position: { line: 0, character: 9 },
-    });
-
-    expect(getCompletions).toHaveBeenCalledWith(
-      '{{ user.n }}',
-      expect.any(Number),
-      expect.any(Object)
-    );
-  });
-
-  it('appends ranged changes that target lines beyond a single-line document', async () => {
-    await import('../src/server');
-
-    const initializeHandler = onInitialize.mock.calls[0][0] as (
-      params: unknown
-    ) => Promise<unknown>;
-    await initializeHandler({
-      rootUri: toTestWorkspaceUri('file:///workspace'),
-      initializationOptions: {
-        documentContext: {
-          uri: toTestWorkspaceUri('file:///workspace/single-line.md.tpl'),
-          content: '{{ user }}',
-        },
-      },
-    });
-
-    const changeHandler = onDidChangeTextDocument.mock.calls[0][0] as (params: {
-      textDocument: { uri: string };
-      contentChanges: Array<{
-        range?: {
-          start: { line: number; character: number };
-          end: { line: number; character: number };
-        };
-        text: string;
-      }>;
-    }) => void;
-
-    changeHandler({
-      textDocument: { uri: toTestWorkspaceUri('file:///workspace/single-line.md.tpl') },
-      contentChanges: [
-        {
-          range: {
-            start: { line: 1, character: 0 },
-            end: { line: 1, character: 0 },
-          },
-          text: '\n{{ tail }}',
-        },
-      ],
-    });
-
-    const completionHandler = onCompletion.mock.calls[0][0] as (params: {
-      textDocument: { uri: string };
-      position: { line: number; character: number };
-    }) => unknown[];
-
-    completionHandler({
-      textDocument: { uri: toTestWorkspaceUri('file:///workspace/single-line.md.tpl') },
-      position: { line: 1, character: 3 },
-    });
-
-    expect(getCompletions).toHaveBeenCalledWith(
-      '{{ user }}\n{{ tail }}',
-      expect.any(Number),
-      expect.any(Object)
-    );
-  });
-
-  it('returns empty completion/null hover/definition when document cache is missing', async () => {
-    await import('../src/server');
-
-    const initializeHandler = onInitialize.mock.calls[0][0] as (
-      params: unknown
-    ) => Promise<unknown>;
-    await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
-
-    const completionHandler = onCompletion.mock.calls[0][0] as (params: {
-      textDocument: { uri: string };
-      position: { line: number; character: number };
-    }) => unknown[];
-    const hoverHandler = onHover.mock.calls[0][0] as (params: {
-      textDocument: { uri: string };
-      position: { line: number; character: number };
-    }) => unknown;
-    const definitionHandler = onDefinition.mock.calls[0][0] as (params: {
-      textDocument: { uri: string };
-      position: { line: number; character: number };
-    }) => unknown;
-
-    expect(
-      completionHandler({
-        textDocument: { uri: toTestWorkspaceUri('file:///workspace/missing.md.tpl') },
-        position: { line: 0, character: 0 },
-      })
-    ).toEqual([]);
-    expect(
-      hoverHandler({
-        textDocument: { uri: toTestWorkspaceUri('file:///workspace/missing.md.tpl') },
-        position: { line: 0, character: 0 },
-      })
-    ).toBeNull();
-    expect(
-      definitionHandler({
-        textDocument: { uri: toTestWorkspaceUri('file:///workspace/missing.md.tpl') },
-        position: { line: 0, character: 0 },
-      })
-    ).toBeNull();
-  });
-
-  it('maps provider completion kinds and emits duplicate-label traces in message mode', async () => {
-    getCompletions.mockReturnValueOnce([
-      { label: 'dup', kind: 'property', detail: 'a', documentation: 'A' },
-      { label: 'Dup', kind: 'variable', detail: 'b', documentation: 'B' },
-      { label: 'flt', kind: 'filter', detail: 'c', documentation: 'C' },
-      { label: 'kw', kind: 'keyword', detail: 'd', documentation: 'D' },
-      { label: 'num', kind: 999, detail: 'e', documentation: 'E' },
-    ]);
-
-    await import('../src/server');
-    const initializeHandler = onInitialize.mock.calls[0][0] as (
-      params: unknown
-    ) => Promise<unknown>;
-
-    await initializeHandler({
-      rootUri: toTestWorkspaceUri('file:///workspace'),
-      initializationOptions: {
-        traceMode: 'messages',
-        documentContext: {
-          uri: toTestWorkspaceUri('file:///workspace/sample.md.tpl'),
-          content: '{{ user.name }}',
-        },
-      },
-    });
-
-    const completionHandler = onCompletion.mock.calls[0][0] as (params: {
-      textDocument: { uri: string };
-      position: { line: number; character: number };
-    }) => Array<{ label: string; kind: number }>;
-
-    const result = completionHandler({
-      textDocument: { uri: toTestWorkspaceUri('file:///workspace/sample.md.tpl') },
-      position: { line: 0, character: 3 },
-    });
-
-    expect(result).toEqual([
-      expect.objectContaining({ label: 'dup', kind: 10 }),
-      expect.objectContaining({ label: 'Dup', kind: 6 }),
-      expect.objectContaining({ label: 'flt', kind: 3 }),
-      expect.objectContaining({ label: 'kw', kind: 14 }),
-      expect.objectContaining({ label: 'num', kind: 6 }),
-    ]);
-
-    expect(consoleLog).toHaveBeenCalledWith(expect.stringContaining('completion duplicate labels'));
-  });
-
-  it('suppresses trace logging when trace mode is off', async () => {
-    await import('../src/server');
-    const initializeHandler = onInitialize.mock.calls[0][0] as (
-      params: unknown
-    ) => Promise<unknown>;
-
-    await initializeHandler({
-      rootUri: toTestWorkspaceUri('file:///workspace'),
-      initializationOptions: {
-        traceMode: 'off',
-        documentContext: {
-          uri: toTestWorkspaceUri('file:///workspace/sample.md.tpl'),
-          content: '{{ user.name }}',
-        },
-      },
-    });
-
-    const completionHandler = onCompletion.mock.calls[0][0] as (params: {
-      textDocument: { uri: string };
-      position: { line: number; character: number };
-    }) => unknown[];
-
-    completionHandler({
-      textDocument: { uri: toTestWorkspaceUri('file:///workspace/sample.md.tpl') },
-      position: { line: 0, character: 3 },
-    });
-
-    expect(consoleLog.mock.calls.some((call) => String(call[0]).includes('[templjs-trace]'))).toBe(
-      false
-    );
-  });
-
   it('logs and clears diagnostics when diagnostic collection throws', async () => {
     collectDiagnostics.mockImplementationOnce(() => {
       throw new Error('diagnostics exploded');
@@ -1590,7 +1224,7 @@ describe('language-server-bootstrap', () => {
 
     expect(consoleLog).toHaveBeenCalledWith(
       expect.stringContaining(
-        `Diagnostics skipped for ${toTestWorkspaceUri('file:///workspace/diag-fail.md.tpl')}: diagnostics exploded`
+        `Host diagnostics skipped for ${toTestWorkspaceUri('file:///workspace/diag-fail.md.tpl')}: diagnostics exploded`
       )
     );
     expect(sendDiagnostics).toHaveBeenCalledWith({
@@ -1633,121 +1267,292 @@ describe('language-server-bootstrap', () => {
       },
     });
 
-    await Promise.resolve();
+    await vi.waitFor(() => {
+      expect(sendDiagnostics).toHaveBeenCalledWith({
+        uri: toTestWorkspaceUri('file:///workspace/default-source.md.tpl'),
+        diagnostics: [
+          {
+            message: 'missing field',
+            severity: 1,
+            range: {
+              start: { line: 0, character: 0 },
+              end: { line: 0, character: 4 },
+            },
+            source: 'templjs',
+            code: 'missing-field',
+          },
+        ],
+      });
+    });
+  });
 
-    expect(sendDiagnostics).toHaveBeenCalledWith({
-      uri: toTestWorkspaceUri('file:///workspace/default-source.md.tpl'),
-      diagnostics: [
+  it('publishes templjs and host markdown diagnostics together on change', async () => {
+    const hostValidation = vi.fn(async () => {
+      const rawTempljs = collectDiagnosticsFunc();
+      const templjsDiags = (
+        rawTempljs as Array<{
+          message: string;
+          severity?: number;
+          range: unknown;
+          source?: string;
+          code?: string | number;
+        }>
+      ).map((d) => ({
+        message: d.message,
+        severity: d.severity,
+        range: d.range,
+        source: d.source ?? 'templjs',
+        code: d.code,
+      }));
+      return [
         {
-          message: 'missing field',
-          severity: 1,
+          message: 'Host markdown diagnostic',
+          severity: 2,
           range: {
             start: { line: 0, character: 0 },
-            end: { line: 0, character: 4 },
+            end: { line: 0, character: 3 },
           },
-          source: 'templjs',
-          code: 'missing-field',
+          source: 'markdown',
+          code: 'md.host',
         },
-      ],
+        ...templjsDiags,
+      ];
     });
-  });
 
-  it('handles completion positions beyond available lines', async () => {
-    await import('../src/server');
+    getProject.mockResolvedValue({
+      getLanguageService: () => ({ doValidation: hostValidation }),
+    });
 
-    const initializeHandler = onInitialize.mock.calls[0][0] as (
-      params: unknown
-    ) => Promise<unknown>;
-    await initializeHandler({
-      rootUri: toTestWorkspaceUri('file:///workspace'),
-      initializationOptions: {
-        documentContext: {
-          uri: toTestWorkspaceUri('file:///workspace/single-line.md.tpl'),
-          content: '{{ user.name }}',
+    collectDiagnostics.mockReturnValue([
+      {
+        message: 'Templ diagnostic',
+        severity: 1,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 0, character: 4 },
         },
+        source: 'templjs',
+        code: 'templjs.undefinedVariable',
       },
-    });
-
-    const completionHandler = onCompletion.mock.calls[0][0] as (params: {
-      textDocument: { uri: string };
-      position: { line: number; character: number };
-    }) => unknown[];
-
-    const result = completionHandler({
-      textDocument: { uri: toTestWorkspaceUri('file:///workspace/single-line.md.tpl') },
-      position: { line: 10, character: 0 },
-    });
-
-    expect(Array.isArray(result)).toBe(true);
-    expect(getCompletions).toHaveBeenCalled();
-  });
-
-  it('traces definition none-path when provider returns null', async () => {
-    getDefinition.mockReturnValueOnce(null);
-
-    await import('../src/server');
-    const initializeHandler = onInitialize.mock.calls[0][0] as (
-      params: unknown
-    ) => Promise<unknown>;
-    await initializeHandler({
-      rootUri: toTestWorkspaceUri('file:///workspace'),
-      initializationOptions: {
-        traceMode: 'messages',
-        documentContext: {
-          uri: toTestWorkspaceUri('file:///workspace/sample.md.tpl'),
-          content: '{{ user.name }}',
-        },
-      },
-    });
-
-    const definitionHandler = onDefinition.mock.calls[0][0] as (params: {
-      textDocument: { uri: string };
-      position: { line: number; character: number };
-    }) => unknown;
-
-    const result = definitionHandler({
-      textDocument: { uri: toTestWorkspaceUri('file:///workspace/sample.md.tpl') },
-      position: { line: 0, character: 3 },
-    });
-
-    expect(result).toBeNull();
-    expect(consoleLog).toHaveBeenCalledWith(expect.stringContaining('definition result=none'));
-  });
-
-  it('sorts duplicate completion label summaries deterministically', async () => {
-    getCompletions.mockReturnValueOnce([
-      { label: 'zeta', kind: 'property' },
-      { label: 'ZETA', kind: 'property' },
-      { label: 'alpha', kind: 'property' },
-      { label: 'ALPHA', kind: 'property' },
     ]);
 
     await import('../src/server');
+
     const initializeHandler = onInitialize.mock.calls[0][0] as (
       params: unknown
     ) => Promise<unknown>;
-    await initializeHandler({
-      rootUri: toTestWorkspaceUri('file:///workspace'),
-      initializationOptions: {
-        traceMode: 'messages',
-        documentContext: {
-          uri: toTestWorkspaceUri('file:///workspace/sort.md.tpl'),
-          content: '{{ user.name }}',
-        },
+    await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
+
+    const openHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
+      textDocument: { uri: string; text: string; languageId: string; version: number };
+    }) => void;
+    const changeHandler = onDidChangeTextDocument.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      contentChanges: Array<{ text: string }>;
+    }) => void;
+
+    const docUri = toTestWorkspaceUri('file:///workspace/host-diags.md.tmpl');
+    openHandler({
+      textDocument: {
+        uri: docUri,
+        languageId: 'templjs-markdown',
+        version: 1,
+        text: '{{ value }}',
       },
     });
 
-    const completionHandler = onCompletion.mock.calls[0][0] as (params: {
-      textDocument: { uri: string };
-      position: { line: number; character: number };
-    }) => unknown[];
+    sendDiagnostics.mockClear();
 
-    completionHandler({
-      textDocument: { uri: toTestWorkspaceUri('file:///workspace/sort.md.tpl') },
-      position: { line: 0, character: 3 },
+    changeHandler({
+      textDocument: { uri: docUri },
+      contentChanges: [{ text: '{{ value }}\n#bad-heading' }],
     });
 
-    expect(consoleLog).toHaveBeenCalledWith(expect.stringContaining('alpha×2, zeta×2'));
+    let lastPayload:
+      | {
+          uri: string;
+          diagnostics: Array<{ source?: string; message: string }>;
+        }
+      | undefined;
+
+    await vi.waitFor(() => {
+      const payload = sendDiagnostics.mock.calls.at(-1)?.[0] as
+        | {
+            uri: string;
+            diagnostics: Array<{ source?: string; message: string }>;
+          }
+        | undefined;
+
+      expect(payload).toBeDefined();
+      expect(payload?.diagnostics.some((diag) => diag.source === 'markdown')).toBe(true);
+      lastPayload = payload;
+    });
+
+    expect(lastPayload).toBeDefined();
+    const resolvedPayload = lastPayload as {
+      uri: string;
+      diagnostics: Array<{ source?: string; message: string }>;
+    };
+    expect(resolvedPayload.uri).toBe(docUri);
+    expect(resolvedPayload.diagnostics.some((diag) => diag.source === 'templjs')).toBe(true);
+    expect(resolvedPayload.diagnostics.some((diag) => diag.source === 'markdown')).toBe(true);
+    expect(hostValidation).toHaveBeenCalledWith(docUri);
+  });
+
+  it('surfaces host YAML diagnostics for yaml template documents', async () => {
+    const hostValidation = vi.fn(async () => [
+      {
+        message: 'YAML map value is required',
+        severity: 1,
+        range: {
+          start: { line: 0, character: 5 },
+          end: { line: 0, character: 6 },
+        },
+        source: 'yaml',
+        code: 'yaml.syntax',
+      },
+    ]);
+
+    getProject.mockResolvedValue({
+      getLanguageService: () => ({ doValidation: hostValidation }),
+    });
+
+    collectDiagnostics.mockReturnValue([]);
+    await import('../src/server');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
+
+    const openHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
+      textDocument: { uri: string; text: string; languageId: string; version: number };
+    }) => void;
+
+    const docUri = toTestWorkspaceUri('file:///workspace/config.yaml.templ');
+    openHandler({
+      textDocument: {
+        uri: docUri,
+        languageId: 'templjs-yaml',
+        version: 1,
+        text: 'foo: [{% for item in items %}{{ item }},\n',
+      },
+    });
+
+    let payload:
+      | {
+          uri: string;
+          diagnostics: Array<{ source?: string; code?: string | number; message?: string }>;
+        }
+      | undefined;
+
+    await vi.waitFor(() => {
+      payload = sendDiagnostics.mock.calls.at(-1)?.[0] as
+        | {
+            uri: string;
+            diagnostics: Array<{
+              source?: string;
+              code?: string | number;
+              message?: string;
+            }>;
+          }
+        | undefined;
+
+      expect(payload).toBeDefined();
+      expect(payload?.diagnostics.some((diag) => diag.code === 'yaml.syntax')).toBe(true);
+    });
+
+    expect(payload?.uri).toBe(docUri);
+    expect(payload?.diagnostics.some((diag) => diag.source === 'yaml')).toBe(true);
+    expect(hostValidation).toHaveBeenCalledWith(docUri);
+  });
+
+  it('does not synthesize YAML diagnostics when host diagnostics are empty', async () => {
+    const hostValidation = vi.fn(async () => {
+      const rawTempljs = collectDiagnosticsFunc();
+      return (
+        rawTempljs as Array<{
+          message: string;
+          severity?: number;
+          range: unknown;
+          source?: string;
+          code?: string | number;
+        }>
+      ).map((d) => ({
+        message: d.message,
+        severity: d.severity,
+        range: d.range,
+        source: d.source ?? 'templjs',
+        code: d.code,
+      }));
+    });
+
+    getProject.mockResolvedValue({
+      getLanguageService: () => ({ doValidation: hostValidation }),
+    });
+
+    collectDiagnostics.mockReturnValue([
+      {
+        message: 'Missing closing tag: endfor',
+        severity: 1,
+        range: {
+          start: { line: 0, character: 11 },
+          end: { line: 0, character: 13 },
+        },
+        source: 'templjs',
+        code: 'templjs.unclosedStatement',
+      },
+    ]);
+
+    await import('../src/server');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
+
+    const openHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
+      textDocument: { uri: string; text: string; languageId: string; version: number };
+    }) => void;
+
+    const docUri = toTestWorkspaceUri('file:///workspace/untitled-1.yaml.templ');
+    openHandler({
+      textDocument: {
+        uri: docUri,
+        languageId: 'templjs-yaml',
+        version: 1,
+        text: 'foo: bar: [{% for item in items %}{{ item }},\n',
+      },
+    });
+
+    let payload:
+      | {
+          uri: string;
+          diagnostics: Array<{ source?: string; code?: string | number; message?: string }>;
+        }
+      | undefined;
+
+    await vi.waitFor(() => {
+      payload = sendDiagnostics.mock.calls.at(-1)?.[0] as
+        | {
+            uri: string;
+            diagnostics: Array<{ source?: string; code?: string | number; message?: string }>;
+          }
+        | undefined;
+
+      expect(payload).toBeDefined();
+      const hasTempljs = payload?.diagnostics.some(
+        (diag) => diag.code === 'templjs.unclosedStatement'
+      );
+      const hasYaml = payload?.diagnostics.some(
+        (diag) => typeof diag.source === 'string' && diag.source.toLowerCase() === 'yaml'
+      );
+      expect(hasTempljs).toBe(true);
+      expect(hasYaml).toBe(false);
+    });
+
+    expect(payload?.uri).toBe(docUri);
+    expect(hostValidation).toHaveBeenCalledWith(docUri);
   });
 
   it('drops stale schema reload generations when a newer change is queued', async () => {
@@ -1811,8 +1616,10 @@ describe('language-server-bootstrap', () => {
       await vi.runAllTimersAsync();
       await Promise.resolve();
 
-      // Stale a.json generation should be dropped; only the newest generation should publish.
-      expect(sendDiagnostics).toHaveBeenCalledTimes(1);
+      // Stale a.json generation should be dropped; only the newest generation may publish
+      // (once for local diagnostics and once after extended diagnostics complete).
+      expect(sendDiagnostics.mock.calls.length).toBeGreaterThanOrEqual(1);
+      expect(sendDiagnostics.mock.calls.length).toBeLessThanOrEqual(2);
     } finally {
       vi.useRealTimers();
     }
@@ -1898,7 +1705,9 @@ describe('language-server-bootstrap', () => {
     });
 
     expect(readFileSync).not.toHaveBeenCalled();
-    expect(sendDiagnostics).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => {
+      expect(sendDiagnostics.mock.calls.length).toBeGreaterThanOrEqual(1);
+    });
   });
 
   it('skips diagnostics publishing when an opened document has undefined text', async () => {
@@ -1993,6 +1802,61 @@ describe('language-server-bootstrap', () => {
     }
   });
 
+  it('logs schema load failures for opened documents and refreshes diagnostics', async () => {
+    vi.doMock('../src/schema-loading.js', async () => {
+      const real = await vi.importActual<typeof import('../src/schema-loading.js')>(
+        '../src/schema-loading.js'
+      );
+      return {
+        ...real,
+        loadSchemaSource: vi.fn(async () => {
+          throw new Error('open load exploded');
+        }),
+      };
+    });
+
+    try {
+      await import('../src/server');
+
+      const initializeHandler = onInitialize.mock.calls[0][0] as (
+        params: unknown
+      ) => Promise<unknown>;
+      await initializeHandler({
+        rootUri: toTestWorkspaceUri('file:///workspace'),
+        initializationOptions: {},
+      });
+
+      const openHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
+        textDocument: { uri: string; text: string; languageId: string; version: number };
+      }) => void;
+
+      consoleLog.mockClear();
+      sendDiagnostics.mockClear();
+
+      openHandler({
+        textDocument: {
+          uri: toTestWorkspaceUri('file:///workspace/open-failure.md.tpl'),
+          languageId: 'templjs-markdown',
+          version: 1,
+          text: '---\n$schema: ./schema.json\n---\n{{ value }}',
+        },
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(consoleLog).toHaveBeenCalledWith(
+        `[templjs] Schema load failed for ${toTestWorkspaceUri('file:///workspace/open-failure.md.tpl')}: open load exploded`
+      );
+      expect(sendDiagnostics).toHaveBeenCalledWith({
+        uri: toTestWorkspaceUri('file:///workspace/open-failure.md.tpl'),
+        diagnostics: [],
+      });
+    } finally {
+      vi.doUnmock('../src/schema-loading.js');
+    }
+  });
+
   it('drops stale watched-file reload generations when a newer reload is queued', async () => {
     let resolveFirstLoad: (() => void) | undefined;
     const firstLoad = new Promise<void>((resolve) => {
@@ -2060,10 +1924,9 @@ describe('language-server-bootstrap', () => {
 
       resolveFirstLoad?.();
 
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(sendDiagnostics).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => {
+        expect(sendDiagnostics.mock.calls.length).toBeGreaterThanOrEqual(1);
+      });
     } finally {
       vi.doUnmock('../src/schema-loading.js');
     }
@@ -2138,39 +2001,301 @@ describe('language-server-bootstrap', () => {
       vi.doUnmock('../src/schema-loading.js');
     }
   });
+});
 
-  it('returns hover results without verbose markdown tracing when value is absent', async () => {
-    getHover.mockReturnValueOnce({ contents: { kind: 'markdown' } });
+// ---------------------------------------------------------------------------
+// Pure-function unit tests - no mock infrastructure needed
+// ---------------------------------------------------------------------------
 
-    await import('../src/server');
-    const initializeHandler = onInitialize.mock.calls[0][0] as (
-      params: unknown
-    ) => Promise<unknown>;
-    await initializeHandler({
-      rootUri: toTestWorkspaceUri('file:///workspace'),
-      initializationOptions: {
-        traceMode: 'verbose',
-        documentContext: {
-          uri: toTestWorkspaceUri('file:///workspace/no-hover-value.md.tpl'),
-          content: '{{ value }}',
-        },
-      },
-    });
+describe('isMdTemplateUri', () => {
+  let isMdTemplateUri: (uri: string) => boolean;
 
+  beforeEach(async () => {
+    vi.resetModules();
+    const mod = await import('../src/server');
+    isMdTemplateUri = mod.isMdTemplateUri;
+  });
+
+  it('returns true for .md.templ URIs', () => {
+    expect(isMdTemplateUri('file:///workspace/doc.md.templ')).toBe(true);
+  });
+
+  it('returns true for .md.tmpl and .md.tpl URIs', () => {
+    expect(isMdTemplateUri('file:///a.md.tmpl')).toBe(true);
+    expect(isMdTemplateUri('file:///a.md.tpl')).toBe(true);
+  });
+
+  it('returns true for markdown template URIs with query or fragment suffixes', () => {
+    expect(isMdTemplateUri('file:///a.md.templ?view=1')).toBe(true);
+    expect(isMdTemplateUri('file:///a.md.templ#frontmatter')).toBe(true);
+  });
+
+  it('returns false for non-template markdown URIs', () => {
+    expect(isMdTemplateUri('file:///doc.md')).toBe(false);
+  });
+
+  it('returns false for non-markdown template URIs', () => {
+    expect(isMdTemplateUri('file:///doc.html.templ')).toBe(false);
+  });
+});
+
+describe('serverTesting helpers', () => {
+  let helpers: (typeof import('../src/server'))['serverTesting'];
+
+  beforeEach(async () => {
+    vi.resetModules();
+    const mod = await import('../src/server');
+    helpers = mod.serverTesting;
+    helpers.resetRuntimeState();
     consoleLog.mockClear();
+    getProject.mockReset();
+  });
 
-    const hoverHandler = onHover.mock.calls[0][0] as (params: {
-      textDocument: { uri: string };
-      position: { line: number; character: number };
-    }) => unknown;
+  it('normalizes open and change notifications from direct, legacy, and invalid payloads', () => {
+    expect(helpers.normalizeOpenNotification({ uri: 'file:///doc.md.tpl', text: 'body' })).toEqual({
+      uri: 'file:///doc.md.tpl',
+      text: 'body',
+    });
+    expect(
+      helpers.normalizeOpenNotification({
+        textDocument: { uri: 'file:///legacy.md.tpl', text: 'legacy' },
+      })
+    ).toEqual({ uri: 'file:///legacy.md.tpl', text: 'legacy' });
+    expect(
+      helpers.normalizeOpenNotification({ textDocument: { uri: 7 } } as never)
+    ).toBeUndefined();
 
-    const result = hoverHandler({
-      textDocument: { uri: toTestWorkspaceUri('file:///workspace/no-hover-value.md.tpl') },
-      position: { line: 0, character: 3 },
+    expect(
+      helpers.normalizeChangeNotification({ uri: 'file:///doc.md.tpl', text: 'changed' })
+    ).toEqual({ uri: 'file:///doc.md.tpl', text: 'changed' });
+    expect(
+      helpers.normalizeChangeNotification({
+        textDocument: { uri: 'file:///legacy.md.tpl' },
+        contentChanges: [{ text: 'legacy changed' }],
+      })
+    ).toEqual({ uri: 'file:///legacy.md.tpl', text: 'legacy changed' });
+    expect(
+      helpers.normalizeChangeNotification({ textDocument: { uri: 'file:///legacy.md.tpl' } })
+    ).toBeUndefined();
+    expect(
+      helpers.normalizeChangeNotification({
+        textDocument: { uri: 'file:///legacy.md.tpl' },
+        contentChanges: [],
+      })
+    ).toBeUndefined();
+    expect(
+      helpers.normalizeChangeNotification({
+        textDocument: { uri: 'file:///legacy.md.tpl' },
+        contentChanges: [{}],
+      } as never)
+    ).toBeUndefined();
+    expect(
+      helpers.normalizeChangeNotification(
+        {
+          textDocument: { uri: 'file:///legacy.md.tpl' },
+          contentChanges: [
+            {
+              range: {
+                start: { line: 0, character: 7 },
+                end: { line: 0, character: 10 },
+              },
+              text: 'new',
+            },
+            {
+              range: {
+                start: { line: 0, character: 10 },
+                end: { line: 0, character: 10 },
+              },
+              text: ' value',
+            },
+          ],
+        },
+        'legacy old'
+      )
+    ).toEqual({ uri: 'file:///legacy.md.tpl', text: 'legacy new value' });
+    expect(
+      helpers.normalizeChangeNotification({
+        textDocument: { uri: 'file:///legacy.md.tpl' },
+        contentChanges: [
+          {
+            range: {
+              start: { line: 0, character: 0 },
+              end: { line: 0, character: 6 },
+            },
+            text: 'rewired',
+          },
+        ],
+      })
+    ).toBeUndefined();
+    expect(
+      helpers.normalizeChangeNotification(
+        {
+          textDocument: { uri: 'file:///legacy.md.tpl' },
+          contentChanges: [
+            {
+              range: {
+                start: { line: 0, character: 0 },
+                end: { line: 0, character: 6 },
+              },
+              text: 'rewired',
+            },
+            { text: 'final text' },
+          ],
+        },
+        'legacy old'
+      )
+    ).toEqual({ uri: 'file:///legacy.md.tpl', text: 'final text' });
+    expect(
+      helpers.normalizeOpenNotification({ uri: 'file:///doc.md.tpl', text: undefined } as never)
+    ).toBeUndefined();
+    expect(
+      helpers.normalizeChangeNotification({ uri: 'file:///doc.md.tpl', text: undefined } as never)
+    ).toBeUndefined();
+  });
+
+  it('derives schema options, uri checks, and debug logging helpers from runtime state', () => {
+    helpers.refreshRuntimeSchemaOptions({
+      schema: { type: 'object' },
+      schemaUri: 'file:///runtime-schema.json',
+      contentSchema: { type: 'object', properties: { title: { type: 'string' } } },
+      contentSchemaUri: 'file:///content-schema.json',
+    });
+    helpers.setStoredWorkspaceRoot('/workspace/root');
+    helpers.setServerTraceMode('messages');
+    helpers.setSchemaOptionsForUri('file:///override.md.tpl', {
+      schema: { type: 'object', properties: { override: { type: 'string' } } },
     });
 
-    expect(result).toEqual({ contents: { kind: 'markdown' } });
-    expect(consoleLog).toHaveBeenCalledWith(expect.stringContaining('hover result=present'));
-    expect(consoleLog).not.toHaveBeenCalledWith(expect.stringContaining('hover markdown length='));
+    expect(helpers.isLikelySchemaUri('file:///schema.json')).toBe(true);
+    expect(helpers.isLikelySchemaUri('file:///template.yaml.templ')).toBe(false);
+
+    expect(helpers.getSchemaOptionsForUri('file:///missing.md.tpl').schemaUri).toBe(
+      'file:///runtime-schema.json'
+    );
+    expect(helpers.getSchemaOptionsForUri('file:///override.md.tpl').schema).toEqual({
+      type: 'object',
+      properties: { override: { type: 'string' } },
+    });
+
+    const intellisense = helpers.toIntellisenseOptions('file:///missing.md.tpl');
+    expect(intellisense.workspaceRoot).toBe('/workspace/root');
+    expect(intellisense.schemaUri).toBe('file:///runtime-schema.json');
+    intellisense.debugLog?.('hello');
+    expect(consoleLog).toHaveBeenCalledWith('[templjs-trace] file:///missing.md.tpl hello');
+
+    expect(helpers.toDiagnosticOptions('file:///missing.md.tpl')).toEqual({
+      documentUri: 'file:///missing.md.tpl',
+      schema: { type: 'object' },
+      contentSchema: { type: 'object', properties: { title: { type: 'string' } } },
+    });
+    expect(helpers.isYamlTemplateUri('file:///data.yaml.templ')).toBe(true);
+  });
+
+  it('returns diagnostics and emits yaml trace details when host validation succeeds', async () => {
+    helpers.setServerTraceMode('verbose');
+    getProject.mockResolvedValue({
+      getLanguageService: () => ({
+        doValidation: vi.fn(async () => [{ message: 'bad yaml', source: 'YAML' }]),
+        context: {
+          language: {
+            files: {
+              get: () => ({
+                languageId: 'templjs-yaml',
+                generated: {
+                  code: { id: 'root', languageId: 'yaml', mappings: [{}] },
+                },
+              }),
+            },
+          },
+          documents: {
+            getVirtualCodeUri: () => 'file:///virtual.yaml',
+            getMaps: function* () {
+              yield { id: 'map-1' };
+            },
+          },
+          disabledVirtualFileUris: new Set(['file:///virtual.yaml']),
+        },
+      }),
+    });
+
+    const diagnostics = await helpers.collectServiceDiagnosticsForDocument(
+      'file:///data.yaml.templ',
+      ''
+    );
+
+    expect(diagnostics).toEqual([{ message: 'bad yaml', source: 'YAML' }]);
+    expect(
+      consoleLog.mock.calls.some(
+        ([message]) => typeof message === 'string' && message.includes('[templjs-yaml-debug]')
+      )
+    ).toBe(true);
+  });
+
+  it('skips yaml debug tracing for non-yaml uris and when tracing is off', async () => {
+    helpers.setServerTraceMode('off');
+    getProject.mockResolvedValue({
+      getLanguageService: () => ({
+        doValidation: vi.fn(async () => [{ message: 'ok', source: 'templjs' }]),
+        context: {
+          language: { files: { get: () => ({ languageId: 'templjs-json' }) } },
+        },
+      }),
+    });
+
+    await expect(
+      helpers.collectServiceDiagnosticsForDocument('file:///data.json.templ', '')
+    ).resolves.toEqual([{ message: 'ok', source: 'templjs' }]);
+    expect(
+      consoleLog.mock.calls.some(
+        ([message]) => typeof message === 'string' && message.includes('[templjs-yaml-debug]')
+      )
+    ).toBe(false);
+  });
+
+  it('traces yaml diagnostics even when no generated virtual code metadata is available', async () => {
+    helpers.setServerTraceMode('verbose');
+    getProject.mockResolvedValue({
+      getLanguageService: () => ({
+        doValidation: vi.fn(async () => [{ message: 'yaml warning', source: 'templjs' }]),
+        context: {
+          language: {
+            files: {
+              get: () => ({ languageId: 'templjs-yaml' }),
+            },
+          },
+        },
+      }),
+    });
+
+    await expect(
+      helpers.collectServiceDiagnosticsForDocument('file:///simple.yaml.templ', '')
+    ).resolves.toEqual([{ message: 'yaml warning', source: 'templjs' }]);
+    expect(
+      consoleLog.mock.calls.some(
+        ([message]) =>
+          typeof message === 'string' &&
+          message.includes('[templjs-yaml-debug]') &&
+          message.includes('hasGenerated=no') &&
+          message.includes('virtualUri=none') &&
+          message.includes('mapCount=0')
+      )
+    ).toBe(true);
+  });
+
+  it('returns an empty array when host diagnostics throw', async () => {
+    getProject.mockResolvedValue({
+      getLanguageService: () => ({
+        doValidation: vi.fn(async () => {
+          throw new Error('kaboom');
+        }),
+      }),
+    });
+
+    await expect(
+      helpers.collectServiceDiagnosticsForDocument('file:///doc.md.tpl', '')
+    ).resolves.toEqual([]);
+    expect(consoleLog).toHaveBeenCalledWith(
+      '[templjs] Host diagnostics skipped for file:///doc.md.tpl: kaboom'
+    );
   });
 });

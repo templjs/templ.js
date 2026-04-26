@@ -176,28 +176,31 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "pnpm run build",
     "build": "tsc -p ./ && node ./scripts/build.mjs",
-    "package": "vsce package --no-dependencies --out templjs-verify.vsix",
-    "watch": "tsc -watch -p ./",
-    "test": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts",
-    "test:watch": "vitest --config vitest.config.ts",
-    "test:coverage": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts --coverage",
+    "clean": "node -e \"const fs=require('node:fs'); fs.rmSync('dist',{recursive:true,force:true}); fs.rmSync('tsconfig.tsbuildinfo',{force:true}); for (const entry of fs.readdirSync('.')) if (/^templjs-.*\\.vsix$/.test(entry)) fs.rmSync(entry,{force:true});\"",
     "lint": "echo \"No linting configured yet\" && exit 0",
-    "clean": "rm -rf dist tsconfig.tsbuildinfo templjs-*.vsix"
+    "package": "node -e \"require('node:fs').mkdirSync('../../../out',{recursive:true})\" && vsce package --no-dependencies --out ../../../out/templjs-verify.vsix",
+    "test": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts",
+    "test:coverage": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts --coverage",
+    "test:watch": "vitest --config vitest.config.ts",
+    "vscode:prepublish": "pnpm run build",
+    "watch": "tsc -watch -p ./"
   },
   "dependencies": {
     "@templjs/core": "workspace:*",
     "@templjs/volar": "workspace:*",
     "@volar/language-server": "~2.0.4",
-    "gray-matter": "^4.0.3",
+    "@volar/language-service": "~2.0.4",
     "minimatch": "^9.0.9",
     "tslib": "^2.8.1",
-    "vscode-languageclient": "^9.0.1"
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12",
+    "vscode-uri": "^3.1.0",
+    "yaml-language-service": "^0.19.2"
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",
-    "@vscode/vsce": "3.7.1",
+    "@vscode/vsce": "^3.9.0",
     "esbuild": "0.27.7"
   },
   "repository": {

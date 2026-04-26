@@ -10,7 +10,10 @@ status: proposed
 status_reason: needs-triage
 priority: medium
 estimated: 5
-actual: 0
+actual: 1
+links:
+  evidence:
+    - '[[record-081-rewrite-volar-and-vscode-tests-toward-behavior-first-request-result-coverage-evidence-1]]'
 ---
 
 ## Goal

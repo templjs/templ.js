@@ -3,6 +3,19 @@
   "name": "TemplJS Markdown",
   "scopeName": "text.templjs.markdown",
   "repository": {
+    "embeddedMarkdown": {
+      "begin": "\\A",
+      "end": "\\z",
+      "name": "meta.embedded.block.markdown",
+      "patterns": [
+        {
+          "include": "#frontmatter"
+        },
+        {
+          "include": "text.html.markdown"
+        }
+      ]
+    },
     "frontmatter": {
       "begin": "\\A---\\s*$",
       "end": "^---\\s*$",
@@ -30,7 +43,7 @@
   },
   "patterns": [
     {
-      "include": "#frontmatter"
+      "include": "#embeddedMarkdown"
     },
     {
       "include": "text.html.markdown"

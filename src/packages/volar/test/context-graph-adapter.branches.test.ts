@@ -210,6 +210,271 @@ describe('ContextGraphSemanticReadAdapter branch coverage', () => {
     expect(target).toBeNull();
   });
 
+  it('resolves path definitions when schema URI is configured', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const tempDir = makeTempDir();
+    const schemaPath = path.join(tempDir, 'schema.json');
+
+    writeFileSync(
+      schemaPath,
+      JSON.stringify(
+        {
+          type: 'object',
+          properties: {
+            user: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+              },
+            },
+          },
+        },
+        null,
+        2
+      )
+    );
+
+    const target = adapter.resolvePathDefinition(
+      { operation: 'definition', contextBlock: 'content' },
+      'user.name',
+      {
+        schemaUri: pathToFileURL(schemaPath).toString(),
+      }
+    );
+
+    expect(target?.uri).toBe(pathToFileURL(schemaPath).toString());
+    expect(target?.range.start.line).toBeGreaterThanOrEqual(0);
+  });
+
+  it('merges allOf content schema refs into content completions', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const tempDir = makeTempDir();
+    const defsPath = path.join(tempDir, 'defs.json');
+    const contentSchemaPath = path.join(tempDir, 'content-schema.json');
+
+    writeFileSync(
+      defsPath,
+      JSON.stringify(
+        {
+          type: 'object',
+          properties: {
+            heading: { type: 'string', description: 'Heading text' },
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFileSync(
+      contentSchemaPath,
+      JSON.stringify(
+        {
+          type: 'object',
+          allOf: [{ $ref: './defs.json' }],
+        },
+        null,
+        2
+      )
+    );
+
+    const items = adapter.getChildCompletions(
+      {
+        operation: 'completion',
+        contextBlock: 'content',
+      },
+      '',
+      {
+        contentSchema: {
+          type: 'object',
+          allOf: [{ $ref: './defs.json' }],
+        },
+        contentSchemaUri: pathToFileURL(contentSchemaPath).toString(),
+      }
+    );
+
+    expect(items).toContainEqual({
+      label: 'heading',
+      kind: 'variable',
+      detail: 'string',
+      documentation: 'Heading text',
+    });
+  });
+
+  it('returns nested child completions when parent-path context includes location metadata', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const items = adapter.getChildCompletions(
+      {
+        operation: 'completion',
+        contextBlock: 'content',
+        documentUri: 'file:///workspace/doc.md.tpl',
+        offset: 24,
+        line: 3,
+        character: 5,
+      },
+      'user',
+      {
+        schema: {
+          type: 'object',
+          properties: {
+            user: {
+              type: 'object',
+              properties: {
+                name: { type: 'string', description: 'User name' },
+              },
+            },
+          },
+        },
+      }
+    );
+
+    expect(items).toEqual([
+      {
+        label: 'name',
+        kind: 'property',
+        detail: 'string',
+        documentation: 'User name',
+      },
+    ]);
+  });
+
+  it('returns original schema when private allOf resolution has nothing to merge', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const internals = adapter as unknown as {
+      resolveAllOfRefs: (schema: object, schemaUri: string) => object;
+    };
+    const schema = {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+      },
+    };
+
+    expect(internals.resolveAllOfRefs(schema, 'file:///workspace/schema.json')).toBe(schema);
+  });
+
+  it('skips invalid allOf entries before merging a valid file ref', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const internals = adapter as unknown as {
+      resolveAllOfRefs: (schema: object, schemaUri: string) => object;
+    };
+    const tempDir = makeTempDir();
+    const defsPath = path.join(tempDir, 'defs.json');
+    const schemaPath = path.join(tempDir, 'schema.json');
+
+    writeFileSync(
+      defsPath,
+      JSON.stringify(
+        {
+          type: 'object',
+          properties: {
+            slug: { type: 'string' },
+          },
+        },
+        null,
+        2
+      )
+    );
+    writeFileSync(schemaPath, '{}');
+
+    const resolved = internals.resolveAllOfRefs(
+      {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+        },
+        allOf: [null, {}, { $ref: 123 }, { $ref: './defs.json' }],
+      },
+      pathToFileURL(schemaPath).toString()
+    ) as {
+      properties: Record<string, unknown>;
+    };
+
+    expect(Object.keys(resolved.properties)).toEqual(['title', 'slug']);
+  });
+
+  it('returns parsed file refs and undefined for invalid private schema-ref targets', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const internals = adapter as unknown as {
+      loadSchemaRef: (baseUri: string, ref: string) => unknown;
+    };
+    const tempDir = makeTempDir();
+    const schemaPath = path.join(tempDir, 'schema.json');
+
+    writeFileSync(
+      schemaPath,
+      JSON.stringify(
+        {
+          type: 'object',
+          properties: {
+            user: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+              },
+            },
+          },
+        },
+        null,
+        2
+      )
+    );
+
+    expect(internals.loadSchemaRef(pathToFileURL(schemaPath).toString(), '')).toEqual({
+      type: 'object',
+      properties: {
+        user: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+          },
+        },
+      },
+    });
+    expect(
+      internals.loadSchemaRef(pathToFileURL(schemaPath).toString(), '#/properties/user')
+    ).toEqual({
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+      },
+    });
+    expect(
+      internals.loadSchemaRef(pathToFileURL(schemaPath).toString(), '#/properties/user/missing')
+    ).toBeUndefined();
+    expect(
+      internals.loadSchemaRef('https://example.com/schema.json', './other.json')
+    ).toBeUndefined();
+  });
+
+  it('decodes JSON pointer segments when resolving private schema refs', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const internals = adapter as unknown as {
+      loadSchemaRef: (baseUri: string, ref: string) => unknown;
+    };
+    const tempDir = makeTempDir();
+    const schemaPath = path.join(tempDir, 'schema.json');
+
+    writeFileSync(
+      schemaPath,
+      JSON.stringify(
+        {
+          type: 'object',
+          properties: {
+            'foo/bar': {
+              type: 'string',
+            },
+          },
+        },
+        null,
+        2
+      )
+    );
+
+    expect(
+      internals.loadSchemaRef(pathToFileURL(schemaPath).toString(), '#/properties/foo~1bar')
+    ).toEqual({ type: 'string' });
+  });
+
   it('returns null path details when fallback schema URI is remote', () => {
     const adapter = createContextGraphSemanticReadAdapter();
     const details = adapter.getPathDetails(

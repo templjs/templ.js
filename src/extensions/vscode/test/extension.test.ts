@@ -36,8 +36,12 @@ const activeTextEditor = {
     getText: () => '---\n$templ-schema: .templjs/root.json\n---\n{{ user.name }}',
   },
 };
-const createFileSystemWatcher = vi.fn(() => ({ dispose: vi.fn() }));
-const onDidOpenTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
+const createFileSystemWatcher = vi.fn(() => ({
+  onDidCreate: vi.fn(() => ({ dispose: vi.fn() })),
+  onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
+  onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
+  dispose: vi.fn(),
+}));
 const onDidChangeActiveTextEditor = vi.fn(() => ({ dispose: vi.fn() }));
 const getConfiguration = vi.fn(() => ({
   get: vi.fn((key: string, fallback?: unknown): unknown => configurationValues[key] ?? fallback),
@@ -45,10 +49,12 @@ const getConfiguration = vi.fn(() => ({
 
 const start = vi.fn(() => Promise.resolve());
 const stop = vi.fn(() => Promise.resolve());
+const sendNotification = vi.fn(() => Promise.resolve());
 const languageClientConstructor = vi.fn().mockImplementation(function LanguageClientMock() {
   return {
     start,
     stop,
+    sendNotification,
   };
 });
 
@@ -63,9 +69,13 @@ vi.mock('vscode', () => ({
     activeTextEditor,
     onDidChangeActiveTextEditor,
   },
+  FileChangeType: {
+    Created: 1,
+    Changed: 2,
+    Deleted: 3,
+  },
   workspace: {
     createFileSystemWatcher,
-    onDidOpenTextDocument,
     getConfiguration,
   },
 }));
@@ -108,11 +118,13 @@ describe('extension-activation', () => {
     outputChannel.appendLine.mockClear();
     outputChannel.append.mockClear();
     createFileSystemWatcher.mockClear();
+    onDidChangeActiveTextEditor.mockClear();
     createOutputChannel.mockClear();
     outputChannel.dispose.mockClear();
     getConfiguration.mockClear();
     start.mockClear();
     stop.mockClear();
+    sendNotification.mockClear();
     languageClientConstructor.mockClear();
   });
 
@@ -619,6 +631,130 @@ describe('extension-activation', () => {
 
     expect(onDidChangeActiveTextEditor).toHaveBeenCalled();
     expect(Array.isArray(traceLines)).toBe(true);
+  });
+
+  it('forwards watched-file notifications to the language server', async () => {
+    const watcherHandlers: Record<string, (uri: { toString: () => string }) => void> = {};
+    createFileSystemWatcher
+      .mockReturnValueOnce({
+        onDidCreate: vi.fn(() => ({ dispose: vi.fn() })),
+        onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
+        onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
+        dispose: vi.fn(),
+      })
+      .mockReturnValueOnce({
+        onDidCreate: vi.fn((handler) => {
+          watcherHandlers.create = handler;
+          return { dispose: vi.fn() };
+        }),
+        onDidChange: vi.fn((handler) => {
+          watcherHandlers.change = handler;
+          return { dispose: vi.fn() };
+        }),
+        onDidDelete: vi.fn((handler) => {
+          watcherHandlers.delete = handler;
+          return { dispose: vi.fn() };
+        }),
+        dispose: vi.fn(),
+      });
+
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+    watcherHandlers.create?.({ toString: () => 'file:///workspace/schema.json' });
+    watcherHandlers.change?.({ toString: () => 'file:///workspace/schema.yaml' });
+    watcherHandlers.delete?.({ toString: () => 'file:///workspace/schema.yml' });
+    expect(sendNotification).toHaveBeenCalledWith('templjs/watchedFilesChanged', {
+      changes: [{ uri: 'file:///workspace/schema.json', type: 1 }],
+    });
+    expect(sendNotification).toHaveBeenCalledWith('templjs/watchedFilesChanged', {
+      changes: [{ uri: 'file:///workspace/schema.yaml', type: 2 }],
+    });
+    expect(sendNotification).toHaveBeenCalledWith('templjs/watchedFilesChanged', {
+      changes: [{ uri: 'file:///workspace/schema.yml', type: 3 }],
+    });
+  });
+
+  it('stops forwarding watcher notifications after deactivation', async () => {
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const sentBeforeDeactivate = sendNotification.mock.calls.length;
+    await module.deactivate();
+    const activeEditorHandler = onDidChangeActiveTextEditor.mock.calls[0][0] as (
+      editor: { document: { uri: { toString: () => string }; languageId: string } } | undefined
+    ) => void;
+    activeEditorHandler(undefined);
+
+    expect(sendNotification.mock.calls.length).toBe(sentBeforeDeactivate);
+  });
+
+  it('exposes helper behavior through extensionTesting', async () => {
+    configurationValues['trace.server'] = 'bogus';
+    configurationValues.schemaPath = '  .templjs/root.json  ';
+    configurationValues.contentSchemaPath = '   ';
+    configurationValues.schemas = {};
+    activeTextEditor.document.uri.scheme = 'file';
+    activeTextEditor.document.uri.toString = () => 'file:///workspace/test.yaml.templ';
+    activeTextEditor.document.getText = () => 'content';
+
+    const module = await import('../src/extension');
+    const helpers = module.extensionTesting;
+
+    expect(helpers.getTraceMode()).toBe('off');
+    expect(helpers.shouldTrace('messages')).toBe(true);
+    expect(helpers.shouldTrace('verbose', 'verbose')).toBe(true);
+    expect(helpers.getResultCount(null)).toBe(0);
+    expect(helpers.getResultCount([{ label: 'one' }])).toBe(1);
+    expect(helpers.getResultCount({ items: [{ label: 'one' }, {}] })).toBe(2);
+    expect(helpers.extractLabels([{ label: 'one' }, null, { label: 'two' }])).toEqual([
+      'one',
+      'two',
+    ]);
+    expect(helpers.extractLabels({ items: [{ label: 'one' }, { label: 7 }, {}] })).toEqual(['one']);
+    expect(helpers.hoverContentToString({ contents: ['a', { value: 'b' }] } as never)).toBe(
+      'a | b'
+    );
+    expect(helpers.hoverContentToString({ contents: { value: 'b' } } as never)).toBe('');
+    expect(helpers.getFirstTargetUri([{ targetUri: { toString: () => 'file:///x.json' } }])).toBe(
+      'file:///x.json'
+    );
+    expect(helpers.getFirstTargetUri('bad-result')).toBe('unknown');
+    expect(
+      helpers.isTempljsDocument({
+        uri: { scheme: 'file', fsPath: '/workspace/page.md.templ' },
+        languageId: 'plaintext',
+      } as never)
+    ).toBe(true);
+    expect(
+      helpers.isTempljsDocument({
+        uri: { scheme: 'file', fsPath: '/workspace/page.md' },
+        languageId: 'templjs-markdown',
+      } as never)
+    ).toBe(true);
+    expect(
+      helpers.isTempljsDocument({
+        uri: { scheme: 'untitled', fsPath: '/workspace/page.md.templ' },
+        languageId: 'templjs-markdown',
+      } as never)
+    ).toBe(false);
+    expect(helpers.getActiveDocumentContext()).toEqual({
+      uri: 'file:///workspace/test.yaml.templ',
+      content: 'content',
+    });
+    expect(helpers.getSchemaPathFromSettings()).toBe('.templjs/root.json');
+    expect(helpers.getContentSchemaPathFromSettings()).toBeUndefined();
+    expect(helpers.getSchemaPatternsFromSettings()).toBeUndefined();
+    expect(typeof helpers.getTypeScriptSdkPath()).toBe('string');
   });
 
   it('disposes output channel on deactivate when client was not created', async () => {
