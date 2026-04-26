@@ -2084,6 +2084,12 @@ describe('serverTesting helpers', () => {
       })
     ).toBeUndefined();
     expect(
+      helpers.normalizeChangeNotification({
+        textDocument: { uri: 'file:///legacy.md.tpl' },
+        contentChanges: [{}],
+      } as never)
+    ).toBeUndefined();
+    expect(
       helpers.normalizeChangeNotification(
         {
           textDocument: { uri: 'file:///legacy.md.tpl' },
