@@ -562,6 +562,13 @@ const notificationConnection = connection as unknown as {
   onNotification?: (method: string, handler: (event: unknown) => void) => void;
 };
 
+/* v8 ignore next */
+connection.onDidOpenTextDocument((event) => handleDocumentDidOpen(event));
+/* v8 ignore next */
+connection.onDidChangeTextDocument((event) => handleDocumentDidChange(event));
+/* v8 ignore next */
+connection.onDidChangeWatchedFiles((event) => handleWatchedFilesChanged(event));
+
 if (typeof notificationConnection.onNotification === 'function') {
   /* v8 ignore next */
   notificationConnection.onNotification(DOCUMENT_DID_OPEN_NOTIFICATION, (event) =>
@@ -575,12 +582,6 @@ if (typeof notificationConnection.onNotification === 'function') {
   notificationConnection.onNotification(WATCHED_FILES_CHANGED_NOTIFICATION, (event) =>
     handleWatchedFilesChanged(event as WatchedFilesNotification)
   );
-} else {
-  /* v8 ignore start */
-  connection.onDidOpenTextDocument((event) => handleDocumentDidOpen(event));
-  connection.onDidChangeTextDocument((event) => handleDocumentDidChange(event));
-  connection.onDidChangeWatchedFiles((event) => handleWatchedFilesChanged(event));
-  /* v8 ignore stop */
 }
 
 connection.onInitialized(server.initialized);

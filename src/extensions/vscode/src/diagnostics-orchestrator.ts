@@ -15,9 +15,11 @@ export interface DeterministicDiagnosticsOrchestratorOptions<TDiagnostic> {
 
 interface DocumentDiagnosticsState<TDiagnostic> {
   revisionKey?: string;
+  runToken?: number;
   localDiagnostics: TDiagnostic[];
   extendedDiagnostics: TDiagnostic[];
   timer: ReturnType<typeof setTimeout> | undefined;
+  scheduledRunToken?: number;
 }
 
 function defaultLog(_message: string): void {
@@ -71,7 +73,14 @@ export class DeterministicDiagnosticsOrchestrator<TDiagnostic> {
       clearTimeout(state.timer);
     }
 
+    const scheduledRunToken = (state.scheduledRunToken ?? 0) + 1;
+    state.scheduledRunToken = scheduledRunToken;
+
     state.timer = setTimeout(() => {
+      const current = this.stateByUri.get(uri);
+      if (!current || current.scheduledRunToken !== scheduledRunToken) {
+        return;
+      }
       state.timer = undefined;
       this.run(uri);
     }, this.debounceMs);
@@ -108,6 +117,8 @@ export class DeterministicDiagnosticsOrchestrator<TDiagnostic> {
       state.extendedDiagnostics = [];
     }
     state.revisionKey = revisionKey;
+    const runToken = (state.runToken ?? 0) + 1;
+    state.runToken = runToken;
 
     const commit = (
       source: 'local' | 'extended' | 'merged',
@@ -124,6 +135,12 @@ export class DeterministicDiagnosticsOrchestrator<TDiagnostic> {
       if (current.revisionKey !== revisionKey) {
         this.log(
           `[templjs-orch] commit DROPPED source=${source} reason=stale revisionKey=${revisionKey} currentKey=${current.revisionKey ?? 'none'}`
+        );
+        return;
+      }
+      if (current.runToken !== runToken) {
+        this.log(
+          `[templjs-orch] commit DROPPED source=${source} reason=stale-run revisionKey=${revisionKey} runToken=${runToken} currentRunToken=${current.runToken ?? 'none'}`
         );
         return;
       }
@@ -186,9 +203,11 @@ export class DeterministicDiagnosticsOrchestrator<TDiagnostic> {
 
     const created: DocumentDiagnosticsState<TDiagnostic> = {
       revisionKey: undefined,
+      runToken: undefined,
       localDiagnostics: [],
       extendedDiagnostics: [],
       timer: undefined,
+      scheduledRunToken: undefined,
     };
 
     this.stateByUri.set(uri, created);

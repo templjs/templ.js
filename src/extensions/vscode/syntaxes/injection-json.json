@@ -16,10 +16,10 @@
   },
   "patterns": [
     {
-      "include": "source.json"
+      "include": "#embeddedJson"
     },
     {
-      "include": "#embeddedJson"
+      "include": "source.json"
     },
     {
       "include": "source.templjs"

@@ -43,10 +43,10 @@
   },
   "patterns": [
     {
-      "include": "text.html.markdown"
+      "include": "#embeddedMarkdown"
     },
     {
-      "include": "#embeddedMarkdown"
+      "include": "text.html.markdown"
     },
     {
       "include": "source.templjs"

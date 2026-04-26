@@ -140,6 +140,46 @@ describe('DeterministicDiagnosticsOrchestrator', () => {
     expect(lastPublish).toEqual([{ code: 'local-v2' }, { code: 'host-v2' }]);
   });
 
+  it('drops stale diagnostics from an older run when revision keys are unchanged', async () => {
+    const uri = 'file:///doc.md.templ';
+    const deferredLocalV1 = createDeferred<TestDiagnostic[]>();
+    const deferredExtendedV1 = createDeferred<TestDiagnostic[]>();
+    const deferredExtendedV2 = createDeferred<TestDiagnostic[]>();
+    const {
+      orchestrator,
+      textByUri,
+      publishDiagnostics,
+      collectLocalDiagnostics,
+      collectExtendedDiagnostics,
+    } = createHarness();
+
+    textByUri.set(uri, 'same');
+    collectLocalDiagnostics
+      .mockReturnValueOnce(deferredLocalV1.promise as Promise<TestDiagnostic[]>)
+      .mockReturnValueOnce([{ code: 'local-v2' }]);
+    collectExtendedDiagnostics
+      .mockReturnValueOnce(deferredExtendedV1.promise)
+      .mockReturnValueOnce(deferredExtendedV2.promise);
+
+    orchestrator.schedule(uri, { immediate: true });
+    await flushMicrotasks();
+
+    orchestrator.schedule(uri, { immediate: true });
+    await flushMicrotasks();
+
+    deferredLocalV1.resolve([{ code: 'local-v1' }]);
+    deferredExtendedV1.resolve([{ code: 'host-v1' }]);
+    await flushMicrotasks();
+
+    deferredExtendedV2.resolve([{ code: 'host-v2' }]);
+    await flushMicrotasks();
+
+    expect(publishDiagnostics.mock.calls.map((call) => call[1])).toEqual([
+      [{ code: 'local-v2' }],
+      [{ code: 'local-v2' }, { code: 'host-v2' }],
+    ]);
+  });
+
   it('debounces repeated schedules for the same URI', async () => {
     vi.useFakeTimers();
     try {

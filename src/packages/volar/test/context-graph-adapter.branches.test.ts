@@ -446,6 +446,35 @@ describe('ContextGraphSemanticReadAdapter branch coverage', () => {
     ).toBeUndefined();
   });
 
+  it('decodes JSON pointer segments when resolving private schema refs', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const internals = adapter as unknown as {
+      loadSchemaRef: (baseUri: string, ref: string) => unknown;
+    };
+    const tempDir = makeTempDir();
+    const schemaPath = path.join(tempDir, 'schema.json');
+
+    writeFileSync(
+      schemaPath,
+      JSON.stringify(
+        {
+          type: 'object',
+          properties: {
+            'foo/bar': {
+              type: 'string',
+            },
+          },
+        },
+        null,
+        2
+      )
+    );
+
+    expect(
+      internals.loadSchemaRef(pathToFileURL(schemaPath).toString(), '#/properties/foo~1bar')
+    ).toEqual({ type: 'string' });
+  });
+
   it('returns null path details when fallback schema URI is remote', () => {
     const adapter = createContextGraphSemanticReadAdapter();
     const details = adapter.getPathDetails(

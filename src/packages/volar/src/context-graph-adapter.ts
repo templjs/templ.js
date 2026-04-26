@@ -1406,7 +1406,8 @@ export class ContextGraphSemanticReadAdapter {
     }
 
     let current: unknown = parsed;
-    for (const seg of fragment.split('/').filter(Boolean)) {
+    for (const rawSeg of fragment.split('/').filter(Boolean)) {
+      const seg = decodeJsonPointerSegment(rawSeg);
       if (!current || typeof current !== 'object') {
         return undefined;
       }

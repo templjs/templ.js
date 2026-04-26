@@ -42,8 +42,6 @@ const createFileSystemWatcher = vi.fn(() => ({
   onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
   dispose: vi.fn(),
 }));
-const onDidOpenTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
-const onDidChangeTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidChangeActiveTextEditor = vi.fn(() => ({ dispose: vi.fn() }));
 const getConfiguration = vi.fn(() => ({
   get: vi.fn((key: string, fallback?: unknown): unknown => configurationValues[key] ?? fallback),
@@ -78,8 +76,6 @@ vi.mock('vscode', () => ({
   },
   workspace: {
     createFileSystemWatcher,
-    onDidOpenTextDocument,
-    onDidChangeTextDocument,
     getConfiguration,
   },
 }));
@@ -122,8 +118,6 @@ describe('extension-activation', () => {
     outputChannel.appendLine.mockClear();
     outputChannel.append.mockClear();
     createFileSystemWatcher.mockClear();
-    onDidOpenTextDocument.mockClear();
-    onDidChangeTextDocument.mockClear();
     onDidChangeActiveTextEditor.mockClear();
     createOutputChannel.mockClear();
     outputChannel.dispose.mockClear();
@@ -639,7 +633,7 @@ describe('extension-activation', () => {
     expect(Array.isArray(traceLines)).toBe(true);
   });
 
-  it('forwards open, change, and watched-file notifications for templjs documents', async () => {
+  it('forwards watched-file notifications to the language server', async () => {
     const watcherHandlers: Record<string, (uri: { toString: () => string }) => void> = {};
     createFileSystemWatcher
       .mockReturnValueOnce({
@@ -671,44 +665,9 @@ describe('extension-activation', () => {
 
     const module = await import('../src/extension');
     module.activate(context as never);
-
-    const openHandler = onDidOpenTextDocument.mock.calls[0][0] as (document: {
-      uri: { scheme: string; fsPath: string; toString: () => string };
-      languageId: string;
-      getText: () => string;
-    }) => void;
-    const changeHandler = onDidChangeTextDocument.mock.calls[0][0] as (event: {
-      document: {
-        uri: { scheme: string; fsPath: string; toString: () => string };
-        languageId: string;
-        getText: () => string;
-      };
-    }) => void;
-
-    const templDocument = {
-      uri: {
-        scheme: 'file',
-        fsPath: '/workspace/page.md.templ',
-        toString: () => 'file:///workspace/page.md.templ',
-      },
-      languageId: 'plaintext',
-      getText: () => '---\ntitle: test\n---',
-    };
-
-    openHandler(templDocument);
-    changeHandler({ document: templDocument });
     watcherHandlers.create?.({ toString: () => 'file:///workspace/schema.json' });
     watcherHandlers.change?.({ toString: () => 'file:///workspace/schema.yaml' });
     watcherHandlers.delete?.({ toString: () => 'file:///workspace/schema.yml' });
-
-    expect(sendNotification).toHaveBeenCalledWith('templjs/documentDidOpen', {
-      uri: 'file:///workspace/page.md.templ',
-      text: '---\ntitle: test\n---',
-    });
-    expect(sendNotification).toHaveBeenCalledWith('templjs/documentDidChange', {
-      uri: 'file:///workspace/page.md.templ',
-      text: '---\ntitle: test\n---',
-    });
     expect(sendNotification).toHaveBeenCalledWith('templjs/watchedFilesChanged', {
       changes: [{ uri: 'file:///workspace/schema.json', type: 1 }],
     });
@@ -720,7 +679,7 @@ describe('extension-activation', () => {
     });
   });
 
-  it('skips notifications for non-templjs documents and missing client state', async () => {
+  it('stops forwarding watcher notifications after deactivation', async () => {
     const context = {
       subscriptions: [] as Array<{ dispose: () => void }>,
       asAbsolutePath: (value: string) => `/tmp/${value}`,
@@ -728,40 +687,6 @@ describe('extension-activation', () => {
 
     const module = await import('../src/extension');
     module.activate(context as never);
-
-    const openHandler = onDidOpenTextDocument.mock.calls[0][0] as (document: {
-      uri: { scheme: string; fsPath: string; toString: () => string };
-      languageId: string;
-      getText: () => string;
-    }) => void;
-    const changeHandler = onDidChangeTextDocument.mock.calls[0][0] as (event: {
-      document: {
-        uri: { scheme: string; fsPath: string; toString: () => string };
-        languageId: string;
-        getText: () => string;
-      };
-    }) => void;
-
-    openHandler({
-      uri: {
-        scheme: 'untitled',
-        fsPath: '/workspace/note.md',
-        toString: () => 'untitled:note.md',
-      },
-      languageId: 'markdown',
-      getText: () => 'plain note',
-    });
-    changeHandler({
-      document: {
-        uri: {
-          scheme: 'file',
-          fsPath: '/workspace/note.md',
-          toString: () => 'file:///workspace/note.md',
-        },
-        languageId: 'markdown',
-        getText: () => 'plain note',
-      },
-    });
 
     const sentBeforeDeactivate = sendNotification.mock.calls.length;
     await module.deactivate();

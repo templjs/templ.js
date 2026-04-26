@@ -16,10 +16,10 @@
   },
   "patterns": [
     {
-      "include": "text.html.basic"
+      "include": "#embeddedHtml"
     },
     {
-      "include": "#embeddedHtml"
+      "include": "text.html.basic"
     },
     {
       "include": "source.templjs"

@@ -8,7 +8,16 @@ const extensionRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)),
 type InjectionGrammar = {
   patterns: Array<{ include?: string }>;
   repository: {
+    embeddedHtml?: {
+      patterns?: Array<{ include?: string }>;
+    };
+    embeddedJson?: {
+      patterns?: Array<{ include?: string }>;
+    };
     embeddedMarkdown?: {
+      patterns?: Array<{ include?: string }>;
+    };
+    embeddedYaml?: {
       patterns?: Array<{ include?: string }>;
     };
     frontmatter?: {
@@ -41,6 +50,38 @@ describe('grammar-smoke-md-tmpl', () => {
 
     expect(grammar.repository.frontmatter?.begin).toBe('\\A---\\s*$');
     expect(grammar.repository.frontmatter?.end).toBe('^---\\s*$');
+  });
+
+  it('places embedded wrappers before host includes for embedded language routing', () => {
+    const markdownGrammar = JSON.parse(
+      readFileSync(path.join(extensionRoot, 'syntaxes/injection-markdown.json'), 'utf-8')
+    ) as InjectionGrammar;
+    const htmlGrammar = JSON.parse(
+      readFileSync(path.join(extensionRoot, 'syntaxes/injection-html.json'), 'utf-8')
+    ) as InjectionGrammar;
+    const jsonGrammar = JSON.parse(
+      readFileSync(path.join(extensionRoot, 'syntaxes/injection-json.json'), 'utf-8')
+    ) as InjectionGrammar;
+    const yamlGrammar = JSON.parse(
+      readFileSync(path.join(extensionRoot, 'syntaxes/injection-yaml.json'), 'utf-8')
+    ) as InjectionGrammar;
+
+    expect(markdownGrammar.patterns.map((pattern) => pattern.include).slice(0, 2)).toEqual([
+      '#embeddedMarkdown',
+      'text.html.markdown',
+    ]);
+    expect(htmlGrammar.patterns.map((pattern) => pattern.include).slice(0, 2)).toEqual([
+      '#embeddedHtml',
+      'text.html.basic',
+    ]);
+    expect(jsonGrammar.patterns.map((pattern) => pattern.include).slice(0, 2)).toEqual([
+      '#embeddedJson',
+      'source.json',
+    ]);
+    expect(yamlGrammar.patterns.map((pattern) => pattern.include).slice(0, 2)).toEqual([
+      '#embeddedYaml',
+      'source.yaml',
+    ]);
   });
 
   it('defines templjs token delimiters used by markdown injection', () => {
