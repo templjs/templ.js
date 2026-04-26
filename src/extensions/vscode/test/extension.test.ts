@@ -715,17 +715,30 @@ describe('extension-activation', () => {
     expect(helpers.shouldTrace('verbose', 'verbose')).toBe(true);
     expect(helpers.getResultCount(null)).toBe(0);
     expect(helpers.getResultCount([{ label: 'one' }])).toBe(1);
+    expect(helpers.getResultCount({ items: [{ label: 'one' }, {}] })).toBe(2);
+    expect(helpers.extractLabels([{ label: 'one' }, null, { label: 'two' }])).toEqual([
+      'one',
+      'two',
+    ]);
     expect(helpers.extractLabels({ items: [{ label: 'one' }, { label: 7 }, {}] })).toEqual(['one']);
     expect(helpers.hoverContentToString({ contents: ['a', { value: 'b' }] } as never)).toBe(
       'a | b'
     );
+    expect(helpers.hoverContentToString({ contents: { value: 'b' } } as never)).toBe('');
     expect(helpers.getFirstTargetUri([{ targetUri: { toString: () => 'file:///x.json' } }])).toBe(
       'file:///x.json'
     );
+    expect(helpers.getFirstTargetUri('bad-result')).toBe('unknown');
     expect(
       helpers.isTempljsDocument({
         uri: { scheme: 'file', fsPath: '/workspace/page.md.templ' },
         languageId: 'plaintext',
+      } as never)
+    ).toBe(true);
+    expect(
+      helpers.isTempljsDocument({
+        uri: { scheme: 'file', fsPath: '/workspace/page.md' },
+        languageId: 'templjs-markdown',
       } as never)
     ).toBe(true);
     expect(
