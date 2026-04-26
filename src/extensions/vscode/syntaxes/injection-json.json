@@ -2,9 +2,24 @@
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
   "name": "TemplJS JSON",
   "scopeName": "text.templjs.json",
+  "repository": {
+    "embeddedJson": {
+      "begin": "\\A",
+      "end": "\\z",
+      "name": "meta.embedded.block.json",
+      "patterns": [
+        {
+          "include": "source.json"
+        }
+      ]
+    }
+  },
   "patterns": [
     {
       "include": "source.json"
+    },
+    {
+      "include": "#embeddedJson"
     },
     {
       "include": "source.templjs"

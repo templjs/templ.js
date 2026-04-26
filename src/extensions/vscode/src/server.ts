@@ -5,11 +5,11 @@ import {
   createSimpleProjectProvider,
 } from '@volar/language-server/node';
 import {
-  collectDiagnostics,
   createTempljsLanguagePlugin,
   type DiagnosticOptions,
   type IntellisenseOptions,
 } from '@templjs/volar';
+import type { Diagnostic } from '@volar/language-service';
 import {
   extractDocumentSchemaKey,
   loadSchemaSource,
@@ -19,7 +19,6 @@ import {
   type ServerInitializationOptions,
 } from './schema-loading.js';
 import { createServicePlugins } from './service-plugins.js';
-import { createDeterministicDiagnosticsOrchestrator } from './diagnostics-orchestrator.js';
 
 // Write to stderr for debugging server startup
 console.error('[templjs-server] Starting instantiation...');
@@ -88,19 +87,55 @@ function hashTextContent(text: string): string {
   return `h${(hash >>> 0).toString(16)}`;
 }
 
-interface PositionLike {
-  line: number;
-  character: number;
-}
-
-interface RangeLike {
-  start: PositionLike;
-  end: PositionLike;
-}
-
-interface TextDocumentContentChangeLike {
+interface DocumentOpenNotification {
+  uri: string;
   text: string;
-  range?: RangeLike;
+}
+
+interface DocumentChangeNotification {
+  uri: string;
+  text: string;
+}
+
+interface WatchedFilesNotification {
+  changes?: Array<{ uri: string; type: number }>;
+}
+
+const DOCUMENT_DID_OPEN_NOTIFICATION = 'templjs/documentDidOpen';
+const DOCUMENT_DID_CHANGE_NOTIFICATION = 'templjs/documentDidChange';
+const WATCHED_FILES_CHANGED_NOTIFICATION = 'templjs/watchedFilesChanged';
+
+function normalizeOpenNotification(
+  event: DocumentOpenNotification | { textDocument?: { uri?: string; text?: string } }
+): DocumentOpenNotification | undefined {
+  if ('uri' in event && typeof event.uri === 'string' && typeof event.text === 'string') {
+    return event;
+  }
+
+  const legacy = 'textDocument' in event ? event.textDocument : undefined;
+  if (legacy && typeof legacy.uri === 'string' && typeof legacy.text === 'string') {
+    return { uri: legacy.uri, text: legacy.text };
+  }
+
+  return undefined;
+}
+
+function normalizeChangeNotification(
+  event:
+    | DocumentChangeNotification
+    | { textDocument?: { uri?: string }; contentChanges?: Array<{ text?: string }> }
+): DocumentChangeNotification | undefined {
+  if ('uri' in event && typeof event.uri === 'string' && typeof event.text === 'string') {
+    return event;
+  }
+
+  const uri = 'textDocument' in event ? event.textDocument?.uri : undefined;
+  const text = 'contentChanges' in event ? event.contentChanges?.[0]?.text : undefined;
+  if (typeof uri === 'string' && typeof text === 'string') {
+    return { uri, text };
+  }
+
+  return undefined;
 }
 
 const serverOptions = {
@@ -124,50 +159,16 @@ const serverOptions = {
   getServicePlugins() {
     return createServicePlugins({
       getIntellisenseOptions: toIntellisenseOptions,
+      getDiagnosticOptions: toDiagnosticOptions,
       workspaceFolder: storedWorkspaceRoot,
+      traceYamlDiagnostics: serverTraceMode === 'verbose',
+      log: (message) => connection.console.log(message),
     });
   },
 };
 
 /** Shared across all loadSchemaSource/loadSchemaSourceSync calls to avoid re-parsing files. */
 const schemaFileCache = new Map<string, unknown>();
-
-function getOffsetForPosition(text: string, position: { line: number; character: number }): number {
-  let line = 0;
-  let offset = 0;
-
-  while (line < position.line && offset < text.length) {
-    const newlineIndex = text.indexOf('\n', offset);
-    if (newlineIndex === -1) {
-      return text.length;
-    }
-    offset = newlineIndex + 1;
-    line += 1;
-  }
-
-  return Math.min(offset + position.character, text.length);
-}
-
-function applyContentChanges(
-  existingText: string,
-  changes: TextDocumentContentChangeLike[]
-): string {
-  let nextText = existingText;
-
-  for (const change of changes) {
-    if (!change.range) {
-      nextText = change.text;
-      continue;
-    }
-
-    const startOffset = getOffsetForPosition(nextText, change.range.start);
-    const endOffset = getOffsetForPosition(nextText, change.range.end);
-
-    nextText = `${nextText.slice(0, startOffset)}${change.text}${nextText.slice(endOffset)}`;
-  }
-
-  return nextText;
-}
 
 function getSchemaOptionsForUri(uri: string): SchemaRuntimeOptions {
   return schemaOptionsByUri.get(uri) ?? runtimeSchemaOptions;
@@ -211,11 +212,71 @@ export function isMdTemplateUri(uri: string): boolean {
   return /\.(md|markdown)\.(templ|tmpl|tpl)($|\?)/i.test(uri);
 }
 
-async function collectHostDiagnosticsForDocument(uri: string): Promise<unknown[]> {
+function isYamlTemplateUri(uri: string): boolean {
+  return /\.ya?ml\.(templ|tmpl|tpl)($|\?)/i.test(uri);
+}
+
+async function collectHostDiagnosticsForDocument(
+  uri: string,
+  _text: string
+): Promise<Diagnostic[]> {
   try {
     const project = await server.projects.getProject(uri);
     const languageService = project.getLanguageService();
-    return await languageService.doValidation(uri);
+    const diagnostics = (await languageService.doValidation(uri)) as Diagnostic[];
+
+    if (isYamlTemplateUri(uri) && shouldTrace('verbose')) {
+      const context = (languageService as { context?: unknown }).context as
+        | {
+            language?: {
+              files?: {
+                get: (targetUri: string) =>
+                  | {
+                      languageId?: string;
+                      generated?: {
+                        code?: { id: string; languageId?: string; mappings?: unknown[] };
+                      };
+                    }
+                  | undefined;
+              };
+            };
+            documents?: {
+              getVirtualCodeUri?: (sourceFileUri: string, virtualCodeId: string) => string;
+              getMaps?: (virtualCode: unknown) => Iterable<unknown>;
+            };
+            disabledVirtualFileUris?: Set<string>;
+          }
+        | undefined;
+
+      const sourceFile = context?.language?.files?.get(uri);
+      const generatedCode = sourceFile?.generated?.code;
+      const virtualUri =
+        generatedCode && context?.documents?.getVirtualCodeUri
+          ? context.documents.getVirtualCodeUri(uri, generatedCode.id)
+          : undefined;
+      const mapCount =
+        generatedCode && context?.documents?.getMaps
+          ? [...context.documents.getMaps(generatedCode)].length
+          : 0;
+      const yamlCount = diagnostics.filter(
+        (diagnostic) =>
+          typeof diagnostic.source === 'string' && diagnostic.source.toLowerCase() === 'yaml'
+      ).length;
+
+      trace(
+        `[templjs-yaml-debug] uri=${uri} diagnostics=${diagnostics.length} yamlDiagnostics=${yamlCount}` +
+          ` sourceLanguageId=${sourceFile?.languageId ?? 'none'}` +
+          ` hasGenerated=${generatedCode ? 'yes' : 'no'}` +
+          ` generatedLanguageId=${generatedCode?.languageId ?? 'none'}` +
+          ` generatedMappings=${generatedCode?.mappings?.length ?? 0}` +
+          ` virtualUri=${virtualUri ?? 'none'}` +
+          ` virtualDisabled=${virtualUri ? (context?.disabledVirtualFileUris?.has(virtualUri) ?? false) : false}` +
+          ` mapCount=${mapCount}`,
+        'verbose'
+      );
+    }
+
+    return diagnostics;
   } catch (error) {
     connection.console.log(
       `[templjs] Host diagnostics skipped for ${uri}: ${error instanceof Error ? error.message : String(error)}`
@@ -224,37 +285,13 @@ async function collectHostDiagnosticsForDocument(uri: string): Promise<unknown[]
   }
 }
 
-async function collectLocalDiagnosticsForDocument(uri: string, text: string): Promise<any[]> {
+async function refreshDiagnosticsAfterSchemaLoad(uri: string): Promise<void> {
   try {
-    return collectDiagnostics(text, toDiagnosticOptions(uri)).map((diagnostic) => ({
-      message: diagnostic.message,
-      severity: diagnostic.severity,
-      range: diagnostic.range,
-      source: diagnostic.source ?? 'templjs',
-      code: diagnostic.code,
-    }));
-  } catch (error) {
-    connection.console.log(
-      `[templjs] Diagnostics skipped for ${uri}: ${error instanceof Error ? error.message : String(error)}`
-    );
-    return [];
-  }
-}
-
-const diagnosticsOrchestrator = createDeterministicDiagnosticsOrchestrator<any>({
-  debounceMs: 120,
-  getDocumentText: (uri) => documentTextByUri.get(uri),
-  resolveRevisionKey: (_uri, text) => hashTextContent(text),
-  collectLocalDiagnostics: (uri, text) => collectLocalDiagnosticsForDocument(uri, text),
-  collectExtendedDiagnostics: (uri) => collectHostDiagnosticsForDocument(uri) as Promise<any[]>,
-  publishDiagnostics: (uri, diagnostics) => {
+    const diagnostics = await collectHostDiagnosticsForDocument(uri, '');
     connection.sendDiagnostics({ uri, diagnostics });
-  },
-  log: (message) => connection.console.log(message),
-});
-
-function refreshDiagnostics(uri: string): void {
-  diagnosticsOrchestrator.schedule(uri);
+  } catch (error) {
+    connection.console.log(`[templjs] Diagnostics refresh failed for ${uri}: ${String(error)}`);
+  }
 }
 
 async function loadSchemasForDocumentContext(
@@ -389,8 +426,15 @@ connection.onInitialize(async (params) => {
   };
 });
 
-connection.onDidOpenTextDocument((event) => {
-  const { uri, text } = event.textDocument;
+const handleDocumentDidOpen = (
+  event: DocumentOpenNotification | { textDocument?: { uri?: string; text?: string } }
+) => {
+  const normalized = normalizeOpenNotification(event);
+  if (!normalized) {
+    return;
+  }
+
+  const { uri, text } = normalized;
   documentTextByUri.set(uri, text);
   connection.console.log(`[templjs] Opened document: ${uri}`);
 
@@ -400,23 +444,26 @@ connection.onDidOpenTextDocument((event) => {
     storedWorkspaceRoot,
     storedInitializationOptions
   ).then(() => {
-    refreshDiagnostics(uri);
+    void refreshDiagnosticsAfterSchemaLoad(uri);
   });
-});
+};
 
-connection.onDidChangeTextDocument((event) => {
-  const current = documentTextByUri.get(event.textDocument.uri) ?? '';
-  const updated = applyContentChanges(
-    current,
-    event.contentChanges as TextDocumentContentChangeLike[]
-  );
-  const uri = event.textDocument.uri;
+const handleDocumentDidChange = (
+  event:
+    | DocumentChangeNotification
+    | { textDocument?: { uri?: string }; contentChanges?: Array<{ text?: string }> }
+) => {
+  const normalized = normalizeChangeNotification(event);
+  if (!normalized) {
+    return;
+  }
+
+  const { uri, text: updated } = normalized;
   documentTextByUri.set(uri, updated);
 
   const newSchemaKey = extractDocumentSchemaKey(updated);
   if (newSchemaKey === schemaKeyByUri.get(uri)) {
-    // Schema references unchanged — skip the expensive reload, just re-run diagnostics.
-    refreshDiagnostics(uri);
+    // Schema references unchanged — Volar's own pipeline handles content-change diagnostics.
     return;
   }
 
@@ -429,15 +476,15 @@ connection.onDidChangeTextDocument((event) => {
       if (schemaLoadGenerationByUri.get(uri) !== generation) {
         return; // A newer load was scheduled while this one was in-flight; discard its result.
       }
-      refreshDiagnostics(uri);
+      void refreshDiagnosticsAfterSchemaLoad(uri);
     })
     .catch((err: unknown) => {
       const message = err instanceof Error ? err.message : String(err);
       connection.console.log(`[templjs] Schema load failed for ${uri}: ${message}`);
     });
-});
+};
 
-connection.onDidChangeWatchedFiles((event) => {
+const handleWatchedFilesChanged = (event: WatchedFilesNotification) => {
   const changes = event.changes ?? [];
   const schemaChanged = changes.some((change) => isLikelySchemaUri(change.uri));
   if (!schemaChanged) {
@@ -458,14 +505,34 @@ connection.onDidChangeWatchedFiles((event) => {
         if (schemaLoadGenerationByUri.get(uri) !== generation) {
           return;
         }
-        refreshDiagnostics(uri);
+        void refreshDiagnosticsAfterSchemaLoad(uri);
       })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : String(err);
         connection.console.log(`[templjs] Schema reload failed for ${uri}: ${message}`);
       });
   }
-});
+};
+
+const notificationConnection = connection as unknown as {
+  onNotification?: (method: string, handler: (event: unknown) => void) => void;
+};
+
+if (typeof notificationConnection.onNotification === 'function') {
+  notificationConnection.onNotification(DOCUMENT_DID_OPEN_NOTIFICATION, (event) =>
+    handleDocumentDidOpen(event as DocumentOpenNotification)
+  );
+  notificationConnection.onNotification(DOCUMENT_DID_CHANGE_NOTIFICATION, (event) =>
+    handleDocumentDidChange(event as DocumentChangeNotification)
+  );
+  notificationConnection.onNotification(WATCHED_FILES_CHANGED_NOTIFICATION, (event) =>
+    handleWatchedFilesChanged(event as WatchedFilesNotification)
+  );
+} else {
+  connection.onDidOpenTextDocument((event) => handleDocumentDidOpen(event));
+  connection.onDidChangeTextDocument((event) => handleDocumentDidChange(event));
+  connection.onDidChangeWatchedFiles((event) => handleWatchedFilesChanged(event));
+}
 
 connection.onInitialized(server.initialized);
 connection.onShutdown(server.shutdown);

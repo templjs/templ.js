@@ -4,7 +4,8 @@ import path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FileChangeType } from '@volar/language-server';
 import { pathToFileURL } from 'url';
-import { TempljsServicePlugin } from '@templjs/volar';
+import { TempljsServicePlugin, collectDiagnostics } from '@templjs/volar';
+import { loadSchemaSource } from '../src/schema-loading';
 
 const onInitialize = vi.fn();
 const onInitialized = vi.fn();
@@ -134,6 +135,21 @@ function makeProjectGraph() {
       const { workspaceRoot, ...opts } = schemaByUri.get(uri) ?? {};
       const def = plugin.getDefinition(text, offset, { documentUri: uri, workspaceRoot, ...opts });
       return def ? [def] : null;
+    }),
+    doValidation: vi.fn(async (uri: string) => {
+      const text = docTextByUri.get(uri) ?? '';
+      const opts = schemaByUri.get(uri) ?? {};
+      const schemaResult = opts.schemaUri
+        ? await loadSchemaSource(opts.schemaUri, opts.workspaceRoot, uri)
+        : { schema: opts.schema as object | undefined };
+      const contentResult = opts.contentSchemaUri
+        ? await loadSchemaSource(opts.contentSchemaUri, opts.workspaceRoot, uri)
+        : { schema: opts.contentSchema as object | undefined };
+      return collectDiagnostics(text, {
+        documentUri: uri,
+        schema: schemaResult.schema,
+        contentSchema: contentResult.schema,
+      });
     }),
   };
 
@@ -513,6 +529,116 @@ describe('language-server-inprocess-integration', () => {
         });
         expect(completionLabels(completionItems)).toContain('heading');
       }
+    } finally {
+      rmSync(workspaceDir, { recursive: true, force: true });
+    }
+  });
+
+  it('applies frontmatter schema zoning for markdown templates', async () => {
+    const workspaceDir = mkdtempSync(path.join(tmpdir(), 'templjs-server-md-frontmatter-'));
+
+    try {
+      const frontmatterSchemaPath = path.join(workspaceDir, 'frontmatter.schema.json');
+      const contentSchemaPath = path.join(workspaceDir, 'content.schema.json');
+
+      writeFileSync(
+        frontmatterSchemaPath,
+        JSON.stringify({
+          type: 'object',
+          properties: {
+            front: {
+              type: 'object',
+              properties: {
+                title: { type: 'string' },
+              },
+            },
+          },
+        })
+      );
+
+      writeFileSync(
+        contentSchemaPath,
+        JSON.stringify({
+          type: 'object',
+          properties: {
+            content: {
+              type: 'object',
+              properties: {
+                heading: { type: 'string' },
+              },
+            },
+          },
+        })
+      );
+
+      await import('../src/server');
+      const graph = makeProjectGraph();
+      getProject.mockResolvedValue({ getLanguageService: () => graph.languageService });
+
+      const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => Promise<{
+        capabilities: {
+          completionProvider?: unknown;
+          hoverProvider?: boolean;
+        };
+      }>;
+
+      await initializeHandler({
+        rootUri: toFileUri(workspaceDir),
+        initializationOptions: {
+          schemaPath: frontmatterSchemaPath,
+          contentSchemaPath,
+        },
+      });
+
+      const docUri = toFileUri(path.join(workspaceDir, 'record.md.templ'));
+      const text = [
+        '---',
+        'title: "{{ front.title }}"',
+        'bad: "{{ content.heading }}"',
+        '---',
+        '{{ content.heading }}',
+      ].join('\n');
+
+      graph.setSchema(docUri, {
+        schema: JSON.parse(readFileSync(frontmatterSchemaPath, 'utf-8')) as object,
+        schemaUri: toFileUri(frontmatterSchemaPath),
+        contentSchema: JSON.parse(readFileSync(contentSchemaPath, 'utf-8')) as object,
+        contentSchemaUri: toFileUri(contentSchemaPath),
+        workspaceRoot: toFileUri(workspaceDir),
+      });
+
+      const didOpenHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
+        textDocument: { uri: string; text: string };
+      }) => void;
+
+      sendDiagnostics.mockClear();
+      didOpenHandler({
+        textDocument: {
+          uri: docUri,
+          text,
+        },
+      });
+      graph.trackOpen(docUri, text);
+
+      await vi.waitFor(() => {
+        expect(sendDiagnostics).toHaveBeenCalledWith(expect.objectContaining({ uri: docUri }));
+      });
+
+      const diagnosticsCall = [...sendDiagnostics.mock.calls]
+        .reverse()
+        .map(
+          (call) =>
+            call[0] as { uri: string; diagnostics: Array<{ code?: string; message?: string }> }
+        )
+        .find((payload) => payload.uri === docUri);
+
+      expect(diagnosticsCall).toBeDefined();
+      const undefinedDiagnostics =
+        diagnosticsCall?.diagnostics.filter((diag) => diag.code === 'templjs.undefinedVariable') ??
+        [];
+
+      expect(undefinedDiagnostics).toHaveLength(1);
+      expect(undefinedDiagnostics[0]?.message).toContain('content.heading');
     } finally {
       rmSync(workspaceDir, { recursive: true, force: true });
     }

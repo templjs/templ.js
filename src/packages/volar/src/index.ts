@@ -29,6 +29,12 @@ export {
   type DelimiterConfig,
 } from './semantic-token-provider.js';
 
+export {
+  detectFrontmatterRange,
+  isOffsetInFrontmatter,
+  type FrontmatterRange,
+} from './frontmatter-zone.js';
+
 const require = createRequire(import.meta.url);
 const packageJson = require('../package.json') as { version: string };
 

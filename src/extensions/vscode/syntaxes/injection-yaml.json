@@ -3,6 +3,19 @@
   "name": "TemplJS YAML",
   "scopeName": "text.templjs.yaml",
   "repository": {
+    "embeddedYaml": {
+      "begin": "\\A",
+      "end": "\\z",
+      "name": "meta.embedded.block.yaml",
+      "patterns": [
+        {
+          "include": "#yamlScalarValue"
+        },
+        {
+          "include": "source.yaml"
+        }
+      ]
+    },
     "yamlScalarValue": {
       "match": "^(\\s*[^:#\\n][^:\\n]*:\\s*)(?!\\[)(?!\\{)(?!(?:~|null|Null|NULL|true|True|TRUE|false|False|FALSE)\\s*(?:#.*)?$)(?![+-]?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\s*(?:#.*)?$)([^#\\n]+)",
       "captures": {
@@ -17,10 +30,10 @@
   },
   "patterns": [
     {
-      "include": "#yamlScalarValue"
+      "include": "source.yaml"
     },
     {
-      "include": "source.yaml"
+      "include": "#embeddedYaml"
     },
     {
       "include": "source.templjs"

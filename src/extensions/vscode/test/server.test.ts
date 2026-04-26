@@ -10,6 +10,15 @@ const listen = vi.fn();
 const onDidOpenTextDocument = vi.fn();
 const onDidChangeTextDocument = vi.fn();
 const onDidChangeWatchedFiles = vi.fn();
+const onNotification = vi.fn((type: string, handler: unknown) => {
+  if (type === 'templjs/documentDidOpen') {
+    onDidOpenTextDocument(handler);
+  } else if (type === 'templjs/documentDidChange') {
+    onDidChangeTextDocument(handler);
+  } else if (type === 'templjs/watchedFilesChanged') {
+    onDidChangeWatchedFiles(handler);
+  }
+});
 const onCompletion = vi.fn();
 const onHover = vi.fn();
 const onDefinition = vi.fn();
@@ -170,6 +179,7 @@ vi.mock('@volar/language-server/node', () => ({
     onInitialize,
     onInitialized,
     onShutdown,
+    onNotification,
     onDidOpenTextDocument,
     onDidChangeTextDocument,
     onDidChangeWatchedFiles,
@@ -215,6 +225,7 @@ describe('language-server-bootstrap', () => {
     onDidOpenTextDocument.mockClear();
     onDidChangeTextDocument.mockClear();
     onDidChangeWatchedFiles.mockClear();
+    onNotification.mockClear();
     onCompletion.mockClear();
     onHover.mockClear();
     onDefinition.mockClear();
@@ -226,6 +237,28 @@ describe('language-server-bootstrap', () => {
     initialized.mockClear();
     shutdown.mockClear();
     getProject.mockReset();
+    getProject.mockResolvedValue({
+      getLanguageService: () => ({
+        doValidation: vi.fn(async () => {
+          const raw = collectDiagnosticsFunc();
+          return (
+            raw as Array<{
+              message: string;
+              severity?: number;
+              range: unknown;
+              source?: string;
+              code?: string | number;
+            }>
+          ).map((d) => ({
+            message: d.message,
+            severity: d.severity,
+            range: d.range,
+            source: d.source ?? 'templjs',
+            code: d.code,
+          }));
+        }),
+      }),
+    });
     createTempljsLanguagePlugin.mockClear();
     getCompletions.mockClear();
     getHover.mockClear();
@@ -273,7 +306,12 @@ describe('language-server-bootstrap', () => {
     const serverOptions = initializeCalls[0][2];
 
     const servicePlugins = serverOptions.getServicePlugins() as Array<{ name?: string }>;
-    expect(servicePlugins.map((plugin) => plugin.name)).toEqual(['templjs-intellisense']);
+    expect(servicePlugins.map((plugin) => plugin.name)).toEqual([
+      'templjs-intellisense',
+      'templjs-diagnostics',
+      'templjs-markdown-diagnostics',
+      'templjs-yaml',
+    ]);
     serverOptions.getLanguagePlugins();
     expect(createTempljsLanguagePlugin).toHaveBeenCalledWith({});
   });
@@ -1186,7 +1224,7 @@ describe('language-server-bootstrap', () => {
 
     expect(consoleLog).toHaveBeenCalledWith(
       expect.stringContaining(
-        `Diagnostics skipped for ${toTestWorkspaceUri('file:///workspace/diag-fail.md.tpl')}: diagnostics exploded`
+        `Host diagnostics skipped for ${toTestWorkspaceUri('file:///workspace/diag-fail.md.tpl')}: diagnostics exploded`
       )
     );
     expect(sendDiagnostics).toHaveBeenCalledWith({
@@ -1249,18 +1287,37 @@ describe('language-server-bootstrap', () => {
   });
 
   it('publishes templjs and host markdown diagnostics together on change', async () => {
-    const hostValidation = vi.fn(async () => [
-      {
-        message: 'Host markdown diagnostic',
-        severity: 2,
-        range: {
-          start: { line: 0, character: 0 },
-          end: { line: 0, character: 3 },
+    const hostValidation = vi.fn(async () => {
+      const rawTempljs = collectDiagnosticsFunc();
+      const templjsDiags = (
+        rawTempljs as Array<{
+          message: string;
+          severity?: number;
+          range: unknown;
+          source?: string;
+          code?: string | number;
+        }>
+      ).map((d) => ({
+        message: d.message,
+        severity: d.severity,
+        range: d.range,
+        source: d.source ?? 'templjs',
+        code: d.code,
+      }));
+      return [
+        {
+          message: 'Host markdown diagnostic',
+          severity: 2,
+          range: {
+            start: { line: 0, character: 0 },
+            end: { line: 0, character: 3 },
+          },
+          source: 'markdown',
+          code: 'md.host',
         },
-        source: 'markdown',
-        code: 'md.host',
-      },
-    ]);
+        ...templjsDiags,
+      ];
+    });
 
     getProject.mockResolvedValue({
       getLanguageService: () => ({ doValidation: hostValidation }),
@@ -1311,17 +1368,190 @@ describe('language-server-bootstrap', () => {
       contentChanges: [{ text: '{{ value }}\n#bad-heading' }],
     });
 
+    let lastPayload:
+      | {
+          uri: string;
+          diagnostics: Array<{ source?: string; message: string }>;
+        }
+      | undefined;
+
     await vi.waitFor(() => {
-      expect(sendDiagnostics).toHaveBeenCalled();
+      const payload = sendDiagnostics.mock.calls.at(-1)?.[0] as
+        | {
+            uri: string;
+            diagnostics: Array<{ source?: string; message: string }>;
+          }
+        | undefined;
+
+      expect(payload).toBeDefined();
+      expect(payload?.diagnostics.some((diag) => diag.source === 'markdown')).toBe(true);
+      lastPayload = payload;
     });
 
-    const lastPayload = sendDiagnostics.mock.calls.at(-1)?.[0] as {
+    expect(lastPayload).toBeDefined();
+    const resolvedPayload = lastPayload as {
       uri: string;
       diagnostics: Array<{ source?: string; message: string }>;
     };
-    expect(lastPayload?.uri).toBe(docUri);
-    expect(lastPayload.diagnostics.some((diag) => diag.source === 'templjs')).toBe(true);
-    expect(lastPayload.diagnostics.some((diag) => diag.source === 'markdown')).toBe(true);
+    expect(resolvedPayload.uri).toBe(docUri);
+    expect(resolvedPayload.diagnostics.some((diag) => diag.source === 'templjs')).toBe(true);
+    expect(resolvedPayload.diagnostics.some((diag) => diag.source === 'markdown')).toBe(true);
+    expect(hostValidation).toHaveBeenCalledWith(docUri);
+  });
+
+  it('surfaces host YAML diagnostics for yaml template documents', async () => {
+    const hostValidation = vi.fn(async () => [
+      {
+        message: 'YAML map value is required',
+        severity: 1,
+        range: {
+          start: { line: 0, character: 5 },
+          end: { line: 0, character: 6 },
+        },
+        source: 'yaml',
+        code: 'yaml.syntax',
+      },
+    ]);
+
+    getProject.mockResolvedValue({
+      getLanguageService: () => ({ doValidation: hostValidation }),
+    });
+
+    collectDiagnostics.mockReturnValue([]);
+    await import('../src/server');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
+
+    const openHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
+      textDocument: { uri: string; text: string; languageId: string; version: number };
+    }) => void;
+
+    const docUri = toTestWorkspaceUri('file:///workspace/config.yaml.templ');
+    openHandler({
+      textDocument: {
+        uri: docUri,
+        languageId: 'templjs-yaml',
+        version: 1,
+        text: 'foo: [{% for item in items %}{{ item }},\n',
+      },
+    });
+
+    let payload:
+      | {
+          uri: string;
+          diagnostics: Array<{ source?: string; code?: string | number; message?: string }>;
+        }
+      | undefined;
+
+    await vi.waitFor(() => {
+      payload = sendDiagnostics.mock.calls.at(-1)?.[0] as
+        | {
+            uri: string;
+            diagnostics: Array<{
+              source?: string;
+              code?: string | number;
+              message?: string;
+            }>;
+          }
+        | undefined;
+
+      expect(payload).toBeDefined();
+      expect(payload?.diagnostics.some((diag) => diag.code === 'yaml.syntax')).toBe(true);
+    });
+
+    expect(payload?.uri).toBe(docUri);
+    expect(payload?.diagnostics.some((diag) => diag.source === 'yaml')).toBe(true);
+    expect(hostValidation).toHaveBeenCalledWith(docUri);
+  });
+
+  it('does not synthesize YAML diagnostics when host diagnostics are empty', async () => {
+    const hostValidation = vi.fn(async () => {
+      const rawTempljs = collectDiagnosticsFunc();
+      return (
+        rawTempljs as Array<{
+          message: string;
+          severity?: number;
+          range: unknown;
+          source?: string;
+          code?: string | number;
+        }>
+      ).map((d) => ({
+        message: d.message,
+        severity: d.severity,
+        range: d.range,
+        source: d.source ?? 'templjs',
+        code: d.code,
+      }));
+    });
+
+    getProject.mockResolvedValue({
+      getLanguageService: () => ({ doValidation: hostValidation }),
+    });
+
+    collectDiagnostics.mockReturnValue([
+      {
+        message: 'Missing closing tag: endfor',
+        severity: 1,
+        range: {
+          start: { line: 0, character: 11 },
+          end: { line: 0, character: 13 },
+        },
+        source: 'templjs',
+        code: 'templjs.unclosedStatement',
+      },
+    ]);
+
+    await import('../src/server');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
+
+    const openHandler = onDidOpenTextDocument.mock.calls[0][0] as (params: {
+      textDocument: { uri: string; text: string; languageId: string; version: number };
+    }) => void;
+
+    const docUri = toTestWorkspaceUri('file:///workspace/untitled-1.yaml.templ');
+    openHandler({
+      textDocument: {
+        uri: docUri,
+        languageId: 'templjs-yaml',
+        version: 1,
+        text: 'foo: bar: [{% for item in items %}{{ item }},\n',
+      },
+    });
+
+    let payload:
+      | {
+          uri: string;
+          diagnostics: Array<{ source?: string; code?: string | number; message?: string }>;
+        }
+      | undefined;
+
+    await vi.waitFor(() => {
+      payload = sendDiagnostics.mock.calls.at(-1)?.[0] as
+        | {
+            uri: string;
+            diagnostics: Array<{ source?: string; code?: string | number; message?: string }>;
+          }
+        | undefined;
+
+      expect(payload).toBeDefined();
+      const hasTempljs = payload?.diagnostics.some(
+        (diag) => diag.code === 'templjs.unclosedStatement'
+      );
+      const hasYaml = payload?.diagnostics.some(
+        (diag) => typeof diag.source === 'string' && diag.source.toLowerCase() === 'yaml'
+      );
+      expect(hasTempljs).toBe(true);
+      expect(hasYaml).toBe(false);
+    });
+
+    expect(payload?.uri).toBe(docUri);
     expect(hostValidation).toHaveBeenCalledWith(docUri);
   });
 

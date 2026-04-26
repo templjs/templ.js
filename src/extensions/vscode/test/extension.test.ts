@@ -36,8 +36,14 @@ const activeTextEditor = {
     getText: () => '---\n$templ-schema: .templjs/root.json\n---\n{{ user.name }}',
   },
 };
-const createFileSystemWatcher = vi.fn(() => ({ dispose: vi.fn() }));
+const createFileSystemWatcher = vi.fn(() => ({
+  onDidCreate: vi.fn(() => ({ dispose: vi.fn() })),
+  onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
+  onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
+  dispose: vi.fn(),
+}));
 const onDidOpenTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
+const onDidChangeTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidChangeActiveTextEditor = vi.fn(() => ({ dispose: vi.fn() }));
 const getConfiguration = vi.fn(() => ({
   get: vi.fn((key: string, fallback?: unknown): unknown => configurationValues[key] ?? fallback),
@@ -66,6 +72,7 @@ vi.mock('vscode', () => ({
   workspace: {
     createFileSystemWatcher,
     onDidOpenTextDocument,
+    onDidChangeTextDocument,
     getConfiguration,
   },
 }));
@@ -108,6 +115,9 @@ describe('extension-activation', () => {
     outputChannel.appendLine.mockClear();
     outputChannel.append.mockClear();
     createFileSystemWatcher.mockClear();
+    onDidOpenTextDocument.mockClear();
+    onDidChangeTextDocument.mockClear();
+    onDidChangeActiveTextEditor.mockClear();
     createOutputChannel.mockClear();
     outputChannel.dispose.mockClear();
     getConfiguration.mockClear();

@@ -20,6 +20,10 @@ import {
 let languageClient: LanguageClient | undefined;
 let outputChannel: vscode.OutputChannel | undefined;
 
+const DOCUMENT_DID_OPEN_NOTIFICATION = 'templjs/documentDidOpen';
+const DOCUMENT_DID_CHANGE_NOTIFICATION = 'templjs/documentDidChange';
+const WATCHED_FILES_CHANGED_NOTIFICATION = 'templjs/watchedFilesChanged';
+
 type TraceMode = 'off' | 'messages' | 'verbose';
 
 function getTraceMode(): TraceMode {
@@ -118,6 +122,18 @@ function getFirstTargetUri(defResult: unknown): string {
   }
 
   return 'unknown';
+}
+
+function isTempljsDocument(document: vscode.TextDocument): boolean {
+  if (document.uri.scheme !== 'file') {
+    return false;
+  }
+
+  if (document.languageId.startsWith('templjs-')) {
+    return true;
+  }
+
+  return /\.(md|markdown|json|ya?ml|html|htm)\.(templ|tmpl|tpl)$/i.test(document.uri.fsPath);
 }
 
 /**
@@ -305,8 +321,53 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
 
   const openDocSubscription = vscode.workspace.onDidOpenTextDocument((document) => {
     trace(`opened: ${document.uri.toString()} (${document.languageId})`, 'verbose');
+
+    if (!isTempljsDocument(document) || !languageClient) {
+      return;
+    }
+
+    void languageClient.sendNotification(DOCUMENT_DID_OPEN_NOTIFICATION, {
+      uri: document.uri.toString(),
+      text: document.getText(),
+    });
   });
   context.subscriptions.push(openDocSubscription);
+
+  const changeDocSubscription = vscode.workspace.onDidChangeTextDocument((event) => {
+    const document = event.document;
+    if (!isTempljsDocument(document) || !languageClient) {
+      return;
+    }
+
+    void languageClient.sendNotification(DOCUMENT_DID_CHANGE_NOTIFICATION, {
+      uri: document.uri.toString(),
+      text: document.getText(),
+    });
+  });
+  context.subscriptions.push(changeDocSubscription);
+
+  const schemaWatcher = vscode.workspace.createFileSystemWatcher('**/*.{json,yaml,yml}');
+  context.subscriptions.push(schemaWatcher);
+
+  const notifyWatchedChange = (uri: vscode.Uri, type: number) => {
+    if (!languageClient) {
+      return;
+    }
+
+    void languageClient.sendNotification(WATCHED_FILES_CHANGED_NOTIFICATION, {
+      changes: [{ uri: uri.toString(), type }],
+    });
+  };
+
+  context.subscriptions.push(
+    schemaWatcher.onDidCreate((uri) => notifyWatchedChange(uri, vscode.FileChangeType.Created))
+  );
+  context.subscriptions.push(
+    schemaWatcher.onDidChange((uri) => notifyWatchedChange(uri, vscode.FileChangeType.Changed))
+  );
+  context.subscriptions.push(
+    schemaWatcher.onDidDelete((uri) => notifyWatchedChange(uri, vscode.FileChangeType.Deleted))
+  );
 
   const activeEditorSubscription = vscode.window.onDidChangeActiveTextEditor((editor) => {
     if (!editor) {

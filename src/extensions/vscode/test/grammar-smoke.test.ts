@@ -8,6 +8,9 @@ const extensionRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)),
 type InjectionGrammar = {
   patterns: Array<{ include?: string }>;
   repository: {
+    embeddedMarkdown?: {
+      patterns?: Array<{ include?: string }>;
+    };
     frontmatter?: {
       begin: string;
       end: string;
@@ -29,8 +32,12 @@ describe('grammar-smoke-md-tmpl', () => {
     const grammar = JSON.parse(readFileSync(grammarPath, 'utf-8')) as InjectionGrammar;
 
     expect(grammar.patterns.map((pattern) => pattern.include)).toEqual(
-      expect.arrayContaining(['#frontmatter', 'text.html.markdown', 'source.templjs'])
+      expect.arrayContaining(['text.html.markdown', '#embeddedMarkdown', 'source.templjs'])
     );
+
+    expect(
+      grammar.repository.embeddedMarkdown?.patterns?.map((pattern) => pattern.include)
+    ).toEqual(expect.arrayContaining(['#frontmatter', 'text.html.markdown']));
 
     expect(grammar.repository.frontmatter?.begin).toBe('\\A---\\s*$');
     expect(grammar.repository.frontmatter?.end).toBe('^---\\s*$');
