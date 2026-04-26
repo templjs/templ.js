@@ -51,10 +51,12 @@ const getConfiguration = vi.fn(() => ({
 
 const start = vi.fn(() => Promise.resolve());
 const stop = vi.fn(() => Promise.resolve());
+const sendNotification = vi.fn(() => Promise.resolve());
 const languageClientConstructor = vi.fn().mockImplementation(function LanguageClientMock() {
   return {
     start,
     stop,
+    sendNotification,
   };
 });
 
@@ -68,6 +70,11 @@ vi.mock('vscode', () => ({
     createOutputChannel,
     activeTextEditor,
     onDidChangeActiveTextEditor,
+  },
+  FileChangeType: {
+    Created: 1,
+    Changed: 2,
+    Deleted: 3,
   },
   workspace: {
     createFileSystemWatcher,
@@ -123,6 +130,7 @@ describe('extension-activation', () => {
     getConfiguration.mockClear();
     start.mockClear();
     stop.mockClear();
+    sendNotification.mockClear();
     languageClientConstructor.mockClear();
   });
 
@@ -629,6 +637,186 @@ describe('extension-activation', () => {
 
     expect(onDidChangeActiveTextEditor).toHaveBeenCalled();
     expect(Array.isArray(traceLines)).toBe(true);
+  });
+
+  it('forwards open, change, and watched-file notifications for templjs documents', async () => {
+    const watcherHandlers: Record<string, (uri: { toString: () => string }) => void> = {};
+    createFileSystemWatcher
+      .mockReturnValueOnce({
+        onDidCreate: vi.fn(() => ({ dispose: vi.fn() })),
+        onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
+        onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
+        dispose: vi.fn(),
+      })
+      .mockReturnValueOnce({
+        onDidCreate: vi.fn((handler) => {
+          watcherHandlers.create = handler;
+          return { dispose: vi.fn() };
+        }),
+        onDidChange: vi.fn((handler) => {
+          watcherHandlers.change = handler;
+          return { dispose: vi.fn() };
+        }),
+        onDidDelete: vi.fn((handler) => {
+          watcherHandlers.delete = handler;
+          return { dispose: vi.fn() };
+        }),
+        dispose: vi.fn(),
+      });
+
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const openHandler = onDidOpenTextDocument.mock.calls[0][0] as (document: {
+      uri: { scheme: string; fsPath: string; toString: () => string };
+      languageId: string;
+      getText: () => string;
+    }) => void;
+    const changeHandler = onDidChangeTextDocument.mock.calls[0][0] as (event: {
+      document: {
+        uri: { scheme: string; fsPath: string; toString: () => string };
+        languageId: string;
+        getText: () => string;
+      };
+    }) => void;
+
+    const templDocument = {
+      uri: {
+        scheme: 'file',
+        fsPath: '/workspace/page.md.templ',
+        toString: () => 'file:///workspace/page.md.templ',
+      },
+      languageId: 'plaintext',
+      getText: () => '---\ntitle: test\n---',
+    };
+
+    openHandler(templDocument);
+    changeHandler({ document: templDocument });
+    watcherHandlers.create?.({ toString: () => 'file:///workspace/schema.json' });
+    watcherHandlers.change?.({ toString: () => 'file:///workspace/schema.yaml' });
+    watcherHandlers.delete?.({ toString: () => 'file:///workspace/schema.yml' });
+
+    expect(sendNotification).toHaveBeenCalledWith('templjs/documentDidOpen', {
+      uri: 'file:///workspace/page.md.templ',
+      text: '---\ntitle: test\n---',
+    });
+    expect(sendNotification).toHaveBeenCalledWith('templjs/documentDidChange', {
+      uri: 'file:///workspace/page.md.templ',
+      text: '---\ntitle: test\n---',
+    });
+    expect(sendNotification).toHaveBeenCalledWith('templjs/watchedFilesChanged', {
+      changes: [{ uri: 'file:///workspace/schema.json', type: 1 }],
+    });
+    expect(sendNotification).toHaveBeenCalledWith('templjs/watchedFilesChanged', {
+      changes: [{ uri: 'file:///workspace/schema.yaml', type: 2 }],
+    });
+    expect(sendNotification).toHaveBeenCalledWith('templjs/watchedFilesChanged', {
+      changes: [{ uri: 'file:///workspace/schema.yml', type: 3 }],
+    });
+  });
+
+  it('skips notifications for non-templjs documents and missing client state', async () => {
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const openHandler = onDidOpenTextDocument.mock.calls[0][0] as (document: {
+      uri: { scheme: string; fsPath: string; toString: () => string };
+      languageId: string;
+      getText: () => string;
+    }) => void;
+    const changeHandler = onDidChangeTextDocument.mock.calls[0][0] as (event: {
+      document: {
+        uri: { scheme: string; fsPath: string; toString: () => string };
+        languageId: string;
+        getText: () => string;
+      };
+    }) => void;
+
+    openHandler({
+      uri: {
+        scheme: 'untitled',
+        fsPath: '/workspace/note.md',
+        toString: () => 'untitled:note.md',
+      },
+      languageId: 'markdown',
+      getText: () => 'plain note',
+    });
+    changeHandler({
+      document: {
+        uri: {
+          scheme: 'file',
+          fsPath: '/workspace/note.md',
+          toString: () => 'file:///workspace/note.md',
+        },
+        languageId: 'markdown',
+        getText: () => 'plain note',
+      },
+    });
+
+    const sentBeforeDeactivate = sendNotification.mock.calls.length;
+    await module.deactivate();
+    const activeEditorHandler = onDidChangeActiveTextEditor.mock.calls[0][0] as (
+      editor: { document: { uri: { toString: () => string }; languageId: string } } | undefined
+    ) => void;
+    activeEditorHandler(undefined);
+
+    expect(sendNotification.mock.calls.length).toBe(sentBeforeDeactivate);
+  });
+
+  it('exposes helper behavior through extensionTesting', async () => {
+    configurationValues['trace.server'] = 'bogus';
+    configurationValues.schemaPath = '  .templjs/root.json  ';
+    configurationValues.contentSchemaPath = '   ';
+    configurationValues.schemas = {};
+    activeTextEditor.document.uri.scheme = 'file';
+    activeTextEditor.document.uri.toString = () => 'file:///workspace/test.yaml.templ';
+    activeTextEditor.document.getText = () => 'content';
+
+    const module = await import('../src/extension');
+    const helpers = module.extensionTesting;
+
+    expect(helpers.getTraceMode()).toBe('off');
+    expect(helpers.shouldTrace('messages')).toBe(true);
+    expect(helpers.shouldTrace('verbose', 'verbose')).toBe(true);
+    expect(helpers.getResultCount(null)).toBe(0);
+    expect(helpers.getResultCount([{ label: 'one' }])).toBe(1);
+    expect(helpers.extractLabels({ items: [{ label: 'one' }, { label: 7 }, {}] })).toEqual(['one']);
+    expect(helpers.hoverContentToString({ contents: ['a', { value: 'b' }] } as never)).toBe(
+      'a | b'
+    );
+    expect(helpers.getFirstTargetUri([{ targetUri: { toString: () => 'file:///x.json' } }])).toBe(
+      'file:///x.json'
+    );
+    expect(
+      helpers.isTempljsDocument({
+        uri: { scheme: 'file', fsPath: '/workspace/page.md.templ' },
+        languageId: 'plaintext',
+      } as never)
+    ).toBe(true);
+    expect(
+      helpers.isTempljsDocument({
+        uri: { scheme: 'untitled', fsPath: '/workspace/page.md.templ' },
+        languageId: 'templjs-markdown',
+      } as never)
+    ).toBe(false);
+    expect(helpers.getActiveDocumentContext()).toEqual({
+      uri: 'file:///workspace/test.yaml.templ',
+      content: 'content',
+    });
+    expect(helpers.getSchemaPathFromSettings()).toBe('.templjs/root.json');
+    expect(helpers.getContentSchemaPathFromSettings()).toBeUndefined();
+    expect(helpers.getSchemaPatternsFromSettings()).toBeUndefined();
+    expect(typeof helpers.getTypeScriptSdkPath()).toBe('string');
   });
 
   it('disposes output channel on deactivate when client was not created', async () => {

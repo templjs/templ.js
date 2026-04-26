@@ -467,3 +467,18 @@ export function deactivate(): Thenable<void> | undefined {
   outputChannel = undefined;
   return undefined;
 }
+
+export const extensionTesting = {
+  getTraceMode,
+  shouldTrace,
+  getResultCount,
+  extractLabels,
+  hoverContentToString,
+  getFirstTargetUri,
+  isTempljsDocument,
+  getActiveDocumentContext,
+  getContentSchemaPathFromSettings,
+  getSchemaPatternsFromSettings,
+  getSchemaPathFromSettings,
+  getTypeScriptSdkPath,
+};

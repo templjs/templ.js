@@ -537,3 +537,33 @@ if (typeof notificationConnection.onNotification === 'function') {
 connection.onInitialized(server.initialized);
 connection.onShutdown(server.shutdown);
 connection.listen();
+
+export const serverTesting = {
+  normalizeOpenNotification,
+  normalizeChangeNotification,
+  refreshRuntimeSchemaOptions,
+  getSchemaOptionsForUri,
+  isLikelySchemaUri,
+  toIntellisenseOptions,
+  toDiagnosticOptions,
+  isYamlTemplateUri,
+  collectHostDiagnosticsForDocument,
+  resetRuntimeState() {
+    storedWorkspaceRoot = undefined;
+    storedInitializationOptions = undefined;
+    serverTraceMode = 'off';
+    refreshRuntimeSchemaOptions({});
+    schemaOptionsByUri.clear();
+    schemaKeyByUri.clear();
+    schemaLoadGenerationByUri.clear();
+  },
+  setStoredWorkspaceRoot(workspaceRoot: string | undefined) {
+    storedWorkspaceRoot = workspaceRoot;
+  },
+  setServerTraceMode(traceMode: TraceMode) {
+    serverTraceMode = traceMode;
+  },
+  setSchemaOptionsForUri(uri: string, options: SchemaRuntimeOptions) {
+    schemaOptionsByUri.set(uri, options);
+  },
+};

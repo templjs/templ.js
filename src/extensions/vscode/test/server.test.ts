@@ -1978,3 +1978,139 @@ describe('isMdTemplateUri', () => {
     expect(isMdTemplateUri('file:///doc.html.templ')).toBe(false);
   });
 });
+
+describe('serverTesting helpers', () => {
+  let helpers: (typeof import('../src/server'))['serverTesting'];
+
+  beforeEach(async () => {
+    vi.resetModules();
+    const mod = await import('../src/server');
+    helpers = mod.serverTesting;
+    helpers.resetRuntimeState();
+    consoleLog.mockClear();
+    getProject.mockReset();
+  });
+
+  it('normalizes open and change notifications from direct, legacy, and invalid payloads', () => {
+    expect(helpers.normalizeOpenNotification({ uri: 'file:///doc.md.tpl', text: 'body' })).toEqual({
+      uri: 'file:///doc.md.tpl',
+      text: 'body',
+    });
+    expect(
+      helpers.normalizeOpenNotification({
+        textDocument: { uri: 'file:///legacy.md.tpl', text: 'legacy' },
+      })
+    ).toEqual({ uri: 'file:///legacy.md.tpl', text: 'legacy' });
+    expect(
+      helpers.normalizeOpenNotification({ textDocument: { uri: 7 } } as never)
+    ).toBeUndefined();
+
+    expect(
+      helpers.normalizeChangeNotification({ uri: 'file:///doc.md.tpl', text: 'changed' })
+    ).toEqual({ uri: 'file:///doc.md.tpl', text: 'changed' });
+    expect(
+      helpers.normalizeChangeNotification({
+        textDocument: { uri: 'file:///legacy.md.tpl' },
+        contentChanges: [{ text: 'legacy changed' }],
+      })
+    ).toEqual({ uri: 'file:///legacy.md.tpl', text: 'legacy changed' });
+    expect(
+      helpers.normalizeChangeNotification({ textDocument: { uri: 'file:///legacy.md.tpl' } })
+    ).toBeUndefined();
+  });
+
+  it('derives schema options, uri checks, and debug logging helpers from runtime state', () => {
+    helpers.refreshRuntimeSchemaOptions({
+      schema: { type: 'object' },
+      schemaUri: 'file:///runtime-schema.json',
+      contentSchema: { type: 'object', properties: { title: { type: 'string' } } },
+      contentSchemaUri: 'file:///content-schema.json',
+    });
+    helpers.setStoredWorkspaceRoot('/workspace/root');
+    helpers.setServerTraceMode('messages');
+    helpers.setSchemaOptionsForUri('file:///override.md.tpl', {
+      schema: { type: 'object', properties: { override: { type: 'string' } } },
+    });
+
+    expect(helpers.isLikelySchemaUri('file:///schema.json')).toBe(true);
+    expect(helpers.isLikelySchemaUri('file:///template.yaml.templ')).toBe(false);
+
+    expect(helpers.getSchemaOptionsForUri('file:///missing.md.tpl').schemaUri).toBe(
+      'file:///runtime-schema.json'
+    );
+    expect(helpers.getSchemaOptionsForUri('file:///override.md.tpl').schema).toEqual({
+      type: 'object',
+      properties: { override: { type: 'string' } },
+    });
+
+    const intellisense = helpers.toIntellisenseOptions('file:///missing.md.tpl');
+    expect(intellisense.workspaceRoot).toBe('/workspace/root');
+    expect(intellisense.schemaUri).toBe('file:///runtime-schema.json');
+    intellisense.debugLog?.('hello');
+    expect(consoleLog).toHaveBeenCalledWith('[templjs-trace] file:///missing.md.tpl hello');
+
+    expect(helpers.toDiagnosticOptions('file:///missing.md.tpl')).toEqual({
+      documentUri: 'file:///missing.md.tpl',
+      schema: { type: 'object' },
+      contentSchema: { type: 'object', properties: { title: { type: 'string' } } },
+    });
+    expect(helpers.isYamlTemplateUri('file:///data.yaml.templ')).toBe(true);
+  });
+
+  it('returns diagnostics and emits yaml trace details when host validation succeeds', async () => {
+    helpers.setServerTraceMode('verbose');
+    getProject.mockResolvedValue({
+      getLanguageService: () => ({
+        doValidation: vi.fn(async () => [{ message: 'bad yaml', source: 'YAML' }]),
+        context: {
+          language: {
+            files: {
+              get: () => ({
+                languageId: 'templjs-yaml',
+                generated: {
+                  code: { id: 'root', languageId: 'yaml', mappings: [{}] },
+                },
+              }),
+            },
+          },
+          documents: {
+            getVirtualCodeUri: () => 'file:///virtual.yaml',
+            getMaps: function* () {
+              yield { id: 'map-1' };
+            },
+          },
+          disabledVirtualFileUris: new Set(['file:///virtual.yaml']),
+        },
+      }),
+    });
+
+    const diagnostics = await helpers.collectHostDiagnosticsForDocument(
+      'file:///data.yaml.templ',
+      ''
+    );
+
+    expect(diagnostics).toEqual([{ message: 'bad yaml', source: 'YAML' }]);
+    expect(
+      consoleLog.mock.calls.some(
+        ([message]) => typeof message === 'string' && message.includes('[templjs-yaml-debug]')
+      )
+    ).toBe(true);
+  });
+
+  it('returns an empty array when host diagnostics throw', async () => {
+    getProject.mockResolvedValue({
+      getLanguageService: () => ({
+        doValidation: vi.fn(async () => {
+          throw new Error('kaboom');
+        }),
+      }),
+    });
+
+    await expect(
+      helpers.collectHostDiagnosticsForDocument('file:///doc.md.tpl', '')
+    ).resolves.toEqual([]);
+    expect(consoleLog).toHaveBeenCalledWith(
+      '[templjs] Host diagnostics skipped for file:///doc.md.tpl: kaboom'
+    );
+  });
+});
