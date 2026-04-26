@@ -427,9 +427,11 @@ function getTypeScriptSdkPath(): string | undefined {
  */
 export function deactivate(): Thenable<void> | undefined {
   if (languageClient) {
+    const client = languageClient;
+    languageClient = undefined;
     console.log('[templjs] Extension deactivating...');
     outputChannel?.appendLine('[templjs] Extension deactivating...');
-    return languageClient.stop().finally(() => {
+    return client.stop().finally(() => {
       outputChannel?.dispose();
       outputChannel = undefined;
     });

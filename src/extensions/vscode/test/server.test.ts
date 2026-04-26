@@ -2218,7 +2218,7 @@ describe('serverTesting helpers', () => {
       }),
     });
 
-    const diagnostics = await helpers.collectHostDiagnosticsForDocument(
+    const diagnostics = await helpers.collectServiceDiagnosticsForDocument(
       'file:///data.yaml.templ',
       ''
     );
@@ -2243,7 +2243,7 @@ describe('serverTesting helpers', () => {
     });
 
     await expect(
-      helpers.collectHostDiagnosticsForDocument('file:///data.json.templ', '')
+      helpers.collectServiceDiagnosticsForDocument('file:///data.json.templ', '')
     ).resolves.toEqual([{ message: 'ok', source: 'templjs' }]);
     expect(
       consoleLog.mock.calls.some(
@@ -2268,7 +2268,7 @@ describe('serverTesting helpers', () => {
     });
 
     await expect(
-      helpers.collectHostDiagnosticsForDocument('file:///simple.yaml.templ', '')
+      helpers.collectServiceDiagnosticsForDocument('file:///simple.yaml.templ', '')
     ).resolves.toEqual([{ message: 'yaml warning', source: 'templjs' }]);
     expect(
       consoleLog.mock.calls.some(
@@ -2292,7 +2292,7 @@ describe('serverTesting helpers', () => {
     });
 
     await expect(
-      helpers.collectHostDiagnosticsForDocument('file:///doc.md.tpl', '')
+      helpers.collectServiceDiagnosticsForDocument('file:///doc.md.tpl', '')
     ).resolves.toEqual([]);
     expect(consoleLog).toHaveBeenCalledWith(
       '[templjs] Host diagnostics skipped for file:///doc.md.tpl: kaboom'

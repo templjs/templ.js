@@ -1,6 +1,5 @@
 export interface DiagnosticsScheduleOptions {
   immediate?: boolean;
-  force?: boolean;
 }
 
 export interface DeterministicDiagnosticsOrchestratorOptions<TDiagnostic> {

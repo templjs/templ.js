@@ -204,7 +204,7 @@ const serverOptions = {
   },
 };
 
-/** Shared across all loadSchemaSource/loadSchemaSourceSync calls to avoid re-parsing files. */
+/** Shared across async schema loads to avoid re-reading and re-parsing files. */
 const schemaFileCache = new Map<string, unknown>();
 
 function getSchemaOptionsForUri(uri: string): SchemaRuntimeOptions {
@@ -253,7 +253,7 @@ function isYamlTemplateUri(uri: string): boolean {
   return /\.ya?ml\.(templ|tmpl|tpl)$/i.test(uri.split(/[?#]/, 1)[0] ?? uri);
 }
 
-async function collectHostDiagnosticsForDocument(
+async function collectServiceDiagnosticsForDocument(
   uri: string,
   _text: string
 ): Promise<Diagnostic[]> {
@@ -324,7 +324,7 @@ async function collectHostDiagnosticsForDocument(
 
 async function refreshDiagnosticsAfterSchemaLoad(uri: string): Promise<void> {
   try {
-    const diagnostics = await collectHostDiagnosticsForDocument(uri, '');
+    const diagnostics = await collectServiceDiagnosticsForDocument(uri, '');
     connection.sendDiagnostics({ uri, diagnostics });
   } catch (error) {
     connection.console.log(`[templjs] Diagnostics refresh failed for ${uri}: ${String(error)}`);
@@ -597,7 +597,7 @@ export const serverTesting = {
   toIntellisenseOptions,
   toDiagnosticOptions,
   isYamlTemplateUri,
-  collectHostDiagnosticsForDocument,
+  collectServiceDiagnosticsForDocument,
   resetRuntimeState() {
     storedWorkspaceRoot = undefined;
     storedInitializationOptions = undefined;
