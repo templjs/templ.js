@@ -2017,6 +2017,12 @@ describe('serverTesting helpers', () => {
     expect(
       helpers.normalizeChangeNotification({ textDocument: { uri: 'file:///legacy.md.tpl' } })
     ).toBeUndefined();
+    expect(
+      helpers.normalizeOpenNotification({ uri: 'file:///doc.md.tpl', text: undefined } as never)
+    ).toBeUndefined();
+    expect(
+      helpers.normalizeChangeNotification({ uri: 'file:///doc.md.tpl', text: undefined } as never)
+    ).toBeUndefined();
   });
 
   it('derives schema options, uri checks, and debug logging helpers from runtime state', () => {
@@ -2093,6 +2099,57 @@ describe('serverTesting helpers', () => {
     expect(
       consoleLog.mock.calls.some(
         ([message]) => typeof message === 'string' && message.includes('[templjs-yaml-debug]')
+      )
+    ).toBe(true);
+  });
+
+  it('skips yaml debug tracing for non-yaml uris and when tracing is off', async () => {
+    helpers.setServerTraceMode('off');
+    getProject.mockResolvedValue({
+      getLanguageService: () => ({
+        doValidation: vi.fn(async () => [{ message: 'ok', source: 'templjs' }]),
+        context: {
+          language: { files: { get: () => ({ languageId: 'templjs-json' }) } },
+        },
+      }),
+    });
+
+    await expect(
+      helpers.collectHostDiagnosticsForDocument('file:///data.json.templ', '')
+    ).resolves.toEqual([{ message: 'ok', source: 'templjs' }]);
+    expect(
+      consoleLog.mock.calls.some(
+        ([message]) => typeof message === 'string' && message.includes('[templjs-yaml-debug]')
+      )
+    ).toBe(false);
+  });
+
+  it('traces yaml diagnostics even when no generated virtual code metadata is available', async () => {
+    helpers.setServerTraceMode('verbose');
+    getProject.mockResolvedValue({
+      getLanguageService: () => ({
+        doValidation: vi.fn(async () => [{ message: 'yaml warning', source: 'templjs' }]),
+        context: {
+          language: {
+            files: {
+              get: () => ({ languageId: 'templjs-yaml' }),
+            },
+          },
+        },
+      }),
+    });
+
+    await expect(
+      helpers.collectHostDiagnosticsForDocument('file:///simple.yaml.templ', '')
+    ).resolves.toEqual([{ message: 'yaml warning', source: 'templjs' }]);
+    expect(
+      consoleLog.mock.calls.some(
+        ([message]) =>
+          typeof message === 'string' &&
+          message.includes('[templjs-yaml-debug]') &&
+          message.includes('hasGenerated=no') &&
+          message.includes('virtualUri=none') &&
+          message.includes('mapCount=0')
       )
     ).toBe(true);
   });

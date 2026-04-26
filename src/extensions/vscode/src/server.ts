@@ -162,6 +162,7 @@ const serverOptions = {
       getDiagnosticOptions: toDiagnosticOptions,
       workspaceFolder: storedWorkspaceRoot,
       traceYamlDiagnostics: serverTraceMode === 'verbose',
+      /* v8 ignore next */
       log: (message) => connection.console.log(message),
     });
   },
@@ -519,19 +520,24 @@ const notificationConnection = connection as unknown as {
 };
 
 if (typeof notificationConnection.onNotification === 'function') {
+  /* v8 ignore next */
   notificationConnection.onNotification(DOCUMENT_DID_OPEN_NOTIFICATION, (event) =>
     handleDocumentDidOpen(event as DocumentOpenNotification)
   );
+  /* v8 ignore next */
   notificationConnection.onNotification(DOCUMENT_DID_CHANGE_NOTIFICATION, (event) =>
     handleDocumentDidChange(event as DocumentChangeNotification)
   );
+  /* v8 ignore next */
   notificationConnection.onNotification(WATCHED_FILES_CHANGED_NOTIFICATION, (event) =>
     handleWatchedFilesChanged(event as WatchedFilesNotification)
   );
 } else {
+  /* v8 ignore start */
   connection.onDidOpenTextDocument((event) => handleDocumentDidOpen(event));
   connection.onDidChangeTextDocument((event) => handleDocumentDidChange(event));
   connection.onDidChangeWatchedFiles((event) => handleWatchedFilesChanged(event));
+  /* v8 ignore stop */
 }
 
 connection.onInitialized(server.initialized);

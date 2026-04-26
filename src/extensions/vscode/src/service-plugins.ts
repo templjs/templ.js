@@ -262,7 +262,8 @@ function detectMarkdownFrontmatterRange(text: string): { start: number; end: num
   }
 
   const fence = openingFence[1];
-  const closingPattern = new RegExp(`(?:^|\\n)${fence}\\r?(?:\\n|$)`, 'g');
+  const escapedFence = fence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const closingPattern = new RegExp(`(?:^|\\n)${escapedFence}\\r?(?:\\n|$)`, 'g');
   closingPattern.lastIndex = openingFence[0].length;
   const closingMatch = closingPattern.exec(text);
   if (!closingMatch) {

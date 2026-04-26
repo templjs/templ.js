@@ -533,6 +533,9 @@ describe('createServicePlugins', () => {
       servicePluginTesting.detectMarkdownFrontmatterRange('---\ntitle: test\n---\nbody')
     ).toEqual({ start: 0, end: 20 });
     expect(
+      servicePluginTesting.detectMarkdownFrontmatterRange('+++\r\ntitle: test\r\n+++\r\nbody')
+    ).toEqual({ start: 0, end: 25 });
+    expect(
       servicePluginTesting.detectMarkdownFrontmatterRange('---\ntitle: test\n...\nbody')
     ).toBeUndefined();
     expect(
@@ -735,6 +738,35 @@ describe('createServicePlugins', () => {
       undefined as never
     );
     expect(markdownDiagnostics).toBeUndefined();
+
+    const nonMarkdownRoute = await markdownDiagPlugin!
+      .create({
+        documents: {
+          getVirtualCodeByUri: vi.fn(
+            () => [undefined, { id: 'file:///workspace/doc.yaml.templ' }] as const
+          ),
+        },
+        language: {
+          files: {
+            get: vi.fn(() => ({
+              id: 'file:///workspace/doc.yaml.templ',
+              languageId: 'templjs-yaml',
+            })),
+          },
+        },
+      } as never)
+      .provideDiagnostics?.(
+        {
+          uri: 'file:///workspace/doc.yaml.templ',
+          languageId: 'templjs-yaml',
+          getText: () => 'foo: bar',
+          offsetAt: () => 0,
+          positionAt: () => ({ line: 0, character: 0 }),
+        } as never,
+        undefined as never
+      );
+    expect(nonMarkdownRoute).toBeUndefined();
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('skip reason=non-markdown'));
     vi.restoreAllMocks();
   });
 
@@ -860,6 +892,44 @@ describe('createServicePlugins', () => {
         undefined as never
       );
     expect(nonYamlDiagnostics).toBeUndefined();
+
+    collectDiagnosticsSpy.mockReset();
+    collectDiagnosticsSpy.mockReturnValue([
+      {
+        message: 'missing source',
+        severity: 1,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 0, character: 1 },
+        },
+        code: 'T001',
+      },
+    ] as never);
+    const sourcedDiagnostics = await diagPlugin!
+      .create({
+        documents: { getVirtualCodeByUri: vi.fn(() => [undefined, undefined] as const) },
+        language: {
+          files: {
+            get: vi.fn(() => ({
+              id: 'file:///workspace/test.yaml.templ',
+              languageId: 'templjs-yaml',
+            })),
+          },
+        },
+      } as never)
+      .provideDiagnostics?.(
+        {
+          uri: 'file:///workspace/test.yaml.templ',
+          languageId: 'templjs-yaml',
+          getText: () => '{{ user }}',
+          offsetAt: () => 0,
+          positionAt: () => ({ line: 0, character: 0 }),
+        } as never,
+        undefined as never
+      );
+    expect(sourcedDiagnostics).toEqual([
+      expect.objectContaining({ source: 'templjs', code: 'T001' }),
+    ]);
 
     collectDiagnosticsSpy.mockRestore();
   });

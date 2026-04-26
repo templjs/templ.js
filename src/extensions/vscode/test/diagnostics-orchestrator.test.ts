@@ -50,6 +50,25 @@ function createHarness(
 }
 
 describe('DeterministicDiagnosticsOrchestrator', () => {
+  it('defaults debounceMs and log when optional constructor settings are omitted', async () => {
+    const publishDiagnostics = vi.fn();
+    const collectLocalDiagnostics = vi.fn(() => [{ code: 'local-default' }]);
+    const collectExtendedDiagnostics = vi.fn(() => [{ code: 'host-default' }]);
+    const orchestrator = createDeterministicDiagnosticsOrchestrator<TestDiagnostic>({
+      getDocumentText: () => 'v1',
+      resolveRevisionKey: (_uri, text) => text,
+      collectLocalDiagnostics,
+      collectExtendedDiagnostics,
+      publishDiagnostics,
+    });
+
+    orchestrator.schedule('file:///doc.md.templ');
+    await flushMicrotasks();
+
+    expect(collectLocalDiagnostics).toHaveBeenCalledTimes(1);
+    expect(collectExtendedDiagnostics).toHaveBeenCalledTimes(1);
+  });
+
   it('publishes local diagnostics first and merged diagnostics after extended diagnostics resolve', async () => {
     const uri = 'file:///doc.md.templ';
     const deferredExtended = createDeferred<TestDiagnostic[]>();
@@ -217,6 +236,53 @@ describe('DeterministicDiagnosticsOrchestrator', () => {
     }
   });
 
+  it('runs immediately when a pending timer exists for the same uri', async () => {
+    vi.useFakeTimers();
+    try {
+      const uri = 'file:///doc.md.templ';
+      const { orchestrator, textByUri, collectLocalDiagnostics, collectExtendedDiagnostics } =
+        createHarness({ debounceMs: 100 });
+
+      textByUri.set(uri, 'v1');
+      collectLocalDiagnostics.mockReturnValue([{ code: 'local-v1' }]);
+      collectExtendedDiagnostics.mockReturnValue([{ code: 'host-v1' }]);
+
+      orchestrator.schedule(uri);
+      orchestrator.schedule(uri, { immediate: true });
+      await flushMicrotasks();
+
+      expect(collectLocalDiagnostics).toHaveBeenCalledTimes(1);
+      expect(collectExtendedDiagnostics).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(100);
+      await flushMicrotasks();
+      expect(collectLocalDiagnostics).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('clears a pending timer for an existing uri without running diagnostics', async () => {
+    vi.useFakeTimers();
+    try {
+      const uri = 'file:///doc.md.templ';
+      const { orchestrator, textByUri, collectLocalDiagnostics, collectExtendedDiagnostics } =
+        createHarness({ debounceMs: 100 });
+
+      textByUri.set(uri, 'v1');
+      orchestrator.schedule(uri);
+      orchestrator.clear(uri);
+
+      vi.advanceTimersByTime(100);
+      await flushMicrotasks();
+
+      expect(collectLocalDiagnostics).not.toHaveBeenCalled();
+      expect(collectExtendedDiagnostics).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('skips runs when the document text is unavailable', async () => {
     const uri = 'file:///missing.md.templ';
     const {
@@ -232,6 +298,34 @@ describe('DeterministicDiagnosticsOrchestrator', () => {
     expect(collectLocalDiagnostics).not.toHaveBeenCalled();
     expect(collectExtendedDiagnostics).not.toHaveBeenCalled();
     expect(publishDiagnostics).not.toHaveBeenCalled();
+  });
+
+  it('drops stale commits from an older revision after a newer run completes', async () => {
+    const uri = 'file:///doc.md.templ';
+    const log = vi.fn();
+    const deferredLocal = createDeferred<TestDiagnostic[]>();
+    const deferredExtended = createDeferred<TestDiagnostic[]>();
+    const { orchestrator, textByUri, collectLocalDiagnostics, collectExtendedDiagnostics } =
+      createHarness({ log });
+
+    textByUri.set(uri, 'v1');
+    collectLocalDiagnostics.mockReturnValueOnce(deferredLocal.promise as Promise<TestDiagnostic[]>);
+    collectExtendedDiagnostics.mockReturnValueOnce(
+      deferredExtended.promise as Promise<TestDiagnostic[]>
+    );
+    collectLocalDiagnostics.mockReturnValueOnce([{ code: 'local-v2' }]);
+    collectExtendedDiagnostics.mockReturnValueOnce([{ code: 'host-v2' }]);
+
+    orchestrator.schedule(uri, { immediate: true });
+    textByUri.set(uri, 'v2');
+    orchestrator.schedule(uri, { immediate: true });
+    await flushMicrotasks();
+
+    deferredLocal.resolve([{ code: 'local-v1' }]);
+    deferredExtended.resolve([{ code: 'host-v1' }]);
+    await flushMicrotasks();
+
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('reason=stale'));
   });
 
   it('logs local and extended collection failures without publishing diagnostics', async () => {
