@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -16,10 +17,20 @@ const jsoncParserEntry = require.resolve('jsonc-parser', {
 });
 const jsoncParserRoot = path.resolve(jsoncParserEntry, '..', '..', '..');
 
+function resolveWorkspacePackageEntry(packageName) {
+  const packageDir = path.join(packageRoot, packageName);
+  const distEntry = path.join(packageDir, 'dist', 'index.js');
+  if (existsSync(distEntry)) {
+    return distEntry;
+  }
+
+  return path.join(packageDir, 'src', 'index.ts');
+}
+
 const alias = {
-  '@templjs/context-graph': path.join(packageRoot, 'context-graph', 'dist', 'index.js'),
-  '@templjs/core': path.join(packageRoot, 'core', 'dist', 'index.js'),
-  '@templjs/volar': path.join(packageRoot, 'volar', 'dist', 'index.js'),
+  '@templjs/context-graph': resolveWorkspacePackageEntry('context-graph'),
+  '@templjs/core': resolveWorkspacePackageEntry('core'),
+  '@templjs/volar': resolveWorkspacePackageEntry('volar'),
   'jsonc-parser': path.join(jsoncParserRoot, 'lib', 'esm', 'main.js'),
 };
 
@@ -28,7 +39,7 @@ const createRequireCompatPlugin = {
   setup(build) {
     const compatFiles = new Set([alias['@templjs/core'], alias['@templjs/volar']]);
 
-    build.onLoad({ filter: /\.js$/ }, async ({ path: filePath }) => {
+    build.onLoad({ filter: /\.[cm]?[jt]s$/ }, async ({ path: filePath }) => {
       if (!compatFiles.has(filePath)) {
         return undefined;
       }
@@ -40,7 +51,7 @@ const createRequireCompatPlugin = {
           'createRequire(import.meta.url)',
           'createRequire(__filename)'
         ),
-        loader: 'js',
+        loader: filePath.endsWith('.ts') ? 'ts' : 'js',
       };
     });
   },

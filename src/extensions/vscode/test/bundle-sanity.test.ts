@@ -5,11 +5,12 @@ import { fileURLToPath } from 'url';
 import { describe, expect, it } from 'vitest';
 
 const extensionRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const nodeExecutable = process.execPath;
 
 function ensureDistServerBundle(): string {
   const distServerPath = path.join(extensionRoot, 'dist/server.js');
   if (!existsSync(distServerPath)) {
-    execFileSync(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['run', 'build'], {
+    execFileSync(nodeExecutable, ['./scripts/build.mjs'], {
       cwd: extensionRoot,
       stdio: 'pipe',
     });
