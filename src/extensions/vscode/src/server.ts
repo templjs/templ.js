@@ -10,6 +10,7 @@ import {
   type IntellisenseOptions,
 } from '@templjs/volar';
 import type { Diagnostic } from '@volar/language-service';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
   extractDocumentSchemaKey,
   loadSchemaSource,
@@ -97,6 +98,15 @@ interface DocumentChangeNotification {
   text: string;
 }
 
+interface TextDocumentContentChange {
+  text?: string;
+  range?: {
+    start: { line: number; character: number };
+    end: { line: number; character: number };
+  };
+  rangeLength?: number;
+}
+
 interface WatchedFilesNotification {
   changes?: Array<{ uri: string; type: number }>;
 }
@@ -123,19 +133,45 @@ function normalizeOpenNotification(
 function normalizeChangeNotification(
   event:
     | DocumentChangeNotification
-    | { textDocument?: { uri?: string }; contentChanges?: Array<{ text?: string }> }
+    | { textDocument?: { uri?: string }; contentChanges?: TextDocumentContentChange[] },
+  currentText?: string
 ): DocumentChangeNotification | undefined {
   if ('uri' in event && typeof event.uri === 'string' && typeof event.text === 'string') {
     return event;
   }
 
   const uri = 'textDocument' in event ? event.textDocument?.uri : undefined;
-  const text = 'contentChanges' in event ? event.contentChanges?.[0]?.text : undefined;
-  if (typeof uri === 'string' && typeof text === 'string') {
-    return { uri, text };
+  const changes = 'contentChanges' in event ? event.contentChanges : undefined;
+  if (typeof uri !== 'string' || !Array.isArray(changes) || changes.length === 0) {
+    return undefined;
   }
 
-  return undefined;
+  if (!changes.every((change) => typeof change.text === 'string')) {
+    return undefined;
+  }
+
+  if (changes.every((change) => !change.range)) {
+    return { uri, text: changes[changes.length - 1]!.text! };
+  }
+
+  if (typeof currentText !== 'string') {
+    return undefined;
+  }
+
+  let updatedText = currentText;
+  for (const change of changes) {
+    if (!change.range) {
+      updatedText = change.text!;
+      continue;
+    }
+
+    const document = TextDocument.create(uri, 'plaintext', 0, updatedText);
+    const startOffset = document.offsetAt(change.range.start);
+    const endOffset = document.offsetAt(change.range.end);
+    updatedText = `${updatedText.slice(0, startOffset)}${change.text!}${updatedText.slice(endOffset)}`;
+  }
+
+  return { uri, text: updatedText };
 }
 
 const serverOptions = {
@@ -210,11 +246,11 @@ function toDiagnosticOptions(uri: string): DiagnosticOptions {
 }
 
 export function isMdTemplateUri(uri: string): boolean {
-  return /\.(md|markdown)\.(templ|tmpl|tpl)($|\?)/i.test(uri);
+  return /\.(md|markdown)\.(templ|tmpl|tpl)$/i.test(uri.split(/[?#]/, 1)[0] ?? uri);
 }
 
 function isYamlTemplateUri(uri: string): boolean {
-  return /\.ya?ml\.(templ|tmpl|tpl)($|\?)/i.test(uri);
+  return /\.ya?ml\.(templ|tmpl|tpl)$/i.test(uri.split(/[?#]/, 1)[0] ?? uri);
 }
 
 async function collectHostDiagnosticsForDocument(
@@ -439,14 +475,15 @@ const handleDocumentDidOpen = (
   documentTextByUri.set(uri, text);
   connection.console.log(`[templjs] Opened document: ${uri}`);
 
-  void loadSchemasForDocumentContext(
-    uri,
-    text,
-    storedWorkspaceRoot,
-    storedInitializationOptions
-  ).then(() => {
-    void refreshDiagnosticsAfterSchemaLoad(uri);
-  });
+  void loadSchemasForDocumentContext(uri, text, storedWorkspaceRoot, storedInitializationOptions)
+    .then(() => {
+      void refreshDiagnosticsAfterSchemaLoad(uri);
+    })
+    .catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      connection.console.log(`[templjs] Schema load failed for ${uri}: ${message}`);
+      void refreshDiagnosticsAfterSchemaLoad(uri);
+    });
 };
 
 const handleDocumentDidChange = (
@@ -454,7 +491,13 @@ const handleDocumentDidChange = (
     | DocumentChangeNotification
     | { textDocument?: { uri?: string }; contentChanges?: Array<{ text?: string }> }
 ) => {
-  const normalized = normalizeChangeNotification(event);
+  const currentText =
+    'uri' in event && typeof event.uri === 'string'
+      ? documentTextByUri.get(event.uri)
+      : 'textDocument' in event && typeof event.textDocument?.uri === 'string'
+        ? documentTextByUri.get(event.textDocument.uri)
+        : undefined;
+  const normalized = normalizeChangeNotification(event, currentText);
   if (!normalized) {
     return;
   }

@@ -5,19 +5,15 @@
 
 <!-- markdownlint-disable MD041 -->
 
-fix(vscode): surface YAML frontmatter parse errors for .md.tmpl files
+fix(vscode): show markdown frontmatter YAML errors in templated files
 
-Routes templjs diagnostics through dedicated Volar service plugins for generic,
-markdown-frontmatter, and YAML host-language paths, while keeping the markdown
-frontmatter coupling isolated to a markdown-specific diagnostics plugin.
+Templated markdown files now surface malformed YAML frontmatter errors alongside
+templjs diagnostics, matching the authoring feedback already available for
+templated YAML files.
 
-Ensures root virtual documents validate against source snapshot text, so
-templjs diagnostics run correctly for `.yaml.templ` and `.md.templ` files.
+The VS Code extension now routes markdown-frontmatter validation through the
+markdown-specific Volar diagnostics path so `.md.templ`, `.md.tmpl`, and
+`.md.tpl` files report frontmatter parse failures in place.
 
-Adds malformed frontmatter fence fallback detection for markdown templates and
-runs `yaml-language-service` on the cleaned frontmatter slice so YAML parse
-errors surface alongside templjs structural diagnostics.
-
-Also restores host-language grammar delegation scopes for Markdown, YAML, HTML,
-and JSON injection grammars and expands regression coverage across extension,
-server, and service-plugin tests.
+This also hardens the extension diagnostics pipeline so templjs and host-language
+diagnostics can coexist without one publish replacing the other.

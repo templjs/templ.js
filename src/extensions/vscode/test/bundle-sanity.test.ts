@@ -1,3 +1,4 @@
+import { execFileSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -5,9 +6,21 @@ import { describe, expect, it } from 'vitest';
 
 const extensionRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+function ensureDistServerBundle(): string {
+  const distServerPath = path.join(extensionRoot, 'dist/server.js');
+  if (!existsSync(distServerPath)) {
+    execFileSync(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['run', 'build'], {
+      cwd: extensionRoot,
+      stdio: 'pipe',
+    });
+  }
+
+  return distServerPath;
+}
+
 describe('build-bundle-sanity', () => {
   it('guards against jsonc-parser UMD bundling regressions in dist server bundle', () => {
-    const distServerPath = path.join(extensionRoot, 'dist/server.js');
+    const distServerPath = ensureDistServerBundle();
     expect(existsSync(distServerPath)).toBe(true);
 
     const bundle = readFileSync(distServerPath, 'utf-8');

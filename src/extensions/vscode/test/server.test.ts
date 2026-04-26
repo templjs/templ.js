@@ -1970,6 +1970,11 @@ describe('isMdTemplateUri', () => {
     expect(isMdTemplateUri('file:///a.md.tpl')).toBe(true);
   });
 
+  it('returns true for markdown template URIs with query or fragment suffixes', () => {
+    expect(isMdTemplateUri('file:///a.md.templ?view=1')).toBe(true);
+    expect(isMdTemplateUri('file:///a.md.templ#frontmatter')).toBe(true);
+  });
+
   it('returns false for non-template markdown URIs', () => {
     expect(isMdTemplateUri('file:///doc.md')).toBe(false);
   });
@@ -2017,6 +2022,30 @@ describe('serverTesting helpers', () => {
     expect(
       helpers.normalizeChangeNotification({ textDocument: { uri: 'file:///legacy.md.tpl' } })
     ).toBeUndefined();
+    expect(
+      helpers.normalizeChangeNotification(
+        {
+          textDocument: { uri: 'file:///legacy.md.tpl' },
+          contentChanges: [
+            {
+              range: {
+                start: { line: 0, character: 7 },
+                end: { line: 0, character: 10 },
+              },
+              text: 'new',
+            },
+            {
+              range: {
+                start: { line: 0, character: 10 },
+                end: { line: 0, character: 10 },
+              },
+              text: ' value',
+            },
+          ],
+        },
+        'legacy old'
+      )
+    ).toEqual({ uri: 'file:///legacy.md.tpl', text: 'legacy new value' });
     expect(
       helpers.normalizeOpenNotification({ uri: 'file:///doc.md.tpl', text: undefined } as never)
     ).toBeUndefined();

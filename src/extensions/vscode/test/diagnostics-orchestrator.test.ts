@@ -328,6 +328,41 @@ describe('DeterministicDiagnosticsOrchestrator', () => {
     expect(log).toHaveBeenCalledWith(expect.stringContaining('reason=stale'));
   });
 
+  it('publishes local diagnostics before publishing merged diagnostics when extended resolves first', async () => {
+    const uri = 'file:///doc.md.templ';
+    const deferredLocal = createDeferred<TestDiagnostic[]>();
+    const deferredExtended = createDeferred<TestDiagnostic[]>();
+    const {
+      orchestrator,
+      textByUri,
+      publishDiagnostics,
+      collectLocalDiagnostics,
+      collectExtendedDiagnostics,
+    } = createHarness();
+
+    textByUri.set(uri, 'v1');
+    collectLocalDiagnostics.mockReturnValueOnce(deferredLocal.promise as Promise<TestDiagnostic[]>);
+    collectExtendedDiagnostics.mockReturnValueOnce(
+      deferredExtended.promise as Promise<TestDiagnostic[]>
+    );
+
+    orchestrator.schedule(uri, { immediate: true });
+    await flushMicrotasks();
+
+    deferredExtended.resolve([{ code: 'host-v1' }]);
+    await flushMicrotasks();
+    expect(publishDiagnostics).not.toHaveBeenCalled();
+
+    deferredLocal.resolve([{ code: 'local-v1' }]);
+    await flushMicrotasks();
+
+    expect(publishDiagnostics).toHaveBeenNthCalledWith(1, uri, [{ code: 'local-v1' }]);
+    expect(publishDiagnostics).toHaveBeenNthCalledWith(2, uri, [
+      { code: 'local-v1' },
+      { code: 'host-v1' },
+    ]);
+  });
+
   it('logs local and extended collection failures without publishing diagnostics', async () => {
     const uri = 'file:///doc.md.templ';
     const log = vi.fn();

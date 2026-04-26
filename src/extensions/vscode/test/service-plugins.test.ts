@@ -534,7 +534,7 @@ describe('createServicePlugins', () => {
     ).toEqual({ start: 0, end: 20 });
     expect(
       servicePluginTesting.detectMarkdownFrontmatterRange('+++\r\ntitle: test\r\n+++\r\nbody')
-    ).toEqual({ start: 0, end: 25 });
+    ).toEqual({ start: 0, end: 23 });
     expect(
       servicePluginTesting.detectMarkdownFrontmatterRange('---\ntitle: test\n...\nbody')
     ).toBeUndefined();

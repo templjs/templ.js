@@ -109,7 +109,11 @@ export class DeterministicDiagnosticsOrchestrator<TDiagnostic> {
     }
     state.revisionKey = revisionKey;
 
-    const commit = (source: 'local' | 'extended', diagnostics: TDiagnostic[]): void => {
+    const commit = (
+      source: 'local' | 'extended' | 'merged',
+      localDiagnostics: TDiagnostic[],
+      extendedDiagnostics: TDiagnostic[]
+    ): void => {
       const current = this.stateByUri.get(uri);
       if (!current) {
         this.log(
@@ -124,21 +128,30 @@ export class DeterministicDiagnosticsOrchestrator<TDiagnostic> {
         return;
       }
 
-      if (source === 'local') {
-        current.localDiagnostics = diagnostics;
-      } else {
-        current.extendedDiagnostics = diagnostics;
-      }
+      current.localDiagnostics = localDiagnostics;
+      current.extendedDiagnostics = extendedDiagnostics;
 
       this.log(
-        `[templjs-orch] commit APPLIED source=${source} count=${diagnostics.length} revisionKey=${revisionKey} publishing total=${current.localDiagnostics.length + current.extendedDiagnostics.length}`
+        `[templjs-orch] commit APPLIED source=${source} count=${localDiagnostics.length + extendedDiagnostics.length} revisionKey=${revisionKey} publishing total=${current.localDiagnostics.length + current.extendedDiagnostics.length}`
       );
       this.publishDiagnostics(uri, [...current.localDiagnostics, ...current.extendedDiagnostics]);
     };
 
+    let localDone = false;
+    let extendedDone = false;
+    let localDiagnostics: TDiagnostic[] = [];
+    let extendedDiagnostics: TDiagnostic[] = [];
+
     Promise.resolve()
       .then(() => this.collectLocalDiagnostics(uri, text))
-      .then((diagnostics) => commit('local', diagnostics))
+      .then((diagnostics) => {
+        localDone = true;
+        localDiagnostics = diagnostics;
+        commit('local', localDiagnostics, []);
+        if (extendedDone) {
+          commit('merged', localDiagnostics, extendedDiagnostics);
+        }
+      })
       .catch((error: unknown) => {
         this.log(
           `[templjs] Local diagnostics failed for ${uri}: ${
@@ -149,7 +162,13 @@ export class DeterministicDiagnosticsOrchestrator<TDiagnostic> {
 
     Promise.resolve()
       .then(() => this.collectExtendedDiagnostics(uri, text))
-      .then((diagnostics) => commit('extended', diagnostics))
+      .then((diagnostics) => {
+        extendedDone = true;
+        extendedDiagnostics = diagnostics;
+        if (localDone) {
+          commit('merged', localDiagnostics, extendedDiagnostics);
+        }
+      })
       .catch((error: unknown) => {
         this.log(
           `[templjs] Extended diagnostics failed for ${uri}: ${

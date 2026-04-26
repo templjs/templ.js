@@ -6,6 +6,7 @@ import {
   type DiagnosticOptions,
   type IntellisenseOptions,
 } from '@templjs/volar';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getLanguageService as getYamlLanguageService } from 'yaml-language-service';
 
 type PluginOptions = {
@@ -151,7 +152,7 @@ function createTempljsAdditionalPlugin(options: PluginOptions): ServicePlugin {
             isIncomplete: false,
             items: items.map((item) => ({
               ...item,
-              kind: item.kind as 1,
+              kind: item.kind as 3 | 6 | 10 | 14,
             })),
           };
         },
@@ -270,42 +271,14 @@ function detectMarkdownFrontmatterRange(text: string): { start: number; end: num
     return undefined;
   }
 
-  const newlineLength = closingMatch[0].endsWith('\r\n')
-    ? 2
-    : closingMatch[0].endsWith('\n')
-      ? 1
-      : 0;
   return {
     start: 0,
-    end: closingMatch.index + closingMatch[0].length + newlineLength,
+    end: closingMatch.index + closingMatch[0].length,
   };
 }
 
 function createTextDocumentLike(uri: string, languageId: string, text: string) {
-  return {
-    uri,
-    languageId,
-    version: 1,
-    getText: () => text,
-    positionAt(offset: number) {
-      const clampedOffset = Math.max(0, Math.min(offset, text.length));
-      const head = text.slice(0, clampedOffset);
-      const lines = head.split(/\r?\n/);
-      return {
-        line: Math.max(0, lines.length - 1),
-        character: lines[lines.length - 1]?.length ?? 0,
-      };
-    },
-    offsetAt(position: { line: number; character: number }) {
-      const lines = text.split(/\r?\n/);
-      let offset = 0;
-      for (let index = 0; index < Math.min(position.line, lines.length - 1); index += 1) {
-        offset += lines[index]?.length ?? 0;
-        offset += text.includes('\r\n') ? 2 : 1;
-      }
-      return Math.min(offset + position.character, text.length);
-    },
-  };
+  return TextDocument.create(uri, languageId, 1, text);
 }
 
 function toDiagnosticSeverity(severity: number | undefined): 1 | 2 | 3 | 4 | undefined {
@@ -362,7 +335,7 @@ function createTempljsDiagnosticsPlugin(options: PluginOptions): ServicePlugin {
             );
             return diagnostics.map((d) => ({
               message: d.message,
-              severity: d.severity as 1 | 2 | 3 | 4 | undefined,
+              severity: toDiagnosticSeverity(d.severity),
               range: d.range,
               source: d.source ?? 'templjs',
               code: d.code,
@@ -379,8 +352,6 @@ function createTempljsDiagnosticsPlugin(options: PluginOptions): ServicePlugin {
   };
 }
 
-/* c8 ignore start */
-/* v8 ignore start */
 function createTempljsMarkdownDiagnosticsPlugin(options: PluginOptions): ServicePlugin {
   const yaml = createYamlService();
 
@@ -449,7 +420,7 @@ function createTempljsMarkdownDiagnosticsPlugin(options: PluginOptions): Service
             return [
               ...templjsDiagnostics.map((d) => ({
                 message: d.message,
-                severity: d.severity as 1 | 2 | 3 | 4 | undefined,
+                severity: toDiagnosticSeverity(d.severity),
                 range: d.range,
                 source: d.source ?? 'templjs',
                 code: d.code,
@@ -470,11 +441,7 @@ function createTempljsMarkdownDiagnosticsPlugin(options: PluginOptions): Service
     },
   };
 }
-/* v8 ignore stop */
-/* c8 ignore stop */
 
-/* c8 ignore start */
-/* v8 ignore start */
 export function createServicePlugins(options: PluginOptions): ServicePlugin[] {
   return [
     createTempljsAdditionalPlugin(options),
@@ -483,8 +450,6 @@ export function createServicePlugins(options: PluginOptions): ServicePlugin[] {
     createYamlDiagnosticsPlugin(options),
   ];
 }
-/* v8 ignore stop */
-/* c8 ignore stop */
 
 /* c8 ignore start */
 /* v8 ignore start */
