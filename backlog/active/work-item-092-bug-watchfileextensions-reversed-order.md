@@ -11,6 +11,9 @@ priority: medium
 estimated: 1
 actual: 1
 links:
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/63'
+    - 'https://github.com/templjs/templ.js/pull/64'
   evidence:
     - '[[record-092-bug-watchfileextensions-reversed-order-evidence-1]]'
     - '[[record-092-bug-watchfileextensions-reversed-order-evidence-2]]'
