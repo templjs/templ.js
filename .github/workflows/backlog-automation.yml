@@ -23,7 +23,7 @@ permissions:
 
 env:
   DOC_VADER_REPOSITORY: calan-co/doc-vader
-  DOC_VADER_REF: main
+  DOC_VADER_REF: 1a52bd66e72920f7c0f1a937a078929f6a52e0c9
   DOC_VADER_DIR: .tools/doc-vader
 
 jobs:
@@ -47,6 +47,7 @@ jobs:
           ref: ${{ env.DOC_VADER_REF }}
           path: ${{ env.DOC_VADER_DIR }}
           fetch-depth: 1
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -111,6 +112,7 @@ jobs:
           ref: ${{ env.DOC_VADER_REF }}
           path: ${{ env.DOC_VADER_DIR }}
           fetch-depth: 1
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -173,6 +175,7 @@ jobs:
           ref: ${{ env.DOC_VADER_REF }}
           path: ${{ env.DOC_VADER_DIR }}
           fetch-depth: 1
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
