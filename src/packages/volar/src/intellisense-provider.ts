@@ -5,6 +5,7 @@ import {
   resolveSemanticZoneByHostLanguage,
   resolveSemanticZone,
   toSemanticZone,
+    type FunctionSignature,
 } from '@templjs/core';
 import {
   resolveDelimiters,
@@ -119,7 +120,7 @@ function getDefaultFilters(): FilterSignature[] {
       description: signature.description,
       returnType: signature.returnType,
       parameters: signature.parameters.map(
-        (param: { name: string; type: string; description?: string }) => ({
+        (param: FunctionSignature['parameters'][number]) => ({
           name: param.name,
           type: param.type,
           description: param.description,

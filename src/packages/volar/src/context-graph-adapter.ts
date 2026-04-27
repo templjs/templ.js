@@ -11,8 +11,9 @@ import {
   type SemanticZone,
   SchemaValidator,
   type TemplateScopeBinding,
+    type SchemaMetadata,
 } from '@templjs/core';
-import { existsSync, readFileSync } from 'fs';
+  import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
 import type {
   ContextNode,
@@ -88,11 +89,6 @@ interface ResolvedSchemaPathTarget {
   uri: string;
   startOffset: number;
   pathAtTarget: string;
-}
-
-interface MetadataEntry {
-  type?: string;
-  description?: string;
 }
 
 export interface ContextGraphSemanticReadAdapterOptions {
@@ -1148,7 +1144,7 @@ function buildPathNodes(contextBlock: SemanticContextBlock, schema?: object): Co
 
   const profileId = getSemanticProfileId(contextBlock);
 
-  const metadata = new SchemaValidator(schema).getMetadata() as Record<string, MetadataEntry>;
+  const metadata: SchemaMetadata = new SchemaValidator(schema).getMetadata();
   const nodes: ContextNode[] = [];
 
   for (const [path, entry] of Object.entries(metadata)) {
@@ -1160,7 +1156,7 @@ function buildPathNodes(contextBlock: SemanticContextBlock, schema?: object): Co
         path,
         parentPath: getParentPath(path),
         label: getLabel(path),
-        type: entry.type ?? 'unknown',
+        type: entry.type,
         description: entry.description ?? '',
         contextBlock,
         isTopLevel: getParentPath(path) === '',

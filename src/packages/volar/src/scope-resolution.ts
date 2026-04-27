@@ -34,16 +34,14 @@ export function buildForScopesInText(
   delimiters?: Partial<DelimiterConfig>
 ): ForScope[] {
   const lexerOptions = volarDelimitersToLexerOptions(delimiters);
-  return (extractTemplateScopeBindings(text, lexerOptions) as TemplateScopeBinding[]).map(
-    (binding: TemplateScopeBinding) => ({
+  return extractTemplateScopeBindings(text, lexerOptions).map((binding) => ({
       alias: binding.alias,
       iterablePath: binding.iterablePath,
       aliasStart: binding.declarationStartOffset,
       aliasEnd: binding.declarationEndOffset,
       bodyStart: binding.scopeStartOffset,
       bodyEnd: binding.scopeEndOffset,
-    })
-  );
+    }));
 }
 
 function getMatchingScopesAtOffset(offset: number, scopes: ForScope[]): ForScope[] {

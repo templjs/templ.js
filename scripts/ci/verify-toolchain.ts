@@ -104,7 +104,7 @@ function main(): void {
 
   if (!nodeVersion || !nodeRange || !ensureSatisfiesRange(nodeVersion, nodeRange)) {
     const defaultNode = pkg.toolchain?.node?.default ?? '24';
-    console.error('Unsupported Node.js runtime for merge-gating checks.');
+      console.error('Error: Unsupported Node.js runtime for merge-gating checks.');
     console.error(`Detected: ${nodeVersionRaw}`);
     console.error(`Required: ${nodeRange || 'see package.json engines.node'}`);
     console.error(`Use nvm:  nvm install ${defaultNode} && nvm use ${defaultNode}`);
@@ -115,7 +115,7 @@ function main(): void {
   const expectedPnpm = pkg.toolchain?.pnpm ?? pkg.engines?.pnpm;
   const localPnpm = getLocalPnpmVersion();
   if (expectedPnpm && localPnpm !== expectedPnpm) {
-    console.error('Unsupported pnpm version for merge-gating checks.');
+    console.error('Error: Unsupported pnpm version for merge-gating checks.');
     console.error(`Detected: ${localPnpm ?? 'unknown'}`);
     console.error(`Required: ${expectedPnpm}`);
     console.error(`Use: corepack prepare pnpm@${expectedPnpm} --activate`);
