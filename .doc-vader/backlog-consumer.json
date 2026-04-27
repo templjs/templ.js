@@ -10,9 +10,5 @@
     "autoCloseOnMerge": false,
     "autoEvidenceFromWorkflowRuns": true,
     "preserveCommitMap": true
-  },
-  "migration": {
-    "legacyActive": "backlog",
-    "legacyArchive": "backlog/archive"
   }
 }

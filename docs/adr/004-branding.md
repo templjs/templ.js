@@ -19,7 +19,7 @@ The project is undergoing a full rewrite from Python to TypeScript. This present
 
 - **Name**: "Temple"
 - **Python Package**: `temple` (pip)
-- **GitHub**: `squirrel289/temple` repository
+- **GitHub**: `calan-co/temple` repository
 - **VS Code Extension**: `vscode-temple-linter`
 
 ### Naming Considerations

@@ -3,8 +3,10 @@ import {
   collectDiagnostics,
   detectFrontmatterRange,
   TempljsServicePlugin,
+  type DiagnosticItem,
   type DiagnosticOptions,
   type IntellisenseOptions,
+  type LSPCompletionItem,
 } from '@templjs/volar';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getLanguageService as getYamlLanguageService } from 'yaml-language-service';
@@ -150,7 +152,7 @@ function createTempljsAdditionalPlugin(options: PluginOptions): ServicePlugin {
 
           return {
             isIncomplete: false,
-            items: items.map((item) => ({
+            items: items.map((item: LSPCompletionItem) => ({
               ...item,
               kind: item.kind as 3 | 6 | 10 | 14,
             })),
@@ -333,7 +335,7 @@ function createTempljsDiagnosticsPlugin(options: PluginOptions): ServicePlugin {
             options.log?.(
               `[templjs-diag-plugin] collected count=${diagnostics.length} sourceUri=${route.sourceUri}`
             );
-            return diagnostics.map((d) => ({
+            return diagnostics.map((d: DiagnosticItem) => ({
               message: d.message,
               severity: toDiagnosticSeverity(d.severity),
               range: d.range,
@@ -418,7 +420,7 @@ function createTempljsMarkdownDiagnosticsPlugin(options: PluginOptions): Service
               `[templjs-markdown-diag-plugin] collected templjs=${templjsDiagnostics.length} yaml=${yamlDiagnostics.length} sourceUri=${route.sourceUri}`
             );
             return [
-              ...templjsDiagnostics.map((d) => ({
+              ...templjsDiagnostics.map((d: DiagnosticItem) => ({
                 message: d.message,
                 severity: toDiagnosticSeverity(d.severity),
                 range: d.range,

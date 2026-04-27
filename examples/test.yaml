@@ -50,5 +50,5 @@ notes:
       - Python projection/transport/integration suites pass.
       - VS Code integration host still terminates with SIGABRT in sandbox; release
         gate remains pending unsandboxed host validation.
-      - 'PR submitted: https://github.com/squirrel289/temple/pull/11'
+      - 'PR submitted: https://github.com/calan-co/temple/pull/11'
       - Remote CI currently failing across required checks; see process-pr status.

@@ -23,9 +23,11 @@ const pnpmCmd = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 const hookTasks: Record<HookName, HookTask[]> = {
   'pre-commit': [{ script: 'lint:staged', optional: false }],
   'pre-push': [
+    { script: 'ci:toolchain', optional: false },
     { script: 'lint:frontmatter', optional: false },
     { script: 'lint:eslint:pre-push', optional: false },
     { script: 'test:affected:pre-push', optional: false },
+    { script: 'build:affected:pre-push', optional: false },
     { script: 'type-check', optional: false },
   ],
 };
@@ -278,11 +280,13 @@ function resolveCoverageThresholds(
 }
 
 function parseTaskMetrics(taskScript: string, output: string, exitCode: number): string[] {
+  if (taskScript === 'ci:toolchain' && exitCode === 0) return ['Toolchain: supported'];
   if (taskScript === 'lint:frontmatter') return parseLintFrontmatterMetrics(output);
   if (taskScript === 'lint:staged') return parseLintStagedMetrics(output);
   if (taskScript === 'lint:eslint:pre-push') return parseLintEslintMetrics(output);
   if (taskScript === 'type-check') return parseTypecheckMetrics(output, exitCode);
   if (taskScript.startsWith('test:affected')) return parseAffectedTestMetrics(output);
+  if (taskScript.startsWith('build:affected') && exitCode === 0) return ['Affected build: passed'];
   return [];
 }
 
