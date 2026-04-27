@@ -78,3 +78,7 @@ Required checks can be green while local extension package build still fails, cr
 ## Relationships
 
 - `relates_to`: [[work-item-094-bug-host-markdown-frontmatter-diagnostics-not-delegated]]
+
+## Links
+
+- `evidence`: [[record-096-bug-ci-local-build-drift-for-vscode-extension-evidence-1]]
