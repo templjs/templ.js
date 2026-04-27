@@ -69,14 +69,14 @@ ADR-003 states: "delegating base format linting to VS Code's native language ser
 - [x] Add regression coverage proving host diagnostics are published with templjs diagnostics on save
 - [x] Verify existing in-process integration coverage for markdown/html/json completion, hover, and definition paths
 - [x] Add YAML host-language delegation coverage (diagnostics/completion) for `.yaml.tmpl`
-- [x] Add explicit host formatting coverage for supported host formats (including markdown)
+- [ ] Add explicit host formatting coverage for supported host formats (including markdown)
 - [x] Validate templjs-specific features remain unaffected after parity expansions
 
 ## Acceptance Criteria
 
 - [x] HTML host completion path is validated in integration tests for `.html.tmpl`
 - [x] JSON host diagnostics/authoring path is validated in integration tests for `.json.tmpl`
-- [x] Markdown host formatting (`editor.formatDocument`) is validated for `.md.tmpl`
+- [ ] Markdown host formatting (`editor.formatDocument`) is validated for `.md.tmpl`
 - [x] YAML host diagnostics/completion are validated for `.yaml.tmpl`
 - [x] Template expression completions and hover remain unaffected
 - [x] Existing server and in-process integration test suites continue to pass after parity additions
@@ -86,14 +86,14 @@ ADR-003 states: "delegating base format linting to VS Code's native language ser
 Added integration test coverage in `src/extensions/vscode/test/server-inprocess.integration.test.ts`:
 
 1. Extended the existing md/html/json delegation test to include `.yaml.tmpl` files, verifying YAML completion, hover, and definition work end-to-end
-2. Added a second integration test confirming that markdown host formatting and templjs completions coexist without regression
-3. All 139 existing tests continue to pass with the new coverage additions
+2. All existing tests in `src/extensions/vscode/test/server-inprocess.integration.test.ts` continue to pass after the YAML parity addition
 
-This closes the final parity gaps by:
+This closes the YAML parity gap by:
 
-- Validating YAML host-language delegation for all four supported host formats (markdown, html, json, yaml)
-- Confirming host formatting capabilities are available and functional
+- Extending delegation coverage to all four supported host formats (markdown, html, json, yaml) for completion, hover, and definition paths
 - Ensuring templjs-specific features (completions, hover, definition) remain unaffected by host-language delegation enhancements
+
+**Note**: Markdown host formatting (`editor.formatDocument`) coverage remains open. The server does not currently register a document-formatting handler, so this parity item requires a follow-up implementation before it can be validated by integration tests.
 
 ## References
 
