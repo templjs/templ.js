@@ -1,5 +1,7 @@
 ---
+'@templjs/core': patch
 '@templjs/cli': patch
+'@templjs/context-graph': patch
 '@templjs/volar': patch
 ---
 
