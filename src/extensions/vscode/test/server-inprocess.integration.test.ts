@@ -1333,6 +1333,7 @@ describe('language-server-inprocess-authoring', () => {
       toFileUri('/workspace/sample.md.tmpl'),
       toFileUri('/workspace/sample.html.tmpl'),
       toFileUri('/workspace/sample.json.tmpl'),
+      toFileUri('/workspace/sample.yaml.tmpl'),
     ]) {
       const completion = await completionHandler({
         textDocument: { uri },
@@ -1354,8 +1355,8 @@ describe('language-server-inprocess-authoring', () => {
       expect(definition[0]?.targetUri).toBe(toFileUri('/tmp/schema.json'));
     }
 
-    expect(languageService.doComplete).toHaveBeenCalledTimes(3);
-    expect(languageService.doHover).toHaveBeenCalledTimes(3);
-    expect(languageService.findDefinition).toHaveBeenCalledTimes(3);
+    expect(languageService.doComplete).toHaveBeenCalledTimes(4);
+    expect(languageService.doHover).toHaveBeenCalledTimes(4);
+    expect(languageService.findDefinition).toHaveBeenCalledTimes(4);
   });
 });
