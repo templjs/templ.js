@@ -41,7 +41,7 @@ function variableNodeToPath(node: ExpressionNode): string | null {
     return null;
   }
 
-  return `${node.name}${node.path.map((segment) => pathSegmentToString(segment)).join('')}`;
+  return `${node.name}${node.path.map((segment: PathSegment) => pathSegmentToString(segment)).join('')}`;
 }
 
 function collectExpressionReferences(

@@ -1,7 +1,7 @@
 import { resolveDelimiters, type DelimiterConfig } from './template-delimiters.js';
 import { extractExpressionVariableReferences } from './expression-analysis.js';
 import { extractTemplateScopeBindings } from '@templjs/core';
-import type { LexerOptions } from '@templjs/core';
+import type { LexerOptions, TemplateScopeBinding } from '@templjs/core';
 
 export interface ForScope {
   alias: string;
@@ -34,14 +34,16 @@ export function buildForScopesInText(
   delimiters?: Partial<DelimiterConfig>
 ): ForScope[] {
   const lexerOptions = volarDelimitersToLexerOptions(delimiters);
-  return extractTemplateScopeBindings(text, lexerOptions).map((binding) => ({
-    alias: binding.alias,
-    iterablePath: binding.iterablePath,
-    aliasStart: binding.declarationStartOffset,
-    aliasEnd: binding.declarationEndOffset,
-    bodyStart: binding.scopeStartOffset,
-    bodyEnd: binding.scopeEndOffset,
-  }));
+  return (extractTemplateScopeBindings(text, lexerOptions) as TemplateScopeBinding[]).map(
+    (binding: TemplateScopeBinding) => ({
+      alias: binding.alias,
+      iterablePath: binding.iterablePath,
+      aliasStart: binding.declarationStartOffset,
+      aliasEnd: binding.declarationEndOffset,
+      bodyStart: binding.scopeStartOffset,
+      bodyEnd: binding.scopeEndOffset,
+    })
+  );
 }
 
 function getMatchingScopesAtOffset(offset: number, scopes: ForScope[]): ForScope[] {

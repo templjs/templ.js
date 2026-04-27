@@ -4,7 +4,11 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "composite": true,
-    "stripInternal": true
+    "stripInternal": true,
+    "paths": {
+      "@templjs/core": ["src/packages/core"],
+      "@templjs/context-graph": ["src/packages/context-graph"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"],

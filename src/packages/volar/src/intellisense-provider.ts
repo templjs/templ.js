@@ -104,7 +104,7 @@ const DEFAULT_KEYWORDS = [
 const BUILTIN_FILTER_SIGNATURES = getBuiltinFilterSignatures();
 
 function getDefaultFilters(): FilterSignature[] {
-  return getBuiltinFilterNames().map((name) => {
+  return getBuiltinFilterNames().map((name: string) => {
     const signature =
       BUILTIN_FILTER_SIGNATURES[name] ??
       ({
@@ -118,11 +118,13 @@ function getDefaultFilters(): FilterSignature[] {
       name: signature.name,
       description: signature.description,
       returnType: signature.returnType,
-      parameters: signature.parameters.map((param) => ({
-        name: param.name,
-        type: param.type,
-        description: param.description,
-      })),
+      parameters: signature.parameters.map(
+        (param: { name: string; type: string; description?: string }) => ({
+          name: param.name,
+          type: param.type,
+          description: param.description,
+        })
+      ),
     };
   });
 }

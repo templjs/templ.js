@@ -5,12 +5,11 @@ title: '096: CI/local build drift for VS Code extension package'
 summary: Required CI checks can pass while local extension package build fails with TS6305 and strict type errors, obscuring real release risk
 type: work-item
 subtype: bug
-lifecycle: draft
-status: proposed
-status_reason: needs-triage
+lifecycle: active
+status: ready-for-review
 priority: high
 estimated: 3
-actual: 0
+actual: 3
 ---
 
 ## Goal
@@ -57,24 +56,24 @@ Required checks can be green while local extension package build still fails, cr
 
 ## Tasks
 
-- [ ] Audit required check contexts against expected local developer build commands.
-- [ ] Classify failure modes: environment-only vs reproducible code/config drift.
-- [ ] Decide and implement parity policy (workflow update and/or local preflight guard).
-- [ ] Add regression coverage or validation scripts that catch this drift class early.
-- [ ] Update contributor docs with definitive local/CI build parity guidance.
+- [x] Audit required check contexts against expected local developer build commands.
+- [x] Classify failure modes: environment-only vs reproducible code/config drift.
+- [x] Decide and implement parity policy (workflow update and/or local preflight guard).
+- [x] Add regression coverage or validation scripts that catch this drift class early.
+- [x] Update contributor docs with definitive local/CI build parity guidance.
 
 ## Deliverables
 
-- [ ] A documented build parity contract for CI vs local workflows.
-- [ ] Workflow and/or script changes that enforce the chosen parity policy.
-- [ ] Tests or validation evidence proving drift is detected before merge.
+- [x] A documented build parity contract for CI vs local workflows.
+- [x] Workflow and/or script changes that enforce the chosen parity policy.
+- [x] Tests or validation evidence proving drift is detected before merge.
 
 ## Acceptance Criteria
 
-- [ ] The same commit that passes required CI checks also passes the defined local extension build contract under supported toolchains.
-- [ ] Unsupported local environments fail with clear, actionable guidance.
-- [ ] Documentation clearly states which commands are merge-gating and which are advisory.
-- [ ] A regression check exists to prevent future CI/local drift for extension builds.
+- [x] The same commit that passes required CI checks also passes the defined local extension build contract under supported toolchains.
+- [x] Unsupported local environments fail with clear, actionable guidance.
+- [x] Documentation clearly states which commands are merge-gating and which are advisory.
+- [x] A regression check exists to prevent future CI/local drift for extension builds.
 
 ## Relationships
 

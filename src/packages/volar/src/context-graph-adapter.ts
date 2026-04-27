@@ -90,6 +90,11 @@ interface ResolvedSchemaPathTarget {
   pathAtTarget: string;
 }
 
+interface MetadataEntry {
+  type?: string;
+  description?: string;
+}
+
 export interface ContextGraphSemanticReadAdapterOptions {
   readTextFile?: (filePath: string) => string;
 }
@@ -1143,7 +1148,7 @@ function buildPathNodes(contextBlock: SemanticContextBlock, schema?: object): Co
 
   const profileId = getSemanticProfileId(contextBlock);
 
-  const metadata = new SchemaValidator(schema).getMetadata();
+  const metadata = new SchemaValidator(schema).getMetadata() as Record<string, MetadataEntry>;
   const nodes: ContextNode[] = [];
 
   for (const [path, entry] of Object.entries(metadata)) {
@@ -1155,7 +1160,7 @@ function buildPathNodes(contextBlock: SemanticContextBlock, schema?: object): Co
         path,
         parentPath: getParentPath(path),
         label: getLabel(path),
-        type: entry.type,
+        type: entry.type ?? 'unknown',
         description: entry.description ?? '',
         contextBlock,
         isTopLevel: getParentPath(path) === '',
@@ -1203,7 +1208,7 @@ function buildPathNodes(contextBlock: SemanticContextBlock, schema?: object): Co
 }
 
 function filterNodes(snapshot: GraphSnapshot, request: QueryRequest): ContextNode[] {
-  return snapshot.nodes.filter((node) => {
+  return snapshot.nodes.filter((node: ContextNode) => {
     if (request.nodes?.kind && node.kind !== request.nodes.kind) {
       return false;
     }
@@ -1229,7 +1234,9 @@ function querySnapshot(snapshot: GraphSnapshot, request: QueryRequest): QueryRes
   return {
     version: request.version,
     revision: snapshot.revision,
-    nodes: filterNodes(snapshot, request).sort((left, right) => left.id.localeCompare(right.id)),
+    nodes: filterNodes(snapshot, request).sort((left: ContextNode, right: ContextNode) =>
+      left.id.localeCompare(right.id)
+    ),
     edges: [],
   };
 }
@@ -1524,7 +1531,7 @@ export class ContextGraphSemanticReadAdapter {
       context
     );
 
-    return response.nodes.map((node) => ({
+    return response.nodes.map((node: ContextNode) => ({
       label: String(node.attributes?.label ?? ''),
       kind: parentPath ? 'property' : 'variable',
       detail: asString(node.attributes?.type),
@@ -1558,7 +1565,7 @@ export class ContextGraphSemanticReadAdapter {
       context
     );
 
-    return response.nodes.map((node) => ({
+    return response.nodes.map((node: ContextNode) => ({
       label: String(node.attributes?.label ?? ''),
       kind: 'keyword',
       detail: `${path} enum`,
@@ -1566,9 +1573,15 @@ export class ContextGraphSemanticReadAdapter {
   }
 
   resolveScopedPath(text: string, path: string, offset: number): string {
-    const bindings = extractTemplateScopeBindings(text)
-      .filter((binding) => offset >= binding.scopeStartOffset && offset < binding.scopeEndOffset)
-      .sort((left, right) => right.scopeStartOffset - left.scopeStartOffset);
+    const bindings = (extractTemplateScopeBindings(text) as TemplateScopeBinding[])
+      .filter(
+        (binding: TemplateScopeBinding) =>
+          offset >= binding.scopeStartOffset && offset < binding.scopeEndOffset
+      )
+      .sort(
+        (left: TemplateScopeBinding, right: TemplateScopeBinding) =>
+          right.scopeStartOffset - left.scopeStartOffset
+      );
 
     return this.expandScopedPath(path, bindings);
   }
@@ -1703,7 +1716,7 @@ export class ContextGraphSemanticReadAdapter {
 
     return {
       ...snapshot,
-      nodes: snapshot.nodes.map((node) => ({
+      nodes: snapshot.nodes.map((node: ContextNode) => ({
         ...node,
         attributes: {
           ...(node.attributes ?? {}),

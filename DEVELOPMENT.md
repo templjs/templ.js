@@ -177,6 +177,22 @@ Husky runs these checks automatically before each commit:
 2. **Commitlint**: Validates commit message format (conventional commits)
 3. **Repo hook runner**: Executes the current repo-defined pre-commit flow from `scripts/ci/hook-runner.ts`
 
+## Pre-Push Build Parity
+
+Husky runs merge-gating parity checks before each push via `scripts/ci/hook-runner.ts`.
+
+The pre-push flow includes:
+
+1. `ci:toolchain` (fail-fast Node/pnpm version guard)
+2. `lint:frontmatter`
+3. `lint:eslint:pre-push`
+4. `test:affected:pre-push`
+5. `build:affected:pre-push` (alias of `build:affected:local`)
+6. `type-check`
+
+This keeps local pre-push behavior aligned with CI by using the same affected-build strategy in both paths.
+Unsupported local runtimes are treated as merge-gating parity failures and must be corrected before push.
+
 ### Commit Message Format
 
 We use [Conventional Commits](https://www.conventionalcommits.org/):
