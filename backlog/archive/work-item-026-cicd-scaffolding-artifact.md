@@ -60,7 +60,7 @@ This is a PRIMARY ARTIFACT of v1.0 alongside code, not a secondary task.
 - [x] Document all SKILL tools used:
   - List in `.agents/skills-manifest.md`
   - For each skill: purpose, when to use, integration point
-  - Example: squirrel289/pax@feature-branch-management, github/awesome-copilot@git-commit, squirrel289/pax@create-pr
+  - Example: calan-co/pax@feature-branch-management, github/awesome-copilot@git-commit, calan-co/pax@create-pr
 
 - [x] Create local development guide:
   - `DEVELOPMENT.md` with setup steps
@@ -148,10 +148,10 @@ This is a PRIMARY ARTIFACT of v1.0 alongside code, not a secondary task.
 
 Document which agent skills are used:
 
-- `squirrel289/pax@feature-branch-management` - Creating/rebasing branches
+- `calan-co/pax@feature-branch-management` - Creating/rebasing branches
 - `github/awesome-copilot@git-commit` - Conventional commit messages
-- `squirrel289/pax@create-pr` - PR creation and description generation
-- `squirrel289/pax@finalize-work-item` - Closing work items after merge
+- `calan-co/pax@create-pr` - PR creation and description generation
+- `calan-co/pax@finalize-work-item` - Closing work items after merge
 - Any other skills leveraged in development workflow
 
 ## Development Runbook Outline

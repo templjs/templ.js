@@ -3,7 +3,7 @@ $schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:036-cli-short-flag-operand-parsing
 title: '36: Harden CLI Short-Flag Operand Parsing in Output Policy'
 summary: Harden CLI Short-Flag Operand Parsing in Output Policy
-assignee: squirrel289
+assignee: chris-cald
 type: work-item
 subtype: task
 lifecycle: inactive
