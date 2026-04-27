@@ -11,6 +11,8 @@ priority: high
 estimated: 3
 actual: 1
 links:
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/64'
   evidence:
     - '[[record-094-bug-host-markdown-frontmatter-diagnostics-not-delegated-evidence-1]]'
     - '[[record-094-bug-host-markdown-frontmatter-diagnostics-not-delegated-evidence-2]]'

@@ -10,6 +10,9 @@ status: ready-for-review
 priority: high
 estimated: 3
 actual: 3
+links:
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/65'
 ---
 
 ## Goal
