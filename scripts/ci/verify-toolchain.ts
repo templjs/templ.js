@@ -26,7 +26,9 @@ interface Semver {
 }
 
 function parseSemver(version: string): Semver | null {
-  const match = version.trim().match(/^(?:v)?(\d+)\.(\d+)\.(\d+)$/);
+  // Ignore prerelease/build metadata so numeric comparison remains stable.
+  const normalized = version.trim().replace(/[-+].*$/, '');
+  const match = normalized.match(/^(?:v)?(\d+)\.(\d+)\.(\d+)$/);
   if (!match) return null;
   return {
     major: Number.parseInt(match[1], 10),

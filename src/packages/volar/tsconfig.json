@@ -6,8 +6,8 @@
     "composite": true,
     "stripInternal": true,
     "paths": {
-      "@templjs/core": ["src/packages/core"],
-      "@templjs/context-graph": ["src/packages/context-graph"]
+      "@templjs/core": ["src/packages/core/src/index.ts"],
+      "@templjs/context-graph": ["src/packages/context-graph/src/index.ts"]
     }
   },
   "include": ["src/**/*"],

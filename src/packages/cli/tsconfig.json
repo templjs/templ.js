@@ -5,7 +5,7 @@
     "rootDir": "./src",
     "composite": true,
     "paths": {
-      "@templjs/core": ["src/packages/core"]
+      "@templjs/core": ["src/packages/core/src/index.ts"]
     }
   },
   "include": ["src/**/*"],

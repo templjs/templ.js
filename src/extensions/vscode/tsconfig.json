@@ -7,7 +7,7 @@
     "lib": ["ES2022"],
     "composite": true,
     "paths": {
-      "@templjs/volar": ["src/packages/volar"]
+      "@templjs/volar": ["src/packages/volar/src/index.ts"]
     }
   },
   "include": ["src/**/*"],
