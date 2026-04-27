@@ -59,11 +59,19 @@ jobs:
           corepack prepare pnpm@8.15.0 --activate
 
       - name: Install and build doc-vader
+        id: build-doc-vader
+        continue-on-error: true
         run: |
           pnpm --dir "$DOC_VADER_DIR" install --frozen-lockfile
           pnpm --dir "$DOC_VADER_DIR" run build
 
+      - name: Skip ingest when doc-vader build fails
+        if: steps.build-doc-vader.outcome != 'success'
+        run: |
+          echo "::warning::doc-vader build failed; skipping backlog ingestion for this run."
+
       - name: Ingest pull request event
+        if: steps.build-doc-vader.outcome == 'success'
         run: |
           node "$DOC_VADER_DIR/dist/cli/doc-vader.js" backlog ingest-event \
             --provider github \
@@ -72,6 +80,7 @@ jobs:
             --consumer-config .doc-vader/backlog-consumer.json
 
       - name: Commit backlog changes
+        if: steps.build-doc-vader.outcome == 'success'
         run: |
           if [ -z "$(git status --porcelain -- backlog .doc-vader)" ]; then
             exit 0
@@ -114,11 +123,19 @@ jobs:
           corepack prepare pnpm@8.15.0 --activate
 
       - name: Install and build doc-vader
+        id: build-doc-vader
+        continue-on-error: true
         run: |
           pnpm --dir "$DOC_VADER_DIR" install --frozen-lockfile
           pnpm --dir "$DOC_VADER_DIR" run build
 
+      - name: Skip ingest when doc-vader build fails
+        if: steps.build-doc-vader.outcome != 'success'
+        run: |
+          echo "::warning::doc-vader build failed; skipping backlog ingestion for this run."
+
       - name: Ingest workflow run event
+        if: steps.build-doc-vader.outcome == 'success'
         run: |
           node "$DOC_VADER_DIR/dist/cli/doc-vader.js" backlog ingest-event \
             --provider github \
@@ -127,6 +144,7 @@ jobs:
             --consumer-config .doc-vader/backlog-consumer.json
 
       - name: Commit backlog changes
+        if: steps.build-doc-vader.outcome == 'success'
         run: |
           if [ -z "$(git status --porcelain -- backlog .doc-vader)" ]; then
             exit 0
@@ -167,11 +185,19 @@ jobs:
           corepack prepare pnpm@8.15.0 --activate
 
       - name: Install and build doc-vader
+        id: build-doc-vader
+        continue-on-error: true
         run: |
           pnpm --dir "$DOC_VADER_DIR" install --frozen-lockfile
           pnpm --dir "$DOC_VADER_DIR" run build
 
+      - name: Skip sweep when doc-vader build fails
+        if: steps.build-doc-vader.outcome != 'success'
+        run: |
+          echo "::warning::doc-vader build failed; skipping backlog sweep for this run."
+
       - name: Sweep and ingest merged PRs
+        if: steps.build-doc-vader.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
           DRY_RUN: ${{ inputs.dry_run }}
@@ -264,7 +290,7 @@ jobs:
           PYEOF
 
       - name: Commit sweep changes
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && steps.build-doc-vader.outcome == 'success' }}
         run: |
           if [ -z "$(git status --porcelain -- backlog .doc-vader)" ]; then
             echo "No backlog changes to commit."
