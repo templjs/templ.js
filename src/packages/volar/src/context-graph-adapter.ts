@@ -11,9 +11,9 @@ import {
   type SemanticZone,
   SchemaValidator,
   type TemplateScopeBinding,
-    type SchemaMetadata,
+  type SchemaMetadata,
 } from '@templjs/core';
-  import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
 import type {
   ContextNode,

@@ -104,7 +104,7 @@ function main(): void {
 
   if (!nodeVersion || !nodeRange || !ensureSatisfiesRange(nodeVersion, nodeRange)) {
     const defaultNode = pkg.toolchain?.node?.default ?? '24';
-      console.error('Error: Unsupported Node.js runtime for merge-gating checks.');
+    console.error('Error: Unsupported Node.js runtime for merge-gating checks.');
     console.error(`Detected: ${nodeVersionRaw}`);
     console.error(`Required: ${nodeRange || 'see package.json engines.node'}`);
     console.error(`Use nvm:  nvm install ${defaultNode} && nvm use ${defaultNode}`);
