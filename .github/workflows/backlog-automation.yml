@@ -2,6 +2,12 @@ name: Backlog Automation
 
 on:
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Preview eligible updates without writing changes'
+        required: false
+        default: false
+        type: boolean
   pull_request:
     types: [opened, edited, reopened, synchronize, closed]
     branches:
@@ -16,17 +22,36 @@ permissions:
   pull-requests: write
 
 env:
-  DOC_VADER_REPOSITORY: squirrel289/doc-vader
+  DOC_VADER_REPOSITORY: calan-co/doc-vader
   DOC_VADER_REF: main
   DOC_VADER_DIR: .tools/doc-vader
 
 jobs:
+  preflight:
+    name: Check Prerequisites
+    runs-on: ubuntu-latest
+    outputs:
+      has-token: ${{ steps.check.outputs.has-token }}
+    steps:
+      - name: Check DOC_VADER_CHECKOUT_TOKEN
+        id: check
+        env:
+          TOKEN: ${{ secrets.DOC_VADER_CHECKOUT_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then
+            echo "has-token=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::DOC_VADER_CHECKOUT_TOKEN is not configured – backlog ingestion skipped. See .github/SECRETS.md for setup instructions."
+            echo "has-token=false" >> "$GITHUB_OUTPUT"
+          fi
+
   ingest-pull-request:
     name: Ingest Pull Request Event
+    needs: preflight
     if: >
+      needs.preflight.outputs.has-token == 'true' &&
       github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      secrets.DOC_VADER_CHECKOUT_TOKEN != ''
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository branch
@@ -72,18 +97,19 @@ jobs:
           if [ -z "$(git status --porcelain -- backlog .doc-vader)" ]; then
             exit 0
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "calanbot"
+          git config user.email "256872168+calanbot@users.noreply.github.com"
           git add backlog .doc-vader
           git commit -m "chore(backlog): ingest pull request event"
           git push
 
   ingest-workflow-run:
     name: Ingest Workflow Run Event
+    needs: preflight
     if: >
+      needs.preflight.outputs.has-token == 'true' &&
       github.event_name == 'workflow_run' &&
-      github.event.workflow_run.head_repository.full_name == github.repository &&
-      secrets.DOC_VADER_CHECKOUT_TOKEN != ''
+      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository branch
@@ -129,8 +155,150 @@ jobs:
           if [ -z "$(git status --porcelain -- backlog .doc-vader)" ]; then
             exit 0
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "calanbot"
+          git config user.email "256872168+calanbot@users.noreply.github.com"
           git add backlog .doc-vader
           git commit -m "chore(backlog): ingest workflow run event"
+          git push
+
+  sweep:
+    name: Sweep Eligible Work Items
+    needs: preflight
+    if: >
+      needs.preflight.outputs.has-token == 'true' &&
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout doc-vader
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.DOC_VADER_REPOSITORY }}
+          ref: ${{ env.DOC_VADER_REF }}
+          path: ${{ env.DOC_VADER_DIR }}
+          fetch-depth: 1
+          token: ${{ secrets.DOC_VADER_CHECKOUT_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.0 --activate
+
+      - name: Install and build doc-vader
+        run: |
+          pnpm --dir "$DOC_VADER_DIR" install --frozen-lockfile
+          pnpm --dir "$DOC_VADER_DIR" run build
+
+      - name: Sweep and ingest merged PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          python3 << 'PYEOF'
+          import os, re, json, subprocess, tempfile
+
+          repo = os.environ['REPO']
+          dry_run = os.environ.get('DRY_RUN', 'false').lower() == 'true'
+          doc_vader = os.path.join(os.environ['DOC_VADER_DIR'], 'dist/cli/doc-vader.js')
+          processed = 0
+
+          for fname in sorted(os.listdir('backlog/active')):
+              if not fname.endswith('.md'):
+                  continue
+              fpath = os.path.join('backlog/active', fname)
+              content = open(fpath).read()
+
+              if not re.search(r'^status:\s+(ready-for-review|in-progress)\s*$', content, re.M):
+                  continue
+
+              pr_nums = re.findall(
+                  r'https://github\.com/[^/\s]+/[^/\s]+/pull/(\d+)', content
+              )
+              if not pr_nums:
+                  continue
+
+              for pr_num in pr_nums:
+                  r = subprocess.run(
+                      ['gh', 'api', f'repos/{repo}/pulls/{pr_num}'],
+                      capture_output=True, text=True
+                  )
+                  if r.returncode != 0:
+                      print(f'  PR #{pr_num}: API error — {r.stderr.strip()}')
+                      continue
+                  pr = json.loads(r.stdout)
+                  if not pr.get('merged'):
+                      continue
+
+                  label = '(dry-run) ' if dry_run else ''
+                  print(f'{fname}: PR #{pr_num} merged — {label}ingesting pull_request.closed')
+                  processed += 1
+
+                  if dry_run:
+                      continue
+
+                  payload = {
+                      'action': 'closed',
+                      'pull_request': {
+                          'number': pr['number'],
+                          'html_url': pr['html_url'],
+                          'title': pr['title'],
+                          'state': 'closed',
+                          'merged': True,
+                          'merged_at': pr.get('merged_at'),
+                          'base': pr['base'],
+                          'head': pr['head'],
+                      },
+                      'repository': pr['base']['repo'],
+                  }
+                  with tempfile.NamedTemporaryFile(
+                      mode='w', suffix='.json', delete=False
+                  ) as f:
+                      json.dump(payload, f)
+                      payload_path = f.name
+
+                  try:
+                      result = subprocess.run(
+                          [
+                              'node', doc_vader,
+                              'backlog', 'ingest-event',
+                              '--provider', 'github',
+                              '--event', 'pull_request.closed',
+                              '--payload', payload_path,
+                              '--consumer-config', '.doc-vader/backlog-consumer.json',
+                          ],
+                          capture_output=True, text=True,
+                      )
+                      if result.returncode == 0:
+                          print(f'  ✓ ingested')
+                      else:
+                          print(f'  ✗ failed: {result.stderr.strip()}')
+                          print(result.stdout.strip())
+                  finally:
+                      os.unlink(payload_path)
+
+          print(f'\nSweep complete: {processed} eligible PR(s) found.')
+          PYEOF
+
+      - name: Commit sweep changes
+        if: ${{ !inputs.dry_run }}
+        run: |
+          if [ -z "$(git status --porcelain -- backlog .doc-vader)" ]; then
+            echo "No backlog changes to commit."
+            exit 0
+          fi
+          git config user.name "calanbot"
+          git config user.email "256872168+calanbot@users.noreply.github.com"
+          git add backlog .doc-vader
+          git commit -m "chore(backlog): sweep eligible work item updates"
           git push
