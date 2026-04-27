@@ -80,16 +80,7 @@ Versioning note:
 
 ### Backlog Automation
 
-**`DOC_VADER_CHECKOUT_TOKEN`** (Required for backlog automation)
-
-- Purpose: checkout the private `calan-co/doc-vader` tooling used by `backlog-automation.yml` to ingest PR and CI events into backlog work items
-- Where used: `backlog-automation.yml`
-- How to obtain:
-  1. Go to <https://github.com/settings/tokens?type=beta> (fine-grained PAT) or <https://github.com/settings/tokens> (classic PAT)
-  2. Create a token with at minimum **Contents: Read** access on the `calan-co/doc-vader` repository
-  3. Copy the token
-- Where to set: repository Actions secrets (`Settings → Secrets and variables → Actions`)
-- Effect when absent: all Backlog Automation workflow runs will complete as skipped with a warning; no work item status updates will occur
+- Backlog automation uses the default `GITHUB_TOKEN` for repository reads and writes.
 
 ### Code Coverage
 
@@ -105,11 +96,10 @@ Versioning note:
 
 ## Secrets Summary
 
-| Secret Name                | Required    | Used In                  | Purpose                            |
-| -------------------------- | ----------- | ------------------------ | ---------------------------------- |
-| `VSCODE_PUBLISHER_TOKEN`   | Yes         | `release.yml`            | Publish VS Code extension          |
-| `DOC_VADER_CHECKOUT_TOKEN` | Yes         | `backlog-automation.yml` | Checkout private doc-vader tooling |
-| `CODECOV_TOKEN`            | Recommended | `ci.yml`                 | Upload coverage reports            |
+| Secret Name              | Required    | Used In       | Purpose                   |
+| ------------------------ | ----------- | ------------- | ------------------------- |
+| `VSCODE_PUBLISHER_TOKEN` | Yes         | `release.yml` | Publish VS Code extension |
+| `CODECOV_TOKEN`          | Recommended | `ci.yml`      | Upload coverage reports   |
 
 ## Default GitHub Secrets
 

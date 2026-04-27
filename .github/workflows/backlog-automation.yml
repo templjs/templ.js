@@ -23,33 +23,13 @@ permissions:
 
 env:
   DOC_VADER_REPOSITORY: calan-co/doc-vader
-  DOC_VADER_REF: main
+  DOC_VADER_REF: 1a52bd66e72920f7c0f1a937a078929f6a52e0c9
   DOC_VADER_DIR: .tools/doc-vader
 
 jobs:
-  preflight:
-    name: Check Prerequisites
-    runs-on: ubuntu-latest
-    outputs:
-      has-token: ${{ steps.check.outputs.has-token }}
-    steps:
-      - name: Check DOC_VADER_CHECKOUT_TOKEN
-        id: check
-        env:
-          TOKEN: ${{ secrets.DOC_VADER_CHECKOUT_TOKEN }}
-        run: |
-          if [ -n "$TOKEN" ]; then
-            echo "has-token=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::DOC_VADER_CHECKOUT_TOKEN is not configured – backlog ingestion skipped. See .github/SECRETS.md for setup instructions."
-            echo "has-token=false" >> "$GITHUB_OUTPUT"
-          fi
-
   ingest-pull-request:
     name: Ingest Pull Request Event
-    needs: preflight
     if: >
-      needs.preflight.outputs.has-token == 'true' &&
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
@@ -67,7 +47,7 @@ jobs:
           ref: ${{ env.DOC_VADER_REF }}
           path: ${{ env.DOC_VADER_DIR }}
           fetch-depth: 1
-          token: ${{ secrets.DOC_VADER_CHECKOUT_TOKEN }}
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -80,11 +60,19 @@ jobs:
           corepack prepare pnpm@8.15.0 --activate
 
       - name: Install and build doc-vader
+        id: build-doc-vader
+        continue-on-error: true
         run: |
           pnpm --dir "$DOC_VADER_DIR" install --frozen-lockfile
           pnpm --dir "$DOC_VADER_DIR" run build
 
+      - name: Skip ingest when doc-vader build fails
+        if: steps.build-doc-vader.outcome != 'success'
+        run: |
+          echo "::warning::doc-vader build failed; skipping backlog ingestion for this run."
+
       - name: Ingest pull request event
+        if: steps.build-doc-vader.outcome == 'success'
         run: |
           node "$DOC_VADER_DIR/dist/cli/doc-vader.js" backlog ingest-event \
             --provider github \
@@ -93,6 +81,7 @@ jobs:
             --consumer-config .doc-vader/backlog-consumer.json
 
       - name: Commit backlog changes
+        if: steps.build-doc-vader.outcome == 'success'
         run: |
           if [ -z "$(git status --porcelain -- backlog .doc-vader)" ]; then
             exit 0
@@ -105,9 +94,7 @@ jobs:
 
   ingest-workflow-run:
     name: Ingest Workflow Run Event
-    needs: preflight
     if: >
-      needs.preflight.outputs.has-token == 'true' &&
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
@@ -125,7 +112,7 @@ jobs:
           ref: ${{ env.DOC_VADER_REF }}
           path: ${{ env.DOC_VADER_DIR }}
           fetch-depth: 1
-          token: ${{ secrets.DOC_VADER_CHECKOUT_TOKEN }}
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -138,11 +125,19 @@ jobs:
           corepack prepare pnpm@8.15.0 --activate
 
       - name: Install and build doc-vader
+        id: build-doc-vader
+        continue-on-error: true
         run: |
           pnpm --dir "$DOC_VADER_DIR" install --frozen-lockfile
           pnpm --dir "$DOC_VADER_DIR" run build
 
+      - name: Skip ingest when doc-vader build fails
+        if: steps.build-doc-vader.outcome != 'success'
+        run: |
+          echo "::warning::doc-vader build failed; skipping backlog ingestion for this run."
+
       - name: Ingest workflow run event
+        if: steps.build-doc-vader.outcome == 'success'
         run: |
           node "$DOC_VADER_DIR/dist/cli/doc-vader.js" backlog ingest-event \
             --provider github \
@@ -151,6 +146,7 @@ jobs:
             --consumer-config .doc-vader/backlog-consumer.json
 
       - name: Commit backlog changes
+        if: steps.build-doc-vader.outcome == 'success'
         run: |
           if [ -z "$(git status --porcelain -- backlog .doc-vader)" ]; then
             exit 0
@@ -163,9 +159,7 @@ jobs:
 
   sweep:
     name: Sweep Eligible Work Items
-    needs: preflight
     if: >
-      needs.preflight.outputs.has-token == 'true' &&
       github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
@@ -181,7 +175,7 @@ jobs:
           ref: ${{ env.DOC_VADER_REF }}
           path: ${{ env.DOC_VADER_DIR }}
           fetch-depth: 1
-          token: ${{ secrets.DOC_VADER_CHECKOUT_TOKEN }}
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -194,11 +188,19 @@ jobs:
           corepack prepare pnpm@8.15.0 --activate
 
       - name: Install and build doc-vader
+        id: build-doc-vader
+        continue-on-error: true
         run: |
           pnpm --dir "$DOC_VADER_DIR" install --frozen-lockfile
           pnpm --dir "$DOC_VADER_DIR" run build
 
+      - name: Skip sweep when doc-vader build fails
+        if: steps.build-doc-vader.outcome != 'success'
+        run: |
+          echo "::warning::doc-vader build failed; skipping backlog sweep for this run."
+
       - name: Sweep and ingest merged PRs
+        if: steps.build-doc-vader.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
           DRY_RUN: ${{ inputs.dry_run }}
@@ -291,7 +293,7 @@ jobs:
           PYEOF
 
       - name: Commit sweep changes
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && steps.build-doc-vader.outcome == 'success' }}
         run: |
           if [ -z "$(git status --porcelain -- backlog .doc-vader)" ]; then
             echo "No backlog changes to commit."
