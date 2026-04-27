@@ -105,7 +105,8 @@ function main(): void {
     console.error('Unsupported Node.js runtime for merge-gating checks.');
     console.error(`Detected: ${nodeVersionRaw}`);
     console.error(`Required: ${nodeRange || 'see package.json engines.node'}`);
-    console.error(`Use: nvm install ${defaultNode} && nvm use ${defaultNode}`);
+    console.error(`Use nvm:  nvm install ${defaultNode} && nvm use ${defaultNode}`);
+    console.error(`Use fnm:  fnm install ${defaultNode} && fnm use ${defaultNode}`);
     process.exit(1);
   }
 
