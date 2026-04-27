@@ -61,7 +61,11 @@ function ensureSatisfiesRange(version: Semver, range: string): boolean {
       const opMatch = comparator.match(/^(>=|<=|>|<|=)(.+)$/);
       if (!opMatch) return false;
 
-      const target = parseSemver(opMatch[2].includes('.') ? opMatch[2] : `${opMatch[2]}.0.0`);
+      const rawVer = opMatch[2];
+      const parts = rawVer.split('.');
+      const normalized =
+        parts.length === 1 ? `${rawVer}.0.0` : parts.length === 2 ? `${rawVer}.0` : rawVer;
+      const target = parseSemver(normalized);
       if (!target) return false;
 
       const order = compareSemver(version, target);

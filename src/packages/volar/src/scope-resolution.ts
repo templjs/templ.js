@@ -1,7 +1,7 @@
 import { resolveDelimiters, type DelimiterConfig } from './template-delimiters.js';
 import { extractExpressionVariableReferences } from './expression-analysis.js';
 import { extractTemplateScopeBindings } from '@templjs/core';
-import type { LexerOptions, TemplateScopeBinding } from '@templjs/core';
+import type { LexerOptions } from '@templjs/core';
 
 export interface ForScope {
   alias: string;
