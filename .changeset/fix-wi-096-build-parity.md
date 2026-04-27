@@ -7,4 +7,4 @@
 
 <!-- markdownlint-disable MD041 -->
 
-fix(build): resolve CI/local build drift by switching to `tsc -b --force` and adding tsconfig paths overrides in cli, volar, and vscode extension packages
+fix(build): no runtime or API behavior changes; published package artifacts now match CI-verified build output more reliably.
