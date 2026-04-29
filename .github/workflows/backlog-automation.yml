@@ -1,5 +1,14 @@
 name: Backlog Automation
 
+# Reference implementation: https://github.com/calan-co/doc-vader/blob/main/.github/workflows/backlog-automation.yml
+#
+# To sync updates from the reference, compare this file's content and re-copy
+# any changes to the reusable sub-workflow `uses:` refs or trigger conditions.
+#
+# Prerequisites:
+#   1. Create .doc-vader/backlog-consumer.json (see https://github.com/calan-co/doc-vader/docs).
+#   2. For repos outside calan-co org: add PACKAGES_READ_TOKEN secret (PAT with read:packages).
+
 on:
   workflow_dispatch:
     inputs:
@@ -19,12 +28,8 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
-
-env:
-  DOC_VADER_REPOSITORY: calan-co/doc-vader
-  DOC_VADER_REF: 1a52bd66e72920f7c0f1a937a078929f6a52e0c9
-  DOC_VADER_DIR: .tools/doc-vader
+  packages: read
+  pull-requests: read
 
 jobs:
   ingest-pull-request:
@@ -32,275 +37,31 @@ jobs:
     if: >
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-
-      - name: Checkout doc-vader
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ env.DOC_VADER_REPOSITORY }}
-          ref: ${{ env.DOC_VADER_REF }}
-          path: ${{ env.DOC_VADER_DIR }}
-          fetch-depth: 1
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - name: Setup pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@8.15.0 --activate
-
-      - name: Install and build doc-vader
-        id: build-doc-vader
-        continue-on-error: true
-        run: |
-          pnpm --dir "$DOC_VADER_DIR" install --frozen-lockfile
-          pnpm --dir "$DOC_VADER_DIR" run build
-
-      - name: Skip ingest when doc-vader build fails
-        if: steps.build-doc-vader.outcome != 'success'
-        run: |
-          echo "::warning::doc-vader build failed; skipping backlog ingestion for this run."
-
-      - name: Ingest pull request event
-        if: steps.build-doc-vader.outcome == 'success'
-        run: |
-          node "$DOC_VADER_DIR/dist/cli/doc-vader.js" backlog ingest-event \
-            --provider github \
-            --event "pull_request.${{ github.event.action }}" \
-            --payload "$GITHUB_EVENT_PATH" \
-            --consumer-config .doc-vader/backlog-consumer.json
-
-      - name: Commit backlog changes
-        if: steps.build-doc-vader.outcome == 'success'
-        run: |
-          if [ -z "$(git status --porcelain -- backlog .doc-vader)" ]; then
-            exit 0
-          fi
-          git config user.name "calanbot"
-          git config user.email "256872168+calanbot@users.noreply.github.com"
-          git add backlog .doc-vader
-          git commit -m "chore(backlog): ingest pull request event"
-          git push
+    uses: calan-co/doc-vader/.github/workflows/backlog-ingest-pull-request.yml@main
+    with:
+      consumer-config: .doc-vader/backlog-consumer.json
+    secrets:
+      packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN }}
 
   ingest-workflow-run:
     name: Ingest Workflow Run Event
     if: >
       github.event_name == 'workflow_run' &&
-      github.event.workflow_run.head_repository.full_name == github.repository
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          fetch-depth: 0
-
-      - name: Checkout doc-vader
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ env.DOC_VADER_REPOSITORY }}
-          ref: ${{ env.DOC_VADER_REF }}
-          path: ${{ env.DOC_VADER_DIR }}
-          fetch-depth: 1
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - name: Setup pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@8.15.0 --activate
-
-      - name: Install and build doc-vader
-        id: build-doc-vader
-        continue-on-error: true
-        run: |
-          pnpm --dir "$DOC_VADER_DIR" install --frozen-lockfile
-          pnpm --dir "$DOC_VADER_DIR" run build
-
-      - name: Skip ingest when doc-vader build fails
-        if: steps.build-doc-vader.outcome != 'success'
-        run: |
-          echo "::warning::doc-vader build failed; skipping backlog ingestion for this run."
-
-      - name: Ingest workflow run event
-        if: steps.build-doc-vader.outcome == 'success'
-        run: |
-          node "$DOC_VADER_DIR/dist/cli/doc-vader.js" backlog ingest-event \
-            --provider github \
-            --event "workflow_run.completed" \
-            --payload "$GITHUB_EVENT_PATH" \
-            --consumer-config .doc-vader/backlog-consumer.json
-
-      - name: Commit backlog changes
-        if: steps.build-doc-vader.outcome == 'success'
-        run: |
-          if [ -z "$(git status --porcelain -- backlog .doc-vader)" ]; then
-            exit 0
-          fi
-          git config user.name "calanbot"
-          git config user.email "256872168+calanbot@users.noreply.github.com"
-          git add backlog .doc-vader
-          git commit -m "chore(backlog): ingest workflow run event"
-          git push
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.conclusion == 'success'
+    uses: calan-co/doc-vader/.github/workflows/backlog-ingest-workflow-run.yml@main
+    with:
+      consumer-config: .doc-vader/backlog-consumer.json
+    secrets:
+      packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN }}
 
   sweep:
     name: Sweep Eligible Work Items
-    if: >
-      github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Checkout doc-vader
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ env.DOC_VADER_REPOSITORY }}
-          ref: ${{ env.DOC_VADER_REF }}
-          path: ${{ env.DOC_VADER_DIR }}
-          fetch-depth: 1
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - name: Setup pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@8.15.0 --activate
-
-      - name: Install and build doc-vader
-        id: build-doc-vader
-        continue-on-error: true
-        run: |
-          pnpm --dir "$DOC_VADER_DIR" install --frozen-lockfile
-          pnpm --dir "$DOC_VADER_DIR" run build
-
-      - name: Skip sweep when doc-vader build fails
-        if: steps.build-doc-vader.outcome != 'success'
-        run: |
-          echo "::warning::doc-vader build failed; skipping backlog sweep for this run."
-
-      - name: Sweep and ingest merged PRs
-        if: steps.build-doc-vader.outcome == 'success'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          DRY_RUN: ${{ inputs.dry_run }}
-          REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          python3 << 'PYEOF'
-          import os, re, json, subprocess, tempfile
-
-          repo = os.environ['REPO']
-          dry_run = os.environ.get('DRY_RUN', 'false').lower() == 'true'
-          doc_vader = os.path.join(os.environ['DOC_VADER_DIR'], 'dist/cli/doc-vader.js')
-          processed = 0
-
-          for fname in sorted(os.listdir('backlog/active')):
-              if not fname.endswith('.md'):
-                  continue
-              fpath = os.path.join('backlog/active', fname)
-              content = open(fpath).read()
-
-              if not re.search(r'^status:\s+(ready-for-review|in-progress)\s*$', content, re.M):
-                  continue
-
-              pr_nums = re.findall(
-                  r'https://github\.com/[^/\s]+/[^/\s]+/pull/(\d+)', content
-              )
-              if not pr_nums:
-                  continue
-
-              for pr_num in pr_nums:
-                  r = subprocess.run(
-                      ['gh', 'api', f'repos/{repo}/pulls/{pr_num}'],
-                      capture_output=True, text=True
-                  )
-                  if r.returncode != 0:
-                      print(f'  PR #{pr_num}: API error — {r.stderr.strip()}')
-                      continue
-                  pr = json.loads(r.stdout)
-                  if not pr.get('merged'):
-                      continue
-
-                  label = '(dry-run) ' if dry_run else ''
-                  print(f'{fname}: PR #{pr_num} merged — {label}ingesting pull_request.closed')
-                  processed += 1
-
-                  if dry_run:
-                      continue
-
-                  payload = {
-                      'action': 'closed',
-                      'pull_request': {
-                          'number': pr['number'],
-                          'html_url': pr['html_url'],
-                          'title': pr['title'],
-                          'state': 'closed',
-                          'merged': True,
-                          'merged_at': pr.get('merged_at'),
-                          'base': pr['base'],
-                          'head': pr['head'],
-                      },
-                      'repository': pr['base']['repo'],
-                  }
-                  with tempfile.NamedTemporaryFile(
-                      mode='w', suffix='.json', delete=False
-                  ) as f:
-                      json.dump(payload, f)
-                      payload_path = f.name
-
-                  try:
-                      result = subprocess.run(
-                          [
-                              'node', doc_vader,
-                              'backlog', 'ingest-event',
-                              '--provider', 'github',
-                              '--event', 'pull_request.closed',
-                              '--payload', payload_path,
-                              '--consumer-config', '.doc-vader/backlog-consumer.json',
-                          ],
-                          capture_output=True, text=True,
-                      )
-                      if result.returncode == 0:
-                          print(f'  ✓ ingested')
-                      else:
-                          print(f'  ✗ failed: {result.stderr.strip()}')
-                          print(result.stdout.strip())
-                  finally:
-                      os.unlink(payload_path)
-
-          print(f'\nSweep complete: {processed} eligible PR(s) found.')
-          PYEOF
-
-      - name: Commit sweep changes
-        if: ${{ !inputs.dry_run && steps.build-doc-vader.outcome == 'success' }}
-        run: |
-          if [ -z "$(git status --porcelain -- backlog .doc-vader)" ]; then
-            echo "No backlog changes to commit."
-            exit 0
-          fi
-          git config user.name "calanbot"
-          git config user.email "256872168+calanbot@users.noreply.github.com"
-          git add backlog .doc-vader
-          git commit -m "chore(backlog): sweep eligible work item updates"
-          git push
+    if: github.event_name == 'workflow_dispatch'
+    uses: calan-co/doc-vader/.github/workflows/backlog-sweep.yml@main
+    with:
+      dry-run: ${{ inputs.dry_run || false }}
+      consumer-config: .doc-vader/backlog-consumer.json
+      backlog-dir: backlog
+    secrets:
+      packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN }}
