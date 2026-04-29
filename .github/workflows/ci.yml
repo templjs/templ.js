@@ -18,119 +18,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  toolchain:
-    runs-on: ubuntu-latest
-    outputs:
-      node_default: ${{ steps.toolchain.outputs.node_default }}
-      node_supported: ${{ steps.toolchain.outputs.node_supported }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Read toolchain versions
-        id: toolchain
-        shell: bash
-        run: |
-          node_default="$(node -e 'const fs = require("node:fs"); const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")); process.stdout.write(pkg.toolchain.node.default);')"
-          node_supported="$(node -e 'const fs = require("node:fs"); const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")); process.stdout.write(JSON.stringify(pkg.toolchain.node.supported));')"
-          echo "node_default=$node_default" >> "$GITHUB_OUTPUT"
-          echo "node_supported=$node_supported" >> "$GITHUB_OUTPUT"
-
-  install:
-    name: Install Dependencies
-    runs-on: ubuntu-latest
-    needs: toolchain
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Needed for Nx affected commands
-
-      - name: Setup workspace toolchain
-        uses: ./.github/actions/setup-workspace
-        with:
-          node-version: ${{ needs.toolchain.outputs.node_default }}
-
-      - name: Cache Nx
-        uses: actions/cache@v4
-        with:
-          path: .nx/cache
-          key: ${{ runner.os }}-nx-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-nx-${{ hashFiles('**/pnpm-lock.yaml') }}-
-            ${{ runner.os }}-nx-
-
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    needs: [install, toolchain]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup workspace toolchain
-        uses: ./.github/actions/setup-workspace
-        with:
-          node-version: ${{ needs.toolchain.outputs.node_default }}
-
-      - name: Restore Nx cache
-        uses: actions/cache@v4
-        with:
-          path: .nx/cache
-          key: ${{ runner.os }}-nx-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-nx-${{ hashFiles('**/pnpm-lock.yaml') }}-
-            ${{ runner.os }}-nx-
-
-      - name: Run lint suite
-        run: pnpm run ci:lint
-
-      - name: Check formatting
-        run: pnpm format:check
-
-  type-check:
-    name: Type Check
-    runs-on: ubuntu-latest
-    needs: [install, toolchain]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup workspace toolchain
-        uses: ./.github/actions/setup-workspace
-        with:
-          node-version: ${{ needs.toolchain.outputs.node_default }}
-
-      - name: Type check
-        run: pnpm run ci:type-check
-
-  lint-work-item-frontmatter:
-    name: Lint Work Item Frontmatter
-    runs-on: ubuntu-latest
-    needs: [install, toolchain]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup workspace toolchain
-        uses: ./.github/actions/setup-workspace
-        with:
-          node-version: ${{ needs.toolchain.outputs.node_default }}
-
-      - name: Validate work items
-        run: pnpm run ci:frontmatter
+  ci:
+    uses: calan-co/cicd-shared-pipeline/.github/workflows/reusable-node-package-ci.yml@v1
+    with:
+      node-version: '24'
+      install-command: pnpm install --frozen-lockfile
+      lint-command: pnpm run ci:lint
+      typecheck-command: pnpm run ci:type-check
+      backlog-command: pnpm run ci:frontmatter
+      docs-command: pnpm run ci:docs-api
+      test-command: pnpm run ci:test
+      build-command: pnpm run ci:build
+      test-matrix-node-versions: '["22", "24"]'
+      test-matrix-os: '["ubuntu-latest", "macos-latest", "windows-latest"]'
+      enable-changeset-check: false
+    secrets: inherit
 
   require-changeset:
     name: Require Changeset
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    needs: [install, toolchain]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -140,7 +47,7 @@ jobs:
       - name: Setup workspace toolchain
         uses: ./.github/actions/setup-workspace
         with:
-          node-version: ${{ needs.toolchain.outputs.node_default }}
+          node-version: '24'
 
       - name: Enforce Changeset for released artifacts
         env:
@@ -159,7 +66,6 @@ jobs:
     name: Require Release Metadata
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    needs: [install, toolchain]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -169,133 +75,7 @@ jobs:
       - name: Setup workspace toolchain
         uses: ./.github/actions/setup-workspace
         with:
-          node-version: ${{ needs.toolchain.outputs.node_default }}
+          node-version: '24'
 
       - name: Enforce release metadata for released artifacts
         run: pnpm run ci:release-note-guard
-
-  docs-api-guard:
-    name: Docs API Guard
-    runs-on: ubuntu-latest
-    needs: [install, toolchain]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup workspace toolchain
-        uses: ./.github/actions/setup-workspace
-        with:
-          node-version: ${{ needs.toolchain.outputs.node_default }}
-
-      - name: Generate API docs and verify artifact
-        run: |
-          rm -rf docs/api
-          pnpm run ci:docs-api
-
-  test:
-    name: Test (Node ${{ matrix.node-version }}, ${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    needs: [install, toolchain]
-    strategy:
-      matrix:
-        node-version: ${{ fromJson(needs.toolchain.outputs.node_supported) }}
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup workspace toolchain
-        uses: ./.github/actions/setup-workspace
-        with:
-          node-version: ${{ matrix.node-version }}
-
-      - name: Restore Nx cache
-        uses: actions/cache@v4
-        with:
-          path: .nx/cache
-          key: ${{ runner.os }}-nx-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-nx-${{ hashFiles('**/pnpm-lock.yaml') }}-
-            ${{ runner.os }}-nx-
-
-      - name: Run tests (affected)
-        env:
-          NX_PARALLEL: 1
-          TEST_WATCHDOG_TIMEOUT_MS: 1200000
-          VITEST_REPORTERS: dot,hanging-process
-          VITEST_TEST_TIMEOUT_MS: 15000
-          VITEST_HOOK_TIMEOUT_MS: 15000
-          VITEST_TEARDOWN_TIMEOUT_MS: 15000
-        run: pnpm run ci:test
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        if: format('{0}', matrix.node-version) == format('{0}', needs.toolchain.outputs.node_default) && matrix.os == 'ubuntu-latest'
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info
-          flags: unittests
-          name: templjs-coverage
-          fail_ci_if_error: false
-
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    needs:
-      [
-        lint,
-        type-check,
-        test,
-        lint-work-item-frontmatter,
-        require-changeset,
-        require-release-note,
-        docs-api-guard,
-        toolchain,
-      ]
-    if: >-
-      ${{
-        always() &&
-        needs.lint.result == 'success' &&
-        needs.type-check.result == 'success' &&
-        needs.test.result == 'success' &&
-        needs.lint-work-item-frontmatter.result == 'success' &&
-        needs.docs-api-guard.result == 'success' &&
-        needs.toolchain.result == 'success' &&
-        (needs.require-changeset.result == 'success' || needs.require-changeset.result == 'skipped') &&
-        (needs.require-release-note.result == 'success' || needs.require-release-note.result == 'skipped')
-      }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup workspace toolchain
-        uses: ./.github/actions/setup-workspace
-        with:
-          node-version: ${{ needs.toolchain.outputs.node_default }}
-
-      - name: Restore Nx cache
-        uses: actions/cache@v4
-        with:
-          path: .nx/cache
-          key: ${{ runner.os }}-nx-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-nx-${{ hashFiles('**/pnpm-lock.yaml') }}-
-            ${{ runner.os }}-nx-
-
-      - name: Build packages (affected)
-        run: pnpm run ci:build
-
-      - name: Archive build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifacts
-          path: |
-            src/packages/*/dist
-            src/extensions/*/dist
-          retention-days: 7

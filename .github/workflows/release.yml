@@ -20,30 +20,17 @@ jobs:
   version:
     name: Create Version PR
     if: github.event_name == 'push' && github.ref_name == 'main'
-    runs-on: ubuntu-latest
+    uses: calan-co/cicd-shared-pipeline/.github/workflows/reusable-node-package-version.yml@v1
+    with:
+      package-name: templjs
+      node-version: '24'
+      version-command: pnpm exec tsx scripts/release/prepare-version-pr.ts
+      version-pr-commit: 'chore: version packages'
+      version-pr-title: 'chore: version packages'
     permissions:
       contents: write
       pull-requests: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup workspace toolchain
-        uses: ./.github/actions/setup-workspace
-        with:
-          registry-url: https://registry.npmjs.org
-
-      - name: Create or update version pull request
-        uses: changesets/action@v1
-        with:
-          version: pnpm exec tsx scripts/release/prepare-version-pr.ts
-          commit: 'chore: version packages'
-          title: 'chore: version packages'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    secrets: inherit
 
   prepare-staging-prerelease:
     name: Prepare Staging Prerelease
