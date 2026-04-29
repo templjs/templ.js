@@ -44,7 +44,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Needed for Nx affected commands
+          fetch-depth: 0
 
       - name: Setup workspace toolchain
         uses: ./.github/actions/setup-workspace
