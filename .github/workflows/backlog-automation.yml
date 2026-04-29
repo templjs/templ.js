@@ -7,9 +7,11 @@ name: Backlog Automation
 #
 # Prerequisites:
 #   1. Create .doc-vader/backlog-consumer.json (see https://github.com/calan-co/doc-vader/tree/main/docs).
-#   2. Configure any required secrets per .github/SECRETS.md. If GITHUB_TOKEN
-#      cannot read packages for calan-co/doc-vader (for example, outside the
-#      calan-co org), set the optional PACKAGES_READ_TOKEN secret.
+#   2. Configure any required secrets per .github/SECRETS.md. This workflow can
+#      optionally use PACKAGES_READ_TOKEN when the default GITHUB_TOKEN cannot
+#      read packages for calan-co/doc-vader (for example, outside the calan-co
+#      org); if needed, create PACKAGES_READ_TOKEN with package read access
+#      (for example, a classic PAT with read:packages).
 
 on:
   workflow_dispatch:
