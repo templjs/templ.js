@@ -7,7 +7,9 @@ name: Backlog Automation
 #
 # Prerequisites:
 #   1. Create .doc-vader/backlog-consumer.json (see https://github.com/calan-co/doc-vader/tree/main/docs).
-#   2. Configure any required secrets per .github/SECRETS.md.
+#   2. Configure any required secrets per .github/SECRETS.md. If GITHUB_TOKEN
+#      cannot read packages for calan-co/doc-vader (for example, outside the
+#      calan-co org), set the optional PACKAGES_READ_TOKEN secret.
 
 on:
   workflow_dispatch:
@@ -41,7 +43,7 @@ jobs:
     with:
       consumer-config: .doc-vader/backlog-consumer.json
     secrets:
-      packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN || github.token }}
+      packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
 
   ingest-workflow-run:
     name: Ingest Workflow Run Event
@@ -53,7 +55,7 @@ jobs:
     with:
       consumer-config: .doc-vader/backlog-consumer.json
     secrets:
-      packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN || github.token }}
+      packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
 
   sweep:
     name: Sweep Eligible Work Items
@@ -64,4 +66,4 @@ jobs:
       consumer-config: .doc-vader/backlog-consumer.json
       backlog-dir: backlog
     secrets:
-      packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN || github.token }}
+      packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
