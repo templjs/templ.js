@@ -80,7 +80,15 @@ Versioning note:
 
 ### Backlog Automation
 
-- Backlog automation uses the default `GITHUB_TOKEN` for repository reads and writes.
+Backlog automation uses the default `GITHUB_TOKEN` for repository reads and writes.
+
+**`PACKAGES_READ_TOKEN`** (Optional fallback)
+
+- Purpose: fallback token for reading packages (for example `calan-co/doc-vader`) when the default `GITHUB_TOKEN` does not have package-read access
+- Where used: `.github/workflows/backlog-automation.yml` via reusable workflow secret `packages-read-token`
+- Typical use case: repositories outside the `calan-co` organization that cannot read upstream packages with the default token
+- Required scope/permission: package read access (for example classic PAT with `read:packages`)
+- Where to set: repository Actions secrets as `PACKAGES_READ_TOKEN`
 
 ### Code Coverage
 
@@ -96,10 +104,11 @@ Versioning note:
 
 ## Secrets Summary
 
-| Secret Name              | Required    | Used In       | Purpose                   |
-| ------------------------ | ----------- | ------------- | ------------------------- |
-| `VSCODE_PUBLISHER_TOKEN` | Yes         | `release.yml` | Publish VS Code extension |
-| `CODECOV_TOKEN`          | Recommended | `ci.yml`      | Upload coverage reports   |
+| Secret Name              | Required    | Used In                  | Purpose                                                    |
+| ------------------------ | ----------- | ------------------------ | ---------------------------------------------------------- |
+| `VSCODE_PUBLISHER_TOKEN` | Yes         | `release.yml`            | Publish VS Code extension                                  |
+| `PACKAGES_READ_TOKEN`    | Optional    | `backlog-automation.yml` | Fallback package-read token for backlog reusable workflows |
+| `CODECOV_TOKEN`          | Recommended | `ci.yml`                 | Upload coverage reports                                    |
 
 ## Default GitHub Secrets
 
