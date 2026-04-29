@@ -6,7 +6,7 @@ name: Backlog Automation
 # any changes to the reusable sub-workflow `uses:` refs or trigger conditions.
 #
 # Prerequisites:
-#   1. Create .doc-vader/backlog-consumer.json (see https://github.com/calan-co/doc-vader/docs).
+#   1. Create .doc-vader/backlog-consumer.json (see https://github.com/calan-co/doc-vader/tree/main/docs).
 #   2. For repos outside calan-co org: add PACKAGES_READ_TOKEN secret (PAT with read:packages).
 
 on:
@@ -40,8 +40,7 @@ jobs:
     uses: calan-co/doc-vader/.github/workflows/backlog-ingest-pull-request.yml@1a52bd66e72920f7c0f1a937a078929f6a52e0c9
     with:
       consumer-config: .doc-vader/backlog-consumer.json
-    secrets:
-      packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN }}
+    secrets: inherit
 
   ingest-workflow-run:
     name: Ingest Workflow Run Event
@@ -52,8 +51,7 @@ jobs:
     uses: calan-co/doc-vader/.github/workflows/backlog-ingest-workflow-run.yml@1a52bd66e72920f7c0f1a937a078929f6a52e0c9
     with:
       consumer-config: .doc-vader/backlog-consumer.json
-    secrets:
-      packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN }}
+    secrets: inherit
 
   sweep:
     name: Sweep Eligible Work Items
@@ -63,5 +61,4 @@ jobs:
       dry-run: ${{ inputs.dry_run || false }}
       consumer-config: .doc-vader/backlog-consumer.json
       backlog-dir: backlog
-    secrets:
-      packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN }}
+    secrets: inherit
