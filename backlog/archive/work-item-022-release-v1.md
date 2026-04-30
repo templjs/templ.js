@@ -5,12 +5,13 @@ title: '22: Release v0.1.0 to npm and VS Code Marketplace'
 summary: Release v0.1.0 to npm and VS Code Marketplace
 type: work-item
 subtype: task
-lifecycle: active
-status: in-progress
-status_reason: implementation
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: critical
 estimated: 10
 actual: 9
+completed_date: '2026-04-30'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/31

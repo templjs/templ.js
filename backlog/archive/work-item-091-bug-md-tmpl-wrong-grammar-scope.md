@@ -5,14 +5,16 @@ title: '091: md.tmpl files show no Markdown syntax highlighting (wrong grammar s
 summary: md.tmpl files show no Markdown syntax highlighting (wrong grammar scope)
 type: work-item
 subtype: bug
-lifecycle: active
-status: ready-for-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 1
 actual: 1
+completed_date: '2026-04-30'
 links:
   pull_requests:
-    - 'https://github.com/templjs/templ.js/pull/63'
+    - https://github.com/templjs/templ.js/pull/63
   evidence:
     - '[[record-091-bug-md-tmpl-wrong-grammar-scope-evidence-1]]'
 ---

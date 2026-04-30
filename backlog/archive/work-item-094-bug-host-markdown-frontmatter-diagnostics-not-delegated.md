@@ -5,14 +5,16 @@ title: '094: Host markdown/frontmatter diagnostics are not delegated for tmpl fi
 summary: Host markdown/frontmatter diagnostics are missing for tmpl files even when file-watch notifications fire
 type: work-item
 subtype: bug
-lifecycle: active
-status: ready-for-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 3
 actual: 1
+completed_date: '2026-04-30'
 links:
   pull_requests:
-    - 'https://github.com/templjs/templ.js/pull/64'
+    - https://github.com/templjs/templ.js/pull/64
   evidence:
     - '[[record-094-bug-host-markdown-frontmatter-diagnostics-not-delegated-evidence-1]]'
     - '[[record-094-bug-host-markdown-frontmatter-diagnostics-not-delegated-evidence-2]]'
