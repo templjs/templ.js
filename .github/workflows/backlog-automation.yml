@@ -44,6 +44,7 @@ jobs:
     uses: calan-co/doc-vader/.github/workflows/backlog-ingest-pull-request.yml@v1
     with:
       consumer-config: .doc-vader/backlog-consumer.json
+      doc-vader-version: next
     secrets:
       packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
 
@@ -56,6 +57,7 @@ jobs:
     uses: calan-co/doc-vader/.github/workflows/backlog-ingest-workflow-run.yml@v1
     with:
       consumer-config: .doc-vader/backlog-consumer.json
+      doc-vader-version: next
     secrets:
       packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
 
@@ -67,5 +69,6 @@ jobs:
       dry-run: ${{ inputs.dry_run || false }}
       consumer-config: .doc-vader/backlog-consumer.json
       backlog-dir: backlog
+      doc-vader-version: next
     secrets:
       packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
