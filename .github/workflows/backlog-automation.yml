@@ -12,6 +12,8 @@ name: Backlog Automation
 #      read packages for calan-co/doc-vader (for example, outside the calan-co
 #      org); if needed, create PACKAGES_READ_TOKEN with package read access
 #      (for example, a classic PAT with read:packages).
+#   3. For sweep app-auth mode, configure DOC_VADER_APP_ID (repository variable)
+#      and DOC_VADER_PRIVATE_KEY (repository secret).
 
 on:
   workflow_dispatch:
@@ -65,12 +67,17 @@ jobs:
 
   sweep:
     name: Sweep Eligible Work Items
-    if: github.event_name == 'workflow_dispatch' && vars.BACKLOG_AUTOMATION_ENABLED == 'true'
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      vars.BACKLOG_AUTOMATION_ENABLED == 'true' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging')
     uses: calan-co/doc-vader/.github/workflows/backlog-sweep.yml@v1
     with:
       dry-run: ${{ inputs.dry_run || false }}
       consumer-config: .doc-vader/backlog-consumer.json
       backlog-dir: backlog
       doc-vader-version: next
+      app-id: ${{ vars.DOC_VADER_APP_ID }}
     secrets:
       packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
+      app-private-key: ${{ secrets.DOC_VADER_PRIVATE_KEY }}
