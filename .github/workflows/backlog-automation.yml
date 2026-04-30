@@ -41,7 +41,7 @@ jobs:
     if: >
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository
-    uses: calan-co/doc-vader/.github/workflows/backlog-ingest-pull-request.yml@1a52bd66e72920f7c0f1a937a078929f6a52e0c9
+    uses: calan-co/doc-vader/.github/workflows/backlog-ingest-pull-request.yml@v1
     with:
       consumer-config: .doc-vader/backlog-consumer.json
     secrets:
@@ -53,7 +53,7 @@ jobs:
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.head_repository.full_name == github.repository &&
       github.event.workflow_run.conclusion == 'success'
-    uses: calan-co/doc-vader/.github/workflows/backlog-ingest-workflow-run.yml@1a52bd66e72920f7c0f1a937a078929f6a52e0c9
+    uses: calan-co/doc-vader/.github/workflows/backlog-ingest-workflow-run.yml@v1
     with:
       consumer-config: .doc-vader/backlog-consumer.json
     secrets:
@@ -62,7 +62,7 @@ jobs:
   sweep:
     name: Sweep Eligible Work Items
     if: github.event_name == 'workflow_dispatch'
-    uses: calan-co/doc-vader/.github/workflows/backlog-sweep.yml@1a52bd66e72920f7c0f1a937a078929f6a52e0c9
+    uses: calan-co/doc-vader/.github/workflows/backlog-sweep.yml@v1
     with:
       dry-run: ${{ inputs.dry_run || false }}
       consumer-config: .doc-vader/backlog-consumer.json
