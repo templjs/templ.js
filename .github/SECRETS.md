@@ -82,6 +82,19 @@ Versioning note:
 
 Backlog automation uses the default `GITHUB_TOKEN` for repository reads and writes.
 
+**`DOC_VADER_APP_ID`** (Required for sweep app-auth mode)
+
+- Type: repository Actions variable (not a secret)
+- Purpose: GitHub App ID used to mint an installation token for protected-branch sweep pushes
+- Where used: `.github/workflows/backlog-automation.yml` via reusable workflow input `app-id`
+- Where to set: repository `Settings -> Secrets and variables -> Actions -> Variables`
+
+**`DOC_VADER_PRIVATE_KEY`** (Required for sweep app-auth mode)
+
+- Purpose: GitHub App private key PEM used to mint an installation token for protected-branch sweep pushes
+- Where used: `.github/workflows/backlog-automation.yml` via reusable workflow secret `app-private-key`
+- Where to set: repository Actions secrets as `DOC_VADER_PRIVATE_KEY`
+
 **`PACKAGES_READ_TOKEN`** (Optional fallback)
 
 - Purpose: fallback token for reading packages (for example `calan-co/doc-vader`) when the default `GITHUB_TOKEN` does not have package-read access
@@ -106,9 +119,16 @@ Backlog automation uses the default `GITHUB_TOKEN` for repository reads and writ
 
 | Secret Name              | Required    | Used In                  | Purpose                                                    |
 | ------------------------ | ----------- | ------------------------ | ---------------------------------------------------------- |
+| `DOC_VADER_PRIVATE_KEY`  | Conditional | `backlog-automation.yml` | GitHub App private key for protected-branch sweep pushes   |
 | `VSCODE_PUBLISHER_TOKEN` | Yes         | `release.yml`            | Publish VS Code extension                                  |
 | `PACKAGES_READ_TOKEN`    | Optional    | `backlog-automation.yml` | Fallback package-read token for backlog reusable workflows |
 | `CODECOV_TOKEN`          | Recommended | `ci.yml`                 | Upload coverage reports                                    |
+
+Repository variable summary for backlog automation:
+
+| Variable Name      | Required    | Used In                  | Purpose                                                |
+| ------------------ | ----------- | ------------------------ | ------------------------------------------------------ |
+| `DOC_VADER_APP_ID` | Conditional | `backlog-automation.yml` | GitHub App ID for protected-branch sweep token minting |
 
 ## Default GitHub Secrets
 
