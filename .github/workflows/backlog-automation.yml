@@ -72,5 +72,7 @@ jobs:
       consumer-config: .doc-vader/backlog-consumer.json
       backlog-dir: backlog
       doc-vader-version: next
+      app-id: ${{ vars.DOC_VADER_APP_ID }}
     secrets:
       packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
+      app-private-key: ${{ secrets.DOC_VADER_PRIVATE_KEY }}
