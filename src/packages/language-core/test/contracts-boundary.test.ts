@@ -1,0 +1,70 @@
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import type {
+  TempljsLanguageServerInitializationOptions,
+  TempljsVirtualDocumentMetadata,
+} from '../src/index.js';
+
+function toJson(value: unknown): string {
+  return JSON.stringify(value);
+}
+
+describe('language-core contract boundary', () => {
+  it('exports JSON-compatible contract shapes', () => {
+    const metadata: TempljsVirtualDocumentMetadata = {
+      snapshotId: 'snapshot-1',
+      sourceFileKind: 'template',
+      hostLanguage: 'markdown',
+      delimiters: {
+        blockOpen: '{%',
+        blockClose: '%}',
+        expressionOpen: '{{',
+        expressionClose: '}}',
+        commentOpen: '{#',
+        commentClose: '#}',
+      },
+      semanticZones: [
+        {
+          id: 'zone-1',
+          kind: 'content',
+          contextBlock: 'content',
+          startOffset: 0,
+          endOffset: 12,
+        },
+      ],
+      schemaSources: [
+        {
+          id: 'source-1',
+          kind: 'workspace-setting',
+          source: 'templjs.schemas',
+          uri: 'file:///schema.json',
+        },
+      ],
+      parseDiagnostics: [],
+      contextGraphSnapshotId: 'graph-1',
+    };
+
+    const init: TempljsLanguageServerInitializationOptions = {
+      traceMode: 'messages',
+      workspaceFolder: '/workspace',
+      schemaPath: '/workspace/schema.json',
+      contentSchemaPath: '/workspace/content-schema.json',
+      schemaPatterns: ['**/*.templ.json'],
+    };
+
+    expect(toJson(metadata)).toContain('snapshot-1');
+    expect(toJson(init)).toContain('messages');
+  });
+
+  it('emitted d.ts does not leak third-party dependency types', () => {
+    const dtsPath = path.resolve(__dirname, '../dist/index.d.ts');
+    const sourcePath = path.resolve(__dirname, '../src/public-types.ts');
+    const content = readFileSync(existsSync(dtsPath) ? dtsPath : sourcePath, 'utf8');
+
+    expect(content).not.toMatch(/@volar\//i);
+    expect(content).not.toMatch(/vscode/i);
+    expect(content).not.toMatch(/typescript/i);
+    expect(content).not.toMatch(/yaml-language-service/i);
+  });
+});

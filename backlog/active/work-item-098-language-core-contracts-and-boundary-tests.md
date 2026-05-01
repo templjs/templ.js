@@ -6,10 +6,13 @@ summary: Define package-owned architecture contracts and enforce no third-party 
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
+status: ready-for-review
 priority: high
 estimated: 5
-actual: 0
+actual: 4
+links:
+  evidence:
+    - '[[record-098-language-core-contracts-and-boundary-tests-evidence-1]]'
 ---
 
 ## Goal
@@ -24,18 +27,18 @@ Deliver Stage 1 of [docs/templjs-volar-target-architecture.md](docs/templjs-vola
 
 ## Tasks
 
-- [ ] Add `TempljsSourceFileKind`, `TempljsHostLanguage`, and `TempljsGeneratedCodePurpose` contracts.
-- [ ] Add `TempljsVirtualDocumentMetadata`, `TempljsSemanticZoneRef`, and `TempljsSchemaSourceRef` contracts.
-- [ ] Add `TempljsDocumentSnapshotId` and `TempljsLanguageServerInitializationOptions` contracts.
-- [ ] Add boundary tests proving JSON-compatible public payloads and no Volar/VS Code/TypeScript type leakage.
-- [ ] Add package README notes documenting server/client boundary expectations.
+- [x] Add `TempljsSourceFileKind`, `TempljsHostLanguage`, and `TempljsGeneratedCodePurpose` contracts.
+- [x] Add `TempljsVirtualDocumentMetadata`, `TempljsSemanticZoneRef`, and `TempljsSchemaSourceRef` contracts.
+- [x] Add `TempljsDocumentSnapshotId` and `TempljsLanguageServerInitializationOptions` contracts.
+- [x] Add boundary tests proving JSON-compatible public payloads and no Volar/VS Code/TypeScript type leakage.
+- [x] Add package README notes documenting server/client boundary expectations.
 
 ## Acceptance Criteria
 
-- [ ] Contracts compile independently of `src/extensions/vscode/**`.
-- [ ] Public API boundary tests fail on third-party type leakage.
-- [ ] No source behavior changes are introduced.
-- [ ] Targeted package tests and repo type-check pass.
+- [x] Contracts compile independently of `src/extensions/vscode/**`.
+- [x] Public API boundary tests fail on third-party type leakage.
+- [x] No source behavior changes are introduced.
+- [x] Targeted package tests and repo type-check pass.
 
 ## Relationships
 
