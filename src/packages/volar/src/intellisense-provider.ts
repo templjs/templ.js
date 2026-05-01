@@ -16,11 +16,7 @@ import {
   extractExpressionFilterReferences,
   extractExpressionVariableReferences,
 } from './expression-analysis.js';
-import {
-  buildForScopesInText,
-  findLocalAliasDefinitionInText,
-  resolveScopedPath,
-} from './scope-resolution.js';
+import { buildForScopesInText, resolveScopedPath } from './scope-resolution.js';
 import {
   createContextGraphSemanticReadAdapter,
   type ContextGraphSemanticReadAdapter,
@@ -86,6 +82,7 @@ export type SemanticReadAdapter = Pick<
   | 'getPathDetails'
   | 'resolvePathDefinition'
   | 'resolveDocumentDefinition'
+  | 'resolveLocalAliasDefinition'
 >;
 
 const DEFAULT_KEYWORDS = [
@@ -1199,11 +1196,10 @@ export class IntellisenseProvider {
       const variablePath = getVariablePathAtOffset(variableSegment, Math.max(0, relativeOffset));
       if (!variablePath) return null;
 
-      const aliasDefinition = findLocalAliasDefinitionInText(
+      const aliasDefinition = this.semanticReadAdapter.resolveLocalAliasDefinition(
         text,
         variablePath,
-        offset,
-        options?.delimiters
+        offset
       );
       if (aliasDefinition && options?.documentUri) {
         options?.debugLog?.(
@@ -1303,11 +1299,10 @@ export class IntellisenseProvider {
     const variablePath = getVariablePathAtOffset(variableSegment, Math.max(0, relativeOffset));
     if (!variablePath) return null;
 
-    const aliasDefinition = findLocalAliasDefinitionInText(
+    const aliasDefinition = this.semanticReadAdapter.resolveLocalAliasDefinition(
       text,
       variablePath,
-      offset,
-      options?.delimiters
+      offset
     );
     if (aliasDefinition && options?.documentUri) {
       options?.debugLog?.(
