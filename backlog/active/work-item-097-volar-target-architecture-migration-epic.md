@@ -29,7 +29,7 @@ Current implementation still keeps server and service composition under `vscode-
 - [x] Complete Stage 1 contract and boundary package work.
 - [x] Complete Stage 2 package split for core/service/server layers.
 - [x] Complete Stage 3 embedded virtual code migration.
-- [ ] Complete Stage 4 host-language service composition migration.
+- [x] Complete Stage 4 host-language service composition migration.
 - [ ] Complete Stage 5 core/context-graph semantic cutover.
 - [ ] Complete Stage 6 VS Code client thinning.
 - [ ] Complete Stage 7 transitional deletion and acceptance evidence.
@@ -54,7 +54,7 @@ Current implementation still keeps server and service composition under `vscode-
 - [x] [[work-item-098-language-core-contracts-and-boundary-tests]]
 - [x] [[work-item-099-language-package-split-and-entrypoint-migration]]
 - [x] [[work-item-100-root-and-embedded-virtual-code-model-cutover]]
-- [ ] [[work-item-101-host-language-service-composition-cutover]]
+- [x] [[work-item-101-host-language-service-composition-cutover]]
 - [ ] [[work-item-102-semantic-routing-core-context-graph-cutover]]
 - [ ] [[work-item-103-vscode-client-thinning-and-wrapper-removal]]
 - [ ] [[work-item-104-transitional-code-deletion-and-final-acceptance-evidence]]
