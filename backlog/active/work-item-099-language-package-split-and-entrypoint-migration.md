@@ -6,10 +6,13 @@ summary: Create language-core, language-service, and language-server package bou
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
+status: ready-for-review
 priority: high
 estimated: 8
-actual: 0
+actual: 7
+links:
+  evidence:
+    - '[[record-099-language-package-split-and-entrypoint-migration-evidence-1]]'
 ---
 
 ## Goal
@@ -25,17 +28,17 @@ Deliver Stage 2 of [docs/templjs-volar-target-architecture.md](docs/templjs-vola
 
 ## Tasks
 
-- [ ] Add package scaffolding and build/test wiring for the three new packages.
-- [ ] Introduce `createTempljsLanguagePlugins(options)` entrypoint in `@templjs/language-core`.
-- [ ] Introduce `createTempljsServicePlugins(options)` entrypoint in `@templjs/language-service`.
-- [ ] Introduce `startTempljsLanguageServer(options)` and CLI entrypoint in `@templjs/language-server`.
-- [ ] Reduce VS Code package implementation to thin forwarding shims while preserving behavior.
+- [x] Add package scaffolding and build/test wiring for the three new packages.
+- [x] Introduce `createTempljsLanguagePlugins(options)` entrypoint in `@templjs/language-core`.
+- [x] Introduce `createTempljsServicePlugins(options)` entrypoint in `@templjs/language-service`.
+- [x] Introduce `startTempljsLanguageServer(options)` and CLI entrypoint in `@templjs/language-server`.
+- [x] Reduce VS Code package implementation to thin forwarding shims while preserving behavior.
 
 ## Acceptance Criteria
 
-- [ ] VS Code extension starts server through `@templjs/language-server` entrypoint.
-- [ ] Service plugin creation no longer lives under `src/extensions/vscode/src/**`.
-- [ ] New package tests/builds pass and extension integration remains green.
+- [x] VS Code extension starts server through `@templjs/language-server` entrypoint.
+- [x] Service plugin creation no longer lives under `src/extensions/vscode/src/**`.
+- [x] New package tests/builds pass and extension integration remains green.
 
 ## Relationships
 

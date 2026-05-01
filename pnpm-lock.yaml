@@ -98,6 +98,12 @@ importers:
       '@templjs/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@templjs/language-server':
+        specifier: workspace:*
+        version: link:../../packages/language-server
+      '@templjs/language-service':
+        specifier: workspace:*
+        version: link:../../packages/language-service
       '@templjs/volar':
         specifier: workspace:*
         version: link:../../packages/volar
@@ -180,6 +186,51 @@ importers:
       chevrotain:
         specifier: ^11.0.3
         version: 11.1.1
+
+  src/packages/language-core:
+    dependencies:
+      '@templjs/volar':
+        specifier: workspace:*
+        version: link:../volar
+      '@volar/language-core':
+        specifier: ~2.0.0
+        version: 2.0.4
+
+  src/packages/language-server:
+    dependencies:
+      '@templjs/language-core':
+        specifier: workspace:*
+        version: link:../language-core
+      '@templjs/language-service':
+        specifier: workspace:*
+        version: link:../language-service
+      '@volar/language-server':
+        specifier: ~2.0.4
+        version: 2.0.4
+      '@volar/language-service':
+        specifier: ~2.0.4
+        version: 2.0.4
+
+  src/packages/language-service:
+    dependencies:
+      '@templjs/core':
+        specifier: workspace:*
+        version: link:../core
+      '@templjs/volar':
+        specifier: workspace:*
+        version: link:../volar
+      '@volar/language-service':
+        specifier: ~2.0.4
+        version: 2.0.4
+      minimatch:
+        specifier: ^9.0.9
+        version: 9.0.9
+      vscode-languageserver-textdocument:
+        specifier: ^1.0.12
+        version: 1.0.12
+      yaml-language-service:
+        specifier: ^0.19.2
+        version: 0.19.2
 
   src/packages/volar:
     dependencies:
