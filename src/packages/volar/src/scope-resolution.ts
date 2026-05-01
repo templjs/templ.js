@@ -107,29 +107,3 @@ export function resolveScopedPathInText(
   const scopes = precomputedScopes ?? buildForScopesInText(text, delimiters);
   return resolveScopedPath(path, offset, scopes);
 }
-
-export function findLocalAliasDefinitionInText(
-  text: string,
-  path: string,
-  offset: number,
-  delimiters?: Partial<DelimiterConfig>,
-  precomputedScopes?: ForScope[]
-): { start: number; end: number } | null {
-  const scopes = precomputedScopes ?? buildForScopesInText(text, delimiters);
-  const matchingScopes = getMatchingScopesAtOffset(offset, scopes);
-
-  for (const scope of matchingScopes) {
-    if (matchesAliasPath(path, scope.alias)) {
-      if (scope.aliasStart === undefined || scope.aliasEnd === undefined) {
-        return null;
-      }
-
-      return {
-        start: scope.aliasStart,
-        end: scope.aliasEnd,
-      };
-    }
-  }
-
-  return null;
-}
