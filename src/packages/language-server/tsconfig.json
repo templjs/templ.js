@@ -1,0 +1,22 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": ".",
+    "composite": true,
+    "paths": {
+      "@templjs/language-core": ["src/packages/language-core/src/index.ts"],
+      "@templjs/language-service": ["src/packages/language-service/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*", "bin/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"],
+  "references": [
+    {
+      "path": "../language-core"
+    },
+    {
+      "path": "../language-service"
+    }
+  ]
+}
