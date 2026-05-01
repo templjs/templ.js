@@ -6,8 +6,8 @@ summary: Execute docs/templjs-volar-target-architecture.md through staged, revie
 type: work-item
 subtype: epic
 lifecycle: active
-status: in-progress
-status_reason: implementation
+status: ready-for-review
+status_reason: awaiting-review
 priority: high
 estimated: 60
 actual: 4
@@ -30,24 +30,24 @@ Current implementation still keeps server and service composition under `vscode-
 - [x] Complete Stage 2 package split for core/service/server layers.
 - [x] Complete Stage 3 embedded virtual code migration.
 - [x] Complete Stage 4 host-language service composition migration.
-- [ ] Complete Stage 5 core/context-graph semantic cutover.
-- [ ] Complete Stage 6 VS Code client thinning.
-- [ ] Complete Stage 7 transitional deletion and acceptance evidence.
+- [x] Complete Stage 5 core/context-graph semantic cutover.
+- [x] Complete Stage 6 VS Code client thinning.
+- [x] Complete Stage 7 transitional deletion and acceptance evidence.
 
 ## Deliverables
 
 - [x] New migration child work items with explicit dependencies and acceptance criteria.
 - [x] Branch-per-item planning and merge history on `feat/vscode-extension-volar-cleanup`.
-- [ ] Passing package and extension validation suites defined in the target architecture doc.
-- [ ] Volar Labs inspection evidence for virtual file and mapping correctness.
+- [x] Passing package and extension validation suites defined in the target architecture doc.
+- [x] Volar Labs inspection evidence for virtual file and mapping correctness.
 
 ## Acceptance Criteria
 
-- [ ] All child work items for Stages 1-7 are closed with linked evidence.
-- [ ] `vscode-templjs` is thin and does not own semantic service composition.
-- [ ] `@templjs/language-core`, `@templjs/language-service`, and `@templjs/language-server` are the primary integration layers.
-- [ ] Completion/hover/definition/diagnostics share one semantic snapshot authority.
-- [ ] No new regex-driven semantic parsing is introduced in VS Code or Volar transport layers.
+- [x] All child work items for Stages 1-7 are closed with linked evidence.
+- [x] `vscode-templjs` is thin and does not own semantic service composition.
+- [x] `@templjs/language-core`, `@templjs/language-service`, and `@templjs/language-server` are the primary integration layers.
+- [x] Completion/hover/definition/diagnostics share one semantic snapshot authority.
+- [x] No new regex-driven semantic parsing is introduced in VS Code or Volar transport layers.
 
 ## Child Tasks
 
@@ -55,9 +55,9 @@ Current implementation still keeps server and service composition under `vscode-
 - [x] [[work-item-099-language-package-split-and-entrypoint-migration]]
 - [x] [[work-item-100-root-and-embedded-virtual-code-model-cutover]]
 - [x] [[work-item-101-host-language-service-composition-cutover]]
-- [ ] [[work-item-102-semantic-routing-core-context-graph-cutover]]
-- [ ] [[work-item-103-vscode-client-thinning-and-wrapper-removal]]
-- [ ] [[work-item-104-transitional-code-deletion-and-final-acceptance-evidence]]
+- [x] [[work-item-102-semantic-routing-core-context-graph-cutover]]
+- [x] [[work-item-103-vscode-client-thinning-and-wrapper-removal]]
+- [x] [[work-item-104-transitional-code-deletion-and-final-acceptance-evidence]]
 
 ## Relationships
 
