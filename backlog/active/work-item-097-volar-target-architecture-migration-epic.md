@@ -10,7 +10,7 @@ status: in-progress
 status_reason: implementation
 priority: high
 estimated: 60
-actual: 2
+actual: 4
 ---
 
 ## Goal
@@ -24,18 +24,20 @@ Current implementation still keeps server and service composition under `vscode-
 ## Tasks
 
 - [x] Decompose target architecture into atomic migration work items.
-- [ ] Complete Stage 1 contract and boundary package work.
-- [ ] Complete Stage 2 package split for core/service/server layers.
-- [ ] Complete Stage 3 embedded virtual code migration.
-- [ ] Complete Stage 4 host-language service composition migration.
+- [x] Create dedicated implementation branches for each migration child work item.
+- [x] Merge child work-item planning branches back into `feat/vscode-extension-volar-cleanup`.
+- [x] Complete Stage 1 contract and boundary package work.
+- [x] Complete Stage 2 package split for core/service/server layers.
+- [x] Complete Stage 3 embedded virtual code migration.
+- [x] Complete Stage 4 host-language service composition migration.
 - [ ] Complete Stage 5 core/context-graph semantic cutover.
 - [ ] Complete Stage 6 VS Code client thinning.
 - [ ] Complete Stage 7 transitional deletion and acceptance evidence.
 
 ## Deliverables
 
-- [ ] New migration child work items with explicit dependencies and acceptance criteria.
-- [ ] Branch-per-item implementation and merge history on `feat/vscode-extension-volar-cleanup`.
+- [x] New migration child work items with explicit dependencies and acceptance criteria.
+- [x] Branch-per-item planning and merge history on `feat/vscode-extension-volar-cleanup`.
 - [ ] Passing package and extension validation suites defined in the target architecture doc.
 - [ ] Volar Labs inspection evidence for virtual file and mapping correctness.
 
@@ -49,10 +51,10 @@ Current implementation still keeps server and service composition under `vscode-
 
 ## Child Tasks
 
-- [ ] [[work-item-098-language-core-contracts-and-boundary-tests]]
-- [ ] [[work-item-099-language-package-split-and-entrypoint-migration]]
-- [ ] [[work-item-100-root-and-embedded-virtual-code-model-cutover]]
-- [ ] [[work-item-101-host-language-service-composition-cutover]]
+- [x] [[work-item-098-language-core-contracts-and-boundary-tests]]
+- [x] [[work-item-099-language-package-split-and-entrypoint-migration]]
+- [x] [[work-item-100-root-and-embedded-virtual-code-model-cutover]]
+- [x] [[work-item-101-host-language-service-composition-cutover]]
 - [ ] [[work-item-102-semantic-routing-core-context-graph-cutover]]
 - [ ] [[work-item-103-vscode-client-thinning-and-wrapper-removal]]
 - [ ] [[work-item-104-transitional-code-deletion-and-final-acceptance-evidence]]

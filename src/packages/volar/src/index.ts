@@ -17,6 +17,7 @@ import {
   resolveDelimiters,
   type DelimiterConfig as TemplateDelimiterConfig,
 } from './template-delimiters.js';
+import { detectFrontmatterRange } from './frontmatter-zone.js';
 
 // Export semantic token provider
 export {
@@ -29,11 +30,8 @@ export {
   type DelimiterConfig,
 } from './semantic-token-provider.js';
 
-export {
-  detectFrontmatterRange,
-  isOffsetInFrontmatter,
-  type FrontmatterRange,
-} from './frontmatter-zone.js';
+export { isOffsetInFrontmatter, type FrontmatterRange } from './frontmatter-zone.js';
+export { detectFrontmatterRange };
 
 const require = createRequire(import.meta.url);
 const packageJson = require('../package.json') as { version: string };
@@ -160,7 +158,40 @@ function detectBaseFormat(fileUriString: string): BaseFormat {
 }
 
 /**
- * Virtual code representation with stripped template syntax
+ * Embedded host virtual code used for base language delegation.
+ */
+class TempljsHostEmbeddedVirtualCode implements VirtualCode {
+  id: string;
+  languageId: string;
+  snapshot: ts.IScriptSnapshot;
+  mappings: VirtualCode['mappings'];
+  embeddedCodes: VirtualCode[] = [];
+
+  constructor(baseFormat: BaseFormat, cleaned: string, mappings: VirtualCode['mappings']) {
+    this.id = `host.${getBaseFormatLanguageId(baseFormat)}`;
+    this.languageId = getBaseFormatLanguageId(baseFormat);
+    this.snapshot = createCleanedSnapshot(cleaned);
+    this.mappings = mappings;
+  }
+}
+
+class TempljsEmbeddedVirtualCode implements VirtualCode {
+  id: string;
+  languageId: string;
+  snapshot: ts.IScriptSnapshot;
+  mappings: VirtualCode['mappings'];
+  embeddedCodes: VirtualCode[] = [];
+
+  constructor(id: string, languageId: string, content: string, mappings: VirtualCode['mappings']) {
+    this.id = id;
+    this.languageId = languageId;
+    this.snapshot = createCleanedSnapshot(content);
+    this.mappings = mappings;
+  }
+}
+
+/**
+ * Root virtual code representation for templjs source.
  */
 class TempljsVirtualCode implements VirtualCode {
   id = 'root';
@@ -173,6 +204,11 @@ class TempljsVirtualCode implements VirtualCode {
   private readonly delimiterPairPattern: RegExp;
   private readonly templateBlockPattern: RegExp;
   private originalToCleanedOffsets: number[] = [0];
+  private hostMappings: VirtualCode['mappings'] = [];
+  metadata: {
+    hostLanguage: string;
+    sourceFileKind: string;
+  };
   mappings: Array<{
     sourceOffsets: number[];
     generatedOffsets: number[];
@@ -194,14 +230,18 @@ class TempljsVirtualCode implements VirtualCode {
     this.delimiterPairPattern = patterns.delimiterPairPattern;
     this.templateBlockPattern = patterns.templateBlockPattern;
 
-    // Generate cleaned code (strip template syntax)
+    // Generate cleaned host code and mappings
     const { cleaned, originalToCleanedOffsets } = this.stripTemplateSyntax(original);
     this.cleaned = cleaned;
     this.originalToCleanedOffsets = originalToCleanedOffsets;
+    this.hostMappings = this.createMappings(original, cleaned, originalToCleanedOffsets);
     this.snapshot = createCleanedSnapshot(cleaned);
-
-    // Create position mappings for accurate error reporting
-    this.mappings = this.createMappings(original, cleaned, originalToCleanedOffsets);
+    this.mappings = this.hostMappings;
+    this.metadata = {
+      hostLanguage: getBaseFormatLanguageId(baseFormat),
+      sourceFileKind: 'template',
+    };
+    this.syncEmbeddedCodes();
   }
 
   updateFromChange(
@@ -232,11 +272,18 @@ class TempljsVirtualCode implements VirtualCode {
       const { cleaned, originalToCleanedOffsets } = this.stripTemplateSyntax(this.original);
       this.cleaned = cleaned;
       this.originalToCleanedOffsets = originalToCleanedOffsets;
-      this.mappings = this.createMappings(this.original, cleaned, originalToCleanedOffsets);
+      this.hostMappings = this.createMappings(this.original, cleaned, originalToCleanedOffsets);
     }
 
     this.sourceSnapshot = snapshot;
+    this.hostMappings = this.createMappings(
+      this.original,
+      this.cleaned,
+      this.originalToCleanedOffsets
+    );
+    this.mappings = this.hostMappings;
     this.snapshot = createCleanedSnapshot(this.cleaned);
+    this.syncEmbeddedCodes();
 
     return this;
   }
@@ -251,12 +298,71 @@ class TempljsVirtualCode implements VirtualCode {
     this.original = source;
     this.cleaned = cleaned;
     this.originalToCleanedOffsets = originalToCleanedOffsets;
-    this.mappings = this.createMappings(source, cleaned, originalToCleanedOffsets);
+    this.hostMappings = this.createMappings(source, cleaned, originalToCleanedOffsets);
+    this.mappings = this.hostMappings;
     this.snapshot = createCleanedSnapshot(cleaned);
+    this.metadata = {
+      hostLanguage: getBaseFormatLanguageId(baseFormat),
+      sourceFileKind: 'template',
+    };
+    this.syncEmbeddedCodes();
   }
 
   getSourceSnapshot(): ts.IScriptSnapshot {
     return this.sourceSnapshot;
+  }
+
+  private buildTemplateDslSnapshot(): string {
+    const maskedChars: string[] = [...this.original].map((char) => (char === '\n' ? '\n' : ' '));
+    const templatePattern = new RegExp(this.templateBlockPattern.source, 'g');
+    let match;
+
+    while ((match = templatePattern.exec(this.original)) !== null) {
+      const templateBlock = match[0];
+      for (let i = 0; i < templateBlock.length; i++) {
+        maskedChars[match.index + i] = templateBlock[i] ?? ' ';
+      }
+    }
+
+    return maskedChars.join('');
+  }
+
+  private syncEmbeddedCodes(): void {
+    const embedded: VirtualCode[] = [
+      new TempljsHostEmbeddedVirtualCode(this.baseFormat, this.cleaned, this.hostMappings),
+      new TempljsEmbeddedVirtualCode('templjs.dsl', 'templjs', this.buildTemplateDslSnapshot(), [
+        {
+          sourceOffsets: [0],
+          generatedOffsets: [0],
+          lengths: [this.original.length],
+          data: DEFAULT_CODE_INFORMATION,
+        },
+      ]),
+    ];
+
+    const frontmatterRange = detectFrontmatterRange(this.original);
+    if (frontmatterRange && frontmatterRange.end > frontmatterRange.start) {
+      const frontmatterText = this.original.slice(frontmatterRange.start, frontmatterRange.end);
+      const trimmed = frontmatterText.trimStart();
+      const isJsonFrontmatter = trimmed.startsWith('{');
+      embedded.push(
+        new TempljsEmbeddedVirtualCode(
+          isJsonFrontmatter ? 'frontmatter.json' : 'frontmatter.yaml',
+          isJsonFrontmatter ? 'json' : 'yaml',
+          frontmatterText,
+          [
+            {
+              sourceOffsets: [frontmatterRange.start],
+              generatedOffsets: [0],
+              lengths: [frontmatterText.length],
+              data: DEFAULT_CODE_INFORMATION,
+            },
+          ]
+        )
+      );
+    }
+
+    this.embeddedCodes = embedded;
   }
 
   private applyEdit(start: number, deleteLength: number, insertedText: string): boolean {
@@ -290,7 +396,7 @@ class TempljsVirtualCode implements VirtualCode {
         mappedStart,
         mappedEnd
       );
-      this.mappings = this.createMappings(
+      this.hostMappings = this.createMappings(
         this.original,
         this.cleaned,
         this.originalToCleanedOffsets
