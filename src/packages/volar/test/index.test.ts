@@ -62,6 +62,63 @@ describe('LanguagePlugin', () => {
       }
     );
 
+    it('creates host and DSL embedded virtual documents', () => {
+      const content = '# Title\n\n{{ page.heading }}\n\n{% if page.show %}\nBody\n{% endif %}';
+      const snapshot = {
+        getText: () => content,
+        getLength: () => content.length,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///test.md.tmpl',
+        'templjs-markdown',
+        snapshot
+      );
+
+      expect(virtualCode).toBeDefined();
+      expect(virtualCode?.embeddedCodes.length).toBeGreaterThanOrEqual(2);
+
+      const host = virtualCode?.embeddedCodes.find((code) => code.id === 'host.markdown');
+      const dsl = virtualCode?.embeddedCodes.find((code) => code.id === 'templjs.dsl');
+
+      expect(host?.languageId).toBe('markdown');
+      expect(dsl?.languageId).toBe('templjs');
+
+      const dslText = dsl?.snapshot.getText(0, dsl.snapshot.getLength()) ?? '';
+      expect(dslText).toContain('{{ page.heading }}');
+      expect(dslText).toContain('{% if page.show %}');
+    });
+
+    it('creates frontmatter embedded virtual document with source mapping', () => {
+      const content =
+        '---\ntitle: "{{ front.title }}"\nsummary: "{{ front.summary }}"\n---\n# Body\n{{ body.text }}';
+      const snapshot = {
+        getText: () => content,
+        getLength: () => content.length,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///test.md.tmpl',
+        'templjs-markdown',
+        snapshot
+      );
+
+      expect(virtualCode).toBeDefined();
+      const frontmatter = virtualCode?.embeddedCodes.find(
+        (code) => code.id === 'frontmatter.yaml' || code.id === 'frontmatter.json'
+      );
+
+      expect(frontmatter).toBeDefined();
+      expect(frontmatter?.mappings[0]?.sourceOffsets[0]).toBe(0);
+      expect(frontmatter?.mappings[0]?.generatedOffsets[0]).toBe(0);
+
+      const frontmatterText =
+        frontmatter?.snapshot.getText(0, frontmatter.snapshot.getLength()) ?? '';
+      expect(frontmatterText.startsWith('---')).toBe(true);
+    });
+
     it('should strip template syntax from content', () => {
       const content = 'Hello {{ name }}, welcome!';
       const mockSnapshot = {

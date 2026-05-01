@@ -3,12 +3,9 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "module": "CommonJS",
-    "lib": ["ES2022"],
     "composite": true,
     "paths": {
-      "@templjs/language-server": ["src/packages/language-server/src/index.ts"],
-      "@templjs/language-service": ["src/packages/language-service/src/index.ts"],
+      "@templjs/core": ["src/packages/core/src/index.ts"],
       "@templjs/volar": ["src/packages/volar/src/index.ts"]
     }
   },
@@ -16,13 +13,10 @@
   "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"],
   "references": [
     {
-      "path": "../../packages/volar"
+      "path": "../core"
     },
     {
-      "path": "../../packages/language-service"
-    },
-    {
-      "path": "../../packages/language-server"
+      "path": "../volar"
     }
   ]
 }
