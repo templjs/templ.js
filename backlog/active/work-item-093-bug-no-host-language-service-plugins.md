@@ -10,6 +10,11 @@ status: ready-for-review
 priority: high
 estimated: 5
 actual: 3
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/66
+  evidence:
+    - '[[record-093-bug-no-host-language-service-plugins-evidence-1]]'
 ---
 
 ## Goal

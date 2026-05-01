@@ -418,6 +418,7 @@ describe('extension-activation', () => {
     const module = await import('../src/extension');
     module.activate(context as never);
     await Promise.resolve();
+    await Promise.resolve();
 
     expect(showErrorMessage).toHaveBeenCalledWith(
       expect.stringContaining('Templjs: Language client failed to start: Error: startup exploded')
@@ -633,31 +634,7 @@ describe('extension-activation', () => {
     expect(Array.isArray(traceLines)).toBe(true);
   });
 
-  it('forwards watched-file notifications to the language server', async () => {
-    const watcherHandlers: Record<string, (uri: { toString: () => string }) => void> = {};
-    createFileSystemWatcher
-      .mockReturnValueOnce({
-        onDidCreate: vi.fn(() => ({ dispose: vi.fn() })),
-        onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
-        onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
-        dispose: vi.fn(),
-      })
-      .mockReturnValueOnce({
-        onDidCreate: vi.fn((handler) => {
-          watcherHandlers.create = handler;
-          return { dispose: vi.fn() };
-        }),
-        onDidChange: vi.fn((handler) => {
-          watcherHandlers.change = handler;
-          return { dispose: vi.fn() };
-        }),
-        onDidDelete: vi.fn((handler) => {
-          watcherHandlers.delete = handler;
-          return { dispose: vi.fn() };
-        }),
-        dispose: vi.fn(),
-      });
-
+  it('registers synchronize file watchers for templates and schema files', async () => {
     const context = {
       subscriptions: [] as Array<{ dispose: () => void }>,
       asAbsolutePath: (value: string) => `/tmp/${value}`,
@@ -665,21 +642,15 @@ describe('extension-activation', () => {
 
     const module = await import('../src/extension');
     module.activate(context as never);
-    watcherHandlers.create?.({ toString: () => 'file:///workspace/schema.json' });
-    watcherHandlers.change?.({ toString: () => 'file:///workspace/schema.yaml' });
-    watcherHandlers.delete?.({ toString: () => 'file:///workspace/schema.yml' });
-    expect(sendNotification).toHaveBeenCalledWith('templjs/watchedFilesChanged', {
-      changes: [{ uri: 'file:///workspace/schema.json', type: 1 }],
-    });
-    expect(sendNotification).toHaveBeenCalledWith('templjs/watchedFilesChanged', {
-      changes: [{ uri: 'file:///workspace/schema.yaml', type: 2 }],
-    });
-    expect(sendNotification).toHaveBeenCalledWith('templjs/watchedFilesChanged', {
-      changes: [{ uri: 'file:///workspace/schema.yml', type: 3 }],
-    });
+
+    expect(createFileSystemWatcher).toHaveBeenCalledWith(
+      '**/*.{md,json,yaml,yml,html}.{templ,tmpl,tpl}'
+    );
+    expect(createFileSystemWatcher).toHaveBeenCalledWith('**/*.{json,yaml,yml}');
+    expect(sendNotification).not.toHaveBeenCalled();
   });
 
-  it('stops forwarding watcher notifications after deactivation', async () => {
+  it('does not emit custom watcher notifications after deactivation', async () => {
     const context = {
       subscriptions: [] as Array<{ dispose: () => void }>,
       asAbsolutePath: (value: string) => `/tmp/${value}`,

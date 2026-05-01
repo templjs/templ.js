@@ -13,6 +13,8 @@ actual: 3
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/65
+  evidence:
+    - '[[record-096-bug-ci-local-build-drift-for-vscode-extension-evidence-1]]'
 ---
 
 ## Goal

@@ -49,6 +49,12 @@ export interface SchemaLoadContext {
   timeoutMs?: number;
 }
 
+export interface SchemaLoadSyncContext {
+  cache?: Map<string, unknown>;
+  loadUrlSync?: (url: string) => string | object | undefined;
+  log?: (message: string) => void;
+}
+
 type JsonRecord = Record<string, unknown>;
 
 function decodeJsonPointerSegment(segment: string): string {
@@ -361,23 +367,79 @@ export function loadSchemaSourceSync(
   source: string,
   workspaceRoot: string | undefined,
   documentUri?: string,
-  context?: Pick<SchemaLoadContext, 'cache'>
+  context?: SchemaLoadSyncContext
 ): SchemaLoadResult {
   const { source: sourcePath, fragment } = splitSchemaSourceReference(source);
   if (!sourcePath) {
     return {};
   }
 
+  const cache = context?.cache ?? new Map<string, unknown>();
+  const log = context?.log ?? (() => undefined);
+
   if (sourcePath.startsWith('http://') || sourcePath.startsWith('https://')) {
-    return {};
+    let rootSchema = cache.get(sourcePath);
+
+    if (rootSchema === undefined && context?.loadUrlSync) {
+      try {
+        const loaded = context.loadUrlSync(sourcePath);
+        if (typeof loaded === 'string') {
+          rootSchema = JSON.parse(loaded) as unknown;
+          cache.set(sourcePath, rootSchema);
+        } else if (loaded && typeof loaded === 'object') {
+          rootSchema = loaded;
+          cache.set(sourcePath, rootSchema);
+        }
+      } catch (error) {
+        log(
+          `[templjs] Error loading schema from URL '${sourcePath}' in sync mode: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+        return {};
+      }
+    }
+
+    if (rootSchema === undefined) {
+      log(
+        `[templjs] Could not load schema URL '${sourcePath}' in sync mode (not cached and no sync URL loader)`
+      );
+      return {};
+    }
+
+    try {
+      const schema = resolveFragmentSchema(rootSchema, fragment);
+      if (!schema) {
+        log(`[templjs] Schema fragment not found in URL '${sourcePath}${fragment ?? ''}'`);
+        return {};
+      }
+
+      const dereferencedSchema = dereferenceSchemaNode(
+        schema,
+        sourcePath,
+        rootSchema,
+        new Map<string, unknown>([[sourcePath, rootSchema]]),
+        new Set<string>()
+      );
+
+      return {
+        schema: dereferencedSchema as object,
+        schemaUri: sourcePath,
+      };
+    } catch (error) {
+      log(
+        `[templjs] Error processing schema from URL '${sourcePath}' in sync mode: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      return {};
+    }
   }
 
   const resolvedPath = resolveSchemaFilePathSync(sourcePath, workspaceRoot, documentUri);
   if (!resolvedPath) {
     return {};
   }
-
-  const cache = context?.cache ?? new Map<string, unknown>();
 
   try {
     const rootSchema = loadJsonFromFile(resolvedPath, cache);

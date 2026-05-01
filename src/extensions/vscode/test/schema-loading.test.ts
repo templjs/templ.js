@@ -475,9 +475,25 @@ describe('schema-loading', () => {
     );
   });
 
-  it('loads schema sources synchronously for local files and ignores unsupported sources', () => {
+  it('loads schema sources synchronously for local files and URL sources when cached', () => {
     const tempDir = makeTempDir();
     const schemaPath = path.join(tempDir, '.templjs', 'frontmatter.json');
+    const remoteSchemaUrl = 'https://schemas.example.com/schema.json';
+    const cache = new Map<string, unknown>([
+      [
+        remoteSchemaUrl,
+        {
+          $defs: {
+            remote: {
+              type: 'object',
+              properties: {
+                owner: { type: 'string' },
+              },
+            },
+          },
+        },
+      ],
+    ]);
 
     writeJson(schemaPath, {
       $defs: {
@@ -501,8 +517,45 @@ describe('schema-loading', () => {
       },
       schemaUri: pathToFileURL(schemaPath).toString(),
     });
-    expect(loadSchemaSourceSync('https://schemas.example.com/schema.json', tempDir)).toEqual({});
+    expect(
+      loadSchemaSourceSync(`${remoteSchemaUrl}#/$defs/remote`, tempDir, undefined, { cache })
+    ).toEqual({
+      schema: {
+        type: 'object',
+        properties: {
+          owner: { type: 'string' },
+        },
+      },
+      schemaUri: remoteSchemaUrl,
+    });
     expect(loadSchemaSourceSync('.templjs/frontmatter.json#/$defs/missing', tempDir)).toEqual({});
+  });
+
+  it('loads URL schema sources synchronously via sync URL loader when cache is cold', () => {
+    const url = 'https://schemas.example.com/work-item.json#/$defs/item';
+    const loadUrlSync = vi.fn(() =>
+      JSON.stringify({
+        $defs: {
+          item: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+            },
+          },
+        },
+      })
+    );
+
+    expect(loadSchemaSourceSync(url, undefined, undefined, { loadUrlSync })).toEqual({
+      schema: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+        },
+      },
+      schemaUri: 'https://schemas.example.com/work-item.json',
+    });
+    expect(loadUrlSync).toHaveBeenCalledWith('https://schemas.example.com/work-item.json');
   });
 
   it('returns empty for synchronously loaded malformed JSON schema files', () => {

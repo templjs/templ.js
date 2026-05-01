@@ -9,6 +9,9 @@
       "name": "meta.embedded.block.markdown",
       "patterns": [
         {
+          "include": "source.templjs"
+        },
+        {
           "include": "#frontmatter"
         },
         {

@@ -20,8 +20,6 @@ import {
 let languageClient: LanguageClient | undefined;
 let outputChannel: vscode.OutputChannel | undefined;
 
-const WATCHED_FILES_CHANGED_NOTIFICATION = 'templjs/watchedFilesChanged';
-
 type TraceMode = 'off' | 'messages' | 'verbose';
 
 function getTraceMode(): TraceMode {
@@ -291,9 +289,10 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
       { scheme: 'file', pattern: '**/*.html.tpl' },
     ],
     synchronize: {
-      fileEvents: vscode.workspace.createFileSystemWatcher(
-        '**/*.{md,json,yaml,yml,html}.{templ,tmpl,tpl}'
-      ),
+      fileEvents: [
+        vscode.workspace.createFileSystemWatcher('**/*.{md,json,yaml,yml,html}.{templ,tmpl,tpl}'),
+        vscode.workspace.createFileSystemWatcher('**/*.{json,yaml,yml}'),
+      ],
     },
     outputChannel,
     traceOutputChannel: outputChannel,
@@ -316,29 +315,6 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(languageClient);
   outputChannel?.appendLine('[templjs] Language client created');
-
-  const schemaWatcher = vscode.workspace.createFileSystemWatcher('**/*.{json,yaml,yml}');
-  context.subscriptions.push(schemaWatcher);
-
-  const notifyWatchedChange = (uri: vscode.Uri, type: number) => {
-    if (!languageClient) {
-      return;
-    }
-
-    void languageClient.sendNotification(WATCHED_FILES_CHANGED_NOTIFICATION, {
-      changes: [{ uri: uri.toString(), type }],
-    });
-  };
-
-  context.subscriptions.push(
-    schemaWatcher.onDidCreate((uri) => notifyWatchedChange(uri, vscode.FileChangeType.Created))
-  );
-  context.subscriptions.push(
-    schemaWatcher.onDidChange((uri) => notifyWatchedChange(uri, vscode.FileChangeType.Changed))
-  );
-  context.subscriptions.push(
-    schemaWatcher.onDidDelete((uri) => notifyWatchedChange(uri, vscode.FileChangeType.Deleted))
-  );
 
   const activeEditorSubscription = vscode.window.onDidChangeActiveTextEditor((editor) => {
     if (!editor) {

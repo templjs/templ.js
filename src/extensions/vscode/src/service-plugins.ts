@@ -8,16 +8,125 @@ import {
   type IntellisenseOptions,
   type LSPCompletionItem,
 } from '@templjs/volar';
+import { pathToFileURL } from 'url';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getLanguageService as getYamlLanguageService } from 'yaml-language-service';
+import {
+  loadSchemaSourceSync,
+  resolveDocumentSchemaSources,
+  type ServerInitializationOptions,
+} from './schema-loading.js';
 
 type PluginOptions = {
-  getIntellisenseOptions: (sourceUri: string) => IntellisenseOptions;
-  getDiagnosticOptions: (sourceUri: string) => DiagnosticOptions;
+  getIntellisenseOptions?: (sourceUri: string, sourceText: string) => IntellisenseOptions;
+  getDiagnosticOptions?: (sourceUri: string, sourceText: string) => DiagnosticOptions;
   workspaceFolder?: string;
+  initializationOptions?: ServerInitializationOptions;
+  schemaCache?: Map<string, unknown>;
+  loadSchemaUrlSync?: (url: string) => string | object | undefined;
   traceYamlDiagnostics?: boolean;
   log?: (message: string) => void;
 };
+
+type ResolvedSchemaOptions = {
+  schema?: object;
+  schemaUri?: string;
+  contentSchema?: object;
+  contentSchemaUri?: string;
+};
+
+function resolveSchemaOptionsForSource(
+  options: PluginOptions,
+  sourceUri: string,
+  sourceText: string
+): ResolvedSchemaOptions {
+  const params = {
+    rootUri: options.workspaceFolder
+      ? pathToFileURL(options.workspaceFolder).toString()
+      : undefined,
+    initializationOptions: {
+      ...options.initializationOptions,
+      documentContext: {
+        uri: sourceUri,
+        content: sourceText,
+      },
+    },
+  };
+
+  const resolvedSources = resolveDocumentSchemaSources(params);
+  const schemaOptions: ResolvedSchemaOptions = {};
+  const schemaCache = options.schemaCache ?? new Map<string, unknown>();
+
+  options.log?.(
+    `[templjs-schema] resolve uri=${sourceUri} schemaPath=${resolvedSources.schemaPath ?? 'none'} contentSchemaPath=${resolvedSources.contentSchemaPath ?? 'none'}`
+  );
+
+  if (resolvedSources.schemaPath) {
+    Object.assign(
+      schemaOptions,
+      loadSchemaSourceSync(resolvedSources.schemaPath, options.workspaceFolder, sourceUri, {
+        cache: schemaCache,
+        loadUrlSync: options.loadSchemaUrlSync,
+        log: options.log,
+      })
+    );
+  }
+
+  if (resolvedSources.contentSchemaPath) {
+    const contentResult = loadSchemaSourceSync(
+      resolvedSources.contentSchemaPath,
+      options.workspaceFolder,
+      sourceUri,
+      {
+        cache: schemaCache,
+        loadUrlSync: options.loadSchemaUrlSync,
+        log: options.log,
+      }
+    );
+    schemaOptions.contentSchema = contentResult.schema;
+    schemaOptions.contentSchemaUri = contentResult.schemaUri;
+  }
+
+  return schemaOptions;
+}
+
+function toIntellisenseOptions(
+  options: PluginOptions,
+  sourceUri: string,
+  sourceText: string
+): IntellisenseOptions {
+  if (options.getIntellisenseOptions) {
+    return options.getIntellisenseOptions(sourceUri, sourceText);
+  }
+
+  const schemaOptions = resolveSchemaOptionsForSource(options, sourceUri, sourceText);
+  return {
+    documentUri: sourceUri,
+    workspaceRoot: options.workspaceFolder,
+    schema: schemaOptions.schema,
+    schemaUri: schemaOptions.schemaUri,
+    contentSchema: schemaOptions.contentSchema,
+    contentSchemaUri: schemaOptions.contentSchemaUri,
+    debugLog: (message: string) => options.log?.(`[templjs-trace] ${sourceUri} ${message}`),
+  };
+}
+
+function toDiagnosticOptions(
+  options: PluginOptions,
+  sourceUri: string,
+  sourceText: string
+): DiagnosticOptions {
+  if (options.getDiagnosticOptions) {
+    return options.getDiagnosticOptions(sourceUri, sourceText);
+  }
+
+  const schemaOptions = resolveSchemaOptionsForSource(options, sourceUri, sourceText);
+  return {
+    documentUri: sourceUri,
+    schema: schemaOptions.schema,
+    contentSchema: schemaOptions.contentSchema,
+  };
+}
 
 function getSourceFileInfo(context: ServiceContext, uri: string) {
   const [, sourceFile] = context.documents.getVirtualCodeByUri(uri);
@@ -144,10 +253,11 @@ function createTempljsAdditionalPlugin(options: PluginOptions): ServicePlugin {
           }
 
           const sourceUri = getSourceUri(context, document.uri);
+          const sourceText = getSourceDocumentText(context, document, sourceUri);
           const items = templjs.getCompletions(
             document.getText(),
             document.offsetAt(position),
-            options.getIntellisenseOptions(sourceUri)
+            toIntellisenseOptions(options, sourceUri, sourceText.text)
           );
 
           return {
@@ -164,10 +274,11 @@ function createTempljsAdditionalPlugin(options: PluginOptions): ServicePlugin {
           }
 
           const sourceUri = getSourceUri(context, document.uri);
+          const sourceText = getSourceDocumentText(context, document, sourceUri);
           return templjs.getHover(
             document.getText(),
             document.offsetAt(position),
-            options.getIntellisenseOptions(sourceUri)
+            toIntellisenseOptions(options, sourceUri, sourceText.text)
           );
         },
         provideDefinition(document, position) {
@@ -176,10 +287,11 @@ function createTempljsAdditionalPlugin(options: PluginOptions): ServicePlugin {
           }
 
           const sourceUri = getSourceUri(context, document.uri);
+          const sourceText = getSourceDocumentText(context, document, sourceUri);
           const definition = templjs.getDefinition(
             document.getText(),
             document.offsetAt(position),
-            options.getIntellisenseOptions(sourceUri)
+            toIntellisenseOptions(options, sourceUri, sourceText.text)
           );
 
           if (!definition) {
@@ -321,8 +433,8 @@ function createTempljsDiagnosticsPlugin(options: PluginOptions): ServicePlugin {
             return;
           }
 
-          const diagnosticOptions = options.getDiagnosticOptions(route.sourceUri);
           const sourceText = getSourceDocumentText(context, document, route.sourceUri);
+          const diagnosticOptions = toDiagnosticOptions(options, route.sourceUri, sourceText.text);
           options.log?.(
             `[templjs-diag-plugin] options schema=${diagnosticOptions.schema ? 'yes' : 'no'} contentSchema=${diagnosticOptions.contentSchema ? 'yes' : 'no'} sourceUri=${route.sourceUri}`
           );
@@ -383,8 +495,8 @@ function createTempljsMarkdownDiagnosticsPlugin(options: PluginOptions): Service
           }
           /* c8 ignore stop */
 
-          const diagnosticOptions = options.getDiagnosticOptions(route.sourceUri);
           const sourceText = getSourceDocumentText(context, document, route.sourceUri);
+          const diagnosticOptions = toDiagnosticOptions(options, route.sourceUri, sourceText.text);
           const frontmatterRange = detectMarkdownFrontmatterRange(sourceText.text);
           const cleanedText = document.getText();
           const cleanedFrontmatterRange = detectMarkdownFrontmatterRange(cleanedText);
@@ -467,6 +579,9 @@ export const servicePluginTesting = {
   detectMarkdownFrontmatterRange,
   createTextDocumentLike,
   toDiagnosticSeverity,
+  resolveSchemaOptionsForSource,
+  toIntellisenseOptions,
+  toDiagnosticOptions,
   createTempljsAdditionalPlugin,
   createTempljsDiagnosticsPlugin,
   createTempljsMarkdownDiagnosticsPlugin,

@@ -9,6 +9,9 @@
       "name": "meta.embedded.block.yaml",
       "patterns": [
         {
+          "include": "source.templjs"
+        },
+        {
           "include": "#yamlScalarValue"
         },
         {

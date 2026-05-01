@@ -9,6 +9,9 @@
       "name": "meta.embedded.block.html",
       "patterns": [
         {
+          "include": "source.templjs"
+        },
+        {
           "include": "text.html.basic"
         }
       ]
