@@ -1,0 +1,40 @@
+{
+  "name": "@templjs/language-service",
+  "version": "0.1.0",
+  "description": "TemplJS Volar service plugins and schema resolution",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -b --force",
+    "test": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts",
+    "test:watch": "vitest --config vitest.config.ts",
+    "test:coverage": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts --coverage",
+    "clean": "node --input-type=module -e \"import { rmSync } from 'node:fs'; rmSync('dist', { recursive: true, force: true }); rmSync('tsconfig.tsbuildinfo', { force: true });\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/templjs/templ.js.git",
+    "directory": "src/packages/language-service"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@templjs/core": "workspace:*",
+    "@templjs/volar": "workspace:*",
+    "@volar/language-service": "~2.0.4",
+    "minimatch": "^9.0.9",
+    "vscode-languageserver-textdocument": "^1.0.12",
+    "yaml-language-service": "^0.19.2"
+  }
+}

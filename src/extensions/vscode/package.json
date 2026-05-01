@@ -188,6 +188,8 @@
   },
   "dependencies": {
     "@templjs/core": "workspace:*",
+    "@templjs/language-server": "workspace:*",
+    "@templjs/language-service": "workspace:*",
     "@templjs/volar": "workspace:*",
     "@volar/language-server": "~2.0.4",
     "@volar/language-service": "~2.0.4",

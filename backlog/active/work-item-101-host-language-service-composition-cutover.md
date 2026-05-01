@@ -6,10 +6,13 @@ summary: Register host language diagnostics/authoring services in language-servi
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
+status: ready-for-review
 priority: high
 estimated: 8
-actual: 0
+actual: 3
+links:
+  evidence:
+    - '[[record-101-host-language-service-composition-cutover-evidence-1]]'
 ---
 
 ## Goal
@@ -24,16 +27,16 @@ Deliver Stage 4 of [docs/templjs-volar-target-architecture.md](docs/templjs-vola
 
 ## Tasks
 
-- [ ] Move service registration ownership to language-service/server packages.
-- [ ] Route markdown/json/yaml/html diagnostics through host embedded documents.
-- [ ] Replace local YAML diagnostics with host-service-backed frontmatter validation.
-- [ ] Reduce `src/extensions/vscode/src/service-plugins.ts` to compatibility shim or delete it.
+- [x] Move service registration ownership to language-service/server packages.
+- [x] Route markdown/json/yaml/html diagnostics through host embedded documents.
+- [x] Replace local YAML diagnostics with host-service-backed frontmatter validation.
+- [x] Reduce `src/extensions/vscode/src/service-plugins.ts` to compatibility shim or delete it.
 
 ## Acceptance Criteria
 
-- [ ] Host service registration is visible in `@templjs/language-server` composition.
-- [ ] VS Code package no longer owns semantic host diagnostic routing logic.
-- [ ] Integration tests prove host diagnostics map through virtual document mappings.
+- [x] Host service registration is visible in `@templjs/language-server` composition.
+- [x] VS Code package no longer owns semantic host diagnostic routing logic.
+- [x] Integration tests prove host diagnostics map through virtual document mappings.
 
 ## Relationships
 

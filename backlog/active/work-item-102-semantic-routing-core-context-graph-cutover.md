@@ -6,10 +6,10 @@ summary: Remove Volar-local semantic scanners and ensure completion/hover/defini
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
+status: ready-for-review
 priority: high
 estimated: 12
-actual: 0
+actual: 3
 ---
 
 ## Goal
@@ -24,17 +24,17 @@ Deliver Stage 5 of [docs/templjs-volar-target-architecture.md](docs/templjs-vola
 
 ## Tasks
 
-- [ ] Add semantic snapshot publication path from virtual code updates.
-- [ ] Replace provider-local path/filter/alias scanners with shared semantic reads.
-- [ ] Align completion/hover/definition/diagnostics contracts against one snapshot id.
-- [ ] Keep provider-local logic limited to LSP payload shaping/filtering/presentation.
-- [ ] Add parity suites for default delimiters and at least one custom delimiter setup.
+- [x] Add semantic snapshot publication path from virtual code updates.
+- [x] Replace provider-local path/filter/alias scanners with shared semantic reads.
+- [x] Align completion/hover/definition/diagnostics contracts against one snapshot id.
+- [x] Keep provider-local logic limited to LSP payload shaping/filtering/presentation.
+- [x] Add parity suites for default delimiters and at least one custom delimiter setup.
 
 ## Acceptance Criteria
 
-- [ ] Completion/hover/definition/diagnostics use the same semantic snapshot authority.
-- [ ] No new regex-based semantic parsing is introduced in Volar or VS Code layers.
-- [ ] Existing behavior-critical authoring suites remain green after fallback removal.
+- [x] Completion/hover/definition/diagnostics use the same semantic snapshot authority.
+- [x] No new regex-based semantic parsing is introduced in Volar or VS Code layers.
+- [x] Existing behavior-critical authoring suites remain green after fallback removal.
 
 ## Relationships
 
