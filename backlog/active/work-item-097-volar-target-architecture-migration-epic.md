@@ -27,7 +27,7 @@ Current implementation still keeps server and service composition under `vscode-
 - [x] Create dedicated implementation branches for each migration child work item.
 - [x] Merge child work-item planning branches back into `feat/vscode-extension-volar-cleanup`.
 - [x] Complete Stage 1 contract and boundary package work.
-- [ ] Complete Stage 2 package split for core/service/server layers.
+- [x] Complete Stage 2 package split for core/service/server layers.
 - [ ] Complete Stage 3 embedded virtual code migration.
 - [ ] Complete Stage 4 host-language service composition migration.
 - [ ] Complete Stage 5 core/context-graph semantic cutover.
@@ -52,7 +52,7 @@ Current implementation still keeps server and service composition under `vscode-
 ## Child Tasks
 
 - [x] [[work-item-098-language-core-contracts-and-boundary-tests]]
-- [ ] [[work-item-099-language-package-split-and-entrypoint-migration]]
+- [x] [[work-item-099-language-package-split-and-entrypoint-migration]]
 - [ ] [[work-item-100-root-and-embedded-virtual-code-model-cutover]]
 - [ ] [[work-item-101-host-language-service-composition-cutover]]
 - [ ] [[work-item-102-semantic-routing-core-context-graph-cutover]]

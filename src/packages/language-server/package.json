@@ -1,43 +1,42 @@
 {
-  "name": "@templjs/language-core",
+  "name": "@templjs/language-server",
   "version": "0.1.0",
-  "description": "TemplJS language-core contracts and Volar language plugin foundations",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "description": "TemplJS language server entrypoint and Volar project wiring",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
     }
+  },
+  "bin": {
+    "templjs-language-server": "./dist/bin/templjs-language-server.js"
   },
   "files": [
     "dist",
     "src",
+    "bin",
     "README.md"
   ],
   "scripts": {
-    "pretest": "pnpm build",
-    "build": "tsc",
+    "build": "tsc -b --force",
     "test": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "test:coverage": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts --coverage",
     "clean": "node --input-type=module -e \"import { rmSync } from 'node:fs'; rmSync('dist', { recursive: true, force: true }); rmSync('tsconfig.tsbuildinfo', { force: true });\""
   },
-  "keywords": [
-    "templjs",
-    "language-core",
-    "volar",
-    "contracts"
-  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/templjs/templ.js.git",
-    "directory": "src/packages/language-core"
+    "directory": "src/packages/language-server"
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "@templjs/volar": "workspace:*",
-    "@volar/language-core": "~2.0.0"
+    "@templjs/language-core": "workspace:*",
+    "@templjs/language-service": "workspace:*",
+    "@volar/language-server": "~2.0.4",
+    "@volar/language-service": "~2.0.4"
   }
 }
