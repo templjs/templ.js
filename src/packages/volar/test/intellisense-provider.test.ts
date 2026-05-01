@@ -92,6 +92,7 @@ describe('IntellisenseProvider', () => {
       getPathDetails: () => null,
       resolvePathDefinition: () => null,
       resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => null,
     };
 
     const isolatedProvider = new IntellisenseProvider(mockAdapter);
