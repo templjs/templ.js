@@ -10,7 +10,7 @@ status: in-progress
 status_reason: implementation
 priority: high
 estimated: 60
-actual: 2
+actual: 4
 ---
 
 ## Goal
@@ -24,6 +24,8 @@ Current implementation still keeps server and service composition under `vscode-
 ## Tasks
 
 - [x] Decompose target architecture into atomic migration work items.
+- [x] Create dedicated implementation branches for each migration child work item.
+- [x] Merge child work-item planning branches back into `feat/vscode-extension-volar-cleanup`.
 - [ ] Complete Stage 1 contract and boundary package work.
 - [ ] Complete Stage 2 package split for core/service/server layers.
 - [ ] Complete Stage 3 embedded virtual code migration.
@@ -34,8 +36,8 @@ Current implementation still keeps server and service composition under `vscode-
 
 ## Deliverables
 
-- [ ] New migration child work items with explicit dependencies and acceptance criteria.
-- [ ] Branch-per-item implementation and merge history on `feat/vscode-extension-volar-cleanup`.
+- [x] New migration child work items with explicit dependencies and acceptance criteria.
+- [x] Branch-per-item planning and merge history on `feat/vscode-extension-volar-cleanup`.
 - [ ] Passing package and extension validation suites defined in the target architecture doc.
 - [ ] Volar Labs inspection evidence for virtual file and mapping correctness.
 
