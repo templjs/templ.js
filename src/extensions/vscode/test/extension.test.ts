@@ -741,4 +741,54 @@ describe('extension-activation', () => {
     expect(module.deactivate()).toBeUndefined();
     expect(outputChannel.dispose).toHaveBeenCalled();
   });
+
+  it('thin-client: middleware passes results unchanged from language server without semantic transformation', async () => {
+    configurationValues['trace.server'] = 'off';
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const clientOptions = languageClientConstructor.mock.calls[0][3] as {
+      middleware: {
+        provideCompletionItem: (...args: unknown[]) => Promise<unknown>;
+        provideHover: (...args: unknown[]) => Promise<unknown>;
+        provideDefinition: (...args: unknown[]) => Promise<unknown>;
+      };
+    };
+
+    const document = {
+      uri: { toString: () => 'file:///workspace/example.md.tpl' },
+    };
+    const position = { line: 0, character: 0 };
+    const sentinel = Symbol('server-result');
+
+    // Completion: next() result passes through unchanged
+    const completionResult = await clientOptions.middleware.provideCompletionItem(
+      document,
+      position,
+      {},
+      {},
+      () => Promise.resolve(sentinel)
+    );
+    expect(completionResult).toBe(sentinel);
+
+    // Hover: next() result passes through unchanged
+    const hoverResult = await clientOptions.middleware.provideHover(document, position, {}, () =>
+      Promise.resolve(sentinel)
+    );
+    expect(hoverResult).toBe(sentinel);
+
+    // Definition: next() result passes through unchanged
+    const definitionResult = await clientOptions.middleware.provideDefinition(
+      document,
+      position,
+      {},
+      () => Promise.resolve(sentinel)
+    );
+    expect(definitionResult).toBe(sentinel);
+  });
 });

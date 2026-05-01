@@ -6,10 +6,10 @@ summary: Reduce vscode-templjs to activation/configuration/logging/transport whi
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
+status: ready-for-review
 priority: high
 estimated: 6
-actual: 0
+actual: 1
 ---
 
 ## Goal
@@ -24,16 +24,16 @@ Deliver Stage 6 of [docs/templjs-volar-target-architecture.md](docs/templjs-vola
 
 ## Tasks
 
-- [ ] Remove manual authoring handlers from VS Code server wrapper.
-- [ ] Remove semantic active-document context hacks once server project state owns schema context.
-- [ ] Keep extension startup, configuration, commands, output channels, and transport wiring only.
-- [ ] Add integration assertions proving features come from language server/service layers.
+- [x] Remove manual authoring handlers from VS Code server wrapper.
+- [x] Remove semantic active-document context hacks once server project state owns schema context.
+- [x] Keep extension startup, configuration, commands, output channels, and transport wiring only.
+- [x] Add integration assertions proving features come from language server/service layers.
 
 ## Acceptance Criteria
 
-- [ ] `src/extensions/vscode/src/**` contains no syntax-aware semantic ownership code.
-- [ ] VS Code extension integration suites remain green.
-- [ ] Extension behavior remains parity-safe for host and templ semantics.
+- [x] `src/extensions/vscode/src/**` contains no syntax-aware semantic ownership code.
+- [x] VS Code extension integration suites remain green.
+- [x] Extension behavior remains parity-safe for host and templ semantics.
 
 ## Relationships
 
