@@ -4,6 +4,7 @@
   "references": [
     { "path": "./src/packages/core" },
     { "path": "./src/packages/cli" },
+    { "path": "./src/packages/language-core" },
     { "path": "./src/packages/volar" },
     { "path": "./src/extensions/vscode" }
   ]
