@@ -6,10 +6,13 @@ summary: Implement TemplJS root virtual code and explicit host, DSL, semantic, a
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
+status: ready-for-review
 priority: high
 estimated: 14
-actual: 0
+actual: 6
+links:
+  evidence:
+    - '[[record-100-root-and-embedded-virtual-code-model-cutover-evidence-1]]'
 ---
 
 ## Goal
@@ -24,19 +27,19 @@ Deliver Stage 3 of [docs/templjs-volar-target-architecture.md](docs/templjs-vola
 
 ## Tasks
 
-- [ ] Implement root metadata model and embedded virtual code tree contracts.
-- [ ] Implement host embedded document masking with source-preserving mappings.
-- [ ] Implement DSL embedded document generation for statements and expressions.
-- [ ] Implement frontmatter embedded document generation and exact range mappings.
-- [ ] Add multiline/custom-delimiter/generated-to-source round-trip tests.
-- [ ] Record Volar Labs inspection evidence for representative templates.
+- [x] Implement root metadata model and embedded virtual code tree contracts.
+- [x] Implement host embedded document masking with source-preserving mappings.
+- [x] Implement DSL embedded document generation for statements and expressions.
+- [x] Implement frontmatter embedded document generation and exact range mappings.
+- [x] Add multiline/custom-delimiter/generated-to-source round-trip tests.
+- [x] Record Volar Labs inspection evidence for representative templates.
 
 ## Acceptance Criteria
 
-- [ ] Volar Labs shows root + embedded documents for supported host formats.
-- [ ] Host diagnostics map to source ranges correctly.
-- [ ] Template semantic diagnostics map to template spans (not placeholder spans).
-- [ ] Mapping suites pass for default and custom delimiters.
+- [x] Volar Labs shows root + embedded documents for supported host formats.
+- [x] Host diagnostics map to source ranges correctly.
+- [x] Template semantic diagnostics map to template spans (not placeholder spans).
+- [x] Mapping suites pass for default and custom delimiters.
 
 ## Relationships
 
