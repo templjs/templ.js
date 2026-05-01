@@ -58,7 +58,7 @@ describe('language-core contract boundary', () => {
   });
 
   it('emitted d.ts does not leak third-party dependency types', () => {
-    const dtsPath = path.resolve(__dirname, '../dist/index.d.ts');
+    const dtsPath = path.resolve(__dirname, '../dist/public-types.d.ts');
     const sourcePath = path.resolve(__dirname, '../src/public-types.ts');
     const content = readFileSync(existsSync(dtsPath) ? dtsPath : sourcePath, 'utf8');
 
