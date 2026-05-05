@@ -1,10 +1,7 @@
 import { dirname } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
-import {
-  createConnection,
-  createServer,
-  createSimpleProjectProvider,
-} from '@volar/language-server/node';
+import { URI } from 'vscode-uri';
+import { createConnection, createServer, createSimpleProject } from '@volar/language-server/node';
 import { createTempljsLanguagePlugins } from '@templjs/language-core';
 import type { Diagnostic } from '@volar/language-service';
 import {
@@ -48,35 +45,6 @@ function trace(message: string, level: 'messages' | 'verbose' = 'messages'): voi
   connection.console.log(`[templjs-trace] ${message}`);
 }
 
-const serverOptions = {
-  watchFileExtensions: [
-    '.html.templ',
-    '.html.tmpl',
-    '.html.tpl',
-    '.json.templ',
-    '.json.tmpl',
-    '.json.tpl',
-    '.md.templ',
-    '.md.tmpl',
-    '.md.tpl',
-    '.yaml.templ',
-    '.yaml.tmpl',
-    '.yaml.tpl',
-    '.yml.templ',
-    '.yml.tmpl',
-    '.yml.tpl',
-  ],
-  getServicePlugins() {
-    return createTempljsServicePlugins({
-      workspaceFolder: storedWorkspaceRoot,
-      initializationOptions: storedInitializationOptions,
-      traceYamlDiagnostics: serverTraceMode === 'verbose',
-      /* v8 ignore next */
-      log: (message) => connection.console.log(message),
-    });
-  },
-};
-
 function isLikelySchemaUri(uri: string): boolean {
   const normalized = uri.split(/[?#]/, 1)[0].toLowerCase();
   if (!/\.(json|ya?ml)$/.test(normalized)) {
@@ -113,17 +81,15 @@ async function collectServiceDiagnosticsForDocument(
 ): Promise<Diagnostic[]> {
   try {
     trace(`[diag] start uri=${uri}`, 'verbose');
-    const project = await server.projects.getProject(uri);
-    trace(`[diag] project resolved uri=${uri}`, 'verbose');
-    const languageService = project.getLanguageService();
+    const languageService = await server.project.getLanguageService(URI.parse(uri));
     trace(`[diag] language service resolved uri=${uri}`, 'verbose');
     const context = (languageService as { context?: unknown }).context as
       | {
           language?: {
-            files?: {
-              get: (targetUri: string) =>
+            scripts?: {
+              get: (targetUri: URI) =>
                 | {
-                    id?: string;
+                    id?: URI;
                     languageId?: string;
                     generated?: {
                       code?: { id: string; languageId?: string; mappings?: unknown[] };
@@ -135,20 +101,6 @@ async function collectServiceDiagnosticsForDocument(
           };
           documents?: {
             getVirtualCodeUri?: (sourceFileUri: string, virtualCodeId: string) => string;
-            getVirtualCodeByUri?: (targetUri: string) => [
-              { id?: string; languageId?: string } | undefined,
-              (
-                | {
-                    id?: string;
-                    languageId?: string;
-                    generated?: {
-                      code?: { id: string; languageId?: string; mappings?: unknown[] };
-                    };
-                    snapshot?: { getLength?: () => number };
-                  }
-                | undefined
-              ),
-            ];
             getMaps?: (virtualCode: unknown) => Iterable<unknown>;
           };
           disabledVirtualFileUris?: Set<string>;
@@ -156,11 +108,8 @@ async function collectServiceDiagnosticsForDocument(
       | undefined;
 
     if (shouldTrace('verbose')) {
-      const sourceFile = context?.language?.files?.get(uri);
-      const virtualLookup = context?.documents?.getVirtualCodeByUri?.(uri);
-      const virtualCode = virtualLookup?.[0];
-      const mappedSourceFile = virtualLookup?.[1];
-      const generatedCode = sourceFile?.generated?.code ?? mappedSourceFile?.generated?.code;
+      const sourceFile = context?.language?.scripts?.get(URI.parse(uri));
+      const generatedCode = sourceFile?.generated?.code;
       const virtualUri =
         generatedCode && context?.documents?.getVirtualCodeUri
           ? context.documents.getVirtualCodeUri(uri, generatedCode.id)
@@ -175,10 +124,6 @@ async function collectServiceDiagnosticsForDocument(
           ` sourceFile=${sourceFile ? 'yes' : 'no'}` +
           ` sourceLanguageId=${sourceFile?.languageId ?? 'none'}` +
           ` sourceSnapshotLength=${sourceFile?.snapshot?.getLength?.() ?? -1}` +
-          ` virtualLookupCode=${virtualCode?.id ?? 'none'}` +
-          ` virtualLookupLanguage=${virtualCode?.languageId ?? 'none'}` +
-          ` mappedSourceId=${mappedSourceFile?.id ?? 'none'}` +
-          ` mappedSourceLanguage=${mappedSourceFile?.languageId ?? 'none'}` +
           ` generatedCode=${generatedCode?.id ?? 'none'}` +
           ` generatedLanguage=${generatedCode?.languageId ?? 'none'}` +
           ` generatedMappings=${generatedCode?.mappings?.length ?? 0}` +
@@ -189,11 +134,11 @@ async function collectServiceDiagnosticsForDocument(
       );
     }
 
-    const diagnostics = (await languageService.doValidation(uri)) as Diagnostic[];
+    const diagnostics = (await languageService!.getDiagnostics(URI.parse(uri))) as Diagnostic[];
     trace(`[diag] doValidation uri=${uri} count=${diagnostics.length}`, 'verbose');
 
     if (isYamlTemplateUri(uri) && shouldTrace('verbose')) {
-      const sourceFile = context?.language?.files?.get(uri);
+      const sourceFile = context?.language?.scripts?.get(URI.parse(uri));
       const generatedCode = sourceFile?.generated?.code;
       const virtualUri =
         generatedCode && context?.documents?.getVirtualCodeUri
@@ -265,36 +210,48 @@ connection.onInitialize(async (params) => {
     trace(`[init] active document provided uri=${activeDocumentUri}`, 'verbose');
   }
 
+  const languagePlugins = createTempljsLanguagePlugins({});
+  const servicePlugins = createTempljsServicePlugins({
+    workspaceFolder: storedWorkspaceRoot,
+    initializationOptions: storedInitializationOptions,
+    /* v8 ignore next */
+    log: (message) => connection.console.log(message),
+  });
+
   connection.console.log('[templjs] Language server initialized');
 
-  const initialized = await server.initialize(initializeParams, createSimpleProjectProvider, {
-    ...serverOptions,
-    getLanguagePlugins() {
-      return createTempljsLanguagePlugins({});
-    },
-  });
+  const initialized = await server.initialize(
+    initializeParams,
+    createSimpleProject(languagePlugins),
+    servicePlugins
+  );
 
   // Delegate authoring requests to Volar language service from this transport layer.
   // This keeps a single implementation of semantics while ensuring requests are handled.
   connection.onCompletion(async (request, token) => {
     const uri = request.textDocument.uri;
     trace(`[authoring] completion uri=${uri}`, 'verbose');
-    const languageService = (await server.projects.getProject(uri)).getLanguageService();
-    return await languageService.doComplete(uri, request.position, request.context, token);
+    const languageService = await server.project.getLanguageService(URI.parse(uri));
+    return await languageService!.getCompletionItems(
+      URI.parse(uri),
+      request.position,
+      request.context,
+      token
+    );
   });
 
   connection.onHover(async (request, token) => {
     const uri = request.textDocument.uri;
     trace(`[authoring] hover uri=${uri}`, 'verbose');
-    const languageService = (await server.projects.getProject(uri)).getLanguageService();
-    return await languageService.doHover(uri, request.position, token);
+    const languageService = await server.project.getLanguageService(URI.parse(uri));
+    return await languageService!.getHover(URI.parse(uri), request.position, token);
   });
 
   connection.onDefinition(async (request, token) => {
     const uri = request.textDocument.uri;
     trace(`[authoring] definition uri=${uri}`, 'verbose');
-    const languageService = (await server.projects.getProject(uri)).getLanguageService();
-    return await languageService.findDefinition(uri, request.position, token);
+    const languageService = await server.project.getLanguageService(URI.parse(uri));
+    return await languageService!.getDefinition(URI.parse(uri), request.position, token);
   });
 
   const formattingConnection = connection as unknown as {
@@ -312,13 +269,13 @@ connection.onInitialize(async (params) => {
     formattingConnection.onDocumentFormatting(async (request, token) => {
       const uri = request.textDocument.uri;
       trace(`[authoring] format request uri=${uri}`, 'verbose');
-      const languageService = (await server.projects.getProject(uri)).getLanguageService();
-      const formattingResult = await languageService.format(
-        uri,
+      const languageService = await server.project.getLanguageService(URI.parse(uri));
+      const formattingResult = await languageService!.getDocumentFormattingEdits(
+        URI.parse(uri),
         request.options,
         undefined,
         undefined,
-        token as Parameters<typeof languageService.format>[4]
+        token as Parameters<NonNullable<typeof languageService>['getDocumentFormattingEdits']>[4]
       );
       trace(
         `[authoring] format result uri=${uri} edits=${Array.isArray(formattingResult) ? formattingResult.length : 0}`,

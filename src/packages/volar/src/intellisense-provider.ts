@@ -271,6 +271,47 @@ function filterAndSortCompletions(items: CompletionItem[], rawPrefix: string): C
   return withScore.map((entry) => entry.item);
 }
 
+function mergeUniqueCompletions(
+  primary: CompletionItem[],
+  secondary: CompletionItem[]
+): CompletionItem[] {
+  if (secondary.length === 0) {
+    return primary;
+  }
+
+  const seen = new Set(primary.map((item) => item.label.toLowerCase()));
+  const merged = [...primary];
+  for (const item of secondary) {
+    const key = item.label.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    merged.push(item);
+  }
+
+  return merged;
+}
+
+function getInScopeAliasCompletions(
+  text: string,
+  offset: number,
+  delimiters: IntellisenseDelimiters
+): CompletionItem[] {
+  const scopes = buildForScopesInText(text, delimiters);
+  const aliases = scopes
+    .filter((scope) => offset >= scope.bodyStart && offset < scope.bodyEnd)
+    .sort((left, right) => right.bodyStart - left.bodyStart)
+    .map((scope) => scope.alias)
+    .filter((alias, index, all) => all.indexOf(alias) === index);
+
+  return aliases.map((alias) => ({
+    label: alias,
+    kind: 'variable',
+    detail: 'local loop alias',
+  }));
+}
+
 function summarizeDuplicateLabels(items: CompletionItem[]): string[] {
   const counts = new Map<string, number>();
   for (const item of items) {
@@ -582,6 +623,7 @@ function getExpressionCompletionsAtOffset(
   semanticReadAdapter: SemanticReadAdapter,
   content: string,
   offsetInContent: number,
+  localAliasItems: CompletionItem[],
   filters: FilterSignature[],
   semanticContext: SemanticQueryContext,
   semanticOptions: {
@@ -627,7 +669,7 @@ function getExpressionCompletionsAtOffset(
       '',
       semanticOptions
     );
-    return filterAndSortCompletions(graphItems, typedPath);
+    return filterAndSortCompletions(mergeUniqueCompletions(localAliasItems, graphItems), typedPath);
   }
 
   const lastDot = prefix.lastIndexOf('.');
@@ -643,7 +685,7 @@ function getExpressionCompletionsAtOffset(
   }
 
   const graphItems = semanticReadAdapter.getChildCompletions(semanticContext, '', semanticOptions);
-  return filterAndSortCompletions(graphItems, prefix);
+  return filterAndSortCompletions(mergeUniqueCompletions(localAliasItems, graphItems), prefix);
 }
 
 function getStatementExpressionFragment(
@@ -751,6 +793,7 @@ export class IntellisenseProvider {
     };
     const filters = [...getDefaultFilters(), ...(options?.customFilters ?? [])];
     const keywords = [...DEFAULT_KEYWORDS, ...(options?.customKeywords ?? [])];
+    const localAliasItems = getInScopeAliasCompletions(text, offset, delimiters);
 
     const scopeResolver = createScopedPathResolver(
       this.semanticReadAdapter,
@@ -775,6 +818,7 @@ export class IntellisenseProvider {
         this.semanticReadAdapter,
         content,
         Math.max(0, contentOffset),
+        localAliasItems,
         filters,
         completionContext,
         semanticOptions,
@@ -811,6 +855,7 @@ export class IntellisenseProvider {
         this.semanticReadAdapter,
         expressionFragment.expression,
         expressionFragment.offsetInExpression,
+        localAliasItems,
         filters,
         completionContext,
         semanticOptions,
@@ -1037,6 +1082,15 @@ export class IntellisenseProvider {
 
     const variablePath = getVariablePathAtOffset(content, Math.max(0, relativeOffset));
     if (variablePath) {
+      const aliasOnly = /^[A-Za-z_][\w]*$/.test(variablePath);
+      const aliasDefinition = aliasOnly
+        ? this.semanticReadAdapter.resolveLocalAliasDefinition(text, variablePath, offset)
+        : null;
+      if (aliasDefinition && aliasOnly) {
+        const aliasName = variablePath.split(/[.[]/, 1)[0] ?? variablePath;
+        return { contents: `${aliasName}: local loop alias` };
+      }
+
       return getHoverDetailsForPath(variablePath);
     }
 

@@ -231,6 +231,24 @@ describe('IntellisenseProvider', () => {
     expect(items.some((item) => item.label === 'id')).toBe(true);
   });
 
+  it('includes active for-loop alias in expression completions', () => {
+    const text = '{% for item in users %}{{ it }}{% endfor %}';
+    const offset = text.lastIndexOf('it') + 'it'.length;
+
+    const items = provider.getCompletions(text, offset, { schema: sampleSchema });
+
+    expect(items.some((item) => item.label === 'item')).toBe(true);
+  });
+
+  it('includes active for-loop alias in statement-expression completions', () => {
+    const text = '{% for item in users %}{% if it %}{% endif %}{% endfor %}';
+    const offset = text.lastIndexOf('it') + 'it'.length;
+
+    const items = provider.getCompletions(text, offset, { schema: sampleSchema });
+
+    expect(items.some((item) => item.label === 'item')).toBe(true);
+  });
+
   it('returns empty completions when schema missing', () => {
     const items = provider.getCompletions('{{ user }}', 5);
     expect(items.length).toBe(0);
@@ -328,6 +346,17 @@ describe('IntellisenseProvider', () => {
       },
     });
     expect(hover?.contents).toContain('user.name');
+  });
+
+  it('returns local alias hover info inside expression blocks', () => {
+    const text = '{% for item in users %}{{ item }}{% endfor %}';
+    const offset = text.lastIndexOf('item') + 2;
+
+    const hover = provider.getHover(text, offset, {
+      schema: sampleSchema,
+    });
+
+    expect(hover?.contents).toBe('item: local loop alias');
   });
 
   it('returns signature help for custom filters', () => {

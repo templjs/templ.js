@@ -37,6 +37,13 @@ describe('frontmatter-zone', () => {
     expect(range).toBeUndefined();
   });
 
+  it('detects fenced frontmatter even when YAML content is invalid', () => {
+    const text = '---\ntitle: [unterminated\n---\n# Heading\nBody';
+    const range = detectFrontmatterRange(text);
+
+    expect(range).toEqual({ start: 0, end: '---\ntitle: [unterminated\n---\n'.length });
+  });
+
   it('detects frontmatter range with unicode and punctuation content', () => {
     const text =
       '---\ntitle: Caf\u00e9 \ud83d\ude80!\ndescription: "a:b,c;[]{}()!?@#&*"\n---\n# Body';

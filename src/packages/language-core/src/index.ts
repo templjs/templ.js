@@ -1,9 +1,10 @@
 import type { LanguagePlugin } from '@volar/language-core';
+import type { URI } from 'vscode-uri';
 import { createTempljsLanguagePlugin, type TempljsLanguagePluginOptions } from '@templjs/volar';
 
 export function createTempljsLanguagePlugins(
   options: TempljsLanguagePluginOptions = {}
-): LanguagePlugin[] {
+): LanguagePlugin<URI>[] {
   return [createTempljsLanguagePlugin(options)];
 }
 

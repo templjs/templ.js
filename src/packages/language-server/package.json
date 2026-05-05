@@ -36,7 +36,8 @@
   "dependencies": {
     "@templjs/language-core": "workspace:*",
     "@templjs/language-service": "workspace:*",
-    "@volar/language-server": "~2.0.4",
-    "@volar/language-service": "~2.0.4"
+    "@volar/language-server": "~2.4.0",
+    "@volar/language-service": "~2.4.0",
+    "vscode-uri": "^3.0.8"
   }
 }

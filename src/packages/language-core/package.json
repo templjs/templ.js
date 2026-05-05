@@ -38,6 +38,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@templjs/volar": "workspace:*",
-    "@volar/language-core": "~2.0.0"
+    "@volar/language-core": "~2.4.0",
+    "vscode-uri": "^3.0.8"
   }
 }

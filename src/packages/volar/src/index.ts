@@ -9,8 +9,15 @@
  */
 
 import { createRequire } from 'node:module';
-import type { CodeInformation, LanguagePlugin, VirtualCode } from '@volar/language-core';
+import type {
+  CodeInformation,
+  CodegenContext,
+  LanguagePlugin,
+  VirtualCode,
+} from '@volar/language-core';
 import type * as ts from 'typescript';
+import { URI } from 'vscode-uri';
+import { tokenize, TokenType, type DelimiterConfig as CoreDelimiterConfig } from '@templjs/core';
 import {
   buildDelimiterPairPattern,
   buildTemplateBlockPattern,
@@ -53,8 +60,6 @@ const EXTENSION_TO_BASE_FORMAT: Record<string, BaseFormat> = {
   '.html': 'html',
   '.htm': 'html',
 };
-
-const TEMPLATE_MARKERS = ['.templ.', '.tmpl.', '.tpl.'] as const;
 
 interface CompiledDelimiterPatterns {
   delimiters: TemplateDelimiterConfig;
@@ -133,13 +138,6 @@ function detectBaseFormat(fileUriString: string): BaseFormat {
     // Extract filename from URI (handle both file:// and regular paths)
     const filePath = fileUriString.replace(/^file:\/\//, '').replace(/^.*\//, '');
 
-    for (const marker of TEMPLATE_MARKERS) {
-      if (!filePath.includes(marker)) continue;
-      const ext = '.' + filePath.split(marker)[1];
-      const format = EXTENSION_TO_BASE_FORMAT[ext];
-      if (format) return format;
-    }
-
     if (filePath.endsWith('.tmpl') || filePath.endsWith('.templ') || filePath.endsWith('.tpl')) {
       const suffixLength = filePath.endsWith('.tmpl') ? 5 : filePath.endsWith('.templ') ? 6 : 4;
       const baseName = filePath.slice(0, -suffixLength);
@@ -188,6 +186,16 @@ class TempljsEmbeddedVirtualCode implements VirtualCode {
     this.snapshot = createCleanedSnapshot(content);
     this.mappings = mappings;
   }
+}
+
+function shiftMappings(
+  mappings: VirtualCode['mappings'],
+  sourceOffsetDelta: number
+): VirtualCode['mappings'] {
+  return mappings.map((mapping) => ({
+    ...mapping,
+    sourceOffsets: mapping.sourceOffsets.map((offset) => offset + sourceOffsetDelta),
+  }));
 }
 
 /**
@@ -343,21 +351,19 @@ class TempljsVirtualCode implements VirtualCode {
     const frontmatterRange = detectFrontmatterRange(this.original);
     if (frontmatterRange && frontmatterRange.end > frontmatterRange.start) {
       const frontmatterText = this.original.slice(frontmatterRange.start, frontmatterRange.end);
+      const { cleaned: cleanedFrontmatterText, originalToCleanedOffsets: frontmatterOffsets } =
+        this.stripTemplateSyntax(frontmatterText);
       const trimmed = frontmatterText.trimStart();
       const isJsonFrontmatter = trimmed.startsWith('{');
       embedded.push(
         new TempljsEmbeddedVirtualCode(
           isJsonFrontmatter ? 'frontmatter.json' : 'frontmatter.yaml',
           isJsonFrontmatter ? 'json' : 'yaml',
-          frontmatterText,
-          [
-            {
-              sourceOffsets: [frontmatterRange.start],
-              generatedOffsets: [0],
-              lengths: [frontmatterText.length],
-              data: DEFAULT_CODE_INFORMATION,
-            },
-          ]
+          cleanedFrontmatterText,
+          shiftMappings(
+            this.createMappings(frontmatterText, cleanedFrontmatterText, frontmatterOffsets),
+            frontmatterRange.start
+          )
         )
       );
     }
@@ -703,7 +709,165 @@ class TempljsVirtualCode implements VirtualCode {
 
 export const version = packageJson.version;
 
-class TempljsLanguagePlugin implements LanguagePlugin {
+/**
+ * Result of cleaning template syntax from a source file.
+ */
+export interface CleanedTemplateResult {
+  /** Source text with all template blocks (`{{ }}`, `{%- %}`, etc.) replaced by whitespace */
+  cleaned: string;
+  /**
+   * For each character offset in the source text, the corresponding offset in the cleaned text.
+   * Length = source.length + 1 (includes end-of-file position).
+   */
+  originalToCleanedOffsets: number[];
+}
+
+function toCoreDelimiterConfig(
+  delimiters?: Partial<TemplateDelimiterConfig>
+): CoreDelimiterConfig | undefined {
+  if (!delimiters) {
+    return undefined;
+  }
+
+  return {
+    statement_start: delimiters.statementStart,
+    statement_end: delimiters.statementEnd,
+    expression_start: delimiters.expressionStart,
+    expression_end: delimiters.expressionEnd,
+    comment_start: delimiters.commentStart,
+    comment_end: delimiters.commentEnd,
+  };
+}
+
+function buildIdentityOffsets(length: number): number[] {
+  const offsets = new Array<number>(length + 1);
+  for (let i = 0; i <= length; i++) {
+    offsets[i] = i;
+  }
+  return offsets;
+}
+
+function buildLineOffsets(text: string): number[] {
+  const offsets = [0];
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '\n') {
+      offsets.push(i + 1);
+    }
+  }
+  return offsets;
+}
+
+function positionToOffset(lineOffsets: number[], line: number, column: number): number {
+  const lineStart = lineOffsets[Math.max(0, line - 1)] ?? 0;
+  return lineStart + Math.max(0, column);
+}
+
+function cleanWithCoreTokenizer(
+  source: string,
+  delimiters?: Partial<TemplateDelimiterConfig>
+): CleanedTemplateResult {
+  const lineOffsets = buildLineOffsets(source);
+  const chars = [...source];
+  const tokens = tokenize(source, {
+    delimiters: toCoreDelimiterConfig(delimiters),
+  });
+
+  for (const token of tokens) {
+    if (token.type === TokenType.TEXT) {
+      continue;
+    }
+
+    const start = positionToOffset(lineOffsets, token.start.line, token.start.column);
+    const end = positionToOffset(lineOffsets, token.end.line, token.end.column);
+    for (let i = start; i < end && i < chars.length; i++) {
+      const ch = chars[i];
+      if (ch !== '\n' && ch !== '\r') {
+        chars[i] = ' ';
+      }
+    }
+  }
+
+  return {
+    cleaned: chars.join(''),
+    originalToCleanedOffsets: buildIdentityOffsets(source.length),
+  };
+}
+
+function cleanWithRegexFallback(
+  source: string,
+  delimiters?: Partial<TemplateDelimiterConfig>
+): CleanedTemplateResult {
+  const patterns = compileDelimiterPatterns(delimiters ?? {});
+  const originalToCleanedOffsets = new Array<number>(source.length + 1);
+  let cleaned = '';
+  let dstPos = 0;
+  let srcPos = 0;
+
+  originalToCleanedOffsets[0] = 0;
+
+  const templatePattern = new RegExp(patterns.templateBlockPattern.source, 'g');
+  let lastIndex = 0;
+  let match;
+
+  while ((match = templatePattern.exec(source)) !== null) {
+    const beforeBlock = source.substring(lastIndex, match.index);
+    cleaned += beforeBlock;
+    for (let i = 0; i < beforeBlock.length; i++) {
+      srcPos++;
+      dstPos++;
+      originalToCleanedOffsets[srcPos] = dstPos;
+    }
+
+    const templateBlock = match[0];
+    const placeholder = templateBlock
+      .split('\n')
+      .map((line, idx) => (idx === 0 ? ' '.repeat(line.length) : '\n'))
+      .join('');
+
+    cleaned += placeholder;
+    const firstNewline = templateBlock.indexOf('\n');
+    for (let i = 0; i < templateBlock.length; i++) {
+      const ch = templateBlock[i];
+      const advance = firstNewline === -1 || i < firstNewline ? 1 : ch === '\n' ? 1 : 0;
+      srcPos++;
+      dstPos += advance;
+      originalToCleanedOffsets[srcPos] = dstPos;
+    }
+
+    lastIndex = templatePattern.lastIndex;
+  }
+
+  const remaining = source.substring(lastIndex);
+  cleaned += remaining;
+  for (let i = 0; i < remaining.length; i++) {
+    srcPos++;
+    dstPos++;
+    originalToCleanedOffsets[srcPos] = dstPos;
+  }
+
+  return { cleaned, originalToCleanedOffsets };
+}
+
+/**
+ * Strip template syntax from source text and return the cleaned content with offset mapping.
+ *
+ * This is the Extension Host-safe equivalent of `TempljsVirtualCode`'s internal stripping
+ * logic, intended for use in virtual document content providers and similar client-side tools
+ * that need cleaned content without the full Volar virtual code infrastructure.
+ */
+export function cleanTemplateContent(
+  source: string,
+  delimiters?: Partial<TemplateDelimiterConfig>
+): CleanedTemplateResult {
+  try {
+    return cleanWithCoreTokenizer(source, delimiters);
+  } catch {
+    // Fallback keeps behavior resilient for malformed, partially typed templates.
+    return cleanWithRegexFallback(source, delimiters);
+  }
+}
+
+class TempljsLanguagePlugin implements LanguagePlugin<URI> {
   private readonly virtualCodeByUri = new Map<string, TempljsVirtualCode>();
   private readonly patterns: CompiledDelimiterPatterns;
 
@@ -711,26 +875,41 @@ class TempljsLanguagePlugin implements LanguagePlugin {
     this.patterns = compileDelimiterPatterns(options.delimiters);
   }
 
-  createVirtualCode(uri: string, _languageId: string, snapshot: ts.IScriptSnapshot): VirtualCode {
-    const baseFormat = detectBaseFormat(uri);
+  getLanguageId(scriptId: URI): string | undefined {
+    const uri = scriptId.toString();
+    if (/\.ya?ml\.(templ|tmpl|tpl)($|\?)/i.test(uri)) return 'templjs-yaml';
+    if (/\.json\.(templ|tmpl|tpl)($|\?)/i.test(uri)) return 'templjs-json';
+    if (/\.(md|markdown)\.(templ|tmpl|tpl)($|\?)/i.test(uri)) return 'templjs-markdown';
+    if (/\.html?\.(templ|tmpl|tpl)($|\?)/i.test(uri)) return 'templjs-html';
+    return undefined;
+  }
+
+  createVirtualCode(
+    scriptId: URI,
+    _languageId: string,
+    snapshot: ts.IScriptSnapshot,
+    _ctx: CodegenContext<URI>
+  ): VirtualCode {
+    const baseFormat = detectBaseFormat(scriptId.toString());
     const source = snapshot.getText(0, snapshot.getLength());
     const virtualCode = new TempljsVirtualCode(source, baseFormat, snapshot, this.patterns);
-    this.virtualCodeByUri.set(uri, virtualCode);
+    this.virtualCodeByUri.set(scriptId.toString(), virtualCode);
     return virtualCode;
   }
 
   updateVirtualCode(
-    uri: string,
+    scriptId: URI,
     _virtualCode: TempljsVirtualCode,
-    snapshot: ts.IScriptSnapshot
+    snapshot: ts.IScriptSnapshot,
+    _ctx: CodegenContext<URI>
   ): TempljsVirtualCode {
-    const baseFormat = detectBaseFormat(uri);
-    const cachedVirtualCode = this.virtualCodeByUri.get(uri) ?? _virtualCode;
+    const baseFormat = detectBaseFormat(scriptId.toString());
+    const cachedVirtualCode = this.virtualCodeByUri.get(scriptId.toString()) ?? _virtualCode;
 
     if (!(cachedVirtualCode instanceof TempljsVirtualCode)) {
       const source = snapshot.getText(0, snapshot.getLength());
       const rebuilt = new TempljsVirtualCode(source, baseFormat, snapshot, this.patterns);
-      this.virtualCodeByUri.set(uri, rebuilt);
+      this.virtualCodeByUri.set(scriptId.toString(), rebuilt);
       return rebuilt;
     }
 
@@ -740,7 +919,7 @@ class TempljsLanguagePlugin implements LanguagePlugin {
       baseFormat,
       changeRange ?? undefined
     );
-    this.virtualCodeByUri.set(uri, updated);
+    this.virtualCodeByUri.set(scriptId.toString(), updated);
     return updated;
   }
 }
@@ -756,7 +935,7 @@ class TempljsLanguagePlugin implements LanguagePlugin {
  */
 export function createTempljsLanguagePlugin(
   options: TempljsLanguagePluginOptions = {}
-): LanguagePlugin {
+): LanguagePlugin<URI> {
   return new TempljsLanguagePlugin(options);
 }
 
