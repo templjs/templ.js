@@ -625,7 +625,8 @@ function getExpressionCompletionsAtOffset(
     contentSchemaUri?: string;
   },
   /** Optional resolver to translate for-loop alias paths to their schema equivalents. */
-  pathResolver?: (basePath: string) => string
+  pathResolver?: (basePath: string) => string,
+  debugLog?: IntellisenseOptions['debugLog']
 ): CompletionItem[] {
   const prefix = getCompletionPrefix(content.slice(0, offsetInContent));
 
@@ -637,6 +638,16 @@ function getExpressionCompletionsAtOffset(
 
   const resolveBase = (basePath: string): string =>
     pathResolver ? pathResolver(basePath) : basePath;
+
+  const logRawDuplicateLabels = (items: CompletionItem[]): void => {
+    const duplicates = summarizeDuplicateLabels(items);
+    if (duplicates.length > 0) {
+      debugLog?.(
+        `[intellisense] completion duplicate labels: ${duplicates.slice(0, 12).join(', ')}`,
+        'messages'
+      );
+    }
+  };
 
   const variableRefs = extractExpressionVariableReferences(content);
   const activeRef = variableRefs.find(
@@ -661,6 +672,7 @@ function getExpressionCompletionsAtOffset(
       '',
       semanticOptions
     );
+    logRawDuplicateLabels(graphItems);
     return filterAndSortCompletions(mergeUniqueCompletions(localAliasItems, graphItems), typedPath);
   }
 
@@ -677,6 +689,7 @@ function getExpressionCompletionsAtOffset(
   }
 
   const graphItems = semanticReadAdapter.getChildCompletions(semanticContext, '', semanticOptions);
+  logRawDuplicateLabels(graphItems);
   return filterAndSortCompletions(mergeUniqueCompletions(localAliasItems, graphItems), prefix);
 }
 
@@ -809,7 +822,8 @@ export class IntellisenseProvider {
         filters,
         completionContext,
         semanticOptions,
-        scopeResolver
+        scopeResolver,
+        options?.debugLog
       );
 
       logCompletionSummary(options, 'expression', expressionCompletions);
@@ -846,7 +860,8 @@ export class IntellisenseProvider {
         filters,
         completionContext,
         semanticOptions,
-        scopeResolver
+        scopeResolver,
+        options?.debugLog
       );
 
       logCompletionSummary(options, 'statement-expression', statementExpressionCompletions);

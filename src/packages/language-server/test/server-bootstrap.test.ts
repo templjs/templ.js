@@ -18,6 +18,7 @@ const onDocumentFormatting = vi.fn();
 const sendDiagnostics = vi.fn();
 const consoleLog = vi.fn();
 const consoleWarn = vi.fn();
+let connectionSupportsFormatting = true;
 
 const testWorkspaceRoot = path.join(process.cwd(), 'workspace');
 
@@ -54,7 +55,7 @@ vi.mock('@volar/language-server/node', () => ({
     onCompletion,
     onHover,
     onDefinition,
-    onDocumentFormatting,
+    ...(connectionSupportsFormatting ? { onDocumentFormatting } : {}),
     sendDiagnostics,
     console: {
       log: consoleLog,
@@ -105,10 +106,11 @@ describe('language-server-bootstrap', () => {
     getLanguageService.mockReset();
     createSimpleProject.mockClear();
     createTempljsLanguagePlugin.mockClear();
+    connectionSupportsFormatting = true;
   });
 
   it('wires lifecycle handlers and avoids legacy compatibility registrations', async () => {
-    await import('../src/server');
+    await import('../src/index.ts');
 
     expect(onInitialize).toHaveBeenCalledWith(expect.any(Function));
     expect(onInitialized).toHaveBeenCalledWith(initialized);
@@ -122,7 +124,7 @@ describe('language-server-bootstrap', () => {
   });
 
   it('derives initialize rootUri from documentContext when rootUri is null', async () => {
-    await import('../src/server');
+    await import('../src/index.ts');
 
     const initializeHandler = onInitialize.mock.calls[0][0] as (
       params: unknown
@@ -146,8 +148,29 @@ describe('language-server-bootstrap', () => {
     expect(initializeParams?.rootUri).toBe('file:///tmp/templjs-root-fallback');
   });
 
+  it('leaves initialize rootUri undefined when the active document uri is invalid', async () => {
+    await import('../src/index.ts');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({
+      rootUri: null,
+      initializationOptions: {
+        documentContext: {
+          uri: 'file:///%E0%A4%A',
+          content: '{{ value }}',
+        },
+      },
+    });
+
+    const firstInitializeCall = initialize.mock.calls[0];
+    const initializeParams = (firstInitializeCall as unknown[])[0] as { rootUri?: string | null };
+    expect(initializeParams?.rootUri).toBeNull();
+  });
+
   it('registers service and language plugin providers', async () => {
-    await import('../src/server');
+    await import('../src/index.ts');
 
     const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => unknown;
     await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
@@ -187,7 +210,7 @@ describe('language-server-bootstrap', () => {
 
     getLanguageService.mockResolvedValue(languageService);
 
-    await import('../src/server');
+    await import('../src/index.ts');
 
     const initializeHandler = onInitialize.mock.calls[0][0] as (
       params: unknown
@@ -204,6 +227,34 @@ describe('language-server-bootstrap', () => {
     expect(onDefinition).toHaveBeenCalledWith(expect.any(Function));
     expect(onDocumentFormatting).toHaveBeenCalledWith(expect.any(Function));
   });
+
+  it('preserves existing server capabilities during initialize', async () => {
+    initialize.mockResolvedValueOnce({ capabilities: { renameProvider: true } });
+
+    await import('../src/index.ts');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<{ capabilities: Record<string, unknown> }>;
+    const result = await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
+
+    expect(result.capabilities.renameProvider).toBe(true);
+    expect(result.capabilities.documentFormattingProvider).toBe(true);
+  });
+
+  it('skips formatting handler registration when the connection does not support it', async () => {
+    connectionSupportsFormatting = false;
+
+    await import('../src/index.ts');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<{ capabilities: Record<string, unknown> }>;
+    const result = await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
+
+    expect(result.capabilities.documentFormattingProvider).toBe(true);
+    expect(onDocumentFormatting).not.toHaveBeenCalled();
+  });
 });
 
 describe('authoring transport delegation', () => {
@@ -215,6 +266,7 @@ describe('authoring transport delegation', () => {
     onDefinition.mockClear();
     onDocumentFormatting.mockClear();
     getLanguageService.mockReset();
+    connectionSupportsFormatting = true;
   });
 
   it('delegates completion/hover/definition/format requests to language service', async () => {
@@ -232,7 +284,7 @@ describe('authoring transport delegation', () => {
 
     getLanguageService.mockResolvedValue(languageService);
 
-    await import('../src/server');
+    await import('../src/index.ts');
 
     const initializeHandler = onInitialize.mock.calls[0][0] as (
       params: unknown
@@ -316,7 +368,7 @@ describe('isMdTemplateUri', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    const mod = await import('../src/server');
+    const mod = await import('../src/index.ts');
     isMdTemplateUri = mod.isMdTemplateUri;
   });
 
@@ -333,11 +385,11 @@ describe('isMdTemplateUri', () => {
 });
 
 describe('serverTesting helpers', () => {
-  let helpers: (typeof import('../src/server'))['serverTesting'];
+  let helpers: (typeof import('../src/index.ts'))['serverTesting'];
 
   beforeEach(async () => {
     vi.resetModules();
-    const mod = await import('../src/server');
+    const mod = await import('../src/index.ts');
     helpers = mod.serverTesting;
     helpers.resetRuntimeState();
     consoleLog.mockClear();
@@ -426,5 +478,62 @@ describe('serverTesting helpers', () => {
     expect(consoleLog).toHaveBeenCalledWith(
       '[templjs] Host diagnostics skipped for file:///doc.md.tpl: kaboom'
     );
+  });
+
+  it('traces yaml diagnostics without virtual map helpers and stringifies non-Error failures', async () => {
+    helpers.setServerTraceMode('verbose');
+
+    getLanguageService.mockResolvedValueOnce({
+      getDiagnostics: vi.fn(async () => [
+        { message: 'yaml issue', source: 'YAML' },
+        { message: 'other issue', source: 'json' },
+      ]),
+      context: {
+        language: {
+          scripts: {
+            get: () => ({
+              id: URI.parse('file:///data.yaml.templ'),
+              languageId: 'templjs-yaml',
+              generated: {
+                code: { id: 'root', languageId: 'yaml' },
+              },
+            }),
+          },
+        },
+        documents: {},
+        disabledVirtualFileUris: new Set(),
+      },
+    });
+
+    await expect(
+      helpers.collectServiceDiagnosticsForDocument('file:///data.yaml.templ', '')
+    ).resolves.toHaveLength(2);
+
+    getLanguageService.mockResolvedValueOnce({
+      getDiagnostics: vi.fn(async () => {
+        throw 'boom';
+      }),
+    });
+
+    await expect(
+      helpers.collectServiceDiagnosticsForDocument('file:///doc.md.tpl', '')
+    ).resolves.toEqual([]);
+
+    expect(consoleLog).toHaveBeenCalledWith(
+      '[templjs] Host diagnostics skipped for file:///doc.md.tpl: boom'
+    );
+  });
+
+  it('does not re-listen once the server was started and exposes runtime setters', async () => {
+    const mod = await import('../src/index.ts');
+    const initialListenCalls = listen.mock.calls.length;
+
+    mod.startTempljsLanguageServer();
+    expect(listen.mock.calls.length).toBe(initialListenCalls);
+
+    helpers.setStoredWorkspaceRoot('/workspace');
+    helpers.setStoredInitializationOptions({ schemaPath: '.templjs/schema.json' });
+    helpers.setServerTraceMode('messages');
+    helpers.resetRuntimeState();
   });
 });

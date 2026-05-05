@@ -105,7 +105,7 @@ describe('language-server-inprocess-authoring', () => {
 
     getLanguageService.mockResolvedValue(languageService);
 
-    await import('../src/server');
+    await import('../src/index.ts');
 
     const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => Promise<{
       capabilities: {
@@ -182,7 +182,7 @@ describe('language-server-inprocess-authoring', () => {
     };
     getLanguageService.mockResolvedValue(languageService);
 
-    await import('../src/server');
+    await import('../src/index.ts');
 
     const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => Promise<{
       capabilities: {

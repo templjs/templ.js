@@ -759,6 +759,7 @@ export function createServicePlugins(options: PluginOptions): LanguageServicePlu
 /* c8 ignore start */
 /* v8 ignore start */
 export const servicePluginTesting = {
+  withLanguageIdRemap,
   getSourceUri,
   getSourceLanguageId,
   getSourceDocumentText,

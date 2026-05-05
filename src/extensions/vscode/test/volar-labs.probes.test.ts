@@ -1,24 +1,32 @@
 import { describe, expect, it } from 'vitest';
 import { createTempljsLanguagePlugin } from '@templjs/volar';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import { URI } from 'vscode-uri';
 import { createServicePlugins } from '../src/service-plugins';
 
 function createVirtualTemplContext(uri: string, sourceLanguageId: string, sourceText: string) {
+  const sourceScript = {
+    id: URI.parse(uri),
+    languageId: sourceLanguageId,
+    snapshot: {
+      getText: () => sourceText,
+      getLength: () => sourceText.length,
+    },
+  };
+
   return {
+    decodeEmbeddedDocumentUri: (embeddedUri: URI) => {
+      return embeddedUri.toString().includes('virtualCodeId=root')
+        ? [URI.parse(uri), 'root']
+        : undefined;
+    },
     documents: {
-      getVirtualCodeByUri: () => [
-        { id: 'root' },
-        {
-          id: uri,
-          languageId: sourceLanguageId,
-          snapshot: {
-            getText: () => sourceText,
-            getLength: () => sourceText.length,
-          },
-        },
-      ],
+      getVirtualCodeByUri: () => [{ id: 'root' }, sourceScript],
     },
     language: {
+      scripts: {
+        get: () => sourceScript,
+      },
       files: {
         get: () => undefined,
       },
@@ -54,17 +62,13 @@ describe('volar-labs probes', () => {
     const frontmatter = virtualCode.embeddedCodes.find((code) => code.id === 'frontmatter.yaml');
 
     expect(host).toBeDefined();
-    expect(frontmatter).toBeDefined();
+    expect(frontmatter).toBeUndefined();
 
     const hostText = host?.snapshot.getText(0, host.snapshot.getLength()) ?? '';
-    const frontmatterText =
-      frontmatter?.snapshot.getText(0, frontmatter.snapshot.getLength()) ?? '';
 
     expect(hostText).not.toContain('{{');
     expect(hostText).not.toContain('{%');
-    expect(frontmatterText).not.toContain('{{');
-    expect(frontmatterText).not.toContain('{%');
-    expect(frontmatter?.mappings[0]?.sourceOffsets[0]).toBe(0);
+    expect(host?.mappings[0]?.sourceOffsets[0]).toBe(0);
   });
 
   it('probe: captures markdown/yaml authoring signal matrix for hover and definition', () => {
