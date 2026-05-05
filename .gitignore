@@ -115,6 +115,10 @@ dist
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 
+# Leftover host-language shadow directories (migration artefact; new code writes to storageUri)
+templjs-host-shadow
+.templjs-host-shadow
+
 # yarn v2
 .yarn/cache
 .yarn/unplugged
