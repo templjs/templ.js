@@ -94,60 +94,6 @@ describe('LanguagePlugin', () => {
       expect(dslText).toContain('{% if page.show %}');
     });
 
-    it('creates frontmatter embedded virtual document with transparent host text and source mapping', () => {
-      const content =
-        '---\ntitle: "{{ front.title }}"\nsummary: "{{ front.summary }}"\n---\n# Body\n{{ body.text }}';
-      const snapshot = {
-        getText: () => content,
-        getLength: () => content.length,
-        getChangeRange: () => undefined,
-      };
-
-      const virtualCode = plugin.createVirtualCode(
-        'file:///test.md.tmpl',
-        'templjs-markdown',
-        snapshot
-      );
-
-      expect(virtualCode).toBeDefined();
-      const frontmatter = virtualCode?.embeddedCodes.find(
-        (code) => code.id === 'frontmatter.yaml' || code.id === 'frontmatter.json'
-      );
-
-      expect(frontmatter).toBeDefined();
-      expect(frontmatter?.mappings[0]?.sourceOffsets[0]).toBe(0);
-      expect(frontmatter?.mappings[0]?.generatedOffsets[0]).toBe(0);
-
-      const frontmatterText =
-        frontmatter?.snapshot.getText(0, frontmatter.snapshot.getLength()) ?? '';
-      expect(frontmatterText.startsWith('---')).toBe(true);
-      expect(frontmatterText).not.toContain('{{');
-      expect(frontmatterText).not.toContain('{%');
-    });
-
-    it('creates frontmatter embedded virtual document when YAML frontmatter is malformed', () => {
-      const content = '---\ntitle: [broken\n---\n# Body';
-      const snapshot = {
-        getText: () => content,
-        getLength: () => content.length,
-        getChangeRange: () => undefined,
-      };
-
-      const virtualCode = plugin.createVirtualCode(
-        'file:///test.md.tmpl',
-        'templjs-markdown',
-        snapshot
-      );
-
-      expect(virtualCode).toBeDefined();
-      const frontmatter = virtualCode?.embeddedCodes.find((code) => code.id === 'frontmatter.yaml');
-      expect(frontmatter).toBeDefined();
-
-      const frontmatterText =
-        frontmatter?.snapshot.getText(0, frontmatter.snapshot.getLength()) ?? '';
-      expect(frontmatterText).toBe('---\ntitle: [broken\n---\n');
-    });
-
     it('should strip template syntax from content', () => {
       const content = 'Hello {{ name }}, welcome!';
       const mockSnapshot = {

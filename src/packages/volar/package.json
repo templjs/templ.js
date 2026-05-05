@@ -41,7 +41,6 @@
     "@templjs/core": "workspace:*",
     "@templjs/context-graph": "workspace:*",
     "@volar/language-core": "~2.4.0",
-    "vscode-uri": "^3.0.8",
-    "gray-matter": "^4.0.3"
+    "vscode-uri": "^3.0.8"
   }
 }

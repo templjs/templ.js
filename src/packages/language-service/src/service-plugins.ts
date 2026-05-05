@@ -3,7 +3,6 @@ import { URI } from 'vscode-uri';
 import prettier from 'prettier';
 import {
   collectDiagnostics,
-  detectFrontmatterRange,
   TempljsServicePlugin,
   type DiagnosticItem,
   type DiagnosticOptions,
@@ -450,7 +449,6 @@ function createYamlDiagnosticsPlugin(_options: PluginOptions): LanguageServicePl
 
 function createMarkdownHostDiagnosticsPlugin(_options: PluginOptions): LanguageServicePlugin {
   return {
-     
     ...createVolarMarkdownServicePlugin({
       getDiagnosticOptions: async () => DEFAULT_MARKDOWN_DIAGNOSTICS_OPTIONS as any,
     }),
@@ -505,32 +503,6 @@ function createPrettierHostServicePlugin(
   return {
     ...basePlugin,
     name: 'templjs-prettier-host',
-  };
-}
-
-function detectMarkdownFrontmatterRange(text: string): { start: number; end: number } | undefined {
-  const parsedRange = detectFrontmatterRange(text);
-  if (parsedRange) {
-    return parsedRange;
-  }
-
-  const openingFence = text.match(/^(---|\+\+\+)\r?\n/);
-  if (!openingFence) {
-    return undefined;
-  }
-
-  const fence = openingFence[1];
-  const escapedFence = fence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const closingPattern = new RegExp(`(?:^|\\n)${escapedFence}\\r?(?:\\n|$)`, 'g');
-  closingPattern.lastIndex = openingFence[0].length;
-  const closingMatch = closingPattern.exec(text);
-  if (!closingMatch) {
-    return undefined;
-  }
-
-  return {
-    start: 0,
-    end: closingMatch.index + closingMatch[0].length,
   };
 }
 
@@ -732,15 +704,11 @@ function createTempljsMarkdownDiagnosticsPlugin(options: PluginOptions): Languag
 
           const sourceText = getSourceDocumentText(context, document, route.sourceUri);
           const diagnosticOptions = toDiagnosticOptions(options, route.sourceUri, sourceText.text);
-          const frontmatterRange = detectMarkdownFrontmatterRange(sourceText.text);
           options.log?.(
             `[templjs-markdown-diag-plugin] options schema=${diagnosticOptions.schema ? 'yes' : 'no'} contentSchema=${diagnosticOptions.contentSchema ? 'yes' : 'no'} sourceUri=${route.sourceUri}`
           );
           options.log?.(
             `[templjs-markdown-diag-plugin] text fromSource=${sourceText.fromSource ? 'yes' : 'no'} length=${sourceText.text.length} uri=${document.uri}`
-          );
-          options.log?.(
-            `[templjs-markdown-diag-plugin] frontmatter range=${frontmatterRange ? `${frontmatterRange.start}-${frontmatterRange.end}` : 'none'} sourceUri=${route.sourceUri}`
           );
 
           try {
@@ -748,7 +716,6 @@ function createTempljsMarkdownDiagnosticsPlugin(options: PluginOptions): Languag
             const maskedSourceText = maskRangesForTemplateSemantics(sourceText.text, fencedRanges);
             const isolatedTempljsDiagnostics = collectDiagnostics(maskedSourceText, {
               ...diagnosticOptions,
-              frontmatterRange,
             });
             options.log?.(
               `[templjs-markdown-diag-plugin] collected templjs=${isolatedTempljsDiagnostics.length} sourceUri=${route.sourceUri}`
@@ -800,7 +767,6 @@ export const servicePluginTesting = {
   shouldSkipTempljsDiagnostics,
   isTempljsDocument,
   isYamlDocument,
-  detectMarkdownFrontmatterRange,
   detectMarkdownFencedCodeRanges,
   isOffsetInRanges,
   maskRangesForTemplateSemantics,

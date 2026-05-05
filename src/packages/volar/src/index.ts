@@ -24,8 +24,6 @@ import {
   resolveDelimiters,
   type DelimiterConfig as TemplateDelimiterConfig,
 } from './template-delimiters.js';
-import { detectFrontmatterRange } from './frontmatter-zone.js';
-
 // Export semantic token provider
 export {
   extractSemanticTokens,
@@ -36,9 +34,6 @@ export {
   type TokenInfo,
   type DelimiterConfig,
 } from './semantic-token-provider.js';
-
-export { isOffsetInFrontmatter, type FrontmatterRange } from './frontmatter-zone.js';
-export { detectFrontmatterRange };
 
 const require = createRequire(import.meta.url);
 const packageJson = require('../package.json') as { version: string };
@@ -186,16 +181,6 @@ class TempljsEmbeddedVirtualCode implements VirtualCode {
     this.snapshot = createCleanedSnapshot(content);
     this.mappings = mappings;
   }
-}
-
-function shiftMappings(
-  mappings: VirtualCode['mappings'],
-  sourceOffsetDelta: number
-): VirtualCode['mappings'] {
-  return mappings.map((mapping) => ({
-    ...mapping,
-    sourceOffsets: mapping.sourceOffsets.map((offset) => offset + sourceOffsetDelta),
-  }));
 }
 
 /**
@@ -347,26 +332,6 @@ class TempljsVirtualCode implements VirtualCode {
         },
       ]),
     ];
-
-    const frontmatterRange = detectFrontmatterRange(this.original);
-    if (frontmatterRange && frontmatterRange.end > frontmatterRange.start) {
-      const frontmatterText = this.original.slice(frontmatterRange.start, frontmatterRange.end);
-      const { cleaned: cleanedFrontmatterText, originalToCleanedOffsets: frontmatterOffsets } =
-        this.stripTemplateSyntax(frontmatterText);
-      const trimmed = frontmatterText.trimStart();
-      const isJsonFrontmatter = trimmed.startsWith('{');
-      embedded.push(
-        new TempljsEmbeddedVirtualCode(
-          isJsonFrontmatter ? 'frontmatter.json' : 'frontmatter.yaml',
-          isJsonFrontmatter ? 'json' : 'yaml',
-          cleanedFrontmatterText,
-          shiftMappings(
-            this.createMappings(frontmatterText, cleanedFrontmatterText, frontmatterOffsets),
-            frontmatterRange.start
-          )
-        )
-      );
-    }
 
     this.embeddedCodes = embedded;
   }

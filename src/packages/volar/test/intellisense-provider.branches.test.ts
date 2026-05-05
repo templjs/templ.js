@@ -250,7 +250,6 @@ describe('IntellisenseProvider branch coverage', () => {
     const items = provider.getCompletions(text, text.length, {
       debugLog: () => {},
       documentUri: 'file:///doc.unknown',
-      frontmatterRange: { start: 0, end: text.length },
     });
 
     expect(items).toEqual([]);

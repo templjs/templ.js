@@ -4,14 +4,12 @@ import {
   resolveSemanticHostLanguage,
   resolveSemanticZoneByHostLanguage,
   resolveSemanticZone,
-  toSemanticZone,
   type FunctionSignature,
 } from '@templjs/core';
 import {
   resolveDelimiters,
   type DelimiterConfig as IntellisenseDelimiters,
 } from './template-delimiters.js';
-import { type FrontmatterRange } from './frontmatter-zone.js';
 import {
   extractExpressionFilterReferences,
   extractExpressionVariableReferences,
@@ -59,7 +57,6 @@ export interface IntellisenseOptions {
   documentUri?: string;
   workspaceRoot?: string;
   debugLog?: (message: string, level?: 'messages' | 'verbose') => void;
-  frontmatterRange?: FrontmatterRange;
   customFilters?: FilterSignature[];
   customKeywords?: string[];
   delimiters?: Partial<IntellisenseDelimiters>;
@@ -208,13 +205,8 @@ function buildSemanticQueryContext(
 function resolveSemanticQueryZone(
   text: string,
   offset: number,
-  documentUri?: string,
-  range?: FrontmatterRange
+  documentUri?: string
 ): NonNullable<SemanticQueryContext['semanticZone']> {
-  if (range && offset >= range.start && offset < range.end) {
-    return toSemanticZone('frontmatter');
-  }
-
   const hostLanguage = resolveSemanticHostLanguage(documentUri);
   if (hostLanguage === 'unknown') {
     return resolveSemanticZone(text, offset);
@@ -771,12 +763,7 @@ export class IntellisenseProvider {
       delimiters.statementEnd,
       true
     );
-    const semanticZone = resolveSemanticQueryZone(
-      text,
-      offset,
-      options?.documentUri,
-      options?.frontmatterRange
-    );
+    const semanticZone = resolveSemanticQueryZone(text, offset, options?.documentUri);
     const contextBlock = semanticZone.legacyContextBlock;
     const completionContext = buildSemanticQueryContext(
       text,
@@ -917,12 +904,7 @@ export class IntellisenseProvider {
           delimiters.statementEnd,
           false
         );
-    const semanticZone = resolveSemanticQueryZone(
-      text,
-      offset,
-      options?.documentUri,
-      options?.frontmatterRange
-    );
+    const semanticZone = resolveSemanticQueryZone(text, offset, options?.documentUri);
     const contextBlock = semanticZone.legacyContextBlock;
     const hoverContext = buildSemanticQueryContext(
       text,
@@ -1124,12 +1106,7 @@ export class IntellisenseProvider {
           false
         );
 
-    const semanticZone = resolveSemanticQueryZone(
-      text,
-      offset,
-      options?.documentUri,
-      options?.frontmatterRange
-    );
+    const semanticZone = resolveSemanticQueryZone(text, offset, options?.documentUri);
     const contextBlock = semanticZone.legacyContextBlock;
 
     const definitionContext = buildSemanticQueryContext(
