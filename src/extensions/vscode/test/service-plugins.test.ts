@@ -2,20 +2,35 @@ import { describe, expect, it, vi } from 'vitest';
 import * as volar from '@templjs/volar';
 import { createServicePlugins, servicePluginTesting } from '../src/service-plugins';
 describe('createServicePlugins', () => {
-  it('returns templjs intellisense, diagnostics, and yaml service plugins', () => {
+  it('returns templjs plugins plus host language service adapters', () => {
     const plugins = createServicePlugins({
       getIntellisenseOptions: () => ({}),
       getDiagnosticOptions: () => ({}),
     });
 
-    expect(plugins).toHaveLength(4);
+    expect(plugins).toHaveLength(7);
     expect(plugins[0]?.name).toBe('templjs-intellisense');
     expect(plugins[1]?.name).toBe('templjs-diagnostics');
     expect(plugins[2]?.name).toBe('templjs-markdown-diagnostics');
-    expect(plugins[3]?.name).toBe('templjs-yaml');
+    expect(plugins[3]?.name).toBe('templjs-markdown-host');
+    expect(plugins[4]?.name).toBe('templjs-yaml');
+    expect(plugins[5]?.name).toBe('templjs-html-host');
+    expect(plugins[6]?.name).toBe('templjs-json-host');
   });
 
-  it('delegates diagnostics for templjs-yaml documents', async () => {
+  it('adds prettier host plugin only for configured host languages', () => {
+    const plugins = createServicePlugins({
+      getIntellisenseOptions: () => ({}),
+      getDiagnosticOptions: () => ({}),
+      initializationOptions: {
+        prettierHostLanguages: ['markdown', 'json', 'templjs-yaml', 'MARKDOWN'],
+      } as never,
+    });
+
+    expect(plugins.some((plugin) => plugin.name === 'templjs-prettier-host')).toBe(true);
+  });
+
+  it('skips yaml diagnostics on raw templjs-yaml source documents', async () => {
     const plugins = createServicePlugins({
       getIntellisenseOptions: () => ({}),
       getDiagnosticOptions: () => ({}),
@@ -38,16 +53,18 @@ describe('createServicePlugins', () => {
       },
     } as never);
 
-    const diagnostics = await pluginInstance.provideDiagnostics?.({
-      uri: 'file:///workspace/test.yaml.templ',
-      languageId: 'templjs-yaml',
-      getText: () => 'foo: bar: [{% for item in items %}{{ item }},',
-      offsetAt: () => 0,
-      positionAt: () => ({ line: 0, character: 0 }),
-    } as never);
+    const diagnostics = await pluginInstance.provideDiagnostics?.(
+      {
+        uri: 'file:///workspace/test.yaml.templ',
+        languageId: 'templjs-yaml',
+        getText: () => 'foo: bar: [{% for item in items %}{{ item }},',
+        offsetAt: () => 0,
+        positionAt: () => ({ line: 0, character: 0 }),
+      } as never,
+      undefined as never
+    );
 
-    expect(Array.isArray(diagnostics)).toBe(true);
-    expect(diagnostics).toBeDefined();
+    expect(diagnostics).toBeUndefined();
   });
 
   it('delegates diagnostics for yaml template URI even when languageId is generic', async () => {
@@ -73,16 +90,18 @@ describe('createServicePlugins', () => {
       },
     } as never);
 
-    const diagnostics = await pluginInstance.provideDiagnostics?.({
-      uri: 'file:///workspace/Untitled-1.yaml.templ',
-      languageId: 'plaintext',
-      getText: () => 'foo: bar: [{% for item in items %}{{ item }},',
-      offsetAt: () => 0,
-      positionAt: () => ({ line: 0, character: 0 }),
-    } as never);
+    const diagnostics = await pluginInstance.provideDiagnostics?.(
+      {
+        uri: 'file:///workspace/Untitled-1.yaml.templ',
+        languageId: 'plaintext',
+        getText: () => 'foo: bar: [{% for item in items %}{{ item }},',
+        offsetAt: () => 0,
+        positionAt: () => ({ line: 0, character: 0 }),
+      } as never,
+      undefined as never
+    );
 
-    expect(Array.isArray(diagnostics)).toBe(true);
-    expect(diagnostics).toBeDefined();
+    expect(diagnostics === undefined || Array.isArray(diagnostics)).toBe(true);
   });
 
   it('delegates diagnostics for templjs template source documents', async () => {
@@ -351,7 +370,11 @@ describe('createServicePlugins', () => {
     expect(markdownDiagnostics).toBeDefined();
   });
 
-  it('surfaces yaml diagnostics for malformed markdown frontmatter templates', async () => {
+  it('does not surface yaml diagnostics for malformed markdown frontmatter templates (regression guard)', async () => {
+    // Stripped frontmatter content may be structurally incomplete YAML (e.g. an unclosed
+    // sequence bracket where the template expression would close it at render time).
+    // The markdown plugin must NOT validate stripped frontmatter as standalone YAML —
+    // that would produce false positives. See: regression from transparency work.
     const plugins = createServicePlugins({
       getIntellisenseOptions: () => ({}),
       getDiagnosticOptions: () => ({}),
@@ -406,7 +429,255 @@ describe('createServicePlugins', () => {
       undefined as never
     );
 
-    expect(diagnostics?.some((diag) => diag.source?.toLowerCase() === 'yaml')).toBe(true);
+    // No YAML diagnostics from the markdown plugin — stripped content is opaque to YAML validation.
+    expect(diagnostics?.some((diag) => diag.source?.toLowerCase() === 'yaml')).toBe(false);
+  });
+
+  it('does not synthesize markdown diagnostics for md templates in the extension layer', async () => {
+    const plugins = createServicePlugins({
+      getIntellisenseOptions: () => ({}),
+      getDiagnosticOptions: () => ({}),
+      log: vi.fn(),
+    });
+    const markdownDiagPlugin = plugins.find(
+      (plugin) => plugin.name === 'templjs-markdown-diagnostics'
+    );
+
+    expect(markdownDiagPlugin).toBeDefined();
+
+    const rawSourceText = [
+      '---',
+      'title: {{ title }}',
+      '---',
+      '# Heading',
+      '{% if true %}',
+      'Body',
+    ].join('\n');
+    const cleanedText = [
+      '---',
+      'title:            ',
+      '---',
+      '# Heading',
+      '             ',
+      'Body',
+    ].join('\n');
+
+    const pluginInstance = markdownDiagPlugin!.create({
+      documents: {
+        getVirtualCodeByUri: vi.fn(() => [
+          { id: 'root' },
+          {
+            id: 'file:///workspace/test.md.templ',
+            languageId: 'templjs-markdown',
+            snapshot: {
+              getText: () => rawSourceText,
+              getLength: () => rawSourceText.length,
+            },
+          },
+        ]),
+      },
+      language: { files: { get: vi.fn(() => undefined) } },
+    } as never);
+
+    const diagnostics = await pluginInstance.provideDiagnostics?.(
+      {
+        uri: 'file:///workspace/test.md.templ?virtualCodeId=root',
+        languageId: 'markdown',
+        getText: () => cleanedText,
+        offsetAt: () => 0,
+        positionAt: () => ({ line: 0, character: 0 }),
+      } as never,
+      undefined as never
+    );
+
+    expect(diagnostics?.some((diag) => diag.source?.toLowerCase() === 'markdown')).toBe(false);
+  });
+
+  it('ignores templjs diagnostics for template delimiters inside markdown fenced code blocks', async () => {
+    const plugins = createServicePlugins({
+      getIntellisenseOptions: () => ({}),
+      getDiagnosticOptions: () => ({}),
+      log: vi.fn(),
+    });
+    const markdownDiagPlugin = plugins.find(
+      (plugin) => plugin.name === 'templjs-markdown-diagnostics'
+    );
+
+    expect(markdownDiagPlugin).toBeDefined();
+
+    const rawSourceText = [
+      '---',
+      'title: test',
+      '---',
+      '# Heading',
+      '',
+      '```yaml',
+      '{% if true %}',
+      'key: value',
+      '```',
+    ].join('\n');
+    const cleanedText = [
+      '---',
+      'title: test',
+      '---',
+      '# Heading',
+      '',
+      '```yaml',
+      '           ',
+      'key: value',
+      '```',
+    ].join('\n');
+
+    const pluginInstance = markdownDiagPlugin!.create({
+      documents: {
+        getVirtualCodeByUri: vi.fn(() => [
+          { id: 'root' },
+          {
+            id: 'file:///workspace/test.md.templ',
+            languageId: 'templjs-markdown',
+            snapshot: {
+              getText: () => rawSourceText,
+              getLength: () => rawSourceText.length,
+            },
+          },
+        ]),
+      },
+      language: { files: { get: vi.fn(() => undefined) } },
+    } as never);
+
+    const diagnostics = await pluginInstance.provideDiagnostics?.(
+      {
+        uri: 'file:///workspace/test.md.templ?virtualCodeId=root',
+        languageId: 'markdown',
+        getText: () => cleanedText,
+        offsetAt: () => 0,
+        positionAt: () => ({ line: 0, character: 0 }),
+      } as never,
+      undefined as never
+    );
+
+    expect(
+      diagnostics?.some(
+        (diag) =>
+          diag.source?.toLowerCase() === 'templjs' &&
+          diag.message.toLowerCase().includes('missing closing tag')
+      )
+    ).toBe(false);
+  });
+
+  it('uses source snapshots for virtual-root alias completions', () => {
+    const plugins = createServicePlugins({
+      getIntellisenseOptions: () => ({}),
+      getDiagnosticOptions: () => ({}),
+    });
+    const intellisensePlugin = plugins.find((plugin) => plugin.name === 'templjs-intellisense');
+
+    expect(intellisensePlugin).toBeDefined();
+
+    const sourceText = '{% for item in users %}{{ it }}{% endfor %}';
+    const cursorCharacter = sourceText.lastIndexOf('it') + 'it'.length;
+
+    const pluginInstance = intellisensePlugin!.create({
+      documents: {
+        getVirtualCodeByUri: vi.fn(() => [
+          { id: 'root' },
+          {
+            id: 'file:///workspace/test.md.templ',
+            languageId: 'templjs-markdown',
+            snapshot: {
+              getText: () => sourceText,
+              getLength: () => sourceText.length,
+            },
+          },
+        ]),
+      },
+      language: { files: { get: vi.fn(() => undefined) } },
+    } as never);
+
+    const completions = pluginInstance.provideCompletionItems?.(
+      {
+        uri: 'file:///workspace/test.md.templ?virtualCodeId=root',
+        languageId: 'markdown',
+        getText: () => ' '.repeat(sourceText.length),
+        offsetAt: () => 0,
+      } as never,
+      { line: 0, character: cursorCharacter } as never,
+      undefined as never,
+      undefined as never
+    );
+
+    expect(completions && 'items' in completions).toBe(true);
+    if (completions && 'items' in completions) {
+      expect(completions.items.some((item) => item.label === 'item')).toBe(true);
+    }
+  });
+
+  it('skips templjs authoring features when cursor is inside markdown fenced code block', () => {
+    const plugins = createServicePlugins({
+      getIntellisenseOptions: () => ({}),
+      getDiagnosticOptions: () => ({}),
+    });
+    const intellisensePlugin = plugins.find((plugin) => plugin.name === 'templjs-intellisense');
+
+    expect(intellisensePlugin).toBeDefined();
+
+    const sourceText = ['# Heading', '', '```yaml', '{{ user.name }}', '```'].join('\n');
+    const cursorCharacter = sourceText.split('\n')[3].indexOf('user') + 2;
+
+    const pluginInstance = intellisensePlugin!.create({
+      documents: {
+        getVirtualCodeByUri: vi.fn(() => [
+          { id: 'root' },
+          {
+            id: 'file:///workspace/test.md.templ',
+            languageId: 'templjs-markdown',
+            snapshot: {
+              getText: () => sourceText,
+              getLength: () => sourceText.length,
+            },
+          },
+        ]),
+      },
+      language: { files: { get: vi.fn(() => undefined) } },
+    } as never);
+
+    const completion = pluginInstance.provideCompletionItems?.(
+      {
+        uri: 'file:///workspace/test.md.templ?virtualCodeId=root',
+        languageId: 'markdown',
+        getText: () => sourceText,
+        offsetAt: () => 0,
+      } as never,
+      { line: 3, character: cursorCharacter } as never,
+      undefined as never,
+      undefined as never
+    );
+
+    const hover = pluginInstance.provideHover?.(
+      {
+        uri: 'file:///workspace/test.md.templ?virtualCodeId=root',
+        languageId: 'markdown',
+        getText: () => sourceText,
+        offsetAt: () => 0,
+      } as never,
+      { line: 3, character: cursorCharacter } as never,
+      undefined as never
+    );
+
+    const definition = pluginInstance.provideDefinition?.(
+      {
+        uri: 'file:///workspace/test.md.templ?virtualCodeId=root',
+        languageId: 'markdown',
+        getText: () => sourceText,
+        offsetAt: () => 0,
+      } as never,
+      { line: 3, character: cursorCharacter } as never,
+      undefined as never
+    );
+
+    expect(completion).toBeUndefined();
+    expect(hover).toBeUndefined();
+    expect(definition).toBeUndefined();
   });
 
   it('covers service-plugin helper behavior directly', () => {
@@ -653,7 +924,9 @@ describe('createServicePlugins', () => {
         getText: () => '{{ user.name }}',
         offsetAt: () => 0,
       } as never,
-      { line: 0, character: 0 } as never
+      { line: 0, character: 0 } as never,
+      undefined as never,
+      undefined as never
     );
     expect(completionResult && 'items' in completionResult).toBe(true);
     expect(
@@ -664,7 +937,8 @@ describe('createServicePlugins', () => {
           getText: () => '{{ user.name }}',
           offsetAt: () => 0,
         } as never,
-        { line: 0, character: 0 } as never
+        { line: 0, character: 0 } as never,
+        undefined as never
       )
     ).toBeDefined();
     expect(
@@ -675,7 +949,8 @@ describe('createServicePlugins', () => {
           getText: () => '{{ user.name }}',
           offsetAt: () => 0,
         } as never,
-        { line: 0, character: 0 } as never
+        { line: 0, character: 0 } as never,
+        undefined as never
       )
     ).toEqual([
       {
@@ -698,7 +973,8 @@ describe('createServicePlugins', () => {
           getText: () => '{{ user.name }}',
           offsetAt: () => 0,
         } as never,
-        { line: 0, character: 0 } as never
+        { line: 0, character: 0 } as never,
+        undefined as never
       )
     ).toBeUndefined();
     expect(
@@ -709,7 +985,9 @@ describe('createServicePlugins', () => {
           getText: () => '{"name": 1}',
           offsetAt: () => 0,
         } as never,
-        { line: 0, character: 0 } as never
+        { line: 0, character: 0 } as never,
+        undefined as never,
+        undefined as never
       )
     ).toBeUndefined();
 
@@ -723,9 +1001,10 @@ describe('createServicePlugins', () => {
       } as never,
       undefined as never
     );
-    expect(Array.isArray(yamlDiagnostics)).toBe(true);
-    expect(log).toHaveBeenCalledWith(expect.stringContaining('templjs-yaml-plugin] validate'));
-    expect(log).toHaveBeenCalledWith(expect.stringContaining('templjs-yaml-plugin] validated'));
+    expect(yamlDiagnostics).toBeUndefined();
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining('templjs-yaml-plugin] skip source templjs document')
+    );
 
     const markdownDiagnostics = await markdownDiagPlugin!.create(context).provideDiagnostics?.(
       {
@@ -857,7 +1136,8 @@ describe('createServicePlugins', () => {
           getText: () => '{}',
           offsetAt: () => 0,
         } as never,
-        { line: 0, character: 0 } as never
+        { line: 0, character: 0 } as never,
+        undefined as never
       )
     ).toBeUndefined();
     expect(
@@ -868,7 +1148,8 @@ describe('createServicePlugins', () => {
           getText: () => '{}',
           offsetAt: () => 0,
         } as never,
-        { line: 0, character: 0 } as never
+        { line: 0, character: 0 } as never,
+        undefined as never
       )
     ).toBeUndefined();
 

@@ -138,6 +138,7 @@ describe('language-server-inprocess-authoring', () => {
       'file:///workspace/sample.md.tmpl',
       'file:///workspace/sample.html.tmpl',
       'file:///workspace/sample.json.tmpl',
+      'file:///workspace/sample.yaml.tmpl',
     ]) {
       const completion = await completionHandler({
         textDocument: { uri },
@@ -159,9 +160,9 @@ describe('language-server-inprocess-authoring', () => {
       expect(definition[0]?.targetUri).toBe('file:///workspace/schema.json');
     }
 
-    expect(languageService.doComplete).toHaveBeenCalledTimes(3);
-    expect(languageService.doHover).toHaveBeenCalledTimes(3);
-    expect(languageService.findDefinition).toHaveBeenCalledTimes(3);
+    expect(languageService.doComplete).toHaveBeenCalledTimes(4);
+    expect(languageService.doHover).toHaveBeenCalledTimes(4);
+    expect(languageService.findDefinition).toHaveBeenCalledTimes(4);
   });
 
   it('supports md/html/json/yaml formatting via delegated handlers', async () => {

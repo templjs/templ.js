@@ -16,11 +16,17 @@ import {
   type ServerOptions,
   TransportKind,
 } from 'vscode-languageclient/node';
+import { TempljsVirtualDocumentProvider, VIRTUAL_SCHEME } from './virtual-document-provider.js';
 
 let languageClient: LanguageClient | undefined;
 let outputChannel: vscode.OutputChannel | undefined;
+let isRestartingLanguageClient = false;
+let activeEditorTraceSubscription: vscode.Disposable | undefined;
 
 type TraceMode = 'off' | 'messages' | 'verbose';
+
+const PRETTIER_FORMATTER_IDS = new Set(['esbenp.prettier-vscode']);
+const HOST_BASE_LANGUAGES = ['markdown', 'json', 'yaml', 'html'] as const;
 
 function getTraceMode(): TraceMode {
   const configured = vscode.workspace
@@ -120,6 +126,45 @@ function getFirstTargetUri(defResult: unknown): string {
   return 'unknown';
 }
 
+function isPrettierFormatterSelection(formatterId: string | undefined): boolean {
+  if (!formatterId) {
+    return false;
+  }
+
+  return PRETTIER_FORMATTER_IDS.has(formatterId.trim().toLowerCase());
+}
+
+function getPrettierHostLanguagesFromSettings(): string[] {
+  const allSettings = vscode.workspace.getConfiguration();
+  const globalFormatter = vscode.workspace
+    .getConfiguration('editor')
+    .get<string>('defaultFormatter');
+
+  const selected: string[] = [];
+  for (const language of HOST_BASE_LANGUAGES) {
+    const languageBlock = allSettings.get<Record<string, unknown>>(`[${language}]`);
+    const languageFormatter =
+      languageBlock && typeof languageBlock['editor.defaultFormatter'] === 'string'
+        ? String(languageBlock['editor.defaultFormatter'])
+        : undefined;
+
+    const effectiveFormatter = languageFormatter ?? globalFormatter;
+    if (isPrettierFormatterSelection(effectiveFormatter)) {
+      selected.push(language);
+    }
+  }
+
+  return selected;
+}
+
+function shouldRefreshFormatterSelection(event: vscode.ConfigurationChangeEvent): boolean {
+  if (event.affectsConfiguration('editor.defaultFormatter')) {
+    return true;
+  }
+
+  return HOST_BASE_LANGUAGES.some((language) => event.affectsConfiguration(`[${language}]`));
+}
+
 function isTempljsDocument(document: vscode.TextDocument): boolean {
   if (document.uri.scheme !== 'file') {
     return false;
@@ -160,6 +205,50 @@ export function activate(context: vscode.ExtensionContext): void {
     outputChannel.appendLine(`[templjs] Failed to initialize language server: ${String(error)}`);
     vscode.window.showErrorMessage('Failed to activate Templjs: ' + String(error));
   }
+
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (!shouldRefreshFormatterSelection(event)) {
+        return;
+      }
+
+      outputChannel?.appendLine(
+        '[templjs] Formatter selection changed; restarting language client to refresh Prettier host-language delegation'
+      );
+      void restartLanguageClient(context);
+    })
+  );
+
+  // Host language delegation via virtual documents.
+  // Serves cleaned template content under `templjs-virtual://` so VS Code routes each
+  // embedded document to whatever language server the user has configured — markdownlint,
+  // remark, Vale, the built-in markdown server, etc. — without any hardcoded dependency.
+  // TODO(WI-093): supersede with @volar/language-client when Volar adds client-side
+  // embedded-language forwarding.
+  initializeHostLanguageDelegation(context);
+}
+
+async function restartLanguageClient(context: vscode.ExtensionContext): Promise<void> {
+  if (isRestartingLanguageClient) {
+    return;
+  }
+
+  isRestartingLanguageClient = true;
+  try {
+    const previousClient = languageClient;
+    languageClient = undefined;
+
+    if (previousClient) {
+      await previousClient.stop();
+    }
+
+    initializeLanguageServer(context);
+  } catch (error) {
+    outputChannel?.appendLine(`[templjs] Failed to restart language client: ${String(error)}`);
+    console.error('[templjs] Failed to restart language client:', error);
+  } finally {
+    isRestartingLanguageClient = false;
+  }
 }
 
 /**
@@ -189,6 +278,7 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
   const contentSchemaPath = getContentSchemaPathFromSettings();
   const schemaPatterns = getSchemaPatternsFromSettings();
   const documentContext = getActiveDocumentContext();
+  const prettierHostLanguages = getPrettierHostLanguagesFromSettings();
 
   const clientOptions: LanguageClientOptions = {
     middleware: {
@@ -303,6 +393,7 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
       schemaPatterns,
       documentContext,
       traceMode,
+      prettierHostLanguages,
     },
   };
 
@@ -316,6 +407,7 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
   context.subscriptions.push(languageClient);
   outputChannel?.appendLine('[templjs] Language client created');
 
+  activeEditorTraceSubscription?.dispose();
   const activeEditorSubscription = vscode.window.onDidChangeActiveTextEditor((editor) => {
     if (!editor) {
       return;
@@ -325,6 +417,7 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
       'verbose'
     );
   });
+  activeEditorTraceSubscription = activeEditorSubscription;
   context.subscriptions.push(activeEditorSubscription);
 
   outputChannel?.appendLine('[templjs] Starting language client...');
@@ -335,6 +428,51 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
       `Templjs: Language client failed to start: ${String(error)}`
     );
   });
+}
+
+/**
+ * Register the virtual document provider and keep it in sync with open templjs documents.
+ *
+ * `templjs-virtual://` documents contain the cleaned template content (template expressions
+ * deleted, offset-mapped). VS Code routes them to whichever LSP-based language server is
+ * registered for the base format language ID. No in-process language services are run here.
+ */
+function initializeHostLanguageDelegation(context: vscode.ExtensionContext): void {
+  const provider = new TempljsVirtualDocumentProvider();
+  context.subscriptions.push(provider);
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider(VIRTUAL_SCHEME, provider)
+  );
+
+  function syncDocument(document: vscode.TextDocument): void {
+    if (!isTempljsDocument(document)) return;
+    provider.update(document.uri, document.getText());
+  }
+
+  // Sync all documents already open when the extension activates.
+  for (const document of vscode.workspace.textDocuments) {
+    syncDocument(document);
+  }
+
+  context.subscriptions.push(
+    vscode.workspace.onDidOpenTextDocument((doc) => {
+      syncDocument(doc);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeTextDocument((e) => {
+      syncDocument(e.document);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.workspace.onDidCloseTextDocument((doc) => {
+      if (isTempljsDocument(doc)) {
+        provider.remove(doc.uri);
+      }
+    })
+  );
 }
 
 interface ActiveDocumentContext {
@@ -402,6 +540,9 @@ function getTypeScriptSdkPath(): string | undefined {
  * Deactivate the templjs extension
  */
 export function deactivate(): Thenable<void> | undefined {
+  activeEditorTraceSubscription?.dispose();
+  activeEditorTraceSubscription = undefined;
+
   if (languageClient) {
     const client = languageClient;
     languageClient = undefined;
@@ -424,6 +565,9 @@ export const extensionTesting = {
   extractLabels,
   hoverContentToString,
   getFirstTargetUri,
+  isPrettierFormatterSelection,
+  getPrettierHostLanguagesFromSettings,
+  shouldRefreshFormatterSelection,
   isTempljsDocument,
   getActiveDocumentContext,
   getContentSchemaPathFromSettings,

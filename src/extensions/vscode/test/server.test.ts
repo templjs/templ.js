@@ -163,7 +163,10 @@ describe('language-server-bootstrap', () => {
       'templjs-intellisense',
       'templjs-diagnostics',
       'templjs-markdown-diagnostics',
+      'templjs-markdown-host',
       'templjs-yaml',
+      'templjs-html-host',
+      'templjs-json-host',
     ]);
 
     serverOptions.getLanguagePlugins();
@@ -349,7 +352,7 @@ describe('serverTesting helpers', () => {
     expect(helpers.isYamlTemplateUri('file:///data.md.templ')).toBe(false);
   });
 
-  it('collects diagnostics from language service and handles failures', async () => {
+  it('collects delegated host diagnostics from language service and handles failures', async () => {
     helpers.setServerTraceMode('verbose');
 
     getProject.mockResolvedValueOnce({
@@ -380,6 +383,37 @@ describe('serverTesting helpers', () => {
     await expect(
       helpers.collectServiceDiagnosticsForDocument('file:///data.yaml.templ', '')
     ).resolves.toEqual([{ message: 'yaml issue', source: 'yaml' }]);
+
+    getProject.mockResolvedValueOnce({
+      getLanguageService: () => ({
+        doValidation: vi.fn(async () => [
+          { message: 'markdown issue', source: 'markdown', code: 'MD022' },
+        ]),
+        context: {
+          language: {
+            files: {
+              get: () => ({
+                languageId: 'templjs-markdown',
+                generated: {
+                  code: { id: 'root', languageId: 'markdown', mappings: [{}] },
+                },
+              }),
+            },
+          },
+          documents: {
+            getVirtualCodeUri: () => 'file:///virtual.md',
+            getMaps: function* () {
+              yield { id: 'map-md-1' };
+            },
+          },
+          disabledVirtualFileUris: new Set(),
+        },
+      }),
+    });
+
+    await expect(
+      helpers.collectServiceDiagnosticsForDocument('file:///doc.md.tpl', '')
+    ).resolves.toEqual([{ message: 'markdown issue', source: 'markdown', code: 'MD022' }]);
 
     getProject.mockResolvedValueOnce({
       getLanguageService: () => ({

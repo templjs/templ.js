@@ -95,4 +95,18 @@ describe('grammar-smoke-md-tmpl', () => {
     expect(grammar.repository.comment?.begin).toBe('\\{#');
     expect(grammar.repository.comment?.end).toBe('#\\}');
   });
+
+  it('keeps templjs frontmatter tokenization ahead of yaml host grammar', () => {
+    const grammarPath = path.join(extensionRoot, 'syntaxes/injection-markdown.json');
+    const grammar = JSON.parse(readFileSync(grammarPath, 'utf-8')) as InjectionGrammar;
+    const frontmatterIncludes =
+      grammar.repository.frontmatter?.patterns?.map((pattern) => pattern.include) ?? [];
+
+    expect(frontmatterIncludes).toEqual(
+      expect.arrayContaining(['source.templjs', '#yamlScalarValue', 'source.yaml'])
+    );
+    expect(frontmatterIncludes.indexOf('source.templjs')).toBeLessThan(
+      frontmatterIncludes.indexOf('source.yaml')
+    );
+  });
 });

@@ -176,13 +176,15 @@
     }
   },
   "scripts": {
-    "build": "tsc -b --force && node ./scripts/build.mjs",
+    "build": "tsc -b --force && node ./scripts/build.mjs && node ./scripts/validate-bundled-deps.mjs",
     "clean": "node -e \"const fs=require('node:fs'); fs.rmSync('dist',{recursive:true,force:true}); fs.rmSync('tsconfig.tsbuildinfo',{force:true}); for (const entry of fs.readdirSync('.')) if (/^templjs-.*\\.vsix$/.test(entry)) fs.rmSync(entry,{force:true});\"",
     "lint": "echo \"No linting configured yet\" && exit 0",
     "package": "node -e \"require('node:fs').mkdirSync('../../../out',{recursive:true})\" && vsce package --no-dependencies --out ../../../out/templjs-verify.vsix",
     "test": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts",
+    "test:host": "pnpm run build && node ./test/extension-host/runTests.js",
     "test:coverage": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts --coverage",
     "test:watch": "vitest --config vitest.config.ts",
+    "test:smoke": "pnpm run build && playwright test -c playwright.smoke.config.ts",
     "vscode:prepublish": "pnpm run build",
     "watch": "tsc -watch -p ./"
   },
@@ -191,20 +193,26 @@
     "@templjs/language-server": "workspace:*",
     "@templjs/language-service": "workspace:*",
     "@templjs/volar": "workspace:*",
-    "@volar/language-server": "~2.0.4",
-    "@volar/language-service": "~2.0.4",
+    "@volar/language-server": "~2.4.0",
+    "@volar/language-service": "~2.4.0",
+    "jsonc-parser": "^3.3.1",
     "minimatch": "^9.0.9",
     "tslib": "^2.8.1",
+    "vscode-json-languageservice": "^5.6.3",
     "vscode-languageclient": "^9.0.1",
     "vscode-languageserver-textdocument": "^1.0.12",
-    "vscode-uri": "^3.1.0",
-    "yaml-language-service": "^0.19.2"
+    "vscode-uri": "^3.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/mocha": "^10.0.10",
     "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.9.0",
     "esbuild": "0.27.7",
-    "vscode-json-languageservice": "^5.6.3"
+    "mocha": "^11.7.5",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2"
   },
   "repository": {
     "type": "git",

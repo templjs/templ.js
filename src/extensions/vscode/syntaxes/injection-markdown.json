@@ -25,6 +25,9 @@
       "name": "meta.frontmatter.templjs",
       "patterns": [
         {
+          "include": "source.templjs"
+        },
+        {
           "include": "#yamlScalarValue"
         },
         {

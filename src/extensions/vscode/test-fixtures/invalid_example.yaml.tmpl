@@ -1,0 +1,6 @@
+test: yaml block
+$schema: https://makesomething.up
+id: "{% set id = \"yaml-block\" %}{{ id }}"
+{% for c in id %}
+{{ c }}
+{% endfor %}
