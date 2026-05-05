@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../extensions/vscode/src/schema-loading', async () => {
   const actual = await import('../src/index.ts');
@@ -19,12 +19,11 @@ import {
   resolveDocumentSchemaSources,
 } from '../src/index.ts';
 
-beforeAll(async () => {
-  const extensionTestUrl = pathToFileURL(
-    path.resolve(import.meta.dirname, '../../../extensions/vscode/test/schema-loading.test.ts')
-  ).href;
-  await import(extensionTestUrl);
-});
+const extensionSchemaLoadingTestUrl = pathToFileURL(
+  path.resolve(import.meta.dirname, '../../../extensions/vscode/test/schema-loading.test.ts')
+).href;
+
+await import(extensionSchemaLoadingTestUrl);
 
 describe('language-service schema-loading coverage branches', () => {
   it('prefers inline directives over root and settings schemas', () => {

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../extensions/vscode/src/service-plugins', async () => {
   const actual = await import('../src/index.ts');
@@ -12,12 +12,11 @@ vi.mock('../../../extensions/vscode/src/service-plugins', async () => {
 
 import { URI } from 'vscode-uri';
 
-beforeAll(async () => {
-  const extensionTestUrl = pathToFileURL(
-    path.resolve(import.meta.dirname, '../../../extensions/vscode/test/service-plugins.test.ts')
-  ).href;
-  await import(extensionTestUrl);
-});
+const extensionServicePluginsTestUrl = pathToFileURL(
+  path.resolve(import.meta.dirname, '../../../extensions/vscode/test/service-plugins.test.ts')
+).href;
+
+await import(extensionServicePluginsTestUrl);
 
 function withVolar24Context<T extends Record<string, any>>(context: T): T {
   const getVirtualCodeByUri = context.documents?.getVirtualCodeByUri as
