@@ -5,11 +5,13 @@ title: '093: No IntelliSense, formatting, or diagnostics from host language serv
 summary: No IntelliSense, formatting, or diagnostics from host language servers in tmpl files
 type: work-item
 subtype: bug
-lifecycle: active
-status: ready-for-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 5
 actual: 3
+completed_date: '2026-05-06'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/66
