@@ -4,7 +4,7 @@ id: record:097-volar-target-architecture-migration-epic-evidence-1
 title: '097: Volar target architecture migration epic completion evidence'
 summary: 'Epic WI-097 closure evidence linking merged PR #75 and child stage evidence records for WI-098 through WI-104'
 type: record
-subtype: test-result
+subtype: evidence
 lifecycle: active
 status: ready
 status_reason: recorded
