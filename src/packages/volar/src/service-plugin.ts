@@ -13,7 +13,6 @@ export interface ServicePluginDiagnosticOptions {
   documentUri?: string;
   schema?: object;
   contentSchema?: object;
-  frontmatterRange?: { start: number; end: number };
   customFilters?: string[];
   delimiters?: {
     statementStart?: string;
@@ -152,7 +151,6 @@ export class TempljsServicePlugin {
       documentUri: options?.documentUri,
       schema: options?.schema,
       contentSchema: options?.contentSchema,
-      frontmatterRange: options?.frontmatterRange,
       customFilters: options?.customFilters,
       delimiters: options?.delimiters,
       baseDiagnostics: options?.baseDiagnostics,

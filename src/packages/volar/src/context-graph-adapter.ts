@@ -1586,6 +1586,43 @@ export class ContextGraphSemanticReadAdapter {
     return extractTemplateScopeBindings(text);
   }
 
+  resolveLocalAliasDefinition(
+    text: string,
+    alias: string,
+    offset: number
+  ): { start: number; end: number } | null {
+    const bindings = (extractTemplateScopeBindings(text) as TemplateScopeBinding[])
+      .filter(
+        (binding: TemplateScopeBinding) =>
+          offset >= binding.scopeStartOffset && offset < binding.scopeEndOffset
+      )
+      .sort(
+        (left: TemplateScopeBinding, right: TemplateScopeBinding) =>
+          right.scopeStartOffset - left.scopeStartOffset
+      );
+
+    for (const binding of bindings) {
+      const matchesAlias =
+        alias === binding.alias ||
+        alias.startsWith(`${binding.alias}.`) ||
+        alias.startsWith(`${binding.alias}[`);
+      if (matchesAlias) {
+        if (
+          binding.declarationStartOffset === undefined ||
+          binding.declarationEndOffset === undefined
+        ) {
+          return null;
+        }
+        return {
+          start: binding.declarationStartOffset,
+          end: binding.declarationEndOffset,
+        };
+      }
+    }
+
+    return null;
+  }
+
   resolveDocumentDefinition(
     _context: SemanticQueryContext,
     text: string,

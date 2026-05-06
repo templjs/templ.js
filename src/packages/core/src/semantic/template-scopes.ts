@@ -215,6 +215,134 @@ function expressionToPath(node: ExpressionNode): string | null {
   }
 }
 
+function normalizeIterablePathFromForExpression(rawExpression: string): string | null {
+  const beforeFilter = rawExpression.split('|', 1)[0]?.trim();
+  if (!beforeFilter) {
+    return null;
+  }
+
+  const withoutParens = beforeFilter.replace(/^\((.*)\)$/, '$1').trim();
+  const pathMatch = withoutParens.match(/[A-Za-z_][\w]*(?:\[[^\]]+\]|\.[A-Za-z_][\w]*)*/);
+  if (!pathMatch) {
+    return null;
+  }
+
+  return pathMatch[0].replace(/\[([^\]]+)\]/g, (_segment, innerRaw: string) => {
+    const inner = innerRaw.trim();
+    if (/^['"].*['"]$/.test(inner)) {
+      return `[${inner.slice(1, -1)}]`;
+    }
+
+    if (/^-?\d+(?:\.\d+)?$/.test(inner) || /^[A-Za-z_][\w]*$/.test(inner)) {
+      return `[${inner}]`;
+    }
+
+    return '[0]';
+  });
+}
+
+function collectBindingsFallback(template: string): TemplateScopeBinding[] {
+  const startDelimiter = DEFAULT_DELIMITERS.statement_start;
+  const endDelimiter = DEFAULT_DELIMITERS.statement_end;
+  const bindings: TemplateScopeBinding[] = [];
+
+  type OpenLoop = {
+    aliases: string[];
+    iterablePath: string;
+    scopeStartOffset: number;
+    declarationOffsets: Record<string, { start: number; end: number } | undefined>;
+  };
+
+  const stack: OpenLoop[] = [];
+  let cursor = 0;
+
+  while (cursor < template.length) {
+    const statementStart = template.indexOf(startDelimiter, cursor);
+    if (statementStart === -1) {
+      break;
+    }
+
+    const statementEnd = template.indexOf(endDelimiter, statementStart + startDelimiter.length);
+    if (statementEnd === -1) {
+      break;
+    }
+
+    const contentStart = statementStart + startDelimiter.length;
+    const content = template.slice(contentStart, statementEnd).trim();
+
+    const forMatch = content.match(
+      /^for\s+([A-Za-z_][\w]*)(?:\s*,\s*([A-Za-z_][\w]*))?\s+in\s+(.+)$/
+    );
+    if (forMatch) {
+      const aliases = [forMatch[1], forMatch[2]].filter((value): value is string => Boolean(value));
+      const iterablePath = normalizeIterablePathFromForExpression(forMatch[3]);
+
+      if (iterablePath) {
+        const declarationOffsets: Record<string, { start: number; end: number } | undefined> = {};
+        let searchFrom = 0;
+        for (const alias of aliases) {
+          const relativeIndex = content.indexOf(alias, searchFrom);
+          if (relativeIndex >= 0) {
+            declarationOffsets[alias] = {
+              start: contentStart + relativeIndex,
+              end: contentStart + relativeIndex + alias.length,
+            };
+            searchFrom = relativeIndex + alias.length;
+          } else {
+            declarationOffsets[alias] = undefined;
+          }
+        }
+
+        stack.push({
+          aliases,
+          iterablePath,
+          scopeStartOffset: statementEnd + endDelimiter.length,
+          declarationOffsets,
+        });
+      }
+
+      cursor = statementEnd + endDelimiter.length;
+      continue;
+    }
+
+    if (/^endfor\b/.test(content)) {
+      const openLoop = stack.pop();
+      if (openLoop) {
+        for (const alias of openLoop.aliases) {
+          const declaration = openLoop.declarationOffsets[alias];
+          bindings.push({
+            alias,
+            iterablePath: openLoop.iterablePath,
+            scopeStartOffset: openLoop.scopeStartOffset,
+            scopeEndOffset: statementStart,
+            declarationStartOffset: declaration?.start,
+            declarationEndOffset: declaration?.end,
+          });
+        }
+      }
+    }
+
+    cursor = statementEnd + endDelimiter.length;
+  }
+
+  while (stack.length > 0) {
+    const openLoop = stack.pop()!;
+    for (const alias of openLoop.aliases) {
+      const declaration = openLoop.declarationOffsets[alias];
+      bindings.push({
+        alias,
+        iterablePath: openLoop.iterablePath,
+        scopeStartOffset: openLoop.scopeStartOffset,
+        scopeEndOffset: template.length,
+        declarationStartOffset: declaration?.start,
+        declarationEndOffset: declaration?.end,
+      });
+    }
+  }
+
+  return bindings.sort((left, right) => left.scopeStartOffset - right.scopeStartOffset);
+}
+
 function getDeclarationOffsets(
   template: string,
   node: ForNode,
@@ -324,23 +452,43 @@ export function extractTemplateScopeBindings(
   try {
     const parseResult = parse(tokenize(normalized.text));
     const ast = parseResult.ast as TemplateNode | null;
-    if (!ast) {
+    const bindings: TemplateScopeBinding[] = [];
+    if (ast) {
+      collectBindings(normalized.text, ast, bindings, statementEnd);
+    }
+
+    const recoveredBindings =
+      bindings.length === 0 && parseResult.errors.length > 0
+        ? collectBindingsFallback(normalized.text)
+        : bindings;
+
+    if (recoveredBindings.length === 0) {
       return [];
     }
 
-    const bindings: TemplateScopeBinding[] = [];
-    collectBindings(normalized.text, ast, bindings, statementEnd);
-    return bindings
-      .map((binding) => ({
-        ...binding,
-        scopeStartOffset:
-          normalized.toOriginalOffset(binding.scopeStartOffset) ?? binding.scopeStartOffset,
-        scopeEndOffset:
-          normalized.toOriginalOffset(binding.scopeEndOffset) ?? binding.scopeEndOffset,
-        declarationStartOffset: normalized.toOriginalOffset(binding.declarationStartOffset),
-        declarationEndOffset: normalized.toOriginalOffset(binding.declarationEndOffset),
-      }))
-      .sort((left, right) => left.scopeStartOffset - right.scopeStartOffset);
+    return bindings.length
+      ? bindings
+          .map((binding) => ({
+            ...binding,
+            scopeStartOffset:
+              normalized.toOriginalOffset(binding.scopeStartOffset) ?? binding.scopeStartOffset,
+            scopeEndOffset:
+              normalized.toOriginalOffset(binding.scopeEndOffset) ?? binding.scopeEndOffset,
+            declarationStartOffset: normalized.toOriginalOffset(binding.declarationStartOffset),
+            declarationEndOffset: normalized.toOriginalOffset(binding.declarationEndOffset),
+          }))
+          .sort((left, right) => left.scopeStartOffset - right.scopeStartOffset)
+      : recoveredBindings
+          .map((binding) => ({
+            ...binding,
+            scopeStartOffset:
+              normalized.toOriginalOffset(binding.scopeStartOffset) ?? binding.scopeStartOffset,
+            scopeEndOffset:
+              normalized.toOriginalOffset(binding.scopeEndOffset) ?? binding.scopeEndOffset,
+            declarationStartOffset: normalized.toOriginalOffset(binding.declarationStartOffset),
+            declarationEndOffset: normalized.toOriginalOffset(binding.declarationEndOffset),
+          }))
+          .sort((left, right) => left.scopeStartOffset - right.scopeStartOffset);
   } catch {
     return [];
   }

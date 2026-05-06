@@ -1,0 +1,22 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "composite": true,
+    "paths": {
+      "@templjs/core": ["src/packages/core/src/index.ts"],
+      "@templjs/volar": ["src/packages/volar/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"],
+  "references": [
+    {
+      "path": "../core"
+    },
+    {
+      "path": "../volar"
+    }
+  ]
+}

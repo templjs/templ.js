@@ -12,9 +12,9 @@ spec:
         ports:
         {% for port in app.ports %}
         - containerPort: {{ port }}
-        {%- endfor %}
+        {% endfor %}
         env:
         {% for key, value in environment_vars %}
         - name: {{ key }}
           value: {{ value }}
-        {%- endfor %}
+        {% endfor %}

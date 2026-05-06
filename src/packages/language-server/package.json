@@ -1,0 +1,43 @@
+{
+  "name": "@templjs/language-server",
+  "version": "0.1.0",
+  "description": "TemplJS language server entrypoint and Volar project wiring",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    }
+  },
+  "bin": {
+    "templjs-language-server": "./dist/bin/templjs-language-server.js"
+  },
+  "files": [
+    "dist",
+    "src",
+    "bin",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -b --force",
+    "test": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts",
+    "test:watch": "vitest --config vitest.config.ts",
+    "test:coverage": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts --coverage",
+    "clean": "node --input-type=module -e \"import { rmSync } from 'node:fs'; rmSync('dist', { recursive: true, force: true }); rmSync('tsconfig.tsbuildinfo', { force: true });\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/templjs/templ.js.git",
+    "directory": "src/packages/language-server"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@templjs/language-core": "workspace:*",
+    "@templjs/language-service": "workspace:*",
+    "@volar/language-server": "~2.4.0",
+    "@volar/language-service": "~2.4.0",
+    "vscode-uri": "^3.0.8"
+  }
+}

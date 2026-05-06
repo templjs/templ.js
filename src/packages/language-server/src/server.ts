@@ -1,0 +1,355 @@
+import { fileURLToPath, pathToFileURL } from 'url';
+import { URI } from 'vscode-uri';
+import { createConnection, createServer, createSimpleProject } from '@volar/language-server/node';
+import { createTempljsLanguagePlugins } from '@templjs/language-core';
+import type { Diagnostic } from '@volar/language-service';
+import {
+  createTempljsServicePlugins,
+  resolveWorkspaceRoot,
+  type InitializeParamsLike,
+  type ServerInitializationOptions,
+} from '@templjs/language-service';
+
+// Write to stderr for debugging server startup
+console.error('[templjs-server] Starting instantiation...');
+
+const connection = createConnection();
+const server = createServer(connection);
+console.error('[templjs-server] Connection and server created');
+
+let storedWorkspaceRoot: string | undefined;
+let storedInitializationOptions: ServerInitializationOptions | undefined;
+
+type TraceMode = 'off' | 'messages' | 'verbose';
+
+let serverTraceMode: TraceMode = 'off';
+
+// Trace semantics used by trace(message, level):
+// - Default level is 'messages', so trace(...) emits when trace mode is not 'off'.
+// - 'messages' level always emits unless serverTraceMode is 'off'.
+// - 'verbose' level emits only when serverTraceMode is exactly 'verbose'.
+function shouldTrace(level: 'messages' | 'verbose' = 'messages'): boolean {
+  if (serverTraceMode === 'off') {
+    return false;
+  }
+
+  return level === 'messages' || serverTraceMode === 'verbose';
+}
+
+function trace(message: string, level: 'messages' | 'verbose' = 'messages'): void {
+  if (!shouldTrace(level)) {
+    return;
+  }
+
+  connection.console.log(`[templjs-trace] ${message}`);
+}
+
+function isLikelySchemaUri(uri: string): boolean {
+  const normalized = uri.split(/[?#]/, 1)[0].toLowerCase();
+  if (!/\.(json|ya?ml)$/.test(normalized)) {
+    return false;
+  }
+
+  const fileName = normalized.split('/').pop() ?? normalized;
+  return !/\.(templ|template|tpl|tmpl)\.(json|ya?ml)$/.test(fileName);
+}
+
+export function isMdTemplateUri(uri: string): boolean {
+  return /\.(md|markdown)\.(templ|tmpl|tpl)$/i.test(uri.split(/[?#]/, 1)[0] ?? uri);
+}
+
+function isYamlTemplateUri(uri: string): boolean {
+  return /\.ya?ml\.(templ|tmpl|tpl)$/i.test(uri.split(/[?#]/, 1)[0] ?? uri);
+}
+
+function deriveWorkspaceRootFromDocumentUri(uri: string | undefined): string | undefined {
+  if (!uri || !uri.startsWith('file://')) {
+    return undefined;
+  }
+
+  try {
+    const url = new URL(uri);
+    const segments = url.pathname.split('/');
+    segments.pop();
+    const parentPath = segments.join('/');
+    if (!parentPath) {
+      return undefined;
+    }
+    url.pathname = parentPath;
+    return url.href;
+  } catch {
+    return undefined;
+  }
+}
+
+async function collectServiceDiagnosticsForDocument(
+  uri: string,
+  _text: string
+): Promise<Diagnostic[]> {
+  try {
+    trace(`[diag] start uri=${uri}`, 'verbose');
+    const languageService = await server.project.getLanguageService(URI.parse(uri));
+    trace(`[diag] language service resolved uri=${uri}`, 'verbose');
+    const context = (languageService as { context?: unknown }).context as
+      | {
+          language?: {
+            scripts?: {
+              get: (targetUri: URI) =>
+                | {
+                    id?: URI;
+                    languageId?: string;
+                    generated?: {
+                      code?: { id: string; languageId?: string; mappings?: unknown[] };
+                    };
+                    snapshot?: { getLength?: () => number };
+                  }
+                | undefined;
+            };
+          };
+          documents?: {
+            getVirtualCodeUri?: (sourceFileUri: string, virtualCodeId: string) => string;
+            getMaps?: (virtualCode: unknown) => Iterable<unknown>;
+          };
+          disabledVirtualFileUris?: Set<string>;
+        }
+      | undefined;
+
+    if (shouldTrace('verbose')) {
+      const sourceFile = context?.language?.scripts?.get(URI.parse(uri));
+      const generatedCode = sourceFile?.generated?.code;
+      const virtualUri =
+        generatedCode && context?.documents?.getVirtualCodeUri
+          ? context.documents.getVirtualCodeUri(uri, generatedCode.id)
+          : undefined;
+      const mapCount =
+        generatedCode && context?.documents?.getMaps
+          ? [...context.documents.getMaps(generatedCode)].length
+          : 0;
+
+      trace(
+        `[diag-state] uri=${uri}` +
+          ` sourceFile=${sourceFile ? 'yes' : 'no'}` +
+          ` sourceLanguageId=${sourceFile?.languageId ?? 'none'}` +
+          ` sourceSnapshotLength=${sourceFile?.snapshot?.getLength?.() ?? -1}` +
+          ` generatedCode=${generatedCode?.id ?? 'none'}` +
+          ` generatedLanguage=${generatedCode?.languageId ?? 'none'}` +
+          ` generatedMappings=${generatedCode?.mappings?.length ?? 0}` +
+          ` virtualUri=${virtualUri ?? 'none'}` +
+          ` virtualDisabled=${virtualUri ? (context?.disabledVirtualFileUris?.has(virtualUri) ?? false) : false}` +
+          ` mapCount=${mapCount}`,
+        'verbose'
+      );
+    }
+
+    const diagnostics = (await languageService!.getDiagnostics(URI.parse(uri))) as Diagnostic[];
+    trace(`[diag] doValidation uri=${uri} count=${diagnostics.length}`, 'verbose');
+
+    if (isYamlTemplateUri(uri) && shouldTrace('verbose')) {
+      const sourceFile = context?.language?.scripts?.get(URI.parse(uri));
+      const generatedCode = sourceFile?.generated?.code;
+      const virtualUri =
+        generatedCode && context?.documents?.getVirtualCodeUri
+          ? context.documents.getVirtualCodeUri(uri, generatedCode.id)
+          : undefined;
+      const mapCount =
+        generatedCode && context?.documents?.getMaps
+          ? [...context.documents.getMaps(generatedCode)].length
+          : 0;
+      const yamlCount = diagnostics.filter(
+        (diagnostic) =>
+          typeof diagnostic.source === 'string' && diagnostic.source.toLowerCase() === 'yaml'
+      ).length;
+
+      trace(
+        `[templjs-yaml-debug] uri=${uri} diagnostics=${diagnostics.length} yamlDiagnostics=${yamlCount}` +
+          ` sourceLanguageId=${sourceFile?.languageId ?? 'none'}` +
+          ` hasGenerated=${generatedCode ? 'yes' : 'no'}` +
+          ` generatedLanguageId=${generatedCode?.languageId ?? 'none'}` +
+          ` generatedMappings=${generatedCode?.mappings?.length ?? 0}` +
+          ` virtualUri=${virtualUri ?? 'none'}` +
+          ` virtualDisabled=${virtualUri ? (context?.disabledVirtualFileUris?.has(virtualUri) ?? false) : false}` +
+          ` mapCount=${mapCount}`,
+        'verbose'
+      );
+    }
+
+    return diagnostics;
+  } catch (error) {
+    trace(
+      `[diag] error uri=${uri} message=${error instanceof Error ? error.message : String(error)}`,
+      'verbose'
+    );
+    connection.console.log(
+      `[templjs] Host diagnostics skipped for ${uri}: ${error instanceof Error ? error.message : String(error)}`
+    );
+    return [];
+  }
+}
+
+connection.onInitialize(async (params) => {
+  const typedParams = params as InitializeParamsLike;
+  const activeDocumentUri = typedParams.initializationOptions?.documentContext?.uri;
+  const derivedRootUri = deriveWorkspaceRootFromDocumentUri(activeDocumentUri);
+  let derivedWorkspaceRoot: string | undefined;
+  if (derivedRootUri) {
+    try {
+      derivedWorkspaceRoot = fileURLToPath(derivedRootUri);
+    } catch {
+      derivedWorkspaceRoot = undefined;
+    }
+  }
+
+  storedWorkspaceRoot = resolveWorkspaceRoot(typedParams) ?? derivedWorkspaceRoot;
+  const initializeRootUri =
+    typedParams.rootUri ??
+    (storedWorkspaceRoot ? pathToFileURL(storedWorkspaceRoot).toString() : undefined) ??
+    derivedRootUri;
+  const initializeParams =
+    initializeRootUri && !typedParams.rootUri
+      ? {
+          ...params,
+          rootUri: initializeRootUri,
+          rootPath: undefined,
+        }
+      : params;
+
+  storedInitializationOptions = typedParams.initializationOptions;
+  serverTraceMode = typedParams.initializationOptions?.traceMode ?? 'off';
+
+  trace(
+    `[init] input rootUri=${typedParams.rootUri ?? 'null'} activeDocumentUri=${activeDocumentUri ?? 'none'} derivedRootUri=${derivedRootUri ?? 'none'} resolvedWorkspaceRoot=${storedWorkspaceRoot ?? 'none'} initializeRootUri=${initializeRootUri ?? 'none'}`,
+    'verbose'
+  );
+
+  const activeDocumentContent = typedParams.initializationOptions?.documentContext?.content;
+  if (activeDocumentUri && typeof activeDocumentContent === 'string') {
+    trace(`[init] active document provided uri=${activeDocumentUri}`, 'verbose');
+  }
+
+  const languagePlugins = createTempljsLanguagePlugins({});
+  const servicePlugins = createTempljsServicePlugins({
+    workspaceFolder: storedWorkspaceRoot,
+    initializationOptions: storedInitializationOptions,
+    /* v8 ignore next */
+    log: (message) => connection.console.log(message),
+  });
+
+  connection.console.log('[templjs] Language server initialized');
+
+  const initialized = await server.initialize(
+    initializeParams,
+    createSimpleProject(languagePlugins),
+    servicePlugins
+  );
+
+  // Delegate authoring requests to Volar language service from this transport layer.
+  // This keeps a single implementation of semantics while ensuring requests are handled.
+  connection.onCompletion(async (request, token) => {
+    const uri = request.textDocument.uri;
+    trace(`[authoring] completion uri=${uri}`, 'verbose');
+    const languageService = await server.project.getLanguageService(URI.parse(uri));
+    return await languageService!.getCompletionItems(
+      URI.parse(uri),
+      request.position,
+      request.context,
+      token
+    );
+  });
+
+  connection.onHover(async (request, token) => {
+    const uri = request.textDocument.uri;
+    trace(`[authoring] hover uri=${uri}`, 'verbose');
+    const languageService = await server.project.getLanguageService(URI.parse(uri));
+    return await languageService!.getHover(URI.parse(uri), request.position, token);
+  });
+
+  connection.onDefinition(async (request, token) => {
+    const uri = request.textDocument.uri;
+    trace(`[authoring] definition uri=${uri}`, 'verbose');
+    const languageService = await server.project.getLanguageService(URI.parse(uri));
+    return await languageService!.getDefinition(URI.parse(uri), request.position, token);
+  });
+
+  const formattingConnection = connection as unknown as {
+    onDocumentFormatting?: (
+      handler: (
+        request: {
+          textDocument: { uri: string };
+          options: { insertSpaces: boolean; tabSize: number };
+        },
+        token: unknown
+      ) => Promise<unknown>
+    ) => void;
+  };
+  const registerDocumentFormatting = formattingConnection.onDocumentFormatting;
+  const supportsDocumentFormatting = typeof registerDocumentFormatting === 'function';
+  if (supportsDocumentFormatting) {
+    registerDocumentFormatting(async (request, token) => {
+      const uri = request.textDocument.uri;
+      trace(`[authoring] format request uri=${uri}`, 'verbose');
+      const languageService = await server.project.getLanguageService(URI.parse(uri));
+      const formattingResult = await languageService!.getDocumentFormattingEdits(
+        URI.parse(uri),
+        request.options,
+        undefined,
+        undefined,
+        token as Parameters<NonNullable<typeof languageService>['getDocumentFormattingEdits']>[4]
+      );
+      trace(
+        `[authoring] format result uri=${uri} edits=${Array.isArray(formattingResult) ? formattingResult.length : 0}`,
+        'verbose'
+      );
+      return formattingResult;
+    });
+  } else {
+    trace('[authoring] format handler unavailable on connection', 'verbose');
+  }
+
+  return {
+    ...initialized,
+    capabilities: {
+      ...(initialized?.capabilities ?? {}),
+      textDocumentSync: 2,
+      completionProvider: {
+        triggerCharacters: ['.', '|'],
+      },
+      hoverProvider: true,
+      definitionProvider: true,
+      documentFormattingProvider: supportsDocumentFormatting,
+    },
+  };
+});
+
+connection.onInitialized(server.initialized);
+connection.onShutdown(server.shutdown);
+
+let started = false;
+
+export function startTempljsLanguageServer(): void {
+  if (started) {
+    return;
+  }
+
+  started = true;
+  connection.listen();
+}
+
+export const serverTesting = {
+  isLikelySchemaUri,
+  isYamlTemplateUri,
+  collectServiceDiagnosticsForDocument,
+  resetRuntimeState() {
+    storedWorkspaceRoot = undefined;
+    storedInitializationOptions = undefined;
+    serverTraceMode = 'off';
+  },
+  setStoredWorkspaceRoot(workspaceRoot: string | undefined) {
+    storedWorkspaceRoot = workspaceRoot;
+  },
+  setServerTraceMode(traceMode: TraceMode) {
+    serverTraceMode = traceMode;
+  },
+  setStoredInitializationOptions(options: ServerInitializationOptions | undefined) {
+    storedInitializationOptions = options;
+  },
+};

@@ -9,6 +9,15 @@ const configurationValues: Record<string, unknown> = {
       contentSchemaPath: 'https://schemas.example.com/work-item-content.json',
     },
   },
+  '[markdown]': {
+    'editor.defaultFormatter': 'esbenp.prettier-vscode',
+  },
+  '[json]': {
+    'editor.defaultFormatter': 'esbenp.prettier-vscode',
+  },
+  '[yaml]': {},
+  '[html]': {},
+  defaultFormatter: undefined,
   'trace.server': undefined,
 };
 
@@ -58,6 +67,73 @@ const languageClientConstructor = vi.fn().mockImplementation(function LanguageCl
   };
 });
 
+// Mocks for host language delegation (virtual document provider)
+class MockEventEmitter<T> {
+  readonly event = vi.fn();
+  fire = vi.fn((_value: T) => {});
+  dispose = vi.fn();
+}
+class MockUri {
+  constructor(
+    public readonly scheme: string,
+    public readonly authority: string,
+    public readonly path: string,
+    public readonly fsPath: string
+  ) {}
+  toString() {
+    return `${this.scheme}://${this.authority}${this.path}`;
+  }
+  static from(parts: { scheme: string; authority?: string; path: string }) {
+    return new MockUri(parts.scheme, parts.authority ?? '', parts.path, parts.path);
+  }
+  static file(path: string) {
+    return new MockUri('file', '', path, path);
+  }
+  static parse(str: string) {
+    const m = str.match(/^(\w[\w+\-.]*):\/\/([^/]*)(\/.*)$/);
+    if (m) return new MockUri(m[1] ?? 'file', m[2] ?? '', m[3] ?? '/', m[3] ?? '/');
+    return new MockUri('file', '', str, str);
+  }
+}
+class MockPosition {
+  constructor(
+    public readonly line: number,
+    public readonly character: number
+  ) {}
+}
+class MockRange {
+  constructor(
+    public readonly start: MockPosition,
+    public readonly end: MockPosition
+  ) {}
+}
+class MockDiagnostic {
+  source?: string;
+  code?: string | number | { value: string | number; target: MockUri };
+  tags?: number[];
+  relatedInformation?: unknown[];
+  constructor(
+    public readonly range: MockRange,
+    public readonly message: string,
+    public readonly severity?: number
+  ) {}
+}
+const registerTextDocumentContentProvider = vi.fn(() => ({ dispose: vi.fn() }));
+const onDidOpenTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
+const onDidChangeTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
+const onDidCloseTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
+const onDidChangeConfiguration = vi.fn(() => ({ dispose: vi.fn() }));
+const openTextDocument = vi.fn(() => Promise.resolve({}));
+const hostDiagCollection = {
+  set: vi.fn(),
+  delete: vi.fn(),
+  dispose: vi.fn(),
+  clear: vi.fn(),
+};
+const createDiagnosticCollection = vi.fn(() => hostDiagCollection);
+const onDidChangeDiagnostics = vi.fn(() => ({ dispose: vi.fn() }));
+const getDiagnostics = vi.fn((_uri?: unknown) => []);
+
 vi.mock('vscode', () => ({
   commands: {
     registerCommand,
@@ -74,9 +150,26 @@ vi.mock('vscode', () => ({
     Changed: 2,
     Deleted: 3,
   },
+  EventEmitter: MockEventEmitter,
+  Uri: MockUri,
+  Position: MockPosition,
+  Range: MockRange,
+  Diagnostic: MockDiagnostic,
   workspace: {
     createFileSystemWatcher,
     getConfiguration,
+    registerTextDocumentContentProvider,
+    onDidOpenTextDocument,
+    onDidChangeTextDocument,
+    onDidCloseTextDocument,
+    onDidChangeConfiguration,
+    openTextDocument,
+    textDocuments: [],
+  },
+  languages: {
+    createDiagnosticCollection,
+    onDidChangeDiagnostics,
+    getDiagnostics,
   },
 }));
 
@@ -101,6 +194,15 @@ describe('extension-activation', () => {
         contentSchemaPath: 'https://schemas.example.com/work-item-content.json',
       },
     };
+    configurationValues['[markdown]'] = {
+      'editor.defaultFormatter': 'esbenp.prettier-vscode',
+    };
+    configurationValues['[json]'] = {
+      'editor.defaultFormatter': 'esbenp.prettier-vscode',
+    };
+    configurationValues['[yaml]'] = {};
+    configurationValues['[html]'] = {};
+    configurationValues.defaultFormatter = undefined;
     configurationValues['trace.server'] = undefined;
     getConfiguration.mockImplementation(() => ({
       get: vi.fn(
@@ -250,6 +352,7 @@ describe('extension-activation', () => {
         schemaPath?: string;
         contentSchemaPath?: string;
         schemaPatterns?: Record<string, { schemaPath?: string; contentSchemaPath?: string }>;
+        prettierHostLanguages?: string[];
         documentContext?: { uri: string; content: string };
       };
     };
@@ -264,6 +367,7 @@ describe('extension-activation', () => {
         contentSchemaPath: 'https://schemas.example.com/work-item-content.json',
       },
     });
+    expect(clientOptions.initializationOptions.prettierHostLanguages).toEqual(['markdown', 'json']);
     expect(clientOptions.initializationOptions.documentContext).toEqual({
       uri: 'file:///workspace/backlog/054_bug_no_schema_aware_authoring.md',
       content: '---\n$templ-schema: .templjs/root.json\n---\n{{ user.name }}',
@@ -307,6 +411,7 @@ describe('extension-activation', () => {
         schemaPath?: string;
         contentSchemaPath?: string;
         schemaPatterns?: Record<string, { schemaPath?: string; contentSchemaPath?: string }>;
+        prettierHostLanguages?: string[];
       };
     };
     expect(clientOptions.initializationOptions.typescript?.tsdk).toMatch(/typescript[\\/]lib/);
@@ -320,6 +425,7 @@ describe('extension-activation', () => {
         contentSchemaPath: 'https://schemas.example.com/work-item-content.json',
       },
     });
+    expect(clientOptions.initializationOptions.prettierHostLanguages).toEqual(['markdown', 'json']);
 
     delete (globalThis as { require?: unknown }).require;
   });
@@ -353,11 +459,13 @@ describe('extension-activation', () => {
         schemaPath?: string;
         contentSchemaPath?: string;
         schemaPatterns?: Record<string, { schemaPath?: string; contentSchemaPath?: string }>;
+        prettierHostLanguages?: string[];
       };
     };
     expect(clientOptions.initializationOptions.schemaPath).toBeUndefined();
     expect(clientOptions.initializationOptions.contentSchemaPath).toBeUndefined();
     expect(clientOptions.initializationOptions.schemaPatterns).toBeUndefined();
+    expect(clientOptions.initializationOptions.prettierHostLanguages).toEqual([]);
   });
 
   it('pushes command and language client into extension subscriptions', async () => {
@@ -417,6 +525,7 @@ describe('extension-activation', () => {
 
     const module = await import('../src/extension');
     module.activate(context as never);
+    await Promise.resolve();
     await Promise.resolve();
 
     expect(showErrorMessage).toHaveBeenCalledWith(
@@ -633,31 +742,7 @@ describe('extension-activation', () => {
     expect(Array.isArray(traceLines)).toBe(true);
   });
 
-  it('forwards watched-file notifications to the language server', async () => {
-    const watcherHandlers: Record<string, (uri: { toString: () => string }) => void> = {};
-    createFileSystemWatcher
-      .mockReturnValueOnce({
-        onDidCreate: vi.fn(() => ({ dispose: vi.fn() })),
-        onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
-        onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
-        dispose: vi.fn(),
-      })
-      .mockReturnValueOnce({
-        onDidCreate: vi.fn((handler) => {
-          watcherHandlers.create = handler;
-          return { dispose: vi.fn() };
-        }),
-        onDidChange: vi.fn((handler) => {
-          watcherHandlers.change = handler;
-          return { dispose: vi.fn() };
-        }),
-        onDidDelete: vi.fn((handler) => {
-          watcherHandlers.delete = handler;
-          return { dispose: vi.fn() };
-        }),
-        dispose: vi.fn(),
-      });
-
+  it('registers synchronize file watchers for templates and schema files', async () => {
     const context = {
       subscriptions: [] as Array<{ dispose: () => void }>,
       asAbsolutePath: (value: string) => `/tmp/${value}`,
@@ -665,21 +750,15 @@ describe('extension-activation', () => {
 
     const module = await import('../src/extension');
     module.activate(context as never);
-    watcherHandlers.create?.({ toString: () => 'file:///workspace/schema.json' });
-    watcherHandlers.change?.({ toString: () => 'file:///workspace/schema.yaml' });
-    watcherHandlers.delete?.({ toString: () => 'file:///workspace/schema.yml' });
-    expect(sendNotification).toHaveBeenCalledWith('templjs/watchedFilesChanged', {
-      changes: [{ uri: 'file:///workspace/schema.json', type: 1 }],
-    });
-    expect(sendNotification).toHaveBeenCalledWith('templjs/watchedFilesChanged', {
-      changes: [{ uri: 'file:///workspace/schema.yaml', type: 2 }],
-    });
-    expect(sendNotification).toHaveBeenCalledWith('templjs/watchedFilesChanged', {
-      changes: [{ uri: 'file:///workspace/schema.yml', type: 3 }],
-    });
+
+    expect(createFileSystemWatcher).toHaveBeenCalledWith(
+      '**/*.{md,json,yaml,yml,html}.{templ,tmpl,tpl}'
+    );
+    expect(createFileSystemWatcher).toHaveBeenCalledWith('**/*.{json,yaml,yml}');
+    expect(sendNotification).not.toHaveBeenCalled();
   });
 
-  it('stops forwarding watcher notifications after deactivation', async () => {
+  it('does not emit custom watcher notifications after deactivation', async () => {
     const context = {
       subscriptions: [] as Array<{ dispose: () => void }>,
       asAbsolutePath: (value: string) => `/tmp/${value}`,
@@ -769,5 +848,55 @@ describe('extension-activation', () => {
     module.activate(context as never);
     expect(module.deactivate()).toBeUndefined();
     expect(outputChannel.dispose).toHaveBeenCalled();
+  });
+
+  it('thin-client: middleware passes results unchanged from language server without semantic transformation', async () => {
+    configurationValues['trace.server'] = 'off';
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const clientOptions = languageClientConstructor.mock.calls[0][3] as {
+      middleware: {
+        provideCompletionItem: (...args: unknown[]) => Promise<unknown>;
+        provideHover: (...args: unknown[]) => Promise<unknown>;
+        provideDefinition: (...args: unknown[]) => Promise<unknown>;
+      };
+    };
+
+    const document = {
+      uri: { toString: () => 'file:///workspace/example.md.tpl' },
+    };
+    const position = { line: 0, character: 0 };
+    const sentinel = Symbol('server-result');
+
+    // Completion: next() result passes through unchanged
+    const completionResult = await clientOptions.middleware.provideCompletionItem(
+      document,
+      position,
+      {},
+      {},
+      () => Promise.resolve(sentinel)
+    );
+    expect(completionResult).toBe(sentinel);
+
+    // Hover: next() result passes through unchanged
+    const hoverResult = await clientOptions.middleware.provideHover(document, position, {}, () =>
+      Promise.resolve(sentinel)
+    );
+    expect(hoverResult).toBe(sentinel);
+
+    // Definition: next() result passes through unchanged
+    const definitionResult = await clientOptions.middleware.provideDefinition(
+      document,
+      position,
+      {},
+      () => Promise.resolve(sentinel)
+    );
+    expect(definitionResult).toBe(sentinel);
   });
 });

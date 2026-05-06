@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { detectFrontmatterRange, type JSONSchema } from '../src/packages/core/src/index.ts';
+import { type JSONSchema } from '../src/packages/core/src/index.ts';
 import schemaLoadingModule from '../src/extensions/vscode/src/schema-loading.ts';
 
 type InitializeParamsLike =
@@ -233,7 +233,6 @@ export const vscodeWorkspaceFixture = (() => {
         }
       )
     : {};
-  const frontmatterRange = detectFrontmatterRange(VSCODE_DOCUMENT_TEXT) ?? { start: 0, end: 0 };
   const completionMarker = 'task.';
   const completionMarkerIndex = VSCODE_DOCUMENT_TEXT.indexOf(completionMarker);
 
@@ -250,7 +249,6 @@ export const vscodeWorkspaceFixture = (() => {
     resolvedSources,
     loadedFrontmatterSchema: (frontmatterLoaded.schema ?? frontmatterSchema) as JSONSchema,
     loadedContentSchema: (contentLoaded.schema ?? contentSchema) as JSONSchema,
-    frontmatterRange,
     completionOffset: completionMarkerIndex + completionMarker.length,
     diagnosticsText: `${VSCODE_DOCUMENT_TEXT}\nInvalid: {{ projects[0].missingField }}\nBad filter: {{ summary.totalPoints | nope }}`,
   };

@@ -17,6 +17,16 @@ describe('template-scopes helpers', () => {
         end: { line: 1, column: 0 },
       },
     };
+    const literalStringIndex: PathSegment = {
+      type: 'index',
+      value: {
+        type: 'literal',
+        valueType: 'string',
+        value: 'name',
+        start: { line: 1, column: 0 },
+        end: { line: 1, column: 0 },
+      },
+    };
     const computedIndex: PathSegment = {
       type: 'index',
       value: {
@@ -31,6 +41,7 @@ describe('template-scopes helpers', () => {
     expect(pathSegmentToString(property)).toBe('.profile');
     expect(pathSegmentToString(stringIndex)).toBe('[2]');
     expect(pathSegmentToString(literalIndex)).toBe('[3]');
+    expect(pathSegmentToString(literalStringIndex)).toBe('[name]');
     expect(pathSegmentToString(computedIndex)).toBe('[0]');
   });
 
@@ -147,6 +158,40 @@ describe('template-scopes helpers', () => {
     expect(extractTemplateScopeBindings(template)).toEqual([]);
   });
 
+  it('normalizes computed iterable indexes to [0]', () => {
+    const template = '{% for item in users[item + 1] %}{{ item }}{% endfor %}';
+    expect(extractTemplateScopeBindings(template)).toEqual([
+      expect.objectContaining({ alias: 'item', iterablePath: 'users[0]' }),
+    ]);
+  });
+
+  it('normalizes fallback iterable paths for quoted, numeric, and computed indexes', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({ ast: null, errors: [new Error('recover me')] }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    const bindings = module.extractTemplateScopeBindings(
+      [
+        '{% for named in users["name"] %}{% endfor %}',
+        '{% for indexed in users[2] %}{% endfor %}',
+        '{% for computed in users[item + 1] %}{% endfor %}',
+      ].join('')
+    );
+
+    expect(bindings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ alias: 'named', iterablePath: 'users[name]' }),
+        expect.objectContaining({ alias: 'indexed', iterablePath: 'users[2]' }),
+        expect.objectContaining({ alias: 'computed', iterablePath: 'users[0]' }),
+      ])
+    );
+  });
+
   it('returns an empty list when parsing throws unexpectedly', async () => {
     vi.resetModules();
     vi.doMock('../../src/lexer/lexer.js', () => ({
@@ -170,6 +215,22 @@ describe('template-scopes helpers', () => {
 
     const module = await import('../../src/semantic/template-scopes.js');
     expect(module.extractTemplateScopeBindings('{% for item in users %}{% endfor %}')).toEqual([]);
+  });
+
+  it('skips recovered fallback loops when the iterable expression is blank or not path-like', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({ ast: null, errors: [new Error('recover me')] }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    expect(
+      module.extractTemplateScopeBindings('{% for item in   | reverse %}{% endfor %}')
+    ).toEqual([]);
+    expect(module.extractTemplateScopeBindings('{% for item in +1 %}{% endfor %}')).toEqual([]);
   });
 
   it('handles declaration extraction fallback when opening tags cannot be matched', async () => {
@@ -435,5 +496,187 @@ describe('template-scopes helpers', () => {
 
     const module = await import('../../src/semantic/template-scopes.js');
     expect(module.extractTemplateScopeBindings('plain text')).toEqual([]);
+  });
+
+  it('extends fallback loop bindings to the end of the template when an endfor is missing', () => {
+    const template = '{% for item in users %}{{ item }}';
+    const bindings = extractTemplateScopeBindings(template);
+
+    expect(bindings).toEqual([
+      expect.objectContaining({
+        alias: 'item',
+        iterablePath: 'users',
+        scopeStartOffset: 23,
+        scopeEndOffset: 23,
+      }),
+    ]);
+  });
+
+  it('returns no fallback bindings for unterminated for statements', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({ ast: null, errors: [new Error('recover me')] }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    expect(module.extractTemplateScopeBindings('{% for item in users')).toEqual([]);
+  });
+
+  it('maps recovered fallback bindings back to original offsets with custom delimiters', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({ ast: null, errors: [new Error('recover me')] }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    const template = '<% for item in users %><< item >>';
+    expect(
+      module.extractTemplateScopeBindings(template, {
+        delimiters: {
+          statement_start: '<%',
+          statement_end: '%>',
+          expression_start: '<<',
+          expression_end: '>>',
+          comment_start: '<#',
+          comment_end: '#>',
+        },
+      })
+    ).toEqual([
+      expect.objectContaining({
+        alias: 'item',
+        iterablePath: 'users',
+        declarationStartOffset: 6,
+      }),
+    ]);
+  });
+
+  it('ignores stray endfor statements during fallback collection', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({ ast: null, errors: [new Error('recover me')] }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    expect(module.extractTemplateScopeBindings('{% endfor %}')).toEqual([]);
+  });
+
+  it('keeps fallback bindings when a later alias cannot be located in a key-value loop', () => {
+    const originalIndexOf = String.prototype.indexOf;
+    const indexOfSpy = vi.spyOn(String.prototype, 'indexOf').mockImplementation(function (
+      searchString: string,
+      position?: number
+    ): number {
+      if (
+        this.toString().includes('for key, value in users') &&
+        searchString === 'value' &&
+        typeof position === 'number'
+      ) {
+        return -1;
+      }
+
+      return originalIndexOf.call(this.toString(), searchString, position);
+    });
+
+    let bindings: ReturnType<typeof extractTemplateScopeBindings>;
+    try {
+      bindings = extractTemplateScopeBindings(
+        '{% for key, value in users %}{{ value }}{% endfor %}'
+      );
+    } finally {
+      indexOfSpy.mockRestore();
+    }
+
+    expect(bindings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ alias: 'key', declarationStartOffset: expect.any(Number) }),
+        expect.objectContaining({ alias: 'value', declarationStartOffset: undefined }),
+      ])
+    );
+  });
+
+  it('keeps fallback key-value bindings when a later alias cannot be located during recovery', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({ tokenize: (value: string) => value }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({ ast: null, errors: [new Error('recover me')] }),
+    }));
+
+    const originalIndexOf = String.prototype.indexOf;
+    const indexOfSpy = vi.spyOn(String.prototype, 'indexOf').mockImplementation(function (
+      searchString: string,
+      position?: number
+    ): number {
+      if (
+        this.toString().includes('for key, value in users') &&
+        searchString === 'value' &&
+        typeof position === 'number'
+      ) {
+        return -1;
+      }
+
+      return originalIndexOf.call(this.toString(), searchString, position);
+    });
+
+    try {
+      const module = await import('../../src/semantic/template-scopes.js');
+      const bindings = module.extractTemplateScopeBindings(
+        '{% for key, value in users %}{{ value }}{% endfor %}'
+      );
+
+      expect(bindings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ alias: 'key', declarationStartOffset: expect.any(Number) }),
+          expect.objectContaining({ alias: 'value', declarationStartOffset: undefined }),
+        ])
+      );
+    } finally {
+      indexOfSpy.mockRestore();
+    }
+  });
+
+  it('collects fallback bindings when parsing recovers a matched for/endfor pair', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({ ast: null, errors: [new Error('recover me')] }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    expect(module.extractTemplateScopeBindings('{% for item in users %}{% endfor %}')).toEqual([
+      expect.objectContaining({
+        alias: 'item',
+        iterablePath: 'users',
+      }),
+    ]);
+  });
+
+  it('sorts recovered fallback bindings by scope start offset', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({ ast: null, errors: [new Error('recover me')] }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    const bindings = module.extractTemplateScopeBindings(
+      '{% for first in groups %}{% endfor %}{% for second in items %}{% endfor %}'
+    );
+
+    expect(bindings).toHaveLength(2);
+    expect(bindings.map((binding) => binding.alias)).toEqual(['first', 'second']);
+    expect(bindings[0].scopeStartOffset).toBeLessThanOrEqual(bindings[1].scopeStartOffset);
   });
 });

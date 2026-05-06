@@ -9,6 +9,9 @@
       "name": "meta.embedded.block.markdown",
       "patterns": [
         {
+          "include": "source.templjs"
+        },
+        {
           "include": "#frontmatter"
         },
         {
@@ -21,6 +24,9 @@
       "end": "^---\\s*$",
       "name": "meta.frontmatter.templjs",
       "patterns": [
+        {
+          "include": "source.templjs"
+        },
         {
           "include": "#yamlScalarValue"
         },

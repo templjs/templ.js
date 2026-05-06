@@ -10,6 +10,11 @@ status: ready-for-review
 priority: high
 estimated: 5
 actual: 3
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/66
+  evidence:
+    - '[[record-093-bug-no-host-language-service-plugins-evidence-1]]'
 ---
 
 ## Goal
@@ -69,14 +74,14 @@ ADR-003 states: "delegating base format linting to VS Code's native language ser
 - [x] Add regression coverage proving host diagnostics are published with templjs diagnostics on save
 - [x] Verify existing in-process integration coverage for markdown/html/json completion, hover, and definition paths
 - [x] Add YAML host-language delegation coverage (diagnostics/completion) for `.yaml.tmpl`
-- [ ] Add explicit host formatting coverage for supported host formats (including markdown)
+- [x] Add explicit host formatting coverage for supported host formats (including markdown)
 - [x] Validate templjs-specific features remain unaffected after parity expansions
 
 ## Acceptance Criteria
 
 - [x] HTML host completion path is validated in integration tests for `.html.tmpl`
 - [x] JSON host diagnostics/authoring path is validated in integration tests for `.json.tmpl`
-- [ ] Markdown host formatting (`editor.formatDocument`) is validated for `.md.tmpl`
+- [x] Markdown host formatting (`editor.formatDocument`) is validated for `.md.tmpl`
 - [x] YAML host diagnostics/completion are validated for `.yaml.tmpl`
 - [x] Template expression completions and hover remain unaffected
 - [x] Existing server and in-process integration test suites continue to pass after parity additions
@@ -93,7 +98,7 @@ This closes the YAML parity gap by:
 - Extending delegation coverage to all four supported host formats (markdown, html, json, yaml) for completion, hover, and definition paths
 - Ensuring templjs-specific features (completions, hover, definition) remain unaffected by host-language delegation enhancements
 
-**Note**: Markdown host formatting (`editor.formatDocument`) coverage remains open. The server does not currently register a document-formatting handler, so this parity item requires a follow-up implementation before it can be validated by integration tests.
+**Note**: All acceptance criteria are now satisfied. See `record:093-bug-no-host-language-service-plugins-evidence-1` for complete evidence. Awaiting PR merge to close.
 
 ## References
 

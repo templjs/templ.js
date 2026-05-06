@@ -1,4 +1,9 @@
-# @templjs/volar
+---
+type: document
+subtype: readme
+lifecycle: active
+title: '@templjs/volar README'
+---
 
 ![TemplJS logo](https://raw.githubusercontent.com/templjs/templ.js/refs/heads/main/assets/templjs.png)
 
@@ -21,6 +26,14 @@ The plugin uses Volar's virtual code system to:
 2. Generate virtual documents in the base format (YAML, JSON, Markdown, etc.)
 3. Delegate base format features to VS Code's native language servers
 4. Map diagnostics and features back to the original template
+
+All alias definition lookups, path resolution, and semantic routing go through
+`ContextGraphSemanticReadAdapter` for hover, definition, and semantic rendering.
+`IntellisenseProvider` also calls `buildForScopesInText()` and `resolveScopedPath()`
+directly for scoped-path resolution and alias completion injection.
+
+The VS Code extension consumes this package indirectly via `@templjs/language-core`,
+`@templjs/language-service`, and `@templjs/language-server`.
 
 ## Installation
 

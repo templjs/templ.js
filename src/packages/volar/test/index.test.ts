@@ -62,6 +62,38 @@ describe('LanguagePlugin', () => {
       }
     );
 
+    it('creates host and DSL embedded virtual documents', () => {
+      const content = '# Title\n\n{{ page.heading }}\n\n{% if page.show %}\nBody\n{% endif %}';
+      const snapshot = {
+        getText: () => content,
+        getLength: () => content.length,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///test.md.tmpl',
+        'templjs-markdown',
+        snapshot
+      );
+
+      expect(virtualCode).toBeDefined();
+      expect(virtualCode?.embeddedCodes.length).toBeGreaterThanOrEqual(2);
+
+      const host = virtualCode?.embeddedCodes.find((code) => code.id === 'host.markdown');
+      const dsl = virtualCode?.embeddedCodes.find((code) => code.id === 'templjs.dsl');
+
+      expect(host?.languageId).toBe('markdown');
+      expect(dsl?.languageId).toBe('templjs');
+
+      const dslText = dsl?.snapshot.getText(0, dsl.snapshot.getLength()) ?? '';
+      const hostText = host?.snapshot.getText(0, host.snapshot.getLength()) ?? '';
+
+      expect(hostText).not.toContain('{{');
+      expect(hostText).not.toContain('{%');
+      expect(dslText).toContain('{{ page.heading }}');
+      expect(dslText).toContain('{% if page.show %}');
+    });
+
     it('should strip template syntax from content', () => {
       const content = 'Hello {{ name }}, welcome!';
       const mockSnapshot = {
@@ -1182,7 +1214,7 @@ describe('LanguagePlugin', () => {
       expect(virtualCode?.languageId).toBe('markdown');
     });
 
-    it('should detect markdown from .templ.md extension', () => {
+    it('should not detect markdown from .templ.md extension', () => {
       const mockSnapshot = {
         getText: () => '# Templated',
         getLength: () => 12,
@@ -1195,10 +1227,10 @@ describe('LanguagePlugin', () => {
         mockSnapshot
       );
 
-      expect(virtualCode?.languageId).toBe('markdown');
+      expect(virtualCode?.languageId).toBe('plaintext');
     });
 
-    it('should detect json from .templ.json extension', () => {
+    it('should not detect json from .templ.json extension', () => {
       const mockSnapshot = {
         getText: () => '{ "name": "templ" }',
         getLength: () => 20,
@@ -1211,10 +1243,10 @@ describe('LanguagePlugin', () => {
         mockSnapshot
       );
 
-      expect(virtualCode?.languageId).toBe('json');
+      expect(virtualCode?.languageId).toBe('plaintext');
     });
 
-    it('should detect yaml from .templ.yaml extension', () => {
+    it('should not detect yaml from .templ.yaml extension', () => {
       const mockSnapshot = {
         getText: () => 'key: templ',
         getLength: () => 11,
@@ -1227,10 +1259,10 @@ describe('LanguagePlugin', () => {
         mockSnapshot
       );
 
-      expect(virtualCode?.languageId).toBe('yaml');
+      expect(virtualCode?.languageId).toBe('plaintext');
     });
 
-    it('should detect yaml from .templ.yml extension', () => {
+    it('should not detect yaml from .templ.yml extension', () => {
       const mockSnapshot = {
         getText: () => 'key: templ',
         getLength: () => 11,
@@ -1243,10 +1275,10 @@ describe('LanguagePlugin', () => {
         mockSnapshot
       );
 
-      expect(virtualCode?.languageId).toBe('yaml');
+      expect(virtualCode?.languageId).toBe('plaintext');
     });
 
-    it('should detect html from .templ.html extension', () => {
+    it('should not detect html from .templ.html extension', () => {
       const mockSnapshot = {
         getText: () => '<div>templ</div>',
         getLength: () => 17,
@@ -1259,7 +1291,7 @@ describe('LanguagePlugin', () => {
         mockSnapshot
       );
 
-      expect(virtualCode?.languageId).toBe('html');
+      expect(virtualCode?.languageId).toBe('plaintext');
     });
 
     it('should detect markdown from .markdown.tmpl extension', () => {

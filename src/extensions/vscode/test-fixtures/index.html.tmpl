@@ -8,9 +8,9 @@
 <body>
     <nav>
         <ul>
-        {% for item in navigation.items -%}
+        {% for item in navigation.items %}
             <li><a href="{{ item.href }}">{{ item.label }}</a></li>
-        {%- endfor %}
+        {% endfor %}
         </ul>
     </nav>
 
@@ -18,19 +18,19 @@
         <h1>{{ page.title }}</h1>
         <p>{{ page.description }}</p>
 
-        {% if page.featured_content -%}
+        {% if page.featured_content %}
         <section class="featured">
             {{ page.featured_content | no_escape }}
         </section>
-        {%- endif %}
+        {% endif %}
 
         <section class="content">
-        {% for content in page.sections -%}
+        {% for content in page.sections %}
             <article>
                 <h2>{{ content.title }}</h2>
                 <p>{{ content.body }}</p>
             </article>
-        {%- endfor %}
+        {% endfor %}
         </section>
     </main>
 

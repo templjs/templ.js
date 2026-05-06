@@ -562,21 +562,6 @@ describe('DiagnosticProvider', () => {
     expect(diagnostics.some((diag) => diag.code === 'templjs.undefinedVariable')).toBe(false);
   });
 
-  it('uses frontmatter range to select metadata schema in known host language files', () => {
-    const text = '---\ntitle: "{{ front.title }}"\n---\n{{ content.heading }}';
-    const diagnostics = collectDiagnostics(text, {
-      schema: frontmatterSchema,
-      contentSchema,
-      documentUri: 'file:///doc.md.tmpl',
-      frontmatterRange: {
-        start: 0,
-        end: text.indexOf('---\n{{ content.heading }}') + 3,
-      },
-    });
-
-    expect(diagnostics).toHaveLength(0);
-  });
-
   it('uses host-language semantic zoning when frontmatter range is not provided', () => {
     const text = '---\ntitle: "{{ front.title }}"\n---\n{{ content.heading }}';
     const diagnostics = collectDiagnostics(text, {

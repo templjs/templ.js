@@ -358,3 +358,47 @@ describe('ContextGraphSemanticReadAdapter', () => {
     expect(target.range.start.line).toBe(includedLine);
   });
 });
+
+describe('ContextGraphSemanticReadAdapter.resolveLocalAliasDefinition', () => {
+  it('returns declaration range for a for-loop alias using default delimiters', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const text = '{% for item in users %}{{ item.name }}{% endfor %}';
+    const offset = text.indexOf('item.name') + 2;
+
+    const result = adapter.resolveLocalAliasDefinition(text, 'item', offset);
+
+    expect(result).not.toBeNull();
+    expect(result!.start).toBeGreaterThanOrEqual(0);
+    expect(result!.end).toBeGreaterThan(result!.start);
+  });
+
+  it('returns null when cursor is outside any for-loop scope', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const text = '{% for item in users %}{{ item.name }}{% endfor %} outside';
+    const offset = text.indexOf('outside') + 2;
+
+    const result = adapter.resolveLocalAliasDefinition(text, 'item', offset);
+
+    expect(result).toBeNull();
+  });
+
+  it('returns null when alias does not match any scope alias', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const text = '{% for item in users %}{{ other.name }}{% endfor %}';
+    const offset = text.indexOf('other.name') + 2;
+
+    const result = adapter.resolveLocalAliasDefinition(text, 'other', offset);
+
+    expect(result).toBeNull();
+  });
+
+  it('matches alias path prefixes like item.name for alias item', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const text = '{% for item in users %}{{ item.name }}{% endfor %}';
+    const offset = text.indexOf('item.name') + 2;
+
+    const result = adapter.resolveLocalAliasDefinition(text, 'item.name', offset);
+
+    expect(result).not.toBeNull();
+  });
+});

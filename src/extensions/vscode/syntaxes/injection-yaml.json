@@ -9,10 +9,13 @@
       "name": "meta.embedded.block.yaml",
       "patterns": [
         {
-          "include": "#yamlScalarValue"
+          "include": "source.yaml"
         },
         {
-          "include": "source.yaml"
+          "include": "source.templjs"
+        },
+        {
+          "include": "#yamlScalarValue"
         }
       ]
     },

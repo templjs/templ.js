@@ -5,6 +5,7 @@ import {
   intellisenseTesting,
   type SemanticReadAdapter,
 } from '../src/intellisense-provider.js';
+import { createContextGraphSemanticReadAdapter } from '../src/context-graph-adapter.js';
 
 const emptyAdapter: SemanticReadAdapter = {
   resolveScopedPath: (_text, basePath) => basePath,
@@ -13,6 +14,7 @@ const emptyAdapter: SemanticReadAdapter = {
   getPathDetails: () => null,
   resolvePathDefinition: () => null,
   resolveDocumentDefinition: () => null,
+  resolveLocalAliasDefinition: () => null,
 };
 
 const keywordAdapter: SemanticReadAdapter = {
@@ -248,7 +250,6 @@ describe('IntellisenseProvider branch coverage', () => {
     const items = provider.getCompletions(text, text.length, {
       debugLog: () => {},
       documentUri: 'file:///doc.unknown',
-      frontmatterRange: { start: 0, end: text.length },
     });
 
     expect(items).toEqual([]);
@@ -492,7 +493,7 @@ describe('IntellisenseProvider branch coverage', () => {
   });
 
   it('returns statement local-alias definitions when document URI is configured', () => {
-    const provider = new IntellisenseProvider(emptyAdapter);
+    const provider = new IntellisenseProvider(createContextGraphSemanticReadAdapter());
     const text = '{% for item in users %}{% if item %}{{ item }}{% endif %}{% endfor %}';
     const offset = text.indexOf('{% if item %}') + 8;
 
