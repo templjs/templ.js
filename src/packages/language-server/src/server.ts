@@ -194,7 +194,7 @@ connection.onInitialize(async (params) => {
   if (derivedRootUri) {
     try {
       derivedWorkspaceRoot = fileURLToPath(derivedRootUri);
-    } catch {
+    } /* v8 ignore next */ catch {
       derivedWorkspaceRoot = undefined;
     }
   }
