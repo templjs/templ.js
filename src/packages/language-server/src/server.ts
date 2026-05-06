@@ -1,4 +1,3 @@
-import { dirname } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { URI } from 'vscode-uri';
 import { createConnection, createServer, createSimpleProject } from '@volar/language-server/node';
@@ -69,7 +68,15 @@ function deriveWorkspaceRootFromDocumentUri(uri: string | undefined): string | u
   }
 
   try {
-    return dirname(fileURLToPath(uri));
+    const url = new URL(uri);
+    const segments = url.pathname.split('/');
+    segments.pop();
+    const parentPath = segments.join('/');
+    if (!parentPath) {
+      return undefined;
+    }
+    url.pathname = parentPath;
+    return url.href;
   } catch {
     return undefined;
   }
@@ -182,11 +189,20 @@ async function collectServiceDiagnosticsForDocument(
 connection.onInitialize(async (params) => {
   const typedParams = params as InitializeParamsLike;
   const activeDocumentUri = typedParams.initializationOptions?.documentContext?.uri;
-  const derivedWorkspaceRoot = deriveWorkspaceRootFromDocumentUri(activeDocumentUri);
+  const derivedRootUri = deriveWorkspaceRootFromDocumentUri(activeDocumentUri);
+  let derivedWorkspaceRoot: string | undefined;
+  if (derivedRootUri) {
+    try {
+      derivedWorkspaceRoot = fileURLToPath(derivedRootUri);
+    } catch {
+      derivedWorkspaceRoot = undefined;
+    }
+  }
 
   storedWorkspaceRoot = resolveWorkspaceRoot(typedParams) ?? derivedWorkspaceRoot;
   const initializeRootUri =
     typedParams.rootUri ??
+    derivedRootUri ??
     (storedWorkspaceRoot ? pathToFileURL(storedWorkspaceRoot).toString() : undefined);
   const initializeParams =
     initializeRootUri && !typedParams.rootUri
@@ -201,7 +217,7 @@ connection.onInitialize(async (params) => {
   serverTraceMode = typedParams.initializationOptions?.traceMode ?? 'off';
 
   trace(
-    `[init] input rootUri=${typedParams.rootUri ?? 'null'} activeDocumentUri=${activeDocumentUri ?? 'none'} derivedWorkspaceRoot=${derivedWorkspaceRoot ?? 'none'} resolvedWorkspaceRoot=${storedWorkspaceRoot ?? 'none'} initializeRootUri=${initializeRootUri ?? 'none'}`,
+    `[init] input rootUri=${typedParams.rootUri ?? 'null'} activeDocumentUri=${activeDocumentUri ?? 'none'} derivedRootUri=${derivedRootUri ?? 'none'} resolvedWorkspaceRoot=${storedWorkspaceRoot ?? 'none'} initializeRootUri=${initializeRootUri ?? 'none'}`,
     'verbose'
   );
 

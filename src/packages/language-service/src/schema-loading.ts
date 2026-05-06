@@ -214,7 +214,11 @@ export function resolveWorkspaceRoot(params: InitializeParamsLike): string | und
   }
 
   if (workspaceUri.startsWith('file://')) {
-    return fileURLToPath(workspaceUri);
+    try {
+      return fileURLToPath(workspaceUri);
+    } catch {
+      return undefined;
+    }
   }
 
   return workspaceUri;
