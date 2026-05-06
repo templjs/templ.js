@@ -5,12 +5,16 @@ title: '098: Establish language-core contracts and boundary tests'
 summary: Define package-owned architecture contracts and enforce no third-party type leakage at public boundaries
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 5
 actual: 4
+completed_date: '2026-05-06'
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/75
   evidence:
     - '[[record-098-language-core-contracts-and-boundary-tests-evidence-1]]'
 ---
