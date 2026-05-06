@@ -5,11 +5,18 @@ title: '104: Delete transitional code and finalize architecture acceptance evide
 summary: Remove superseded transitional modules, complete Volar Labs validation evidence, and close the migration epic with unified test coverage
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 7
 actual: 2
+completed_date: '2026-05-06'
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/75
+  evidence:
+    - '[[record-104-transitional-code-deletion-and-final-acceptance-evidence-1]]'
 ---
 
 ## Goal
