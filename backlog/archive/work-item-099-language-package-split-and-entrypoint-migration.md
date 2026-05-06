@@ -5,12 +5,16 @@ title: '099: Split language packages and migrate server/service/core entrypoints
 summary: Create language-core, language-service, and language-server package boundaries and move current VS Code-owned entrypoints into reusable packages
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 8
 actual: 7
+completed_date: '2026-05-06'
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/75
   evidence:
     - '[[record-099-language-package-split-and-entrypoint-migration-evidence-1]]'
 ---

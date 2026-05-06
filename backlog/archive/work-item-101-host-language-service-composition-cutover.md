@@ -5,12 +5,16 @@ title: '101: Move host-language services into language-server composition'
 summary: Register host language diagnostics/authoring services in language-service/server composition and remove VS Code-local ownership
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 8
 actual: 3
+completed_date: '2026-05-06'
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/75
   evidence:
     - '[[record-101-host-language-service-composition-cutover-evidence-1]]'
 ---
