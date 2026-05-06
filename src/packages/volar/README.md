@@ -23,7 +23,9 @@ The plugin uses Volar's virtual code system to:
 4. Map diagnostics and features back to the original template
 
 All alias definition lookups, path resolution, and semantic routing go through
-`ContextGraphSemanticReadAdapter` — there are no Volar-local semantic scanners.
+`ContextGraphSemanticReadAdapter` for hover, definition, and semantic rendering.
+`IntellisenseProvider` also calls `buildForScopesInText()` and `resolveScopedPath()`
+directly for scoped-path resolution and alias completion injection.
 
 The VS Code extension consumes this package indirectly via `@templjs/language-core`,
 `@templjs/language-service`, and `@templjs/language-server`.

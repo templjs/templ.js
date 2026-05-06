@@ -138,7 +138,6 @@ const cases: Array<BenchmarkCase<unknown>> = [
         documentUri: vscodeWorkspaceFixture.documentUri,
         schema: vscodeWorkspaceFixture.loadedFrontmatterSchema,
         contentSchema: vscodeWorkspaceFixture.loadedContentSchema,
-        frontmatterRange: vscodeWorkspaceFixture.frontmatterRange,
       },
     }),
     run: ({
@@ -166,7 +165,6 @@ const cases: Array<BenchmarkCase<unknown>> = [
         documentUri: vscodeWorkspaceFixture.documentUri,
         schema: vscodeWorkspaceFixture.loadedFrontmatterSchema,
         contentSchema: vscodeWorkspaceFixture.loadedContentSchema,
-        frontmatterRange: vscodeWorkspaceFixture.frontmatterRange,
       },
     }),
     run: ({

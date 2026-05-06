@@ -1,5 +1,3 @@
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../extensions/vscode/src/service-plugins', async () => {
@@ -12,8 +10,9 @@ vi.mock('../../../extensions/vscode/src/service-plugins', async () => {
 
 import { URI } from 'vscode-uri';
 
-const extensionServicePluginsTestUrl = pathToFileURL(
-  path.resolve(import.meta.dirname, '../../../extensions/vscode/test/service-plugins.test.ts')
+const extensionServicePluginsTestUrl = new URL(
+  '../../../extensions/vscode/test/service-plugins.test.ts',
+  import.meta.url
 ).href;
 
 await import(extensionServicePluginsTestUrl);

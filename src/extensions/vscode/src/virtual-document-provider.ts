@@ -159,7 +159,7 @@ export class TempljsVirtualDocumentProvider implements vscode.TextDocumentConten
    */
   toSourceUri(virtualUri: vscode.Uri): vscode.Uri {
     const sourcePath = stripVirtualExtension(virtualUri.path);
-    return vscode.Uri.file(sourcePath);
+    return vscode.Uri.from({ scheme: 'file', path: sourcePath });
   }
 
   isVirtualUri(uri: vscode.Uri): boolean {

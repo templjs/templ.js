@@ -14,9 +14,7 @@ A new `templjs-virtual://` scheme registers a `TextDocumentContentProvider` that
 serves cleaned template content — template expressions replaced with
 whitespace-preserving placeholders — under a virtual URI whose appended extension
 (`.md`, `.json`, `.yaml`, `.html`, `.txt`) causes VS Code to activate whichever
-language server the user already has configured. Diagnostics from that server are
-then remapped back to original source positions and published via a dedicated
-`templjs-host` diagnostic collection.
+language server the user already has configured.
 
 `@templjs/volar` exports a new `cleanTemplateContent(source, delimiters?)` helper
 that powers the cleaning pass, making the offset-mapping logic available to
