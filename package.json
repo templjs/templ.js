@@ -132,5 +132,10 @@
     "node": ">=22.12.0 <23 || >=24.0.0 <25",
     "pnpm": "8.15.0"
   },
-  "packageManager": "pnpm@8.15.0"
+  "packageManager": "pnpm@8.15.0",
+  "pnpm": {
+    "patchedDependencies": {
+      "vscode-markdown-languageservice@0.5.0-alpha.13": "patches/vscode-markdown-languageservice@0.5.0-alpha.13.patch"
+    }
+  }
 }

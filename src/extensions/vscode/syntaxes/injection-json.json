@@ -9,6 +9,9 @@
       "name": "meta.embedded.block.json",
       "patterns": [
         {
+          "include": "source.templjs"
+        },
+        {
           "include": "source.json"
         }
       ]

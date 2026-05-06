@@ -19,13 +19,19 @@ VS Code extension for templjs meta-template language support.
 - `.html.templ` / `.html.tmpl` / `.html.tpl` - HTML templates
 - `.xml.templ` / `.xml.tmpl` / `.xml.tpl` - XML templates
 
+> [!NOTE]
+> Base-format language features for `.tmpl` files are delivered through templjs server-side Volar
+> service plugins, not by extension-host diagnostic providers or file-watching tools. For the full
+> behavior model (what works, what does not, and how formatter selection is applied), see
+> [Base-Format Language Feature Delegation](../../../docs/how-to/base-format-language-feature-delegation.md).
+
 ## Architecture
 
 This extension uses Volar language server to provide IDE features:
 
 1. **Template Processing**: Strips template syntax from documents
 2. **Virtual Documents**: Creates virtual documents in base format
-3. **Feature Delegation**: Delegates base format features to VS Code's native servers
+3. **Feature Delegation**: Delegates base format features through Volar service plugins
 4. **Mapping**: Maps diagnostics and completions back to original template
 
 ## Configuration

@@ -45,6 +45,31 @@ describe('extractTemplateScopeBindings', () => {
     expect(extractTemplateScopeBindings('{% for item in %}')).toEqual([]);
   });
 
+  it('recovers scope bindings for unclosed for-loops', () => {
+    const template = ['{% for x in collection %}', '{{ x }}'].join('\n');
+
+    const bindings = extractTemplateScopeBindings(template);
+
+    expect(bindings).toHaveLength(1);
+    expect(bindings[0]).toMatchObject({ alias: 'x', iterablePath: 'collection' });
+    expect(bindings[0].scopeEndOffset).toBeGreaterThanOrEqual(bindings[0].scopeStartOffset);
+  });
+
+  it('recovers scope bindings when unrelated statement syntax is malformed', () => {
+    const template = [
+      'id: "{% set id = "yaml-block" %}{{ id }}"',
+      '{% for c in id %}',
+      '{{ c }}',
+      '{% endfor %}',
+    ].join('\n');
+
+    const bindings = extractTemplateScopeBindings(template);
+
+    expect(bindings.some((binding) => binding.alias === 'c' && binding.iterablePath === 'id')).toBe(
+      true
+    );
+  });
+
   it('extracts bindings from multiple independent non-nested for-loops', () => {
     const template = [
       '{% for user in users %}',

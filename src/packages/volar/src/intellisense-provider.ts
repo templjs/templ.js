@@ -4,23 +4,17 @@ import {
   resolveSemanticHostLanguage,
   resolveSemanticZoneByHostLanguage,
   resolveSemanticZone,
-  toSemanticZone,
   type FunctionSignature,
 } from '@templjs/core';
 import {
   resolveDelimiters,
   type DelimiterConfig as IntellisenseDelimiters,
 } from './template-delimiters.js';
-import { type FrontmatterRange } from './frontmatter-zone.js';
 import {
   extractExpressionFilterReferences,
   extractExpressionVariableReferences,
 } from './expression-analysis.js';
-import {
-  buildForScopesInText,
-  findLocalAliasDefinitionInText,
-  resolveScopedPath,
-} from './scope-resolution.js';
+import { buildForScopesInText, resolveScopedPath } from './scope-resolution.js';
 import {
   createContextGraphSemanticReadAdapter,
   type ContextGraphSemanticReadAdapter,
@@ -63,7 +57,6 @@ export interface IntellisenseOptions {
   documentUri?: string;
   workspaceRoot?: string;
   debugLog?: (message: string, level?: 'messages' | 'verbose') => void;
-  frontmatterRange?: FrontmatterRange;
   customFilters?: FilterSignature[];
   customKeywords?: string[];
   delimiters?: Partial<IntellisenseDelimiters>;
@@ -86,6 +79,7 @@ export type SemanticReadAdapter = Pick<
   | 'getPathDetails'
   | 'resolvePathDefinition'
   | 'resolveDocumentDefinition'
+  | 'resolveLocalAliasDefinition'
 >;
 
 const DEFAULT_KEYWORDS = [
@@ -211,13 +205,8 @@ function buildSemanticQueryContext(
 function resolveSemanticQueryZone(
   text: string,
   offset: number,
-  documentUri?: string,
-  range?: FrontmatterRange
+  documentUri?: string
 ): NonNullable<SemanticQueryContext['semanticZone']> {
-  if (range && offset >= range.start && offset < range.end) {
-    return toSemanticZone('frontmatter');
-  }
-
   const hostLanguage = resolveSemanticHostLanguage(documentUri);
   if (hostLanguage === 'unknown') {
     return resolveSemanticZone(text, offset);
@@ -272,6 +261,47 @@ function filterAndSortCompletions(items: CompletionItem[], rawPrefix: string): C
     });
 
   return withScore.map((entry) => entry.item);
+}
+
+function mergeUniqueCompletions(
+  primary: CompletionItem[],
+  secondary: CompletionItem[]
+): CompletionItem[] {
+  if (secondary.length === 0) {
+    return primary;
+  }
+
+  const seen = new Set(primary.map((item) => item.label.toLowerCase()));
+  const merged = [...primary];
+  for (const item of secondary) {
+    const key = item.label.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    merged.push(item);
+  }
+
+  return merged;
+}
+
+function getInScopeAliasCompletions(
+  text: string,
+  offset: number,
+  delimiters: IntellisenseDelimiters
+): CompletionItem[] {
+  const scopes = buildForScopesInText(text, delimiters);
+  const aliases = scopes
+    .filter((scope) => offset >= scope.bodyStart && offset < scope.bodyEnd)
+    .sort((left, right) => right.bodyStart - left.bodyStart)
+    .map((scope) => scope.alias)
+    .filter((alias, index, all) => all.indexOf(alias) === index);
+
+  return aliases.map((alias) => ({
+    label: alias,
+    kind: 'variable',
+    detail: 'local loop alias',
+  }));
 }
 
 function summarizeDuplicateLabels(items: CompletionItem[]): string[] {
@@ -585,6 +615,7 @@ function getExpressionCompletionsAtOffset(
   semanticReadAdapter: SemanticReadAdapter,
   content: string,
   offsetInContent: number,
+  localAliasItems: CompletionItem[],
   filters: FilterSignature[],
   semanticContext: SemanticQueryContext,
   semanticOptions: {
@@ -594,7 +625,8 @@ function getExpressionCompletionsAtOffset(
     contentSchemaUri?: string;
   },
   /** Optional resolver to translate for-loop alias paths to their schema equivalents. */
-  pathResolver?: (basePath: string) => string
+  pathResolver?: (basePath: string) => string,
+  debugLog?: IntellisenseOptions['debugLog']
 ): CompletionItem[] {
   const prefix = getCompletionPrefix(content.slice(0, offsetInContent));
 
@@ -606,6 +638,16 @@ function getExpressionCompletionsAtOffset(
 
   const resolveBase = (basePath: string): string =>
     pathResolver ? pathResolver(basePath) : basePath;
+
+  const logRawDuplicateLabels = (items: CompletionItem[]): void => {
+    const duplicates = summarizeDuplicateLabels(items);
+    if (duplicates.length > 0) {
+      debugLog?.(
+        `[intellisense] completion duplicate labels: ${duplicates.slice(0, 12).join(', ')}`,
+        'messages'
+      );
+    }
+  };
 
   const variableRefs = extractExpressionVariableReferences(content);
   const activeRef = variableRefs.find(
@@ -630,7 +672,8 @@ function getExpressionCompletionsAtOffset(
       '',
       semanticOptions
     );
-    return filterAndSortCompletions(graphItems, typedPath);
+    logRawDuplicateLabels(graphItems);
+    return filterAndSortCompletions(mergeUniqueCompletions(localAliasItems, graphItems), typedPath);
   }
 
   const lastDot = prefix.lastIndexOf('.');
@@ -646,7 +689,8 @@ function getExpressionCompletionsAtOffset(
   }
 
   const graphItems = semanticReadAdapter.getChildCompletions(semanticContext, '', semanticOptions);
-  return filterAndSortCompletions(graphItems, prefix);
+  logRawDuplicateLabels(graphItems);
+  return filterAndSortCompletions(mergeUniqueCompletions(localAliasItems, graphItems), prefix);
 }
 
 function getStatementExpressionFragment(
@@ -732,12 +776,7 @@ export class IntellisenseProvider {
       delimiters.statementEnd,
       true
     );
-    const semanticZone = resolveSemanticQueryZone(
-      text,
-      offset,
-      options?.documentUri,
-      options?.frontmatterRange
-    );
+    const semanticZone = resolveSemanticQueryZone(text, offset, options?.documentUri);
     const contextBlock = semanticZone.legacyContextBlock;
     const completionContext = buildSemanticQueryContext(
       text,
@@ -754,6 +793,7 @@ export class IntellisenseProvider {
     };
     const filters = [...getDefaultFilters(), ...(options?.customFilters ?? [])];
     const keywords = [...DEFAULT_KEYWORDS, ...(options?.customKeywords ?? [])];
+    const localAliasItems = getInScopeAliasCompletions(text, offset, delimiters);
 
     const scopeResolver = createScopedPathResolver(
       this.semanticReadAdapter,
@@ -778,10 +818,12 @@ export class IntellisenseProvider {
         this.semanticReadAdapter,
         content,
         Math.max(0, contentOffset),
+        localAliasItems,
         filters,
         completionContext,
         semanticOptions,
-        scopeResolver
+        scopeResolver,
+        options?.debugLog
       );
 
       logCompletionSummary(options, 'expression', expressionCompletions);
@@ -814,10 +856,12 @@ export class IntellisenseProvider {
         this.semanticReadAdapter,
         expressionFragment.expression,
         expressionFragment.offsetInExpression,
+        localAliasItems,
         filters,
         completionContext,
         semanticOptions,
-        scopeResolver
+        scopeResolver,
+        options?.debugLog
       );
 
       logCompletionSummary(options, 'statement-expression', statementExpressionCompletions);
@@ -875,12 +919,7 @@ export class IntellisenseProvider {
           delimiters.statementEnd,
           false
         );
-    const semanticZone = resolveSemanticQueryZone(
-      text,
-      offset,
-      options?.documentUri,
-      options?.frontmatterRange
-    );
+    const semanticZone = resolveSemanticQueryZone(text, offset, options?.documentUri);
     const contextBlock = semanticZone.legacyContextBlock;
     const hoverContext = buildSemanticQueryContext(
       text,
@@ -1040,6 +1079,15 @@ export class IntellisenseProvider {
 
     const variablePath = getVariablePathAtOffset(content, Math.max(0, relativeOffset));
     if (variablePath) {
+      const aliasOnly = /^[A-Za-z_][\w]*$/.test(variablePath);
+      const aliasDefinition = aliasOnly
+        ? this.semanticReadAdapter.resolveLocalAliasDefinition(text, variablePath, offset)
+        : null;
+      if (aliasDefinition && aliasOnly) {
+        const aliasName = variablePath.split(/[.[]/, 1)[0] ?? variablePath;
+        return { contents: `${aliasName}: local loop alias` };
+      }
+
       return getHoverDetailsForPath(variablePath);
     }
 
@@ -1073,12 +1121,7 @@ export class IntellisenseProvider {
           false
         );
 
-    const semanticZone = resolveSemanticQueryZone(
-      text,
-      offset,
-      options?.documentUri,
-      options?.frontmatterRange
-    );
+    const semanticZone = resolveSemanticQueryZone(text, offset, options?.documentUri);
     const contextBlock = semanticZone.legacyContextBlock;
 
     const definitionContext = buildSemanticQueryContext(
@@ -1199,11 +1242,10 @@ export class IntellisenseProvider {
       const variablePath = getVariablePathAtOffset(variableSegment, Math.max(0, relativeOffset));
       if (!variablePath) return null;
 
-      const aliasDefinition = findLocalAliasDefinitionInText(
+      const aliasDefinition = this.semanticReadAdapter.resolveLocalAliasDefinition(
         text,
         variablePath,
-        offset,
-        options?.delimiters
+        offset
       );
       if (aliasDefinition && options?.documentUri) {
         options?.debugLog?.(
@@ -1303,11 +1345,10 @@ export class IntellisenseProvider {
     const variablePath = getVariablePathAtOffset(variableSegment, Math.max(0, relativeOffset));
     if (!variablePath) return null;
 
-    const aliasDefinition = findLocalAliasDefinitionInText(
+    const aliasDefinition = this.semanticReadAdapter.resolveLocalAliasDefinition(
       text,
       variablePath,
-      offset,
-      options?.delimiters
+      offset
     );
     if (aliasDefinition && options?.documentUri) {
       options?.debugLog?.(

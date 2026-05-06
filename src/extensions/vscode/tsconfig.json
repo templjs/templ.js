@@ -7,6 +7,8 @@
     "lib": ["ES2022"],
     "composite": true,
     "paths": {
+      "@templjs/language-server": ["src/packages/language-server/src/index.ts"],
+      "@templjs/language-service": ["src/packages/language-service/src/index.ts"],
       "@templjs/volar": ["src/packages/volar/src/index.ts"]
     }
   },
@@ -15,6 +17,12 @@
   "references": [
     {
       "path": "../../packages/volar"
+    },
+    {
+      "path": "../../packages/language-service"
+    },
+    {
+      "path": "../../packages/language-server"
     }
   ]
 }

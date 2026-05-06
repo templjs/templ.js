@@ -4,6 +4,23 @@ This directory contains the canonical CI/CD workflow definitions for the templjs
 
 ## Workflow Summary
 
+### `draft-pr-gate.yml`
+
+Triggers:
+
+- pull request target events for `opened`, `reopened`, `synchronize`, and `ready_for_review` on `main` and `staging`
+
+Behavior:
+
+- converts newly opened or reopened non-draft PRs back to draft
+- converts ready PRs with new commits back to draft so CI can rerun before review automation resumes
+- allows `ready_for_review` only when all observed non-CodeRabbit checks on the PR head commit are green
+
+Policy posture:
+
+- keeps CodeRabbit idle while CI is still red or pending
+- expects contributors to mark PRs ready only after current jobs are green
+
 ### `ci.yml`
 
 Triggers:

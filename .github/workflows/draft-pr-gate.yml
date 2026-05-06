@@ -1,0 +1,140 @@
+name: Draft PR Gate
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+    branches:
+      - main
+      - staging
+
+concurrency:
+  group: draft-pr-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  checks: read
+  pull-requests: write
+  statuses: read
+
+jobs:
+  enforce:
+    name: Enforce Draft-First PR Flow
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce PR draft policy
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const action = context.payload.action;
+            const ignoredCheckRunPatterns = [/^Enforce Draft-First PR Flow$/i, /^CodeRabbit/i];
+            const ignoredStatusPatterns = [/^CodeRabbit/i];
+            const allowedConclusions = new Set(['success', 'neutral', 'skipped']);
+
+            function matchesAny(value, patterns) {
+              return patterns.some((pattern) => pattern.test(value ?? ''));
+            }
+
+            async function convertToDraft(reason) {
+              await github.graphql(
+                `mutation($pullRequestId: ID!) {
+                  convertPullRequestToDraft(input: { pullRequestId: $pullRequestId }) {
+                    pullRequest {
+                      id
+                      isDraft
+                    }
+                  }
+                }`,
+                { pullRequestId: pr.node_id }
+              );
+              core.notice(reason);
+            }
+
+            async function listBlockingChecks(sha) {
+              const checkRuns = await github.paginate(github.rest.checks.listForRef, {
+                owner,
+                repo,
+                ref: sha,
+                per_page: 100,
+              });
+              const relevantCheckRuns = checkRuns.filter(
+                (run) => !matchesAny(run.name, ignoredCheckRunPatterns)
+              );
+              const blockingCheckRuns = relevantCheckRuns.filter(
+                (run) =>
+                  run.status !== 'completed' || !allowedConclusions.has(run.conclusion ?? '')
+              );
+
+              const { data: combinedStatus } = await github.rest.repos.getCombinedStatusForRef({
+                owner,
+                repo,
+                ref: sha,
+              });
+              const relevantStatuses = (combinedStatus.statuses ?? []).filter(
+                (status) => !matchesAny(status.context, ignoredStatusPatterns)
+              );
+              const blockingStatuses = relevantStatuses.filter(
+                (status) => status.state !== 'success'
+              );
+
+              return {
+                hasObservedChecks:
+                  relevantCheckRuns.length > 0 || relevantStatuses.length > 0,
+                blockingCheckRuns,
+                blockingStatuses,
+              };
+            }
+
+            if (action === 'opened' || action === 'reopened') {
+              if (!pr.draft) {
+                await convertToDraft(
+                  `PR #${pr.number} was opened as ready-for-review. Converting back to draft to keep review automation idle until CI is green.`
+                );
+              }
+              return;
+            }
+
+            if (action === 'synchronize') {
+              if (!pr.draft) {
+                await convertToDraft(
+                  `PR #${pr.number} received new commits. Converting back to draft until the refreshed checks complete successfully.`
+                );
+              }
+              return;
+            }
+
+            if (action !== 'ready_for_review') {
+              return;
+            }
+
+            const blocking = await listBlockingChecks(pr.head.sha);
+            if (!blocking.hasObservedChecks) {
+              await convertToDraft(
+                `PR #${pr.number} was marked ready before any checks reported status. Leaving it in draft until CI has run green.`
+              );
+              return;
+            }
+
+            if (blocking.blockingCheckRuns.length > 0 || blocking.blockingStatuses.length > 0) {
+              const details = [
+                ...blocking.blockingCheckRuns.map(
+                  (run) => `${run.name} (${run.status}${run.conclusion ? `/${run.conclusion}` : ''})`
+                ),
+                ...blocking.blockingStatuses.map(
+                  (status) => `${status.context} (${status.state})`
+                ),
+              ].join(', ');
+
+              await convertToDraft(
+                `PR #${pr.number} was marked ready before all checks were green. Blocking checks: ${details}`
+              );
+              return;
+            }
+
+            core.notice(`PR #${pr.number} is ready-for-review with all observed checks green.`);
