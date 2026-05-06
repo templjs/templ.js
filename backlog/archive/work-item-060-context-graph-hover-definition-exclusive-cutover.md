@@ -5,9 +5,9 @@ title: '060: Enforce exclusive context-graph hover/definition resolution'
 summary: Enforce exclusive context-graph hover/definition resolution
 type: work-item
 subtype: task
-lifecycle: active
-status: in-progress
-status_reason: implementation
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 8
 actual: 6
@@ -17,11 +17,14 @@ commits:
   3eef8cb: 'test(vscode): use pathToFileURL for mock definition URIs'
   1b9ff47: 'test(volar): remove debug logging and de-instrument memoization test'
   8ab845c: 'perf(ide): optimize schema resolution and semantic caches'
+completed_date: '2026-05-06'
 links:
   evidence:
     - '[[record-060-context-graph-hover-definition-exclusive-cutover-evidence-1]]'
     - '[[record-060-context-graph-hover-definition-exclusive-cutover-evidence-2]]'
     - '[[record-060-context-graph-hover-definition-exclusive-cutover-evidence-3]]'
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/27
 ---
 
 ## Goal
@@ -51,6 +54,7 @@ Normalize semantic ownership around location-context queries so frontmatter/cont
 - [x] Remove standalone Volar definition-resolver module and fold behavior into context-graph adapter boundary
 - [x] Move `$schema` / `$content_schema` alias-to-context-block translation into core
 - [ ] Reduce Volar role to operation + document + position forwarding and LSP payload mapping only
+- [x] Reduce Volar role to operation + document + position forwarding and LSP payload mapping only
 - [x] Add regression coverage for schema refs, nested item properties, and alias-scoped definitions
 - [x] Update trace logging to reflect graph-owned hover/definition resolution
 
@@ -60,6 +64,7 @@ Normalize semantic ownership around location-context queries so frontmatter/cont
 - [x] Volar returns final location-qualified definition results without server range callbacks
 - [x] No standalone `definition-resolver` module remains; definition resolution lives behind the context-graph adapter boundary
 - [ ] Volar does not model frontmatter/content or primary/secondary as semantic branches
+- [x] Volar does not model frontmatter/content or primary/secondary as semantic branches
 - [x] Alias handling (`$schema` / `$content_schema` → context block) is owned by core
 - [x] Core semantic operation and payload contracts are aligned across `completion`, `hover`, `definition`, and `diagnostics`
 - [x] Hover for schema-backed paths is sourced from context-graph responses, not direct schema fallbacks
