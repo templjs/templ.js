@@ -254,6 +254,62 @@ describe('extension host language delegation', () => {
     expect(languageClientConstructor).toHaveBeenCalledTimes(2);
   });
 
+  it('restarts the language client when the global default formatter changes', async () => {
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const configHandler = onDidChangeConfiguration.mock.calls[0][0] as (event: {
+      affectsConfiguration: (section: string) => boolean;
+    }) => void;
+
+    configHandler({
+      affectsConfiguration: (section: string) => section === 'editor.defaultFormatter',
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(stop).toHaveBeenCalled();
+    expect(languageClientConstructor).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores unrelated configuration changes and non-virtual diagnostics', async () => {
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const configHandler = onDidChangeConfiguration.mock.calls[0][0] as (event: {
+      affectsConfiguration: (section: string) => boolean;
+    }) => void;
+    const diagnosticsHandler = onDidChangeDiagnostics.mock.calls[0][0] as (event: {
+      uris: Array<{ scheme: string; path?: string; fsPath?: string }>;
+    }) => void;
+
+    configHandler({
+      affectsConfiguration: () => false,
+    });
+    diagnosticsHandler({
+      uris: [
+        { scheme: 'file', path: '/workspace/page.md.templ', fsPath: '/workspace/page.md.templ' },
+      ],
+    });
+
+    await Promise.resolve();
+
+    expect(stop).not.toHaveBeenCalled();
+    expect(getDiagnostics).not.toHaveBeenCalled();
+    expect(hostDiagnosticCollection.set).not.toHaveBeenCalled();
+  });
+
   it('ignores concurrent restart requests and logs restart failures', async () => {
     const context = {
       subscriptions: [] as Array<{ dispose: () => void }>,
