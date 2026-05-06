@@ -169,6 +169,51 @@ describe('language-server-bootstrap', () => {
     expect(initializeParams?.rootUri).toBeNull();
   });
 
+  it('leaves initialize rootUri null when the document uri causes URL parsing to throw', async () => {
+    await import('../src/index.ts');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({
+      rootUri: null,
+      initializationOptions: {
+        documentContext: {
+          uri: 'file://[bad/path.md',
+          content: '{{ value }}',
+        },
+      },
+    });
+
+    const firstInitializeCall = initialize.mock.calls[0];
+    const initializeParams = (firstInitializeCall as unknown[])[0] as { rootUri?: string | null };
+    expect(initializeParams?.rootUri).toBeNull();
+  });
+
+  it('uses derivedRootUri even when fileURLToPath throws for non-localhost host', async () => {
+    await import('../src/index.ts');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({
+      rootUri: null,
+      initializationOptions: {
+        documentContext: {
+          uri: 'file://remote-host/dir/document.md',
+          content: '{{ value }}',
+        },
+      },
+    });
+
+    const firstInitializeCall = initialize.mock.calls[0];
+    if (!firstInitializeCall) {
+      throw new Error('Expected server.initialize to be called');
+    }
+    const initializeParams = (firstInitializeCall as unknown[])[0] as { rootUri?: string | null };
+    expect(initializeParams?.rootUri).toBe('file://remote-host/dir');
+  });
+
   it('registers service and language plugin providers', async () => {
     await import('../src/index.ts');
 
@@ -198,6 +243,26 @@ describe('language-server-bootstrap', () => {
       plugins: [expect.objectContaining({ name: 'templjs-plugin' })],
     });
     expect(createTempljsLanguagePlugin).toHaveBeenCalledWith({});
+  });
+
+  it('uses workspaceFolders root when rootUri and documentContext are absent', async () => {
+    await import('../src/index.ts');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({
+      rootUri: null,
+      workspaceFolders: [{ uri: toTestWorkspaceUri('file:///workspace'), name: 'test' }],
+      initializationOptions: {},
+    });
+
+    const firstInitializeCall = initialize.mock.calls[0];
+    if (!firstInitializeCall) {
+      throw new Error('Expected server.initialize to be called');
+    }
+    const initializeParams = (firstInitializeCall as unknown[])[0] as { rootUri?: string | null };
+    expect(initializeParams?.rootUri).toBe(toTestWorkspaceUri('file:///workspace'));
   });
 
   it('advertises capabilities and registers delegation handlers', async () => {
