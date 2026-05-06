@@ -5,11 +5,18 @@ title: '103: Thin VS Code client and remove server-wrapper feature ownership'
 summary: Reduce vscode-templjs to activation/configuration/logging/transport while feature handlers live in language-service/server layers
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 6
 actual: 1
+completed_date: '2026-05-06'
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/75
+  evidence:
+    - '[[record-103-vscode-client-thinning-and-wrapper-removal-evidence-1]]'
 ---
 
 ## Goal
