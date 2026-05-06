@@ -5,6 +5,8 @@
 <!-- Describe what changed and why. -->
 
 > **Branch target**: open routine feature, fix, and chore PRs against `staging`. Reserve direct PRs to `main` for promotion and hotfix flows.
+>
+> **Review policy**: open every PR as a draft. Mark it ready for review only after all current PR jobs are green. New commits move the PR back into draft-only review posture until checks pass again.
 
 ## Related Issues
 
