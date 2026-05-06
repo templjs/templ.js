@@ -1,4 +1,9 @@
-# @templjs/volar
+---
+type: document
+subtype: readme
+lifecycle: active
+title: '@templjs/volar README'
+---
 
 ![TemplJS logo](https://raw.githubusercontent.com/templjs/templ.js/refs/heads/main/assets/templjs.png)
 

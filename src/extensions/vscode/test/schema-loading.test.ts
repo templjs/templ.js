@@ -346,6 +346,45 @@ describe('schema-loading', () => {
     ).resolves.toEqual({});
   });
 
+  it('preserves unresolved remote sibling refs instead of stripping them', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          $defs: {
+            item: {
+              $ref: './common.json#/$defs/base',
+              type: 'object',
+              properties: {
+                title: { type: 'string' },
+              },
+            },
+          },
+        }),
+    }));
+
+    await expect(
+      loadSchemaSource(
+        'https://schemas.example.com/work-item.json#/$defs/item',
+        undefined,
+        undefined,
+        {
+          fetchImpl: fetchImpl as typeof fetch,
+        }
+      )
+    ).resolves.toEqual({
+      schema: {
+        $ref: './common.json#/$defs/base',
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+        },
+      },
+      schemaUri: 'https://schemas.example.com/work-item.json',
+    });
+  });
+
   it('handles HTTP fetch failures and malformed responses', async () => {
     const log = vi.fn();
 
@@ -690,5 +729,26 @@ describe('schema-loading', () => {
       schemaPath: '.templjs/default-frontmatter.json',
       contentSchemaPath: '.templjs/default-content.json',
     });
+  });
+
+  it('prefers the workspace folder containing the current document in multi-root workspaces', () => {
+    const rootWorkspace = path.join(tmpdir(), 'templjs-root-workspace');
+    const nestedWorkspace = path.join(rootWorkspace, 'packages', 'feature');
+
+    expect(
+      resolveWorkspaceRoot({
+        rootUri: pathToFileURL(rootWorkspace).toString(),
+        workspaceFolders: [
+          { uri: pathToFileURL(rootWorkspace).toString() },
+          { uri: pathToFileURL(nestedWorkspace).toString() },
+        ],
+        initializationOptions: {
+          documentContext: {
+            uri: pathToFileURL(path.join(nestedWorkspace, 'docs', 'item.md.templ')).toString(),
+            content: '',
+          },
+        },
+      })
+    ).toBe(nestedWorkspace);
   });
 });

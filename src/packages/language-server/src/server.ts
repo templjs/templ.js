@@ -202,8 +202,8 @@ connection.onInitialize(async (params) => {
   storedWorkspaceRoot = resolveWorkspaceRoot(typedParams) ?? derivedWorkspaceRoot;
   const initializeRootUri =
     typedParams.rootUri ??
-    derivedRootUri ??
-    (storedWorkspaceRoot ? pathToFileURL(storedWorkspaceRoot).toString() : undefined);
+    (storedWorkspaceRoot ? pathToFileURL(storedWorkspaceRoot).toString() : undefined) ??
+    derivedRootUri;
   const initializeParams =
     initializeRootUri && !typedParams.rootUri
       ? {
@@ -281,8 +281,10 @@ connection.onInitialize(async (params) => {
       ) => Promise<unknown>
     ) => void;
   };
-  if (typeof formattingConnection.onDocumentFormatting === 'function') {
-    formattingConnection.onDocumentFormatting(async (request, token) => {
+  const registerDocumentFormatting = formattingConnection.onDocumentFormatting;
+  const supportsDocumentFormatting = typeof registerDocumentFormatting === 'function';
+  if (supportsDocumentFormatting) {
+    registerDocumentFormatting(async (request, token) => {
       const uri = request.textDocument.uri;
       trace(`[authoring] format request uri=${uri}`, 'verbose');
       const languageService = await server.project.getLanguageService(URI.parse(uri));
@@ -313,7 +315,7 @@ connection.onInitialize(async (params) => {
       },
       hoverProvider: true,
       definitionProvider: true,
-      documentFormattingProvider: true,
+      documentFormattingProvider: supportsDocumentFormatting,
     },
   };
 });
@@ -331,8 +333,6 @@ export function startTempljsLanguageServer(): void {
   started = true;
   connection.listen();
 }
-
-startTempljsLanguageServer();
 
 export const serverTesting = {
   isLikelySchemaUri,

@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 import { createRequire } from 'node:module';
-import { startTempljsLanguageServer } from '../src/server.js';
 
 const require = createRequire(import.meta.url);
 const packageJson = require('../package.json') as { version: string };
 
-if (process.argv.includes('--version')) {
-  process.stdout.write(`${packageJson.version}\n`);
-  process.exit(0);
+async function main(): Promise<void> {
+  if (process.argv.includes('--version')) {
+    process.stdout.write(`${packageJson.version}\n`);
+    process.exit(0);
+  }
+
+  const { startTempljsLanguageServer } = await import('../src/server.js');
+  startTempljsLanguageServer();
 }
 
-startTempljsLanguageServer();
+void main();

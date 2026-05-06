@@ -158,8 +158,8 @@ export class TempljsVirtualDocumentProvider implements vscode.TextDocumentConten
    * Reverse of `toVirtualUri`: strip the appended extension and reconstruct the source URI.
    */
   toSourceUri(virtualUri: vscode.Uri): vscode.Uri {
-    const sourcePath = stripVirtualExtension(virtualUri.path);
-    return vscode.Uri.from({ scheme: 'file', path: sourcePath });
+    const sourcePath = stripVirtualExtension(virtualUri.fsPath);
+    return vscode.Uri.file(sourcePath);
   }
 
   isVirtualUri(uri: vscode.Uri): boolean {

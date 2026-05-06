@@ -115,7 +115,7 @@ describe('language-server-bootstrap', () => {
     expect(onInitialize).toHaveBeenCalledWith(expect.any(Function));
     expect(onInitialized).toHaveBeenCalledWith(initialized);
     expect(onShutdown).toHaveBeenCalledWith(shutdown);
-    expect(listen).toHaveBeenCalled();
+    expect(listen).not.toHaveBeenCalled();
 
     expect(onNotification).not.toHaveBeenCalled();
     expect(onDidOpenTextDocument).not.toHaveBeenCalled();
@@ -317,7 +317,7 @@ describe('language-server-bootstrap', () => {
     ) => Promise<{ capabilities: Record<string, unknown> }>;
     const result = await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
 
-    expect(result.capabilities.documentFormattingProvider).toBe(true);
+    expect(result.capabilities.documentFormattingProvider).toBe(false);
     expect(onDocumentFormatting).not.toHaveBeenCalled();
   });
 });
@@ -591,10 +591,11 @@ describe('serverTesting helpers', () => {
 
   it('does not re-listen once the server was started and exposes runtime setters', async () => {
     const mod = await import('../src/index.ts');
-    const initialListenCalls = listen.mock.calls.length;
+    mod.startTempljsLanguageServer();
+    expect(listen.mock.calls.length).toBe(1);
 
     mod.startTempljsLanguageServer();
-    expect(listen.mock.calls.length).toBe(initialListenCalls);
+    expect(listen.mock.calls.length).toBe(1);
 
     helpers.setStoredWorkspaceRoot('/workspace');
     helpers.setStoredInitializationOptions({ schemaPath: '.templjs/schema.json' });

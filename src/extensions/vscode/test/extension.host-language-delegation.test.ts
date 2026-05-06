@@ -24,20 +24,31 @@ const onDidChangeTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidCloseTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidChangeConfiguration = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidChangeDiagnostics = vi.fn(() => ({ dispose: vi.fn() }));
-const createDiagnosticCollection = vi.fn(() => ({
+const hostDiagnosticCollection = {
   set: vi.fn(),
   delete: vi.fn(),
   dispose: vi.fn(),
   clear: vi.fn(),
-}));
+};
+const createDiagnosticCollection = vi.fn(() => hostDiagnosticCollection);
 const getDiagnostics = vi.fn(() => []);
 const openTextDocument = vi.fn(() => Promise.resolve({}));
 const getConfiguration = vi.fn(() => ({
   get: vi.fn((_key: string, fallback?: unknown) => fallback),
 }));
 
-const providerUpdate = vi.fn(() => ({ scheme: 'templjs-virtual', path: '/doc.md' }));
+const providerUpdate = vi.fn(() => ({
+  scheme: 'templjs-virtual',
+  path: '/doc.md',
+  fsPath: '/doc.md',
+}));
 const providerRemove = vi.fn();
+const providerIsVirtualUri = vi.fn((uri: { scheme?: string }) => uri.scheme === 'templjs-virtual');
+const providerToSourceUri = vi.fn((uri: { fsPath?: string; path?: string }) => ({
+  scheme: 'file',
+  fsPath: (uri.fsPath ?? uri.path ?? '').replace(/\.(md|json|yaml|html|txt)$/i, ''),
+}));
+const providerMapDiagnosticToSource = vi.fn((_sourceUri, diagnostic) => diagnostic);
 
 const start = vi.fn(() => Promise.resolve());
 const stop = vi.fn(() => Promise.resolve());
@@ -88,6 +99,9 @@ vi.mock('../src/virtual-document-provider', () => ({
   TempljsVirtualDocumentProvider: class {
     update = providerUpdate;
     remove = providerRemove;
+    isVirtualUri = providerIsVirtualUri;
+    toSourceUri = providerToSourceUri;
+    mapDiagnosticToSource = providerMapDiagnosticToSource;
     dispose = vi.fn();
   },
 }));
@@ -124,6 +138,9 @@ describe('extension host language delegation', () => {
     expect(providerUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ fsPath: '/workspace/boot.md.templ' }),
       'boot text'
+    );
+    expect(openTextDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ scheme: 'templjs-virtual' })
     );
 
     const openHandler = onDidOpenTextDocument.mock.calls[0][0] as (document: {
@@ -171,6 +188,43 @@ describe('extension host language delegation', () => {
     expect(providerRemove).toHaveBeenCalledWith(
       expect.objectContaining({ fsPath: '/workspace/page.md.templ' })
     );
+    expect(hostDiagnosticCollection.delete).toHaveBeenCalledWith(
+      expect.objectContaining({ fsPath: '/workspace/page.md.templ' })
+    );
+  });
+
+  it('maps virtual diagnostics back to source documents', async () => {
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const diagnosticsHandler = onDidChangeDiagnostics.mock.calls[0][0] as (event: {
+      uris: Array<{ scheme: string; path?: string; fsPath?: string }>;
+    }) => void;
+
+    const virtualUri = {
+      scheme: 'templjs-virtual',
+      path: '/workspace/page.md.templ.md',
+      fsPath: '/workspace/page.md.templ.md',
+    };
+    const sourceUri = { scheme: 'file', fsPath: '/workspace/page.md.templ' };
+    const diagnostic = { message: 'bad heading' };
+
+    providerToSourceUri.mockReturnValueOnce(sourceUri);
+    getDiagnostics.mockReturnValueOnce([diagnostic]);
+    providerMapDiagnosticToSource.mockReturnValueOnce(diagnostic);
+
+    diagnosticsHandler({ uris: [virtualUri] });
+
+    expect(providerIsVirtualUri).toHaveBeenCalledWith(virtualUri);
+    expect(providerToSourceUri).toHaveBeenCalledWith(virtualUri);
+    expect(getDiagnostics).toHaveBeenCalledWith(virtualUri);
+    expect(providerMapDiagnosticToSource).toHaveBeenCalledWith(sourceUri, diagnostic);
+    expect(hostDiagnosticCollection.set).toHaveBeenCalledWith(sourceUri, [diagnostic]);
   });
 
   it('restarts the language client when formatter-related configuration changes', async () => {

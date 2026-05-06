@@ -1,10 +1,12 @@
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { Registry, parseRawGrammar } from 'vscode-textmate';
 import { createOnigScanner, createOnigString, loadWASM } from 'vscode-oniguruma';
 
+const require = createRequire(import.meta.url);
 const extensionRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 let wasmLoaded = false;

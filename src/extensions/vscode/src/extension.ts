@@ -439,14 +439,17 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
  */
 function initializeHostLanguageDelegation(context: vscode.ExtensionContext): void {
   const provider = new TempljsVirtualDocumentProvider();
+  const hostDiagnostics = vscode.languages.createDiagnosticCollection('templjs-host');
   context.subscriptions.push(provider);
+  context.subscriptions.push(hostDiagnostics);
   context.subscriptions.push(
     vscode.workspace.registerTextDocumentContentProvider(VIRTUAL_SCHEME, provider)
   );
 
   function syncDocument(document: vscode.TextDocument): void {
     if (!isTempljsDocument(document)) return;
-    provider.update(document.uri, document.getText());
+    const virtualUri = provider.update(document.uri, document.getText());
+    void vscode.workspace.openTextDocument(virtualUri);
   }
 
   // Sync all documents already open when the extension activates.
@@ -467,9 +470,28 @@ function initializeHostLanguageDelegation(context: vscode.ExtensionContext): voi
   );
 
   context.subscriptions.push(
+    vscode.languages.onDidChangeDiagnostics((event) => {
+      for (const uri of event.uris) {
+        if (!provider.isVirtualUri(uri)) {
+          continue;
+        }
+
+        const sourceUri = provider.toSourceUri(uri);
+        const mappedDiagnostics = vscode.languages
+          .getDiagnostics(uri)
+          .map((diagnostic) => provider.mapDiagnosticToSource(sourceUri, diagnostic))
+          .filter((diagnostic): diagnostic is vscode.Diagnostic => diagnostic !== undefined);
+
+        hostDiagnostics.set(sourceUri, mappedDiagnostics);
+      }
+    })
+  );
+
+  context.subscriptions.push(
     vscode.workspace.onDidCloseTextDocument((doc) => {
       if (isTempljsDocument(doc)) {
         provider.remove(doc.uri);
+        hostDiagnostics.delete(doc.uri);
       }
     })
   );

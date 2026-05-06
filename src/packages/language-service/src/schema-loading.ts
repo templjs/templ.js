@@ -94,6 +94,27 @@ function loadJsonFromFile(filePath: string, cache: Map<string, unknown>): unknow
   return parsed;
 }
 
+function isRemoteSchemaPath(pathOrUrl: string): boolean {
+  return pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://');
+}
+
+function preserveSchemaRefNode(
+  node: JsonRecord,
+  currentFilePath: string,
+  currentRoot: unknown,
+  cache: Map<string, unknown>,
+  seenRefs: Set<string>
+): JsonRecord {
+  const preserved: JsonRecord = {};
+  for (const [key, value] of Object.entries(node)) {
+    preserved[key] =
+      key === '$ref'
+        ? value
+        : dereferenceSchemaNode(value, currentFilePath, currentRoot, cache, seenRefs);
+  }
+  return preserved;
+}
+
 function resolveFragmentSchema(
   rootSchema: unknown,
   fragment: string | undefined
@@ -161,6 +182,10 @@ function dereferenceSchemaNode(
     let targetFilePath = currentFilePath;
 
     if (source) {
+      if (isRemoteSchemaPath(source) || isRemoteSchemaPath(currentFilePath)) {
+        return preserveSchemaRefNode(node, currentFilePath, currentRoot, cache, seenRefs);
+      }
+
       targetFilePath = path.isAbsolute(source)
         ? source
         : path.resolve(path.dirname(currentFilePath), source);
@@ -208,7 +233,36 @@ function dereferenceSchemaNode(
 }
 
 export function resolveWorkspaceRoot(params: InitializeParamsLike): string | undefined {
-  const workspaceUri = params.workspaceFolders?.[0]?.uri ?? params.rootUri ?? undefined;
+  let workspaceUri: string | undefined;
+  const documentUri = params.initializationOptions?.documentContext?.uri;
+
+  if (documentUri && params.workspaceFolders?.length) {
+    try {
+      const documentPath = documentUri.startsWith('file://')
+        ? fileURLToPath(documentUri)
+        : documentUri;
+      let bestMatch: { uri: string; path: string } | undefined;
+      for (const folder of params.workspaceFolders) {
+        const folderPath = folder.uri.startsWith('file://')
+          ? fileURLToPath(folder.uri)
+          : folder.uri;
+        const relativePath = path.relative(folderPath, documentPath);
+        if (
+          relativePath === '' ||
+          (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))
+        ) {
+          if (!bestMatch || folderPath.length > bestMatch.path.length) {
+            bestMatch = { uri: folder.uri, path: folderPath };
+          }
+        }
+      }
+      workspaceUri = bestMatch?.uri;
+    } catch {
+      workspaceUri = undefined;
+    }
+  }
+
+  workspaceUri ??= params.workspaceFolders?.[0]?.uri ?? params.rootUri ?? undefined;
   if (!workspaceUri) {
     return undefined;
   }

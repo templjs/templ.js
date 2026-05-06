@@ -214,6 +214,16 @@ describe('TempljsVirtualDocumentProvider', () => {
     expect(provider.toSourceUri(customVirtual as never).fsPath).toBe(
       '/workspace/file.templ.custom'
     );
+
+    const windowsVirtual = new MockUri(
+      'templjs-virtual',
+      'host',
+      '/C:/workspace/page.md.templ.md',
+      'C:\\workspace\\page.md.templ.md'
+    );
+    expect(provider.toSourceUri(windowsVirtual as never).fsPath).toBe(
+      'C:\\workspace\\page.md.templ'
+    );
   });
 
   it('fills source offset gaps when cleaned mappings contain duplicates or out-of-range values', async () => {

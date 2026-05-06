@@ -123,7 +123,7 @@ await Promise.all([
   }),
   esbuild.build({
     ...sharedOptions,
-    entryPoints: ['src/server.ts'],
+    entryPoints: ['src/server-main.ts'],
     outfile: 'dist/server.js',
   }),
 ]);

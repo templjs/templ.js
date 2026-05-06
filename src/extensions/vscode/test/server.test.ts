@@ -113,7 +113,7 @@ describe('language-server-bootstrap', () => {
     expect(onInitialize).toHaveBeenCalledWith(expect.any(Function));
     expect(onInitialized).toHaveBeenCalledWith(initialized);
     expect(onShutdown).toHaveBeenCalledWith(shutdown);
-    expect(listen).toHaveBeenCalled();
+    expect(listen).not.toHaveBeenCalled();
 
     expect(onNotification).not.toHaveBeenCalled();
     expect(onDidOpenTextDocument).not.toHaveBeenCalled();
@@ -426,5 +426,15 @@ describe('serverTesting helpers', () => {
     expect(consoleLog).toHaveBeenCalledWith(
       '[templjs] Host diagnostics skipped for file:///doc.md.tpl: kaboom'
     );
+  });
+
+  it('does not re-listen once the server was started', async () => {
+    const mod = await import('../src/server');
+
+    mod.startTempljsLanguageServer();
+    expect(listen.mock.calls.length).toBe(1);
+
+    mod.startTempljsLanguageServer();
+    expect(listen.mock.calls.length).toBe(1);
   });
 });
