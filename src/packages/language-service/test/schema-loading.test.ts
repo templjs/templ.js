@@ -219,7 +219,7 @@ describe('language-service schema-loading coverage branches', () => {
     expect(loadSchemaSourceSync('#/definitions/item', undefined, undefined)).toEqual({});
     expect(log).toHaveBeenCalledWith(
       expect.stringContaining(
-        "[templjs] Error loading schema from path '/workspace/schemas/missing.json':"
+        `[templjs] Error loading schema from path '${path.resolve('/workspace', 'schemas/missing.json')}':`
       )
     );
   });
