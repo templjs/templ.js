@@ -281,6 +281,33 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
   const prettierHostLanguages = getPrettierHostLanguagesFromSettings();
 
   const clientOptions: LanguageClientOptions = {
+    documentSelector: [
+      { scheme: 'file', language: 'templjs-yaml' },
+      { scheme: 'file', language: 'templjs-json' },
+      { scheme: 'file', language: 'templjs-markdown' },
+      { scheme: 'file', language: 'templjs-html' },
+      { scheme: 'file', pattern: '**/*.md.templ' },
+      { scheme: 'file', pattern: '**/*.md.tmpl' },
+      { scheme: 'file', pattern: '**/*.md.tpl' },
+      { scheme: 'file', pattern: '**/*.json.templ' },
+      { scheme: 'file', pattern: '**/*.json.tmpl' },
+      { scheme: 'file', pattern: '**/*.json.tpl' },
+      { scheme: 'file', pattern: '**/*.yaml.templ' },
+      { scheme: 'file', pattern: '**/*.yaml.tmpl' },
+      { scheme: 'file', pattern: '**/*.yaml.tpl' },
+      { scheme: 'file', pattern: '**/*.yml.templ' },
+      { scheme: 'file', pattern: '**/*.yml.tmpl' },
+      { scheme: 'file', pattern: '**/*.yml.tpl' },
+      { scheme: 'file', pattern: '**/*.html.templ' },
+      { scheme: 'file', pattern: '**/*.html.tmpl' },
+      { scheme: 'file', pattern: '**/*.html.tpl' },
+    ],
+    synchronize: {
+      fileEvents: [
+        vscode.workspace.createFileSystemWatcher('**/*.{md,json,yaml,yml,html}.{templ,tmpl,tpl}'),
+        vscode.workspace.createFileSystemWatcher('**/*.{json,yaml,yml}'),
+      ],
+    },
     middleware: {
       provideCompletionItem: (document, position, context, token, next) => {
         const startedAt = Date.now();
@@ -357,33 +384,6 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
         });
       },
     },
-    documentSelector: [
-      { scheme: 'file', language: 'templjs-yaml' },
-      { scheme: 'file', language: 'templjs-json' },
-      { scheme: 'file', language: 'templjs-markdown' },
-      { scheme: 'file', language: 'templjs-html' },
-      { scheme: 'file', pattern: '**/*.md.templ' },
-      { scheme: 'file', pattern: '**/*.md.tmpl' },
-      { scheme: 'file', pattern: '**/*.md.tpl' },
-      { scheme: 'file', pattern: '**/*.json.templ' },
-      { scheme: 'file', pattern: '**/*.json.tmpl' },
-      { scheme: 'file', pattern: '**/*.json.tpl' },
-      { scheme: 'file', pattern: '**/*.yaml.templ' },
-      { scheme: 'file', pattern: '**/*.yaml.tmpl' },
-      { scheme: 'file', pattern: '**/*.yaml.tpl' },
-      { scheme: 'file', pattern: '**/*.yml.templ' },
-      { scheme: 'file', pattern: '**/*.yml.tmpl' },
-      { scheme: 'file', pattern: '**/*.yml.tpl' },
-      { scheme: 'file', pattern: '**/*.html.templ' },
-      { scheme: 'file', pattern: '**/*.html.tmpl' },
-      { scheme: 'file', pattern: '**/*.html.tpl' },
-    ],
-    synchronize: {
-      fileEvents: [
-        vscode.workspace.createFileSystemWatcher('**/*.{md,json,yaml,yml,html}.{templ,tmpl,tpl}'),
-        vscode.workspace.createFileSystemWatcher('**/*.{json,yaml,yml}'),
-      ],
-    },
     outputChannel,
     traceOutputChannel: outputChannel,
     initializationOptions: {
@@ -404,6 +404,16 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
     clientOptions
   );
 
+  const synchronizedFileEvents = clientOptions.synchronize?.fileEvents;
+  const fileEvents = Array.isArray(synchronizedFileEvents)
+    ? synchronizedFileEvents
+    : synchronizedFileEvents
+      ? [synchronizedFileEvents]
+      : [];
+
+  for (const fileEvent of fileEvents) {
+    context.subscriptions.push(fileEvent);
+  }
   context.subscriptions.push(languageClient);
   outputChannel?.appendLine('[templjs] Language client created');
 

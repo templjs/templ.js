@@ -14,7 +14,7 @@ Behavior:
 
 - converts newly opened or reopened non-draft PRs back to draft
 - converts ready PRs with new commits back to draft so CI can rerun before review automation resumes
-- allows `ready_for_review` only when all observed non-CodeRabbit checks on the PR head commit are green
+- allows `ready_for_review` only when all observed checks on the PR head commit are green, excluding CodeRabbit and the draft-pr-gate workflow's own check
 
 Policy posture:
 
