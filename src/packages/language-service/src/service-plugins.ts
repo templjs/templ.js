@@ -21,6 +21,7 @@ import {
   resolveDocumentSchemaSources,
 } from './schema-loading.js';
 import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
+import { resolveAdapterRuntimeManifest } from './runtime-manifest.js';
 
 type PluginOptions = ServicePluginOrchestrationOptions;
 
@@ -31,7 +32,6 @@ type ResolvedSchemaOptions = {
   contentSchemaUri?: string;
 };
 
-const SUPPORTED_PRETTIER_HOST_LANGUAGES = new Set(['markdown', 'json', 'yaml', 'html']);
 const DEFAULT_MARKDOWN_DIAGNOSTICS_OPTIONS = {
   validateReferences: 'warning',
   validateFragmentLinks: 'warning',
@@ -466,24 +466,14 @@ function createJsonHostServicePlugin(): LanguageServicePlugin {
   };
 }
 
-function getConfiguredPrettierHostLanguages(options: PluginOptions): string[] {
-  const configured = options.initializationOptions?.prettierHostLanguages;
-  if (!Array.isArray(configured)) {
-    return [];
-  }
-
-  const normalized = configured
-    .filter((value): value is string => typeof value === 'string')
-    .map((value) => value.trim().toLowerCase())
-    .filter((value) => SUPPORTED_PRETTIER_HOST_LANGUAGES.has(value));
-
-  return Array.from(new Set(normalized));
-}
-
 function createPrettierHostServicePlugin(
   options: PluginOptions
 ): LanguageServicePlugin | undefined {
-  const languages = getConfiguredPrettierHostLanguages(options);
+  const runtimeManifest = resolveAdapterRuntimeManifest(options);
+  const prettierEntry = runtimeManifest.adapters.find(
+    (adapter) => adapter.id === 'templjs-prettier-host'
+  );
+  const languages = prettierEntry?.languageIds ?? [];
   if (languages.length === 0) {
     return undefined;
   }
@@ -734,6 +724,11 @@ function createTempljsMarkdownDiagnosticsPlugin(options: PluginOptions): Languag
 }
 
 export function createServicePlugins(options: PluginOptions): LanguageServicePlugin[] {
+  const runtimeManifest = resolveAdapterRuntimeManifest(options);
+  options.log?.(
+    `[templjs-runtime] manifest version=${runtimeManifest.version} adapters=${runtimeManifest.adapters.length}`
+  );
+
   const prettierPlugin = createPrettierHostServicePlugin(options);
 
   return [
@@ -775,8 +770,8 @@ export const servicePluginTesting = {
   createYamlDiagnosticsPlugin,
   createHtmlHostServicePlugin,
   createJsonHostServicePlugin,
-  getConfiguredPrettierHostLanguages,
   createPrettierHostServicePlugin,
+  resolveAdapterRuntimeManifest,
 };
 /* v8 ignore stop */
 /* c8 ignore stop */
