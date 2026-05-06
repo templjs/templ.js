@@ -5,12 +5,16 @@ title: '100: Replace root-only virtual code with root + embedded model'
 summary: Implement TemplJS root virtual code and explicit host, DSL, semantic, and frontmatter embedded virtual documents with source maps
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 14
 actual: 6
+completed_date: '2026-05-06'
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/75
   evidence:
     - '[[record-100-root-and-embedded-virtual-code-model-cutover-evidence-1]]'
 ---
