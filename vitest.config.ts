@@ -6,6 +6,15 @@ export default defineConfig({
     alias: {
       '@templjs/core': path.resolve(__dirname, 'src/packages/core/src/index.ts'),
       '@templjs/volar': path.resolve(__dirname, 'src/packages/volar/src/index.ts'),
+      '@templjs/language-core': path.resolve(__dirname, 'src/packages/language-core/src/index.ts'),
+      '@templjs/language-service': path.resolve(
+        __dirname,
+        'src/packages/language-service/src/index.ts'
+      ),
+      '@templjs/language-server': path.resolve(
+        __dirname,
+        'src/packages/language-server/src/index.ts'
+      ),
     },
   },
   test: {
