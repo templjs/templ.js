@@ -5,11 +5,18 @@ title: '102: Route semantics through core and context graph end-to-end'
 summary: Remove Volar-local semantic scanners and ensure completion/hover/definition/diagnostics share one core/context-graph semantic snapshot
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 12
 actual: 3
+completed_date: '2026-05-06'
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/75
+  evidence:
+    - '[[record-102-semantic-routing-core-context-graph-cutover-evidence-1]]'
 ---
 
 ## Goal
