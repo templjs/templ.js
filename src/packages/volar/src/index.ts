@@ -735,6 +735,7 @@ function cleanWithCoreTokenizer(
   const chars = [...source];
   const tokens = tokenize(source, {
     delimiters: toCoreDelimiterConfig(delimiters),
+    recoverUnclosedDelimiters: true,
   });
 
   for (const token of tokens) {

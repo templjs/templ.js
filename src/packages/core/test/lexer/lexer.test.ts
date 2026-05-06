@@ -387,6 +387,17 @@ describe('Lexer', () => {
           );
         });
 
+        it('should recover unclosed delimiters when recoverUnclosedDelimiters is enabled', () => {
+          const tokens = tokenize('Line 1\n  {{- value', {
+            recoverUnclosedDelimiters: true,
+          });
+
+          expect(tokens).toHaveLength(2);
+          expect(tokens[0].type).toBe(TokenType.TEXT);
+          expect(tokens[1].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[1].content).toBe('{{- value');
+        });
+
         it('should trim following whitespace to empty text without emitting a text token', () => {
           const tokens = tokenize('{{ value -}}   ');
 
