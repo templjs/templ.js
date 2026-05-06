@@ -17,6 +17,37 @@ const connection = createConnection();
 const server = createServer(connection);
 console.error('[templjs-server] Connection and server created');
 
+let crashGuardsInstalled = false;
+
+function formatCrashReason(reason: unknown): string {
+  if (reason instanceof Error) {
+    return `${reason.name}: ${reason.message}\n${reason.stack ?? ''}`.trim();
+  }
+
+  return String(reason);
+}
+
+function installCrashGuards(): void {
+  if (crashGuardsInstalled) {
+    return;
+  }
+  crashGuardsInstalled = true;
+
+  process.on('uncaughtException', (error) => {
+    const message = formatCrashReason(error);
+    console.error(`[templjs-server] uncaughtException ${message}`);
+    connection.console.error(`[templjs-server] uncaughtException ${message}`);
+  });
+
+  process.on('unhandledRejection', (reason) => {
+    const message = formatCrashReason(reason);
+    console.error(`[templjs-server] unhandledRejection ${message}`);
+    connection.console.error(`[templjs-server] unhandledRejection ${message}`);
+  });
+}
+
+installCrashGuards();
+
 let storedWorkspaceRoot: string | undefined;
 let storedInitializationOptions: ServerInitializationOptions | undefined;
 
