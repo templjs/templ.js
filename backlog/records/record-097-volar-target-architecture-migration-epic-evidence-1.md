@@ -2,7 +2,7 @@
 $schema: schemas/work-management/frontmatter/record.json
 id: record:097-volar-target-architecture-migration-epic-evidence-1
 title: '097: Volar target architecture migration epic completion evidence'
-summary: Epic WI-097 closure evidence linking merged PR #75 and child stage evidence records for WI-098 through WI-104
+summary: 'Epic WI-097 closure evidence linking merged PR #75 and child stage evidence records for WI-098 through WI-104'
 type: record
 subtype: test-result
 lifecycle: active
