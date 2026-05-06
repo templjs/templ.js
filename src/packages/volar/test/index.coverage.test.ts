@@ -64,6 +64,14 @@ describe('volar index coverage branches', () => {
     );
   });
 
+  it('applies trim-marker semantics to adjacent whitespace in cleaned content', () => {
+    const source = 'A\n{%- if show -%}\nB';
+    const cleaned = cleanTemplateContent(source);
+
+    expect(cleaned.cleaned).toBe('A                 B');
+    expect(cleaned.originalToCleanedOffsets).toHaveLength(source.length + 1);
+  });
+
   it('returns undefined for unsupported language ids and rebuilds virtual code from a non-templjs cache entry', () => {
     const plugin = createTempljsLanguagePlugin();
     expect(plugin.getLanguageId(URI.parse('file:///note.txt'))).toBeUndefined();
