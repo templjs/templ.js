@@ -222,7 +222,7 @@ function dereferenceSchemaNode(
       return mergeSchemaRecords(derefTarget, derefRest);
     }
 
-    return isJsonRecord(derefTarget) ? derefTarget : derefRest;
+    return derefRest;
   }
 
   const next: JsonRecord = {};

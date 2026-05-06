@@ -51,13 +51,16 @@ vi.mock('@volar/language-server/node', () => ({
 
 describe('language-server formatting fallback', () => {
   it('initializes successfully when the connection has no document formatting handler', async () => {
-    await import('../src/index.ts');
+    const mod = await import('../src/index.ts');
     const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => Promise<{
       capabilities: { documentFormattingProvider?: boolean };
     }>;
     const result = await initializeHandler({ rootUri: 'file:///workspace' });
 
-    expect(result.capabilities.documentFormattingProvider).toBe(true);
-    expect(listen).toHaveBeenCalled();
+    expect(result.capabilities.documentFormattingProvider).toBe(false);
+    expect(listen).not.toHaveBeenCalled();
+
+    mod.startTempljsLanguageServer();
+    expect(listen).toHaveBeenCalledTimes(1);
   });
 });

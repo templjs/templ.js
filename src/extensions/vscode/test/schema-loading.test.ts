@@ -514,6 +514,58 @@ describe('schema-loading', () => {
     );
   });
 
+  it('falls back when referenced local schema files are malformed or resolve to scalars', async () => {
+    const tempDir = makeTempDir();
+    const brokenRefPath = path.join(tempDir, '.templjs', 'broken-ref.json');
+    const brokenTargetPath = path.join(tempDir, '.templjs', 'broken-target.json');
+    const scalarRefPath = path.join(tempDir, '.templjs', 'scalar-ref.json');
+    const scalarTargetPath = path.join(tempDir, '.templjs', 'scalar-target.json');
+
+    writeJson(scalarTargetPath, {
+      $defs: {
+        flag: true,
+      },
+    });
+    writeJson(brokenRefPath, {
+      $defs: {
+        item: {
+          $ref: './broken-target.json#/$defs/item',
+          type: 'object',
+          properties: {
+            fallback: { type: 'string' },
+          },
+        },
+      },
+    });
+    writeJson(scalarRefPath, {
+      $defs: {
+        item: {
+          $ref: './scalar-target.json#/$defs/flag',
+          type: 'string',
+        },
+      },
+    });
+    mkdirSync(path.dirname(brokenTargetPath), { recursive: true });
+    writeFileSync(brokenTargetPath, '{"$defs":', 'utf8');
+
+    await expect(loadSchemaSource(`${brokenRefPath}#/$defs/item`, tempDir)).resolves.toEqual({
+      schema: {
+        type: 'object',
+        properties: {
+          fallback: { type: 'string' },
+        },
+      },
+      schemaUri: pathToFileURL(brokenRefPath).toString(),
+    });
+
+    await expect(loadSchemaSource(`${scalarRefPath}#/$defs/item`, tempDir)).resolves.toEqual({
+      schema: {
+        type: 'string',
+      },
+      schemaUri: pathToFileURL(scalarRefPath).toString(),
+    });
+  });
+
   it('loads schema sources synchronously for local files and URL sources when cached', () => {
     const tempDir = makeTempDir();
     const schemaPath = path.join(tempDir, '.templjs', 'frontmatter.json');
@@ -568,6 +620,50 @@ describe('schema-loading', () => {
       schemaUri: remoteSchemaUrl,
     });
     expect(loadSchemaSourceSync('.templjs/frontmatter.json#/$defs/missing', tempDir)).toEqual({});
+  });
+
+  it('reuses cached local schema content across repeated sync loads', () => {
+    const tempDir = makeTempDir();
+    const schemaPath = path.join(tempDir, '.templjs', 'frontmatter.json');
+    const schemaUrl = pathToFileURL(schemaPath).toString();
+    const cache = new Map<string, unknown>();
+
+    writeJson(schemaPath, {
+      $defs: {
+        item: {
+          type: 'object',
+          properties: {
+            title: { type: 'string' },
+          },
+        },
+      },
+    });
+
+    expect(loadSchemaSourceSync(`${schemaUrl}#/$defs/item`, tempDir, undefined, { cache })).toEqual(
+      {
+        schema: {
+          type: 'object',
+          properties: {
+            title: { type: 'string' },
+          },
+        },
+        schemaUri: schemaUrl,
+      }
+    );
+
+    writeFileSync(schemaPath, '{"$defs":', 'utf8');
+
+    expect(loadSchemaSourceSync(`${schemaUrl}#/$defs/item`, tempDir, undefined, { cache })).toEqual(
+      {
+        schema: {
+          type: 'object',
+          properties: {
+            title: { type: 'string' },
+          },
+        },
+        schemaUri: schemaUrl,
+      }
+    );
   });
 
   it('loads URL schema sources synchronously via sync URL loader when cache is cold', () => {
@@ -729,6 +825,14 @@ describe('schema-loading', () => {
       schemaPath: '.templjs/default-frontmatter.json',
       contentSchemaPath: '.templjs/default-content.json',
     });
+  });
+
+  it('returns undefined for invalid file workspace URIs', () => {
+    expect(
+      resolveWorkspaceRoot({
+        workspaceFolders: [{ uri: 'file:///%E0%A4%A' }],
+      })
+    ).toBeUndefined();
   });
 
   it('prefers the workspace folder containing the current document in multi-root workspaces', () => {
