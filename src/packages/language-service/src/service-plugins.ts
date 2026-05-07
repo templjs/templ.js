@@ -18,7 +18,10 @@ import { create as createVolarPrettierServicePlugin } from 'volar-service-pretti
 import { create as createVolarYamlServicePlugin } from 'volar-service-yaml';
 import { loadSchemaSourceSync, resolveDocumentSchemaSources } from './schema-loading.js';
 import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
-import { resolveAdapterRuntimeManifest } from './runtime-manifest.js';
+import {
+  getConfiguredPrettierHostLanguages,
+  resolveAdapterRuntimeManifest,
+} from './runtime-manifest.js';
 
 type PluginOptions = ServicePluginOrchestrationOptions;
 
@@ -768,6 +771,7 @@ export const servicePluginTesting = {
   createHtmlHostServicePlugin,
   createJsonHostServicePlugin,
   createPrettierHostServicePlugin,
+  getConfiguredPrettierHostLanguages,
   resolveAdapterRuntimeManifest,
 };
 /* v8 ignore stop */

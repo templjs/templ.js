@@ -53,7 +53,7 @@ const BASE_ADAPTER_ENTRIES: AdapterRuntimeManifestEntry[] = [
 
 const SUPPORTED_PRETTIER_HOST_LANGUAGES = new Set(['markdown', 'json', 'yaml', 'html']);
 
-function getConfiguredPrettierHostLanguages(
+export function getConfiguredPrettierHostLanguages(
   options: ServicePluginOrchestrationOptions
 ): string[] {
   const configured = options.initializationOptions?.prettierHostLanguages;
