@@ -15,7 +15,7 @@ Use this file as an execution tracker for reconciliation work. It does not repla
 
 ## Execution Model
 
-1. Phase A: Status normalization (`update-work-item` transitions before changes)
+1. Phase A: Status normalization (`updating-work-item` transitions before changes)
 2. Phase B: Implementation and verification
 3. Phase C: Checklist audit rerun (`auditing-backlog-checkboxes`)
 
@@ -25,7 +25,7 @@ For WI-011 and WI-024, a review gate is required while in `proposed`; the user s
 
 ### Phase A: Status normalization
 
-- [x] Use `update-work-item` to move this item out of closed before additional work.
+- [x] Use `updating-work-item` to move this item out of closed before additional work.
       Evidence: WI reopened from archive on 2026-03-02, transitioned through `in-progress` during refactor session. Commits 9b976b1 (operator precedence fix), ccfdbe3 (parser extraction), f4e879a (test config fix), 913ee9b (edge case tests), a9aeb34 (JSDoc). Closed via commit 3cb2940, archived via commit b5cd723.
 
 ### Phase B: Implementation and verification
@@ -42,7 +42,7 @@ For WI-011 and WI-024, a review gate is required while in `proposed`; the user s
 
 ### Phase A: Status normalization
 
-- [x] Use `update-work-item` to move this item out of closed before further implementation.
+- [x] Use `updating-work-item` to move this item out of closed before further implementation.
       Evidence: WI moved from `status: closed` to `status: ready-for-review` with `status_reason: verification-pending` in [`backlog/008_query_engine.md`](../../backlog/008_query_engine.md) after reconciliation implementation on 2026-03-02.
 
 ### Phase B: Implementation and verification
@@ -67,14 +67,14 @@ For WI-011 and WI-024, a review gate is required while in `proposed`; the user s
 
 ### Phase A: Status normalization and review gate
 
-- [x] Use `update-work-item` to move this item to `proposed` before further revision.
+- [x] Use `updating-work-item` to move this item to `proposed` before further revision.
       Evidence: [`backlog/011_renderer_tests.md`](../../backlog/011_renderer_tests.md) moved to `status: proposed` with `status_reason: blocked-by-dependency` on 2026-03-02 after WI-008 was reopened for reconciliation.
 - [x] Clarify/rewrite the ambiguous functions-directory checkbox into verifiable subclaims.
       Evidence: Replaced vague "Create `packages/core/tests/functions/`" task with explicit verification steps: - Verify test file existence for each function category (string/number/datetime/array/object) - Validate minimum test counts per category match WI-011 targets (150/100/80/120/80 tests) - Confirm 95%+ coverage per category via `pnpm test:coverage` - Check that both WI baseline and extended built-in functions are covered by tests
       Updated in reconciliation plan on 2026-03-03.
 - [x] Prompt for user review. User will set status to `ready` once approved.
       Evidence: User approved WI-011 clarifications on 2026-03-03. Ready for status transition.
-- [x] Use `update-work-item` to move this item to `in-progress` before further implementation.
+- [x] Use `updating-work-item` to move this item to `in-progress` before further implementation.
       Evidence: WI-011 transitioned `proposed` → `ready` → `in-progress` with `status_reason: implementing-clarified-verification` on 2026-03-03.
 
 ### Phase B: Implementation and verification
@@ -94,14 +94,14 @@ For WI-011 and WI-024, a review gate is required while in `proposed`; the user s
 
 ### Phase A: Status normalization and review gate
 
-- [x] Use `update-work-item` to move this item to `proposed` before further revision.
+- [x] Use `updating-work-item` to move this item to `proposed` before further revision.
       Evidence: [`backlog/024_work_item_guardrails.md`](../../backlog/024_work_item_guardrails.md) moved to `status: proposed` with `status_reason: awaiting-approval` on 2026-03-02 to satisfy the review gate before further implementation.
 - [x] Clarify/rewrite the normalization checkbox into explicit, verifiable checks.
-      Evidence: Replaced vague "Normalize all current backlog items" task with explicit verification steps: - Audit all `status: closed` items to verify merged PR links exist in `links.pull_requests[]` - Verify `test_results[]` field populated for all `closed` items with passing evidence - Add missing `links.depends_on` entries to all work items based on dependency graph analysis - Update all wikilinks referencing renamed items (025-029) across entire backlog/ - Validate all numeric IDs (no decimals remain) via validation script - Ensure skill files (create/update/finalize-work-item) enforce dependency & evidence gates
+      Evidence: Replaced vague "Normalize all current backlog items" task with explicit verification steps: - Audit all `status: closed` items to verify merged PR links exist in `links.pull_requests[]` - Verify `test_results[]` field populated for all `closed` items with passing evidence - Add missing `links.depends_on` entries to all work items based on dependency graph analysis - Update all wikilinks referencing renamed items (025-029) across entire backlog/ - Validate all numeric IDs (no decimals remain) via validation script - Ensure skill files (create/updating/finalizing-work-item) enforce dependency & evidence gates
       Updated in reconciliation plan on 2026-03-03.
 - [x] Prompt for user review. User will set status to `ready` once approved.
       Evidence: User approved WI-024 clarifications on 2026-03-03. Ready for status transition.
-- [x] Use `update-work-item` to move this item to `in-progress` before further implementation.
+- [x] Use `updating-work-item` to move this item to `in-progress` before further implementation.
       Evidence: WI-024 transitioned `proposed` → `ready` → `in-progress` with `status_reason: implementing-clarified-verification` on 2026-03-03.
 
 ### Phase B: Implementation and verification
@@ -110,7 +110,7 @@ For WI-011 and WI-024, a review gate is required while in `proposed`; the user s
       Evidence: Verified on 2026-03-03. CORRECTED FINDINGS: - ✅ Validation script EXISTS at `scripts/ci/lint-frontmatter.ts` (validates schema, dependencies, status transitions) - ✅ npm script EXISTS: `lint:frontmatter` runs `tsx scripts/ci/lint-frontmatter.ts` - ✅ Pre-push hook WIRED: `.husky/pre-push` calls `hooks:pre-push` which includes `lint:frontmatter` - ✅ CI job EXISTS: `.github/workflows/ci.yml` has `lint-work-item-frontmatter` job running `ci:frontmatter` - ✅ Work items 025, 027, 028 ARCHIVED (completed, moved to `backlog/archive/`) - ✅ Work items 026, 029 in active backlog (both in valid states) - ✅ Dependency validation IMPLEMENTED: checks `links.depends_on` exists and closed items have closed dependencies - ✅ Wikilink updates COMPLETE: No decimal ID references remain (verified via grep) - ⚠️ Status transition validation DISABLED (`disableTransitionCheck = true` in lint-frontmatter.ts:155)
 - [x] Add/fix verification for merged-PR/CI validation (not just PR/test field presence).
       Evidence: Verified on 2026-03-03. PARTIAL IMPLEMENTATION: - ✅ Schema validation enforces `links.pull_requests` is an array (required field per schema) - ✅ Schema validation enforces `test_results` is an array with timestamp/note fields - ❌ NO runtime check that closed items have non-empty `links.pull_requests[]` (schema allows empty arrays) - ❌ NO validation that PRs are actually merged (no GitHub API calls) - ❌ NO validation that CI passed for linked PRs - ✅ Dependency blocking logic works correctly (closed items cannot depend on non-closed items)
-      ASSESSMENT: Core validation infrastructure complete. "Merged PR + passing CI" enforcement for closed items is an optional enhancement beyond minimal viable guardrails. - ❌ Agent skills (create/update/finalize-work-item) DO NOT EXIST yet (WI-024 tasks incomplete) - ⚠️ Skills are optional enhancement; pre-push hook + CI validation provide minimal viable enforcement
+      ASSESSMENT: Core validation infrastructure complete. "Merged PR + passing CI" enforcement for closed items is an optional enhancement beyond minimal viable guardrails. - ❌ Agent skills (create/updating/finalizing-work-item) DO NOT EXIST yet (WI-024 tasks incomplete) - ⚠️ Skills are optional enhancement; pre-push hook + CI validation provide minimal viable enforcement
 
 ### Phase C: Checklist audit rerun
 
@@ -137,14 +137,14 @@ For WI-011 and WI-024, a review gate is required while in `proposed`; the user s
 
 **WI-024 Optional Enhancements (Future Work):**
 
-1. Agent skills (create/update/finalize-work-item) - future workflow automation
+1. Agent skills (create/updating/finalizing-work-item) - future workflow automation
 2. GitHub API validation for merged PRs - requires API integration
 3. CI status validation for linked PRs - requires GitHub API/webhooks
 4. Enable status transition enforcement - currently disabled in lint-frontmatter.ts
 
 ## Command and Skill Reference
 
-- `update-work-item`: Use for status transitions before and during reconciliation execution.
+- `updating-work-item`: Use for status transitions before and during reconciliation execution.
 - `executing-backlog`: Use to execute remaining scoped implementation tasks per work item.
 - `auditing-backlog-checkboxes`: Use after implementation to validate checklist evidence and remaining unchecked items.
 - Coverage/test commands for WI-007/008/011: `cd src/packages/core && pnpm test:coverage`, `cd src/packages/core && pnpm test -- test/query-engine/query-engine.test.ts`, and focused package tests as needed.

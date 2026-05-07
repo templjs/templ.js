@@ -102,6 +102,27 @@ function extractCanonicalRelationshipDependencies(content: string): string[] {
   return refs;
 }
 
+function extractUncheckedChecklistItemsFromSection(content: string, heading: string): string[] {
+  const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const sectionRegex = new RegExp(`^## ${escapedHeading}\\s*\\n([\\s\\S]*?)(?=^##\\s|$)`, 'm');
+  const sectionMatch = content.match(sectionRegex);
+  if (!sectionMatch) {
+    return [];
+  }
+
+  const sectionBody = sectionMatch[1];
+  const uncheckedItems: string[] = [];
+  const uncheckedRegex = /^\s*-\s*\[\s\]\s+(.*)$/gm;
+  for (const match of sectionBody.matchAll(uncheckedRegex)) {
+    const item = match[1]?.trim();
+    if (item) {
+      uncheckedItems.push(item);
+    }
+  }
+
+  return uncheckedItems;
+}
+
 function collectBacklogMarkdownFiles(dirPath: string, relativePrefix = ''): string[] {
   const files: string[] = [];
 
@@ -464,8 +485,55 @@ function validateFrontmatter(): boolean {
       // Work-item-only validations: status transitions and dependency checks
       if (type === 'work-item') {
         const status = frontmatter.status as string;
-
         const previousStatus = getPreviousStatusFromGit(file);
+
+        const pullRequests = Array.isArray(frontmatter.links?.pull_requests)
+          ? (frontmatter.links.pull_requests as string[])
+          : [];
+
+        if (status === 'ready-for-review' && pullRequests.length === 0) {
+          hasViolations = true;
+          hasItemViolations = true;
+          if (!validator.errors || validator.errors.length === 0) {
+            console.error(`❌ ${file}`);
+          }
+
+          console.error(
+            "   /links/pull_requests: Work item is 'ready-for-review' but has no linked pull request"
+          );
+        }
+
+        const isEnteringClosed = status === 'closed' && previousStatus !== 'closed';
+
+        if (isEnteringClosed) {
+          const statusReason =
+            typeof frontmatter.status_reason === 'string' ? frontmatter.status_reason.trim() : '';
+          const completedDate =
+            typeof frontmatter.completed_date === 'string' ? frontmatter.completed_date.trim() : '';
+
+          if (!statusReason) {
+            hasViolations = true;
+            hasItemViolations = true;
+            if (!validator.errors || validator.errors.length === 0) {
+              console.error(`❌ ${file}`);
+            }
+
+            console.error("   /status_reason: Work item is 'closed' but status_reason is missing");
+          }
+
+          if (!completedDate) {
+            hasViolations = true;
+            hasItemViolations = true;
+            if (!validator.errors || validator.errors.length === 0) {
+              console.error(`❌ ${file}`);
+            }
+
+            console.error(
+              "   /completed_date: Work item is 'closed' but completed_date is missing"
+            );
+          }
+        }
+
         const transitionError =
           typeof status === 'string'
             ? validateStatusTransition(status, previousStatus, statusTransitions)
@@ -529,6 +597,38 @@ function validateFrontmatter(): boolean {
                 );
               }
             }
+          }
+        }
+
+        if (isEnteringClosed) {
+          const uncheckedTasks = extractUncheckedChecklistItemsFromSection(content, 'Tasks');
+          const uncheckedAcceptance = extractUncheckedChecklistItemsFromSection(
+            content,
+            'Acceptance Criteria'
+          );
+
+          if (uncheckedTasks.length > 0) {
+            hasViolations = true;
+            hasItemViolations = true;
+            if (!validator.errors || validator.errors.length === 0) {
+              console.error(`❌ ${file}`);
+            }
+
+            console.error(
+              `   /status: Work item is 'closed' but has unchecked Tasks checklist items (${uncheckedTasks.length})`
+            );
+          }
+
+          if (uncheckedAcceptance.length > 0) {
+            hasViolations = true;
+            hasItemViolations = true;
+            if (!validator.errors || validator.errors.length === 0) {
+              console.error(`❌ ${file}`);
+            }
+
+            console.error(
+              `   /status: Work item is 'closed' but has unchecked Acceptance Criteria checklist items (${uncheckedAcceptance.length})`
+            );
           }
         }
       }
