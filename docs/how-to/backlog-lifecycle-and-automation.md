@@ -28,7 +28,7 @@ When `.doc-vader/backlog-consumer.json` has `automation.autoCloseOnMerge: true`:
 - Backlog automation performs close/archive transitions after merge validation.
 - Contributors should not manually close/archive work items during normal feature execution.
 - Automatic sweep now runs on merged pull-request `closed` events (in addition to manual `workflow_dispatch`).
-- A scheduled sweep runs daily to reconcile missed transitions (`cron: 17 9 * * *`).
+- A scheduled sweep runs daily to reconcile missed transitions (`cron: 17 9 * * *`, UTC).
 
 ## Post-Merge Hygiene
 
