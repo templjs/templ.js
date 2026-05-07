@@ -107,7 +107,9 @@ describe('renderCommand', () => {
     });
     vi.mocked(renderTemplate).mockReturnValue('Hello XML');
 
-    const output = await renderCommand('template.templ', 'data.xml');
+    const output = await renderCommand('template.templ', 'data.input', {
+      inputFormat: 'xml',
+    });
 
     expect(output).toBe('Hello XML');
     expect(renderTemplate).toHaveBeenCalledWith(
@@ -120,6 +122,45 @@ describe('renderCommand', () => {
       { throwOnError: true }
     );
   });
+
+  it.each([
+    {
+      format: 'json' as const,
+      payload: '{"name":"JsonOverride"}',
+      expectedData: { name: 'JsonOverride' },
+    },
+    {
+      format: 'yaml' as const,
+      payload: 'name: YamlOverride',
+      expectedData: { name: 'YamlOverride' },
+    },
+    {
+      format: 'toml' as const,
+      payload: 'name = "TomlOverride"',
+      expectedData: { name: 'TomlOverride' },
+    },
+  ])(
+    'parses $format payloads with explicit input format override on non-standard file extensions',
+    async ({ format, payload, expectedData }) => {
+      vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
+      vi.mocked(readFileSync).mockImplementation((value) => {
+        if (value === 'template.templ') {
+          return 'Hello {{ name }}';
+        }
+        return payload;
+      });
+      vi.mocked(renderTemplate).mockReturnValue(`Hello ${expectedData.name}`);
+
+      const output = await renderCommand('template.templ', 'data.input', {
+        inputFormat: format,
+      });
+
+      expect(output).toBe(`Hello ${expectedData.name}`);
+      expect(renderTemplate).toHaveBeenCalledWith('Hello {{ name }}', expectedData, {
+        throwOnError: true,
+      });
+    }
+  );
 
   it('streams large input files and reports progress', async () => {
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true);

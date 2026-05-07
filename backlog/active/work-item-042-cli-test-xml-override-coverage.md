@@ -7,10 +7,10 @@ type: work-item
 subtype: task
 lifecycle: active
 status: ready
-status_reason: prioritized
+status_reason: implementing
 priority: low
 estimated: 1
-actual: 0
+actual: 1
 ---
 
 ## Goal
@@ -23,17 +23,17 @@ PR 23 unresolved comment: The XML test case currently uses `renderCommand('templ
 
 ## Tasks
 
-- [ ] Update XML test to explicitly pass `inputFormat: 'xml'` option
-- [ ] Verify override works with non-.xml extension files
-- [ ] Add similar coverage for other format overrides (YAML, TOML, JSON) if missing
-- [ ] Ensure test assertions remain accurate
+- [x] Update XML test to explicitly pass `inputFormat: 'xml'` option
+- [x] Verify override works with non-.xml extension files
+- [x] Add similar coverage for other format overrides (YAML, TOML, JSON) if missing
+- [x] Ensure test assertions remain accurate
 
 ## Acceptance Criteria
 
-- [ ] Test exercises `renderCommand('template.templ', 'data.xml', { inputFormat: 'xml' })`
-- [ ] Explicit format override path has test coverage
-- [ ] All render command tests pass
-- [ ] Coverage metrics improved for format detection logic
+- [x] Test exercises `renderCommand('template.templ', 'data.xml', { inputFormat: 'xml' })`
+- [x] Explicit format override path has test coverage
+- [x] All render command tests pass
+- [x] Coverage metrics improved for format detection logic
 
 ## Notes
 
