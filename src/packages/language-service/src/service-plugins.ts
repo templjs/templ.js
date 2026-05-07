@@ -16,10 +16,7 @@ import { create as createVolarJsonServicePlugin } from 'volar-service-json';
 import { create as createVolarMarkdownServicePlugin } from 'volar-service-markdown';
 import { create as createVolarPrettierServicePlugin } from 'volar-service-prettier';
 import { create as createVolarYamlServicePlugin } from 'volar-service-yaml';
-import {
-  loadSchemaSourceSync,
-  resolveDocumentSchemaSources,
-} from './schema-loading.js';
+import { loadSchemaSourceSync, resolveDocumentSchemaSources } from './schema-loading.js';
 import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
 
 type PluginOptions = ServicePluginOrchestrationOptions;
