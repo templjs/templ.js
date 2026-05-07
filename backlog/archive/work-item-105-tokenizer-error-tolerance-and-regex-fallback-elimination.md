@@ -5,11 +5,18 @@ title: '105: Make tokenize() error-tolerant and eliminate the Volar regex fallba
 summary: Refactor the core tokenizer to emit partial tokens and recover from unclosed delimiters rather than throwing, and extend cleanTemplateContent with an optional replacement-text parameter (default ''), allowing it to drop its regex fallback and rely solely on tokenize() for correct, position-accurate cleaning.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: medium
 estimated: 5
 actual: 0
+completed_date: '2026-05-07'
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/91
+  evidence:
+    - '[[record:wi-105-merge-evidence-2026-05-07]]'
 ---
 
 ## Goal
@@ -51,19 +58,19 @@ The cleaner should still accept an optional `replacement?: string` parameter (de
 
 ## Tasks
 
-- [ ] Define the recovery contract for `tokenize()`: choose between (a) emitting an `ERROR` token for unrecognised/unclosed content or (b) treating remaining text as TEXT tokens, and document the decision.
-- [ ] Implement error-tolerant recovery in the lexer; ensure output token stream always covers the full input length.
-- [ ] Add unit tests in `@templjs/core` covering: unclosed `{%`, unclosed `{{`, nested/interleaved delimiters, empty input, and delimiter-only input.
-- [ ] Rewrite `cleanWithCoreTokenizer` to delete non-TEXT tokens and build a real `originalToCleanedOffsets` mapping (source offset → cleaned offset for each character).
-- [ ] Preserve bare `\n` characters from within deleted token regions to keep line numbers stable; `\r` and other characters within tokens are dropped.
-- [ ] Verify that `cleanWithCoreTokenizer` produces correct offset-preserving output for all recovery cases, including whitespace-controlled tags.
-- [ ] Add `replacement?: string` parameter to `cleanWithCoreTokenizer` and `cleanTemplateContent`; default to `''`; always preserve newlines within deleted regions regardless of `replacement` value.
-- [ ] Add unit tests for `replacement` parameter: empty string default, custom string, and newline-preservation within multi-line token regions.
-- [ ] Remove `cleanWithRegexFallback` from `src/packages/volar/src/index.ts`.
-- [ ] Remove try/catch wrapper in `cleanTemplateContent`; make it a direct delegation to `cleanWithCoreTokenizer`.
-- [ ] Run `pnpm --filter @templjs/core test` and `pnpm --filter @templjs/volar test` to confirm no regressions.
-- [ ] Run `pnpm --dir src/extensions/vscode run test:host` to confirm host diagnostics still pass.
-- [ ] Create a changeset entry covering `@templjs/core` and `@templjs/volar` (both receive a `minor` or `patch` bump as appropriate).
+- [x] Define the recovery contract for `tokenize()`: choose between (a) emitting an `ERROR` token for unrecognised/unclosed content or (b) treating remaining text as TEXT tokens, and document the decision.
+- [x] Implement error-tolerant recovery in the lexer; ensure output token stream always covers the full input length.
+- [x] Add unit tests in `@templjs/core` covering: unclosed `{%`, unclosed `{{`, nested/interleaved delimiters, empty input, and delimiter-only input.
+- [x] Rewrite `cleanWithCoreTokenizer` to delete non-TEXT tokens and build a real `originalToCleanedOffsets` mapping (source offset → cleaned offset for each character).
+- [x] Preserve bare `\n` characters from within deleted token regions to keep line numbers stable; `\r` and other characters within tokens are dropped.
+- [x] Verify that `cleanWithCoreTokenizer` produces correct offset-preserving output for all recovery cases, including whitespace-controlled tags.
+- [x] Add `replacement?: string` parameter to `cleanWithCoreTokenizer` and `cleanTemplateContent`; default to `''`; always preserve newlines within deleted regions regardless of `replacement` value.
+- [x] Add unit tests for `replacement` parameter: empty string default, custom string, and newline-preservation within multi-line token regions.
+- [x] Remove `cleanWithRegexFallback` from `src/packages/volar/src/index.ts`.
+- [x] Remove try/catch wrapper in `cleanTemplateContent`; make it a direct delegation to `cleanWithCoreTokenizer`.
+- [x] Run `pnpm --filter @templjs/core test` and `pnpm --filter @templjs/volar test` to confirm no regressions.
+- [x] Run `pnpm --dir src/extensions/vscode run test:host` to confirm host diagnostics still pass.
+- [x] Create a changeset entry covering `@templjs/core` and `@templjs/volar` (both receive a `minor` or `patch` bump as appropriate).
 
 ## Deliverables
 
@@ -74,12 +81,12 @@ The cleaner should still accept an optional `replacement?: string` parameter (de
 
 ## Acceptance Criteria
 
-- [ ] `tokenize()` no longer throws for any input; it always returns a token stream covering the full source length.
-- [ ] `cleanTemplateContent` contains no regex-based fallback path.
-- [ ] `cleanTemplateContent` deletes non-TEXT tokens and emits a real (non-identity) `originalToCleanedOffsets` map.
-- [ ] `cleanTemplateContent` accepts `replacement?: string` (default `''`); newlines within deleted regions are always preserved regardless of `replacement`.
-- [ ] Whitespace controls (`{%- -%}`) produce correct cleaned output without additional logic in the cleaner (lexer already trims adjacent TEXT tokens).
-- [ ] All existing `@templjs/core` and `@templjs/volar` tests pass.
-- [ ] Host extension diagnostics tests pass (5/6 minimum; hover failure pre-existing and out of scope).
-- [ ] No change in diagnostic accuracy for well-formed templates (non-regression).
-- [ ] Lint and frontmatter validation pass.
+- [x] `tokenize()` no longer throws for any input; it always returns a token stream covering the full source length.
+- [x] `cleanTemplateContent` contains no regex-based fallback path.
+- [x] `cleanTemplateContent` deletes non-TEXT tokens and emits a real (non-identity) `originalToCleanedOffsets` map.
+- [x] `cleanTemplateContent` accepts `replacement?: string` (default `''`); newlines within deleted regions are always preserved regardless of `replacement`.
+- [x] Whitespace controls (`{%- -%}`) produce correct cleaned output without additional logic in the cleaner (lexer already trims adjacent TEXT tokens).
+- [x] All existing `@templjs/core` and `@templjs/volar` tests pass.
+- [x] Host extension diagnostics tests pass (5/6 minimum; hover failure pre-existing and out of scope).
+- [x] No change in diagnostic accuracy for well-formed templates (non-regression).
+- [x] Lint and frontmatter validation pass.

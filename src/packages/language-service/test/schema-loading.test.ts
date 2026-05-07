@@ -13,17 +13,33 @@ vi.mock('../../../extensions/vscode/src/schema-loading', async () => {
 });
 
 import {
+  DEFAULT_SCHEMA_LOAD_TIMEOUT_MS,
   extractDocumentSchemaKey,
+  findSchemaConfigForDocument,
   loadSchemaSource,
   loadSchemaSourceSync,
   resolveDocumentSchemaSources,
+  resolveWorkspaceRoot,
+  schemaLoading,
 } from '../src/index.ts';
+import { registerSchemaLoadingSuite } from './schema-loading.shared.ts';
 
 const extensionSchemaLoadingTestUrl = pathToFileURL(
   path.resolve(import.meta.dirname, '../../../extensions/vscode/test/schema-loading.test.ts')
 ).href;
 
 await import(extensionSchemaLoadingTestUrl);
+
+registerSchemaLoadingSuite({
+  schemaLoading,
+  DEFAULT_SCHEMA_LOAD_TIMEOUT_MS,
+  extractDocumentSchemaKey,
+  findSchemaConfigForDocument,
+  loadSchemaSource,
+  loadSchemaSourceSync,
+  resolveDocumentSchemaSources,
+  resolveWorkspaceRoot,
+});
 
 describe('language-service schema-loading coverage branches', () => {
   it('prefers inline directives over root and settings schemas', () => {

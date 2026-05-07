@@ -102,6 +102,30 @@ function extractCanonicalRelationshipDependencies(content: string): string[] {
   return refs;
 }
 
+function extractUncheckedChecklistItemsFromSection(content: string, heading: string): string[] {
+  const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const sectionRegex = new RegExp(
+    `^##\\s+${escapedHeading}(?:\\b[^\\n]*)?\\s*\\n([\\s\\S]*?)(?=^##\\s|$)`,
+    'm'
+  );
+  const sectionMatch = content.match(sectionRegex);
+  if (!sectionMatch) {
+    return [];
+  }
+
+  const sectionBody = sectionMatch[1];
+  const uncheckedItems: string[] = [];
+  const uncheckedRegex = /^\s*-\s*\[\s\]\s+(.*)$/gm;
+  for (const match of sectionBody.matchAll(uncheckedRegex)) {
+    const item = match[1]?.trim();
+    if (item) {
+      uncheckedItems.push(item);
+    }
+  }
+
+  return uncheckedItems;
+}
+
 function collectBacklogMarkdownFiles(dirPath: string, relativePrefix = ''): string[] {
   const files: string[] = [];
 
@@ -269,12 +293,84 @@ function validateStatusTransition(
   return null;
 }
 
+let cachedComparisonRef: string | null | undefined;
+let cachedChangedBacklogFiles: Set<string> | undefined;
+
+function runGitForRef(args: string[]): string | null {
+  const result = spawnSync('git', args, {
+    cwd: process.cwd(),
+    encoding: 'utf-8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  });
+
+  if (result.status !== 0 || !result.stdout) {
+    return null;
+  }
+
+  const output = result.stdout.trim();
+  return output.length > 0 ? output : null;
+}
+
+function resolveComparisonRef(): string | null {
+  if (cachedComparisonRef !== undefined) {
+    return cachedComparisonRef;
+  }
+
+  const explicitBaseRef =
+    process.env.PR_BASE_SHA?.trim() || process.env.GITHUB_BASE_SHA?.trim() || null;
+  if (explicitBaseRef) {
+    const verified = runGitForRef(['rev-parse', '--verify', `${explicitBaseRef}^{commit}`]);
+    if (verified) {
+      cachedComparisonRef = verified;
+      return cachedComparisonRef;
+    }
+  }
+
+  const baseBranch = process.env.GITHUB_BASE_REF?.trim();
+  if (baseBranch) {
+    const mergeBase = runGitForRef(['merge-base', 'HEAD', `origin/${baseBranch}`]);
+    if (mergeBase) {
+      cachedComparisonRef = mergeBase;
+      return cachedComparisonRef;
+    }
+  }
+
+  const previousHead = runGitForRef(['rev-parse', '--verify', 'HEAD~1']);
+  cachedComparisonRef = previousHead;
+  return cachedComparisonRef;
+}
+
+function hasBacklogFileChangedSinceComparison(file: string): boolean {
+  const comparisonRef = resolveComparisonRef();
+  if (!comparisonRef) {
+    return false;
+  }
+
+  if (!cachedChangedBacklogFiles) {
+    const changedOutput = runGitForRef(['diff', '--name-only', comparisonRef, '--', 'backlog']);
+    cachedChangedBacklogFiles = new Set(
+      (changedOutput ?? '')
+        .split('\n')
+        .map((entry) => toPosixPath(entry.trim()))
+        .filter(Boolean)
+    );
+  }
+
+  return cachedChangedBacklogFiles.has(`backlog/${file}`);
+}
+
 /**
- * Get previous committed status from git (HEAD) for a backlog file.
+ * Get previous committed status from git for a backlog file.
+ * Uses a stable baseline ref (PR base SHA, merge-base, or HEAD~1 fallback).
  * Returns null for new/untracked files or files without valid frontmatter.
  */
 function getPreviousStatusFromGit(file: string): string | null {
-  const gitPath = `HEAD:backlog/${file}`;
+  const comparisonRef = resolveComparisonRef();
+  if (!comparisonRef) {
+    return null;
+  }
+
+  const gitPath = `${comparisonRef}:backlog/${file}`;
   const result = spawnSync('git', ['show', gitPath], {
     cwd: process.cwd(),
     encoding: 'utf-8',
@@ -464,8 +560,60 @@ function validateFrontmatter(): boolean {
       // Work-item-only validations: status transitions and dependency checks
       if (type === 'work-item') {
         const status = frontmatter.status as string;
-
         const previousStatus = getPreviousStatusFromGit(file);
+
+        const pullRequests = Array.isArray(frontmatter.links?.pull_requests)
+          ? (frontmatter.links.pull_requests as string[])
+          : [];
+
+        const isEnteringReadyForReview =
+          status === 'ready-for-review' && previousStatus !== 'ready-for-review';
+        if (isEnteringReadyForReview && pullRequests.length === 0) {
+          hasViolations = true;
+          hasItemViolations = true;
+          if (!validator.errors || validator.errors.length === 0) {
+            console.error(`❌ ${file}`);
+          }
+
+          console.error(
+            "   /links/pull_requests: Work item is entering 'ready-for-review' but has no linked pull request"
+          );
+        }
+
+        const isClosed = status === 'closed';
+        const isEnteringClosed = isClosed && previousStatus !== 'closed';
+        const shouldEnforceClosedInvariants =
+          isClosed && (isEnteringClosed || hasBacklogFileChangedSinceComparison(file));
+
+        if (shouldEnforceClosedInvariants) {
+          const statusReason =
+            typeof frontmatter.status_reason === 'string' ? frontmatter.status_reason.trim() : '';
+          const completedDate =
+            typeof frontmatter.completed_date === 'string' ? frontmatter.completed_date.trim() : '';
+
+          if (!statusReason) {
+            hasViolations = true;
+            hasItemViolations = true;
+            if (!validator.errors || validator.errors.length === 0) {
+              console.error(`❌ ${file}`);
+            }
+
+            console.error("   /status_reason: Work item is 'closed' but status_reason is missing");
+          }
+
+          if (!completedDate) {
+            hasViolations = true;
+            hasItemViolations = true;
+            if (!validator.errors || validator.errors.length === 0) {
+              console.error(`❌ ${file}`);
+            }
+
+            console.error(
+              "   /completed_date: Work item is 'closed' but completed_date is missing"
+            );
+          }
+        }
+
         const transitionError =
           typeof status === 'string'
             ? validateStatusTransition(status, previousStatus, statusTransitions)
@@ -529,6 +677,38 @@ function validateFrontmatter(): boolean {
                 );
               }
             }
+          }
+        }
+
+        if (shouldEnforceClosedInvariants) {
+          const uncheckedTasks = extractUncheckedChecklistItemsFromSection(content, 'Tasks');
+          const uncheckedAcceptance = extractUncheckedChecklistItemsFromSection(
+            content,
+            'Acceptance Criteria'
+          );
+
+          if (uncheckedTasks.length > 0) {
+            hasViolations = true;
+            hasItemViolations = true;
+            if (!validator.errors || validator.errors.length === 0) {
+              console.error(`❌ ${file}`);
+            }
+
+            console.error(
+              `   /status: Work item is 'closed' but has unchecked Tasks checklist items (${uncheckedTasks.length})`
+            );
+          }
+
+          if (uncheckedAcceptance.length > 0) {
+            hasViolations = true;
+            hasItemViolations = true;
+            if (!validator.errors || validator.errors.length === 0) {
+              console.error(`❌ ${file}`);
+            }
+
+            console.error(
+              `   /status: Work item is 'closed' but has unchecked Acceptance Criteria checklist items (${uncheckedAcceptance.length})`
+            );
           }
         }
       }

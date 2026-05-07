@@ -5,11 +5,18 @@ title: '108: Adapter runtime manifest and deferred resolution protocol'
 summary: Implement the two-phase adapter runtime protocol (manifest first, deferred runtime resolution second) with bounded probing and cache invalidation semantics.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 6
 actual: 0
+completed_date: '2026-05-07'
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/88
+  evidence:
+    - '[[record:wi-108-merge-evidence-2026-05-07]]'
 ---
 
 ## Goal
@@ -38,16 +45,16 @@ PoC iteration established bin discovery learnings and resolution order constrain
 
 ## Tasks
 
-- [ ] Document bin discovery resolution order from PoC learnings; verify independence from workspace/cwd presence.
-- [ ] Define language-server-agnostic adapter manifest types (binaries/env/settings/capabilities/contract).
-- [ ] Design manifest request/response interfaces for reuse across language servers.
-- [ ] Implement host-side manifest aggregation (extension transport layer only).
-- [ ] Implement server-side activation planner with no language-server-specific logic.
-- [ ] Add deferred runtime resolution endpoint for selected adapter IDs.
-- [ ] Implement runtime cache (workspace + adapter + hash keying).
-- [ ] Add invalidation triggers (workspace change, PATH/env change, settings change, manual refresh).
-- [ ] Add structured failure payloads and telemetry fields.
-- [ ] Add tests for planner behavior, cache invalidation, bin discovery order, and failure mapping.
+- [x] Document bin discovery resolution order from PoC learnings; verify independence from workspace/cwd presence.
+- [x] Define language-server-agnostic adapter manifest types (binaries/env/settings/capabilities/contract).
+- [x] Design manifest request/response interfaces for reuse across language servers.
+- [x] Implement host-side manifest aggregation (extension transport layer only).
+- [x] Implement server-side activation planner with no language-server-specific logic.
+- [x] Add deferred runtime resolution endpoint for selected adapter IDs.
+- [x] Implement runtime cache (workspace + adapter + hash keying).
+- [x] Add invalidation triggers (workspace change, PATH/env change, settings change, manual refresh).
+- [x] Add structured failure payloads and telemetry fields.
+- [x] Add tests for planner behavior, cache invalidation, bin discovery order, and failure mapping.
 
 ## Deliverables
 
@@ -58,13 +65,9 @@ PoC iteration established bin discovery learnings and resolution order constrain
 
 ## Acceptance Criteria
 
-- [ ] Server initialization does not block on full runtime probe sweeps.
-- [ ] Manifest responses are deterministic and bounded to allowlisted env/settings.
-- [ ] Runtime resolution is requested only for relevant adapters.
-- [ ] Cache invalidation works for all documented triggers.
-- [ ] Adapter failures are surfaced with structured failure types.
-- [ ] Build/test and frontmatter validation pass.
-
-## Relationships
-
-- `depends_on`: [[work-item-103-vscode-client-thinning-and-wrapper-removal]]
+- [x] Server initialization does not block on full runtime probe sweeps.
+- [x] Manifest responses are deterministic and bounded to allowlisted env/settings.
+- [x] Runtime resolution is requested only for relevant adapters.
+- [x] Cache invalidation works for all documented triggers.
+- [x] Adapter failures are surfaced with structured failure types.
+- [x] Build/test and frontmatter validation pass.

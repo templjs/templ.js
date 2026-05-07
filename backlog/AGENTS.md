@@ -40,6 +40,18 @@ proposed → ready → in-progress → ready-for-review → closed
    - `actual` hours recorded
    - Linked evidence records in `links.evidence`
 
+## Ready-for-review Workflow
+
+Use this sequence for normal implementation flow:
+
+1. Mark `## Tasks` items complete as work is implemented.
+2. Verify and mark `## Acceptance Criteria` once evidence confirms each criterion.
+3. Create/link the draft PR in `links.pull_requests`.
+4. Transition the work item to `ready-for-review`.
+5. Commit and push work item updates on the same branch as the implementation PR.
+6. Run `/process-pr`.
+7. If automation is enabled for close/archive, do not manually close or archive the work item.
+
 ## Testing Requirements Before Closing Work Items
 
 **Critical**: When a work item introduces or modifies public package exports, verify **all layers** are properly implemented and tested.
@@ -109,9 +121,9 @@ See [ADR-006: Testing Strategy](../docs/adr/006-testing.md#public-api-integratio
 - Validate: `pnpm run lint:frontmatter`
 - Run doc-vader commands: `scripts/backlog/run-doc-vader.sh ...`
 - Review migration map: `cat backlog/audit/work-management-migration-map.json`
-- Create: Use `create-work-item` skill
-- Update: Use `update-work-item` skill
-- Finalize: Use `finalize-work-item` skill
+- Create: Use `/creating-work-item`
+- Update: Use `/updating-work-item`
+- Finalize: Use `/finalizing-work-item`
 
 ## Boundaries
 
