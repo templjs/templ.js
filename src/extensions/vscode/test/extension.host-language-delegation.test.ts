@@ -36,6 +36,7 @@ const openTextDocument = vi.fn(() => Promise.resolve({}));
 const getConfiguration = vi.fn(() => ({
   get: vi.fn((_key: string, fallback?: unknown) => fallback),
 }));
+const getExtension = vi.fn(() => undefined);
 
 const providerUpdate = vi.fn(() => ({
   scheme: 'templjs-virtual',
@@ -80,6 +81,9 @@ vi.mock('vscode', () => ({
     onDidChangeConfiguration,
     textDocuments: [],
     openTextDocument,
+  },
+  extensions: {
+    getExtension,
   },
   languages: {
     createDiagnosticCollection,

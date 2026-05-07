@@ -26,6 +26,7 @@ export interface ServerInitializationOptions {
   schemaPatterns?: Record<string, SchemaPatternConfig>;
   traceMode?: 'off' | 'messages' | 'verbose';
   prettierHostLanguages?: string[];
+  markdownlintRegisteredForMd?: boolean;
   documentContext?: {
     uri?: string;
     content?: string;

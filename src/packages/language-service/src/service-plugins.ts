@@ -13,10 +13,13 @@ import { pathToFileURL } from 'url';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { create as createVolarHtmlServicePlugin } from 'volar-service-html';
 import { create as createVolarJsonServicePlugin } from 'volar-service-json';
-import { create as createVolarMarkdownServicePlugin } from 'volar-service-markdown';
 import { create as createVolarPrettierServicePlugin } from 'volar-service-prettier';
 import { create as createVolarYamlServicePlugin } from 'volar-service-yaml';
 import { loadSchemaSourceSync, resolveDocumentSchemaSources } from './schema-loading.js';
+import {
+  createMarkdownHostDiagnosticsAdapter,
+  planMarkdownAdapterRuntime,
+} from './markdown-adapter.js';
 import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
 import {
   getConfiguredPrettierHostLanguages,
@@ -31,16 +34,6 @@ type ResolvedSchemaOptions = {
   contentSchema?: object;
   contentSchemaUri?: string;
 };
-
-const DEFAULT_MARKDOWN_DIAGNOSTICS_OPTIONS = {
-  validateReferences: 'warning',
-  validateFragmentLinks: 'warning',
-  validateFileLinks: 'warning',
-  validateMarkdownFileLinkFragments: 'warning',
-  validateUnusedLinkDefinitions: 'hint',
-  validateDuplicateLinkDefinitions: 'warning',
-  ignoreLinks: [] as string[],
-} as const;
 
 function resolveSchemaOptionsForSource(
   options: PluginOptions,
@@ -439,13 +432,10 @@ function createYamlDiagnosticsPlugin(_options: PluginOptions): LanguageServicePl
   };
 }
 
-function createMarkdownHostDiagnosticsPlugin(_options: PluginOptions): LanguageServicePlugin {
-  return {
-    ...createVolarMarkdownServicePlugin({
-      getDiagnosticOptions: async () => DEFAULT_MARKDOWN_DIAGNOSTICS_OPTIONS as any,
-    }),
-    name: 'templjs-markdown-host',
-  };
+function createMarkdownHostDiagnosticsPlugin(
+  _options: PluginOptions
+): LanguageServicePlugin | undefined {
+  return createMarkdownHostDiagnosticsAdapter(_options);
 }
 
 function createHtmlHostServicePlugin(): LanguageServicePlugin {
@@ -725,6 +715,7 @@ function createTempljsMarkdownDiagnosticsPlugin(options: PluginOptions): Languag
 
 export function createServicePlugins(options: PluginOptions): LanguageServicePlugin[] {
   const runtimeManifest = resolveAdapterRuntimeManifest(options);
+  const markdownHostPlugin = createMarkdownHostDiagnosticsAdapter(options);
   options.log?.(
     `[templjs-runtime] manifest version=${runtimeManifest.version} adapters=${runtimeManifest.adapters.length}`
   );
@@ -735,7 +726,7 @@ export function createServicePlugins(options: PluginOptions): LanguageServicePlu
     createTempljsAdditionalPlugin(options),
     createTempljsDiagnosticsPlugin(options),
     createTempljsMarkdownDiagnosticsPlugin(options),
-    createMarkdownHostDiagnosticsPlugin(options),
+    ...(markdownHostPlugin ? [markdownHostPlugin] : []),
     createYamlDiagnosticsPlugin(options),
     createHtmlHostServicePlugin(),
     createJsonHostServicePlugin(),
@@ -771,6 +762,7 @@ export const servicePluginTesting = {
   createHtmlHostServicePlugin,
   createJsonHostServicePlugin,
   createPrettierHostServicePlugin,
+  planMarkdownAdapterRuntime,
   getConfiguredPrettierHostLanguages,
   resolveAdapterRuntimeManifest,
 };
