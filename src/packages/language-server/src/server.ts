@@ -17,7 +17,23 @@ const connection = createConnection();
 const server = createServer(connection);
 console.error('[templjs-server] Connection and server created');
 
-let crashGuardsInstalled = false;
+type CrashGuardState = {
+  installed: boolean;
+  report: (message: string) => void;
+};
+
+const crashGuardStateKey = Symbol.for('templjs.language-server.crash-guards');
+const globalWithCrashGuards = globalThis as typeof globalThis & {
+  [crashGuardStateKey]?: CrashGuardState;
+};
+const crashGuardState: CrashGuardState =
+  globalWithCrashGuards[crashGuardStateKey] ??
+  (globalWithCrashGuards[crashGuardStateKey] = {
+    installed: false,
+    report: (message: string) => {
+      console.error(message);
+    },
+  });
 
 function formatCrashReason(reason: unknown): string {
   if (reason instanceof Error) {
@@ -28,21 +44,24 @@ function formatCrashReason(reason: unknown): string {
 }
 
 function installCrashGuards(): void {
-  if (crashGuardsInstalled) {
+  crashGuardState.report = (message: string) => {
+    console.error(message);
+    connection.console.error(message);
+  };
+
+  if (crashGuardState.installed) {
     return;
   }
-  crashGuardsInstalled = true;
+  crashGuardState.installed = true;
 
   process.on('uncaughtException', (error) => {
     const message = formatCrashReason(error);
-    console.error(`[templjs-server] uncaughtException ${message}`);
-    connection.console.error(`[templjs-server] uncaughtException ${message}`);
+    crashGuardState.report(`[templjs-server] uncaughtException ${message}`);
   });
 
   process.on('unhandledRejection', (reason) => {
     const message = formatCrashReason(reason);
-    console.error(`[templjs-server] unhandledRejection ${message}`);
-    connection.console.error(`[templjs-server] unhandledRejection ${message}`);
+    crashGuardState.report(`[templjs-server] unhandledRejection ${message}`);
   });
 }
 
