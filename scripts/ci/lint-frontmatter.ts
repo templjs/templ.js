@@ -491,7 +491,9 @@ function validateFrontmatter(): boolean {
           ? (frontmatter.links.pull_requests as string[])
           : [];
 
-        if (status === 'ready-for-review' && pullRequests.length === 0) {
+        const isEnteringReadyForReview =
+          status === 'ready-for-review' && previousStatus !== 'ready-for-review';
+        if (isEnteringReadyForReview && pullRequests.length === 0) {
           hasViolations = true;
           hasItemViolations = true;
           if (!validator.errors || validator.errors.length === 0) {
@@ -499,7 +501,7 @@ function validateFrontmatter(): boolean {
           }
 
           console.error(
-            "   /links/pull_requests: Work item is 'ready-for-review' but has no linked pull request"
+            "   /links/pull_requests: Work item is entering 'ready-for-review' but has no linked pull request"
           );
         }
 
