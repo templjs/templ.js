@@ -151,12 +151,15 @@ describe('volar index coverage branches', () => {
       {} as never
     ) as {
       languageId: string;
-      createMappings: (text: string, languageId: string, offsets: [number, number, number, number]) =>
-        Array<{
-          sourceOffsets: number[];
-          generatedOffsets: number[];
-          lengths: number[];
-        }>;
+      createMappings: (
+        text: string,
+        languageId: string,
+        offsets: [number, number, number, number]
+      ) => Array<{
+        sourceOffsets: number[];
+        generatedOffsets: number[];
+        lengths: number[];
+      }>;
     };
 
     expect(code.languageId).toBe('markdown');
