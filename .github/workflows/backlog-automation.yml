@@ -16,6 +16,8 @@ name: Backlog Automation
 #      and DOC_VADER_PRIVATE_KEY (repository secret).
 
 on:
+  schedule:
+    - cron: '17 9 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -68,7 +70,15 @@ jobs:
   sweep:
     name: Sweep Eligible Work Items
     if: >
-      github.event_name == 'workflow_dispatch' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        github.event_name == 'schedule' ||
+        (
+          github.event_name == 'pull_request' &&
+          github.event.action == 'closed' &&
+          github.event.pull_request.merged == true
+        )
+      ) &&
       vars.BACKLOG_AUTOMATION_ENABLED == 'true' &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging')
     uses: calan-co/doc-vader/.github/workflows/backlog-sweep.yml@v1
@@ -81,3 +91,76 @@ jobs:
     secrets:
       packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
       app-private-key: ${{ secrets.DOC_VADER_PRIVATE_KEY }}
+
+  warn-stuck-ready-for-review:
+    name: Warn On Stuck Ready-For-Review Items
+    needs: [sweep]
+    if: >
+      needs.sweep.result == 'success' &&
+      vars.BACKLOG_AUTOMATION_ENABLED == 'true' &&
+      (
+        github.event_name != 'workflow_dispatch' ||
+        inputs.dry_run == false
+      ) &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Warn on stale ready-for-review items
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STALE_HOURS: '24'
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          now_epoch="$(date +%s)"
+          stale_seconds="$((STALE_HOURS * 3600))"
+          warned=0
+
+          shopt -s nullglob
+          for file in backlog/active/work-item-*.md; do
+            status="$(awk '
+              /^---$/ {delims++; next}
+              delims == 1 && /^status:[[:space:]]*/ {
+                sub(/^status:[[:space:]]*/, "", $0)
+                print $0
+                exit
+              }
+            ' "$file")"
+
+            if [[ "$status" != "ready-for-review" ]]; then
+              continue
+            fi
+
+            mapfile -t pr_numbers < <(grep -Eo 'https://github.com/[^/]+/[^/]+/pull/[0-9]+' "$file" | sed -E 's#^.*/pull/##' | sort -u)
+            if ((${#pr_numbers[@]} == 0)); then
+              continue
+            fi
+
+            for pr in "${pr_numbers[@]}"; do
+              merged_at="$(gh api "repos/$REPO/pulls/$pr" -q '.merged_at // empty' || true)"
+              if [[ -z "$merged_at" ]]; then
+                continue
+              fi
+
+              merged_epoch="$(date -d "$merged_at" +%s)"
+              age_seconds="$((now_epoch - merged_epoch))"
+              if ((age_seconds < stale_seconds)); then
+                continue
+              fi
+
+              hours_old="$((age_seconds / 3600))"
+              echo "::warning file=$file,title=Stuck ready-for-review after merged PR::PR #$pr merged ${hours_old}h ago but work item is still 'ready-for-review'. Run backlog sweep and investigate close/archive transition." >&2
+              warned=1
+            done
+          done
+
+          if ((warned == 0)); then
+            echo "No stale ready-for-review items linked to merged PRs were detected."
+          fi
