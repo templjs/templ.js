@@ -44,6 +44,17 @@ function formatCrashReason(reason: unknown): string {
   return String(reason);
 }
 
+function terminateProcessAfterCrash(): void {
+  // Keep unit tests alive while still exposing a non-zero termination signal.
+  if (process.env.NODE_ENV === 'test') {
+    process.exitCode = 1;
+    return;
+  }
+
+  process.exitCode = 1;
+  process.exit(1);
+}
+
 function installCrashGuards(): void {
   crashGuardState.report = (message: string) => {
     console.error(message);
@@ -58,11 +69,13 @@ function installCrashGuards(): void {
   process.on('uncaughtException', (error) => {
     const message = formatCrashReason(error);
     crashGuardState.report(`[templjs-server] uncaughtException ${message}`);
+    terminateProcessAfterCrash();
   });
 
   process.on('unhandledRejection', (reason) => {
     const message = formatCrashReason(reason);
     crashGuardState.report(`[templjs-server] unhandledRejection ${message}`);
+    terminateProcessAfterCrash();
   });
 }
 /* c8 ignore stop */
