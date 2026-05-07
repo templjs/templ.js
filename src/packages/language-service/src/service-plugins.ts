@@ -16,21 +16,10 @@ import { create as createVolarJsonServicePlugin } from 'volar-service-json';
 import { create as createVolarMarkdownServicePlugin } from 'volar-service-markdown';
 import { create as createVolarPrettierServicePlugin } from 'volar-service-prettier';
 import { create as createVolarYamlServicePlugin } from 'volar-service-yaml';
-import {
-  loadSchemaSourceSync,
-  resolveDocumentSchemaSources,
-  type ServerInitializationOptions,
-} from './schema-loading.js';
+import { loadSchemaSourceSync, resolveDocumentSchemaSources } from './schema-loading.js';
+import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
 
-type PluginOptions = {
-  getIntellisenseOptions?: (sourceUri: string, sourceText: string) => IntellisenseOptions;
-  getDiagnosticOptions?: (sourceUri: string, sourceText: string) => DiagnosticOptions;
-  workspaceFolder?: string;
-  initializationOptions?: ServerInitializationOptions;
-  schemaCache?: Map<string, unknown>;
-  loadSchemaUrlSync?: (url: string) => string | object | undefined;
-  log?: (message: string) => void;
-};
+type PluginOptions = ServicePluginOrchestrationOptions;
 
 type ResolvedSchemaOptions = {
   schema?: object;
@@ -48,7 +37,7 @@ const DEFAULT_MARKDOWN_DIAGNOSTICS_OPTIONS = {
   validateUnusedLinkDefinitions: 'hint',
   validateDuplicateLinkDefinitions: 'warning',
   ignoreLinks: [] as string[],
-};
+} as const;
 
 function resolveSchemaOptionsForSource(
   options: PluginOptions,

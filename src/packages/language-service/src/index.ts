@@ -21,5 +21,11 @@ export {
 
 export { default as schemaLoading } from './schema-loading.js';
 
+export type {
+  ServicePluginOrchestrationOptions,
+  ServicePluginRuntimePlanningContext,
+  TempljsHostServiceAdapterId,
+} from './service-plugin-contract.js';
+
 export type DocumentSchemaConfig = import('./schema-loading.js').SchemaPatternConfig;
 export type SchemaPatterns = Record<string, import('./schema-loading.js').SchemaPatternConfig>;
