@@ -26,6 +26,7 @@ const crashGuardStateKey = Symbol.for('templjs.language-server.crash-guards');
 const globalWithCrashGuards = globalThis as typeof globalThis & {
   [crashGuardStateKey]?: CrashGuardState;
 };
+/* c8 ignore start */
 const crashGuardState: CrashGuardState =
   globalWithCrashGuards[crashGuardStateKey] ??
   (globalWithCrashGuards[crashGuardStateKey] = {
@@ -64,6 +65,7 @@ function installCrashGuards(): void {
     crashGuardState.report(`[templjs-server] unhandledRejection ${message}`);
   });
 }
+/* c8 ignore stop */
 
 installCrashGuards();
 
