@@ -74,6 +74,8 @@ export interface DelimiterConfig {
 export interface LexerOptions {
   /** Custom delimiter configuration */
   delimiters?: DelimiterConfig;
+  /** Recover from unclosed delimiters by tokenizing the remainder as a non-text token */
+  recoverUnclosedDelimiters?: boolean;
 }
 
 export type DelimiterBoundaries = Pick<

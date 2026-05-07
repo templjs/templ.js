@@ -387,6 +387,33 @@ describe('Lexer', () => {
           );
         });
 
+        it('should recover unclosed delimiters when recoverUnclosedDelimiters is enabled', () => {
+          const tokens = tokenize('Line 1\n  {{- value', {
+            recoverUnclosedDelimiters: true,
+          });
+
+          expect(tokens).toHaveLength(2);
+          expect(tokens[0].type).toBe(TokenType.TEXT);
+          expect(tokens[1].type).toBe(TokenType.EXPRESSION);
+          expect(tokens[1].content).toBe('{{- value');
+        });
+
+        it('should prefer the longest delimiter in recovery mode when unclosed delimiters overlap', () => {
+          const tokens = tokenize('[[ value', {
+            delimiters: {
+              expression_start: '[',
+              expression_end: ']',
+              comment_start: '[[',
+              comment_end: ']]',
+            },
+            recoverUnclosedDelimiters: true,
+          });
+
+          expect(tokens).toHaveLength(1);
+          expect(tokens[0].type).toBe(TokenType.COMMENT);
+          expect(tokens[0].content).toBe('[[ value');
+        });
+
         it('should trim following whitespace to empty text without emitting a text token', () => {
           const tokens = tokenize('{{ value -}}   ');
 
