@@ -42,18 +42,26 @@ jobs:
             }
 
             async function convertToDraft(reason) {
-              await github.graphql(
-                `mutation($pullRequestId: ID!) {
-                  convertPullRequestToDraft(input: { pullRequestId: $pullRequestId }) {
-                    pullRequest {
-                      id
-                      isDraft
+              try {
+                await github.graphql(
+                  `mutation($pullRequestId: ID!) {
+                    convertPullRequestToDraft(input: { pullRequestId: $pullRequestId }) {
+                      pullRequest {
+                        id
+                        isDraft
+                      }
                     }
-                  }
-                }`,
-                { pullRequestId: pr.node_id }
-              );
-              core.notice(reason);
+                  }`,
+                  { pullRequestId: pr.node_id }
+                );
+                core.notice(reason);
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                core.warning(
+                  `Unable to convert PR #${pr.number} to draft: ${message}. ` +
+                    'Continuing without conversion because this check is advisory.'
+                );
+              }
             }
 
             async function listBlockingChecks(sha) {
