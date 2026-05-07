@@ -18,6 +18,7 @@ Use this sequence for normal work item execution:
 4. Transition the work item to `ready-for-review`.
 5. Keep work-item edits on the same feature branch as implementation changes.
 6. Run `/process-pr`.
+7. After merge, run `rtk scripts/git/cleanup-stale-local-branches.sh` and only use `--apply` after reviewing the candidate list.
 
 ## Automation Ownership
 
@@ -26,6 +27,22 @@ When `.doc-vader/backlog-consumer.json` has `automation.autoCloseOnMerge: true`:
 - Backlog automation creates/links merge and workflow evidence.
 - Backlog automation performs close/archive transitions after merge validation.
 - Contributors should not manually close/archive work items during normal feature execution.
+- Automatic sweep now runs on merged pull-request `closed` events (in addition to manual `workflow_dispatch`).
+- A scheduled sweep runs daily to reconcile missed transitions (`cron: 17 9 * * *`, UTC).
+
+## Post-Merge Hygiene
+
+Run this after each merged PR to reduce local branch drift:
+
+```bash
+# Dry-run: review the candidate branches first
+rtk scripts/git/cleanup-stale-local-branches.sh
+
+# Apply only after confirming the listed candidates are safe to delete
+rtk scripts/git/cleanup-stale-local-branches.sh --apply
+```
+
+The script keeps your current branch plus `main` and `staging`, and only targets branches that are either fully merged into the base branch or functionally equivalent to it.
 
 ## Exception Path
 
