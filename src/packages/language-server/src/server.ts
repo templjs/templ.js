@@ -17,6 +17,71 @@ const connection = createConnection();
 const server = createServer(connection);
 console.error('[templjs-server] Connection and server created');
 
+type CrashGuardState = {
+  installed: boolean;
+  report: (message: string) => void;
+};
+
+const crashGuardStateKey = Symbol.for('templjs.language-server.crash-guards');
+const globalWithCrashGuards = globalThis as typeof globalThis & {
+  [crashGuardStateKey]?: CrashGuardState;
+};
+/* c8 ignore start */
+const crashGuardState: CrashGuardState =
+  globalWithCrashGuards[crashGuardStateKey] ??
+  (globalWithCrashGuards[crashGuardStateKey] = {
+    installed: false,
+    report: (message: string) => {
+      console.error(message);
+    },
+  });
+
+function formatCrashReason(reason: unknown): string {
+  if (reason instanceof Error) {
+    return `${reason.name}: ${reason.message}\n${reason.stack ?? ''}`.trim();
+  }
+
+  return String(reason);
+}
+
+function terminateProcessAfterCrash(): void {
+  // Keep unit tests alive while still exposing a non-zero termination signal.
+  if (process.env.NODE_ENV === 'test') {
+    process.exitCode = 1;
+    return;
+  }
+
+  process.exitCode = 1;
+  process.exit(1);
+}
+
+function installCrashGuards(): void {
+  crashGuardState.report = (message: string) => {
+    console.error(message);
+    connection.console.error(message);
+  };
+
+  if (crashGuardState.installed) {
+    return;
+  }
+  crashGuardState.installed = true;
+
+  process.on('uncaughtException', (error) => {
+    const message = formatCrashReason(error);
+    crashGuardState.report(`[templjs-server] uncaughtException ${message}`);
+    terminateProcessAfterCrash();
+  });
+
+  process.on('unhandledRejection', (reason) => {
+    const message = formatCrashReason(reason);
+    crashGuardState.report(`[templjs-server] unhandledRejection ${message}`);
+    terminateProcessAfterCrash();
+  });
+}
+/* c8 ignore stop */
+
+installCrashGuards();
+
 let storedWorkspaceRoot: string | undefined;
 let storedInitializationOptions: ServerInitializationOptions | undefined;
 

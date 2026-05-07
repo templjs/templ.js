@@ -5,11 +5,13 @@ title: '096: CI/local build drift for VS Code extension package'
 summary: Required CI checks can pass while local extension package build fails with TS6305 and strict type errors, obscuring real release risk
 type: work-item
 subtype: bug
-lifecycle: active
-status: ready-for-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 3
 actual: 3
+completed_date: '2026-05-06'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/65

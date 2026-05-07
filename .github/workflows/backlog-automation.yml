@@ -21,7 +21,7 @@ on:
       dry_run:
         description: 'Preview eligible updates without writing changes'
         required: false
-        default: false
+        default: true
         type: boolean
   pull_request:
     types: [opened, edited, reopened, synchronize, closed]

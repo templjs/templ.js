@@ -64,6 +64,14 @@ describe('volar index coverage branches', () => {
     );
   });
 
+  it('applies trim-marker semantics to adjacent whitespace in cleaned content', () => {
+    const source = 'A\n{%- if show -%}\nB';
+    const cleaned = cleanTemplateContent(source);
+
+    expect(cleaned.cleaned).toBe('A                 B');
+    expect(cleaned.originalToCleanedOffsets).toHaveLength(source.length + 1);
+  });
+
   it('returns undefined for unsupported language ids and rebuilds virtual code from a non-templjs cache entry', () => {
     const plugin = createTempljsLanguagePlugin();
     expect(plugin.getLanguageId(URI.parse('file:///note.txt'))).toBeUndefined();
@@ -141,7 +149,18 @@ describe('volar index coverage branches', () => {
       'templjs-markdown',
       createSnapshot('<% if ok %><< value >><% endif %>') as never,
       {} as never
-    ) as any;
+    ) as {
+      languageId: string;
+      createMappings: (
+        text: string,
+        languageId: string,
+        offsets: [number, number, number, number]
+      ) => Array<{
+        sourceOffsets: number[];
+        generatedOffsets: number[];
+        lengths: number[];
+      }>;
+    };
 
     expect(code.languageId).toBe('markdown');
     expect(code.createMappings('abc', 'x', [0, 0, 0, 0])).toEqual([

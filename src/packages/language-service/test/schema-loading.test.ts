@@ -1,30 +1,29 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  DEFAULT_SCHEMA_LOAD_TIMEOUT_MS,
-  extractDocumentSchemaKey,
-  findSchemaConfigForDocument,
-  loadSchemaSource,
-  loadSchemaSourceSync,
-  resolveDocumentSchemaSources,
-  resolveWorkspaceRoot,
-  schemaLoading,
-} from '../src/index.ts';
-import { registerSchemaLoadingSuite } from './schema-loading.shared';
-
-registerSchemaLoadingSuite({
-  schemaLoading,
-  DEFAULT_SCHEMA_LOAD_TIMEOUT_MS,
-  extractDocumentSchemaKey,
-  findSchemaConfigForDocument,
-  loadSchemaSource,
-  loadSchemaSourceSync,
-  resolveDocumentSchemaSources,
-  resolveWorkspaceRoot,
+vi.mock('../../../extensions/vscode/src/schema-loading', async () => {
+  const actual = await import('../src/index.ts');
+  return {
+    ...actual,
+    default: actual.schemaLoading,
+  };
 });
+
+import {
+  extractDocumentSchemaKey,
+  loadSchemaSource,
+  loadSchemaSourceSync,
+  resolveDocumentSchemaSources,
+} from '../src/index.ts';
+
+const extensionSchemaLoadingTestUrl = pathToFileURL(
+  path.resolve(import.meta.dirname, '../../../extensions/vscode/test/schema-loading.test.ts')
+).href;
+
+await import(extensionSchemaLoadingTestUrl);
 
 describe('language-service schema-loading coverage branches', () => {
   it('prefers inline directives over root and settings schemas', () => {

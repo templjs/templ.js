@@ -5,12 +5,25 @@ title: '097: Implement TemplJS Volar target architecture migration epic'
 summary: Execute docs/templjs-volar-target-architecture.md through staged, reviewable work items and package-boundary cutovers
 type: work-item
 subtype: epic
-lifecycle: active
-status: ready-for-review
-status_reason: awaiting-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 60
 actual: 4
+completed_date: '2026-05-06'
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/75
+  evidence:
+    - '[[record-097-volar-target-architecture-migration-epic-evidence-1]]'
+    - '[[record-098-language-core-contracts-and-boundary-tests-evidence-1]]'
+    - '[[record-099-language-package-split-and-entrypoint-migration-evidence-1]]'
+    - '[[record-100-root-and-embedded-virtual-code-model-cutover-evidence-1]]'
+    - '[[record-101-host-language-service-composition-cutover-evidence-1]]'
+    - '[[record-102-semantic-routing-core-context-graph-cutover-evidence-1]]'
+    - '[[record-103-vscode-client-thinning-and-wrapper-removal-evidence-1]]'
+    - '[[record-104-transitional-code-deletion-and-final-acceptance-evidence-1]]'
 ---
 
 ## Goal
