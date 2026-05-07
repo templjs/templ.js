@@ -37,7 +37,7 @@ const DEFAULT_MARKDOWN_DIAGNOSTICS_OPTIONS = {
   validateUnusedLinkDefinitions: 'hint',
   validateDuplicateLinkDefinitions: 'warning',
   ignoreLinks: [] as string[],
-};
+} as const;
 
 function resolveSchemaOptionsForSource(
   options: PluginOptions,
