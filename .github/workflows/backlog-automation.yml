@@ -138,7 +138,7 @@ jobs:
               continue
             fi
 
-            mapfile -t pr_numbers < <(grep -Eo 'https://github.com/[^/]+/[^/]+/pull/[0-9]+' "$file" | sed -E 's#^.*/pull/##' | sort -u)
+            mapfile -t pr_numbers < <(grep -Eo "https://github.com/${REPO}/pull/[0-9]+" "$file" | sed -E 's#^.*/pull/##' | sort -u)
             if ((${#pr_numbers[@]} == 0)); then
               continue
             fi

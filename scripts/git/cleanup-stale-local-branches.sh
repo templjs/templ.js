@@ -71,6 +71,7 @@ done < <(git for-each-ref refs/heads --format='%(refname:short)')
 candidates=()
 for branch in "${local_branches[@]}"; do
   [[ "$branch" == "$current_branch" ]] && continue
+  [[ "$branch" == "$base_branch" ]] && continue
   [[ "$branch" == "main" ]] && continue
   [[ "$branch" == "staging" ]] && continue
 

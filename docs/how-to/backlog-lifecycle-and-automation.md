@@ -35,7 +35,10 @@ When `.doc-vader/backlog-consumer.json` has `automation.autoCloseOnMerge: true`:
 Run this after each merged PR to reduce local branch drift:
 
 ```bash
+# Dry-run: review the candidate branches first
 rtk scripts/git/cleanup-stale-local-branches.sh
+
+# Apply only after confirming the listed candidates are safe to delete
 rtk scripts/git/cleanup-stale-local-branches.sh --apply
 ```
 
