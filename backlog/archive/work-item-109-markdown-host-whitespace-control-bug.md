@@ -5,11 +5,18 @@ title: '109: Fix whitespace control bug in markdown template cleaning'
 summary: Fix whitespace control (`{% -%}` / `{%- %}`) not properly trimming trailing/leading newlines from adjacent template content.
 type: work-item
 subtype: bug
-lifecycle: active
-status: ready
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 2
 actual: 0
+completed_date: '2026-05-07'
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/90
+  evidence:
+    - '[[record:wi-109-merge-evidence-2026-05-07]]'
 ---
 
 ## Goal
@@ -29,11 +36,11 @@ PoC testing revealed that `{% -%}` is not trimming the trailing newline as expec
 
 ## Tasks
 
-- [ ] Reproduce the `{% -%}` trailing newline trimming failure with a minimal fixture.
-- [ ] Verify lexer whitespace control logic in TEXT token mutation.
-- [ ] Fix the trimming behavior to correctly remove trailing/leading newlines.
-- [ ] Add regression fixtures for all whitespace control variants (`{%-`, `-%}`, `{%- -%}`).
-- [ ] Validate that diagnostic ranges remain correct in cleaned output.
+- [x] Reproduce the `{% -%}` trailing newline trimming failure with a minimal fixture.
+- [x] Verify lexer whitespace control logic in TEXT token mutation.
+- [x] Fix the trimming behavior to correctly remove trailing/leading newlines.
+- [x] Add regression fixtures for all whitespace control variants (`{%-`, `-%}`, `{%- -%}`).
+- [x] Validate that diagnostic ranges remain correct in cleaned output.
 
 ## Deliverables
 
@@ -42,10 +49,10 @@ PoC testing revealed that `{% -%}` is not trimming the trailing newline as expec
 
 ## Acceptance Criteria
 
-- [ ] `{% -%}` correctly trims trailing newlines from adjacent content.
-- [ ] All whitespace control variants (`{%-`, `-%}`, `{%- -%}`) produce correct output.
-- [ ] Diagnostic offset mapping remains stable.
-- [ ] Build/test and frontmatter validation pass.
+- [x] `{% -%}` correctly trims trailing newlines from adjacent content.
+- [x] All whitespace control variants (`{%-`, `-%}`, `{%- -%}`) produce correct output.
+- [x] Diagnostic offset mapping remains stable.
+- [x] Build/test and frontmatter validation pass.
 
 ## Relationships
 

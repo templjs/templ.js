@@ -5,11 +5,18 @@ title: '110: Language server host crash RCA and stabilization'
 summary: Perform root-cause analysis for sporadic language-server host crashes (including hover-path interactions) and implement verified stabilization fixes with regression tests.
 type: work-item
 subtype: bug
-lifecycle: active
-status: ready
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 5
 actual: 0
+completed_date: '2026-05-07'
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/89
+  evidence:
+    - '[[record:wi-110-merge-evidence-2026-05-07]]'
 ---
 
 ## Goal
@@ -29,12 +36,12 @@ Crash reports were observed during PoC cycles, with hover-path behavior suspecte
 
 ## Tasks
 
-- [ ] Capture crash signatures, stack traces, and request context.
-- [ ] Build minimal reproducible fixtures (including hover and diagnostics paths).
-- [ ] Add defensive guards around identified null/invalid-state paths.
-- [ ] Implement targeted fix for confirmed root cause.
-- [ ] Add regression tests that fail pre-fix and pass post-fix.
-- [ ] Add lightweight runtime diagnostics to aid future crash triage.
+- [x] Capture crash signatures, stack traces, and request context.
+- [x] Build minimal reproducible fixtures (including hover and diagnostics paths).
+- [x] Add defensive guards around identified null/invalid-state paths.
+- [x] Implement targeted fix for confirmed root cause.
+- [x] Add regression tests that fail pre-fix and pass post-fix.
+- [x] Add lightweight runtime diagnostics to aid future crash triage.
 
 ## Deliverables
 
@@ -44,7 +51,7 @@ Crash reports were observed during PoC cycles, with hover-path behavior suspecte
 
 ## Acceptance Criteria
 
-- [ ] Crash is reproducible pre-fix and non-reproducible post-fix.
-- [ ] Hover and diagnostics paths are stable under repeated request load.
-- [ ] No new server startup regressions introduced.
-- [ ] Build/test and frontmatter validation pass.
+- [x] Crash is reproducible pre-fix and non-reproducible post-fix.
+- [x] Hover and diagnostics paths are stable under repeated request load.
+- [x] No new server startup regressions introduced.
+- [x] Build/test and frontmatter validation pass.
