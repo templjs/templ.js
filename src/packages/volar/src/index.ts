@@ -737,7 +737,12 @@ function cleanWithCoreTokenizer(
     delimiters: toCoreDelimiterConfig(delimiters),
   });
 
-  function maskAdjacentTrimWhitespace(start: number, end: number, trimLeft: boolean, trimRight: boolean) {
+  function maskAdjacentTrimWhitespace(
+    start: number,
+    end: number,
+    trimLeft: boolean,
+    trimRight: boolean
+  ) {
     if (trimLeft) {
       for (let i = start - 1; i >= 0; i--) {
         if (!/[\t\n\r ]/.test(chars[i])) {
