@@ -439,7 +439,7 @@ function createYamlDiagnosticsPlugin(_options: PluginOptions): LanguageServicePl
 function createMarkdownHostDiagnosticsPlugin(_options: PluginOptions): LanguageServicePlugin {
   return {
     ...createVolarMarkdownServicePlugin({
-      getDiagnosticOptions: async () => DEFAULT_MARKDOWN_DIAGNOSTICS_OPTIONS,
+      getDiagnosticOptions: async () => DEFAULT_MARKDOWN_DIAGNOSTICS_OPTIONS as any,
     }),
     name: 'templjs-markdown-host',
   };
