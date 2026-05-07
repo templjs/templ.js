@@ -34,6 +34,5 @@ export {
   type AdapterRuntimeManifestEntry,
   type AdapterRuntimeResolutionMode,
 } from './runtime-manifest.js';
-
 export type DocumentSchemaConfig = import('./schema-loading.js').SchemaPatternConfig;
 export type SchemaPatterns = Record<string, import('./schema-loading.js').SchemaPatternConfig>;

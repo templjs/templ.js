@@ -98,6 +98,26 @@ export function tokenize(template: string, options?: LexerOptions): Token[] {
 
       const endPos = text.indexOf(check.end, searchStart);
       if (endPos === -1) {
+        if (options?.recoverUnclosedDelimiters) {
+          if (
+            earliest === null ||
+            startPos < earliest.start ||
+            (startPos === earliest.start && check.start.length > earliest.delimiterStart.length)
+          ) {
+            earliest = {
+              type: check.type,
+              start: startPos,
+              end: text.length,
+              content: text.substring(startPos),
+              delimiterStart: check.start,
+              delimiterEnd: check.end,
+              trimLeft,
+              trimRight: false,
+            };
+          }
+          continue;
+        }
+
         // Unclosed delimiter
         const lines = text.substring(0, startPos).split('\n');
         const errorLine = lines.length;

@@ -735,7 +735,33 @@ function cleanWithCoreTokenizer(
   const chars = [...source];
   const tokens = tokenize(source, {
     delimiters: toCoreDelimiterConfig(delimiters),
+    recoverUnclosedDelimiters: true,
   });
+
+  function maskAdjacentTrimWhitespace(
+    start: number,
+    end: number,
+    trimLeft: boolean,
+    trimRight: boolean
+  ) {
+    if (trimLeft) {
+      for (let i = start - 1; i >= 0; i--) {
+        if (!/[\t\n\r ]/.test(chars[i])) {
+          break;
+        }
+        chars[i] = ' ';
+      }
+    }
+
+    if (trimRight) {
+      for (let i = end; i < chars.length; i++) {
+        if (!/[\t\n\r ]/.test(chars[i])) {
+          break;
+        }
+        chars[i] = ' ';
+      }
+    }
+  }
 
   for (const token of tokens) {
     if (token.type === TokenType.TEXT) {
@@ -750,6 +776,8 @@ function cleanWithCoreTokenizer(
         chars[i] = ' ';
       }
     }
+
+    maskAdjacentTrimWhitespace(start, end, !!token.trimLeft, !!token.trimRight);
   }
 
   return {
