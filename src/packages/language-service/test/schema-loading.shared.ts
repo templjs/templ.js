@@ -46,16 +46,16 @@ export function registerSchemaLoadingSuite({
   resolveDocumentSchemaSources,
   resolveWorkspaceRoot,
 }: SchemaLoadingApi): void {
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
-
-    for (const tempDir of tempDirs.splice(0)) {
-      rmSync(tempDir, { recursive: true, force: true });
-    }
-  });
-
   describe('schema-loading', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+
+      for (const tempDir of tempDirs.splice(0)) {
+        rmSync(tempDir, { recursive: true, force: true });
+      }
+    });
+
     it('exports helper functions and resolves workspace roots', () => {
       const workspaceRoot = path.join(tmpdir(), 'templjs-schema-workspace');
 

@@ -14,8 +14,8 @@ Use this sequence for normal work item execution:
 
 1. Mark `## Tasks` checklist items as implementation work is completed.
 2. Verify and mark `## Acceptance Criteria` based on concrete evidence.
-3. Transition the work item to `ready-for-review`.
-4. Create and link the draft PR in `links.pull_requests`.
+3. Create and link the draft PR in `links.pull_requests`.
+4. Transition the work item to `ready-for-review`.
 5. Keep work-item edits on the same feature branch as implementation changes.
 6. Run `/process-pr`.
 

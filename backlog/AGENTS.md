@@ -46,8 +46,8 @@ Use this sequence for normal implementation flow:
 
 1. Mark `## Tasks` items complete as work is implemented.
 2. Verify and mark `## Acceptance Criteria` once evidence confirms each criterion.
-3. Transition the work item to `ready-for-review`.
-4. Create/link the draft PR in `links.pull_requests`.
+3. Create/link the draft PR in `links.pull_requests`.
+4. Transition the work item to `ready-for-review`.
 5. Commit and push work item updates on the same branch as the implementation PR.
 6. Run `/process-pr`.
 7. If automation is enabled for close/archive, do not manually close or archive the work item.

@@ -104,7 +104,10 @@ function extractCanonicalRelationshipDependencies(content: string): string[] {
 
 function extractUncheckedChecklistItemsFromSection(content: string, heading: string): string[] {
   const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const sectionRegex = new RegExp(`^## ${escapedHeading}\\s*\\n([\\s\\S]*?)(?=^##\\s|$)`, 'm');
+  const sectionRegex = new RegExp(
+    `^##\\s+${escapedHeading}(?:\\b[^\\n]*)?\\s*\\n([\\s\\S]*?)(?=^##\\s|$)`,
+    'm'
+  );
   const sectionMatch = content.match(sectionRegex);
   if (!sectionMatch) {
     return [];
@@ -290,12 +293,84 @@ function validateStatusTransition(
   return null;
 }
 
+let cachedComparisonRef: string | null | undefined;
+let cachedChangedBacklogFiles: Set<string> | undefined;
+
+function runGitForRef(args: string[]): string | null {
+  const result = spawnSync('git', args, {
+    cwd: process.cwd(),
+    encoding: 'utf-8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  });
+
+  if (result.status !== 0 || !result.stdout) {
+    return null;
+  }
+
+  const output = result.stdout.trim();
+  return output.length > 0 ? output : null;
+}
+
+function resolveComparisonRef(): string | null {
+  if (cachedComparisonRef !== undefined) {
+    return cachedComparisonRef;
+  }
+
+  const explicitBaseRef =
+    process.env.PR_BASE_SHA?.trim() || process.env.GITHUB_BASE_SHA?.trim() || null;
+  if (explicitBaseRef) {
+    const verified = runGitForRef(['rev-parse', '--verify', `${explicitBaseRef}^{commit}`]);
+    if (verified) {
+      cachedComparisonRef = verified;
+      return cachedComparisonRef;
+    }
+  }
+
+  const baseBranch = process.env.GITHUB_BASE_REF?.trim();
+  if (baseBranch) {
+    const mergeBase = runGitForRef(['merge-base', 'HEAD', `origin/${baseBranch}`]);
+    if (mergeBase) {
+      cachedComparisonRef = mergeBase;
+      return cachedComparisonRef;
+    }
+  }
+
+  const previousHead = runGitForRef(['rev-parse', '--verify', 'HEAD~1']);
+  cachedComparisonRef = previousHead;
+  return cachedComparisonRef;
+}
+
+function hasBacklogFileChangedSinceComparison(file: string): boolean {
+  const comparisonRef = resolveComparisonRef();
+  if (!comparisonRef) {
+    return false;
+  }
+
+  if (!cachedChangedBacklogFiles) {
+    const changedOutput = runGitForRef(['diff', '--name-only', comparisonRef, '--', 'backlog']);
+    cachedChangedBacklogFiles = new Set(
+      (changedOutput ?? '')
+        .split('\n')
+        .map((entry) => toPosixPath(entry.trim()))
+        .filter(Boolean)
+    );
+  }
+
+  return cachedChangedBacklogFiles.has(`backlog/${file}`);
+}
+
 /**
- * Get previous committed status from git (HEAD) for a backlog file.
+ * Get previous committed status from git for a backlog file.
+ * Uses a stable baseline ref (PR base SHA, merge-base, or HEAD~1 fallback).
  * Returns null for new/untracked files or files without valid frontmatter.
  */
 function getPreviousStatusFromGit(file: string): string | null {
-  const gitPath = `HEAD:backlog/${file}`;
+  const comparisonRef = resolveComparisonRef();
+  if (!comparisonRef) {
+    return null;
+  }
+
+  const gitPath = `${comparisonRef}:backlog/${file}`;
   const result = spawnSync('git', ['show', gitPath], {
     cwd: process.cwd(),
     encoding: 'utf-8',
@@ -505,9 +580,12 @@ function validateFrontmatter(): boolean {
           );
         }
 
-        const isEnteringClosed = status === 'closed' && previousStatus !== 'closed';
+        const isClosed = status === 'closed';
+        const isEnteringClosed = isClosed && previousStatus !== 'closed';
+        const shouldEnforceClosedInvariants =
+          isClosed && (isEnteringClosed || hasBacklogFileChangedSinceComparison(file));
 
-        if (isEnteringClosed) {
+        if (shouldEnforceClosedInvariants) {
           const statusReason =
             typeof frontmatter.status_reason === 'string' ? frontmatter.status_reason.trim() : '';
           const completedDate =
@@ -602,7 +680,7 @@ function validateFrontmatter(): boolean {
           }
         }
 
-        if (isEnteringClosed) {
+        if (shouldEnforceClosedInvariants) {
           const uncheckedTasks = extractUncheckedChecklistItemsFromSection(content, 'Tasks');
           const uncheckedAcceptance = extractUncheckedChecklistItemsFromSection(
             content,
