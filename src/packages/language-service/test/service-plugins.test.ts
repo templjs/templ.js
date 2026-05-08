@@ -234,14 +234,15 @@ describe('language-service service-plugins coverage branches', () => {
     ).toEqual({ enabled: false, reason: 'unavailable-vscode-extension-json' });
 
     expect(
-      servicePluginTesting.planJsonAdapterRuntime({
-        initializationOptions: { jsonLSRegisteredForJson: false },
-      } as never)
-    ).toEqual({ enabled: false, reason: 'disabled-json-ls-not-registered-for-json' });
-
-    expect(
       servicePluginTesting.createJsonHostServicePlugin({
-        initializationOptions: { jsonLSRegisteredForJson: false },
+        initializationOptions: {
+          adapterRuntimes: {
+            'templjs-json-host': {
+              state: 'unavailable',
+              reason: 'unavailable-vscode-extension-json',
+            },
+          },
+        },
       } as never)
     ).toBeUndefined();
   });
@@ -257,7 +258,7 @@ describe('language-service service-plugins coverage branches', () => {
     expect(servicePluginTesting.createYamlDiagnosticsPlugin({} as never)).toBeDefined();
   });
 
-  it('enables json adapter by default when jsonLSRegisteredForJson is not set', async () => {
+  it('enables json adapter by default when no runtime override is provided', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
 
     expect(servicePluginTesting.planJsonAdapterRuntime({} as never)).toEqual({
