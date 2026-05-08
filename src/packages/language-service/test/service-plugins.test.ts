@@ -62,14 +62,14 @@ describe('language-service service-plugins coverage branches', () => {
     const { servicePluginTesting } = await import('../src/index.ts');
     const manifest = servicePluginTesting.resolveAdapterRuntimeManifest({} as never);
 
-    expect(manifest.adapters.find((adapter) => adapter.id === 'templjs-markdown-host')).toMatchObject(
-      {
-        requirements: {
-          extensionIds: ['DavidAnson.vscode-markdownlint'],
-          settingsKeys: ['[markdown]'],
-        },
-      }
-    );
+    expect(
+      manifest.adapters.find((adapter) => adapter.id === 'templjs-markdown-host')
+    ).toMatchObject({
+      requirements: {
+        extensionIds: ['DavidAnson.vscode-markdownlint'],
+        settingsKeys: ['[markdown]'],
+      },
+    });
     expect(
       servicePluginTesting.getConfiguredPrettierHostLanguages({
         initializationOptions: {

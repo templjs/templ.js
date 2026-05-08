@@ -1,6 +1,4 @@
-import type {
-  ServicePluginOrchestrationOptions,
-} from './service-plugin-contract.js';
+import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
 import type {
   AdapterRuntimeManifest,
   AdapterRuntimeManifestEntry,

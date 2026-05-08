@@ -39,9 +39,6 @@ export type {
   TempljsHostServiceAdapterId,
 } from './adapter-runtime-contract.js';
 
-export {
-  getResolvedAdapterRuntime,
-  resolveAdapterRuntimeManifest,
-} from './runtime-manifest.js';
+export { getResolvedAdapterRuntime, resolveAdapterRuntimeManifest } from './runtime-manifest.js';
 export type DocumentSchemaConfig = import('./schema-loading.js').SchemaPatternConfig;
 export type SchemaPatterns = Record<string, import('./schema-loading.js').SchemaPatternConfig>;

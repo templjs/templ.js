@@ -446,7 +446,9 @@ describe('extension-activation', () => {
       },
     });
     expect(clientOptions.initializationOptions.prettierHostLanguages).toEqual(['markdown', 'json']);
-    expect(clientOptions.initializationOptions.adapterRuntimes?.['templjs-prettier-host']).toMatchObject({
+    expect(
+      clientOptions.initializationOptions.adapterRuntimes?.['templjs-prettier-host']
+    ).toMatchObject({
       state: 'enabled',
       reason: 'resolved-vscode-formatter-selection',
     });
@@ -491,7 +493,9 @@ describe('extension-activation', () => {
     expect(clientOptions.initializationOptions.contentSchemaPath).toBeUndefined();
     expect(clientOptions.initializationOptions.schemaPatterns).toBeUndefined();
     expect(clientOptions.initializationOptions.prettierHostLanguages).toEqual([]);
-    expect(clientOptions.initializationOptions.adapterRuntimes?.['templjs-prettier-host']).toMatchObject({
+    expect(
+      clientOptions.initializationOptions.adapterRuntimes?.['templjs-prettier-host']
+    ).toMatchObject({
       state: 'disabled',
       reason: 'disabled-no-prettier-host-languages',
     });
