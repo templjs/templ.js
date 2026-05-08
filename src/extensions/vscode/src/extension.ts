@@ -165,6 +165,10 @@ function isMarkdownlintRegisteredForMd(): boolean {
   return vscode.extensions.getExtension('DavidAnson.vscode-markdownlint') !== undefined;
 }
 
+function isHtmlLSRegisteredForHtml(): boolean {
+  return vscode.extensions.getExtension('vscode.html-language-features') !== undefined;
+}
+
 function shouldRefreshFormatterSelection(event: vscode.ConfigurationChangeEvent): boolean {
   if (event.affectsConfiguration('editor.defaultFormatter')) {
     return true;
@@ -403,6 +407,7 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
       traceMode,
       prettierHostLanguages,
       markdownlintRegisteredForMd: isMarkdownlintRegisteredForMd(),
+      htmlLSRegisteredForHtml: isHtmlLSRegisteredForHtml(),
     },
   };
 

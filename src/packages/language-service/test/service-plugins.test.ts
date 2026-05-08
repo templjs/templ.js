@@ -130,7 +130,9 @@ describe('language-service service-plugins coverage branches', () => {
     expect(servicePluginTesting.createTempljsMarkdownDiagnosticsPlugin({} as never).name).toBe(
       'templjs-markdown-diagnostics'
     );
-    expect(servicePluginTesting.createHtmlHostServicePlugin().name).toBe('templjs-html-host');
+    expect(servicePluginTesting.createHtmlHostServicePlugin({} as never)?.name).toBe(
+      'templjs-html-host'
+    );
     expect(servicePluginTesting.createJsonHostServicePlugin().name).toBe('templjs-json-host');
   });
 
@@ -155,6 +157,33 @@ describe('language-service service-plugins coverage branches', () => {
         },
       } as never)
     ).toBeUndefined();
+  });
+
+  it('disables html adapter when vscode.html-language-features is not registered', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(
+      servicePluginTesting.planHtmlAdapterRuntime({
+        initializationOptions: { htmlLSRegisteredForHtml: false },
+      } as never)
+    ).toEqual({ enabled: false, reason: 'disabled-html-ls-not-registered-for-html' });
+
+    expect(
+      servicePluginTesting.createHtmlHostServicePlugin({
+        initializationOptions: { htmlLSRegisteredForHtml: false },
+      } as never)
+    ).toBeUndefined();
+  });
+
+  it('enables html adapter by default when htmlLSRegisteredForHtml is not set', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(servicePluginTesting.planHtmlAdapterRuntime({} as never)).toEqual({
+      enabled: true,
+      reason: 'default-enabled',
+    });
+
+    expect(servicePluginTesting.createHtmlHostServicePlugin({} as never)).toBeDefined();
   });
 
   it('remaps matching language ids before delegating diagnostics', async () => {
