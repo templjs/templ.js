@@ -12,7 +12,6 @@ import {
 import { pathToFileURL } from 'url';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { create as createVolarHtmlServicePlugin } from 'volar-service-html';
-import { create as createVolarJsonServicePlugin } from 'volar-service-json';
 import { create as createVolarPrettierServicePlugin } from 'volar-service-prettier';
 import { create as createVolarYamlServicePlugin } from 'volar-service-yaml';
 import { loadSchemaSourceSync, resolveDocumentSchemaSources } from './schema-loading.js';
@@ -20,6 +19,7 @@ import {
   createMarkdownHostDiagnosticsAdapter,
   planMarkdownAdapterRuntime,
 } from './markdown-adapter.js';
+import { createJsonHostAdapter, planJsonAdapterRuntime } from './json-adapter.js';
 import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
 import {
   getConfiguredPrettierHostLanguages,
@@ -447,13 +447,8 @@ function createHtmlHostServicePlugin(): LanguageServicePlugin {
   };
 }
 
-function createJsonHostServicePlugin(): LanguageServicePlugin {
-  const basePlugin = createVolarJsonServicePlugin();
-
-  return {
-    ...basePlugin,
-    name: 'templjs-json-host',
-  };
+function createJsonHostServicePlugin(options: PluginOptions): LanguageServicePlugin | undefined {
+  return createJsonHostAdapter(options);
 }
 
 function createPrettierHostServicePlugin(
@@ -721,6 +716,7 @@ export function createServicePlugins(options: PluginOptions): LanguageServicePlu
   );
 
   const prettierPlugin = createPrettierHostServicePlugin(options);
+  const jsonPlugin = createJsonHostServicePlugin(options);
 
   return [
     createTempljsAdditionalPlugin(options),
@@ -729,7 +725,7 @@ export function createServicePlugins(options: PluginOptions): LanguageServicePlu
     ...(markdownHostPlugin ? [markdownHostPlugin] : []),
     createYamlDiagnosticsPlugin(options),
     createHtmlHostServicePlugin(),
-    createJsonHostServicePlugin(),
+    ...(jsonPlugin ? [jsonPlugin] : []),
     ...(prettierPlugin ? [prettierPlugin] : []),
   ];
 }
@@ -761,6 +757,7 @@ export const servicePluginTesting = {
   createYamlDiagnosticsPlugin,
   createHtmlHostServicePlugin,
   createJsonHostServicePlugin,
+  planJsonAdapterRuntime,
   createPrettierHostServicePlugin,
   planMarkdownAdapterRuntime,
   getConfiguredPrettierHostLanguages,

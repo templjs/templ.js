@@ -27,6 +27,7 @@ export interface ServerInitializationOptions {
   traceMode?: 'off' | 'messages' | 'verbose';
   prettierHostLanguages?: string[];
   markdownlintRegisteredForMd?: boolean;
+  jsonLSRegisteredForJson?: boolean;
   documentContext?: {
     uri?: string;
     content?: string;

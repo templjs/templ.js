@@ -131,7 +131,9 @@ describe('language-service service-plugins coverage branches', () => {
       'templjs-markdown-diagnostics'
     );
     expect(servicePluginTesting.createHtmlHostServicePlugin().name).toBe('templjs-html-host');
-    expect(servicePluginTesting.createJsonHostServicePlugin().name).toBe('templjs-json-host');
+    expect(servicePluginTesting.createJsonHostServicePlugin({} as never)?.name).toBe(
+      'templjs-json-host'
+    );
   });
 
   it('disables markdown host adapter when markdownlint is not registered for .md', async () => {
@@ -155,6 +157,33 @@ describe('language-service service-plugins coverage branches', () => {
         },
       } as never)
     ).toBeUndefined();
+  });
+
+  it('disables json adapter when vscode.json-language-features is not registered', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(
+      servicePluginTesting.planJsonAdapterRuntime({
+        initializationOptions: { jsonLSRegisteredForJson: false },
+      } as never)
+    ).toEqual({ enabled: false, reason: 'disabled-json-ls-not-registered-for-json' });
+
+    expect(
+      servicePluginTesting.createJsonHostServicePlugin({
+        initializationOptions: { jsonLSRegisteredForJson: false },
+      } as never)
+    ).toBeUndefined();
+  });
+
+  it('enables json adapter by default when jsonLSRegisteredForJson is not set', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(servicePluginTesting.planJsonAdapterRuntime({} as never)).toEqual({
+      enabled: true,
+      reason: 'default-enabled',
+    });
+
+    expect(servicePluginTesting.createJsonHostServicePlugin({} as never)).toBeDefined();
   });
 
   it('remaps matching language ids before delegating diagnostics', async () => {
