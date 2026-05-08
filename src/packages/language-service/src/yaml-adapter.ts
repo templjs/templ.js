@@ -1,15 +1,24 @@
 import type { LanguageServicePlugin } from '@volar/language-service';
 import { create as createVolarYamlServicePlugin } from 'volar-service-yaml';
 import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
+import { getResolvedAdapterRuntime } from './runtime-manifest.js';
 
 export type YamlAdapterRuntimePlan = {
   enabled: boolean;
-  reason: 'default-enabled' | 'disabled-yaml-ls-not-registered-for-yaml';
+  reason: string;
 };
 
 export function planYamlAdapterRuntime(
   options: ServicePluginOrchestrationOptions
 ): YamlAdapterRuntimePlan {
+  const resolvedRuntime = getResolvedAdapterRuntime(options, 'templjs-yaml');
+  if (resolvedRuntime) {
+    return {
+      enabled: resolvedRuntime.state === 'enabled',
+      reason: resolvedRuntime.reason,
+    };
+  }
+
   if (options.initializationOptions?.redhatYamlRegisteredForYaml === false) {
     return {
       enabled: false,

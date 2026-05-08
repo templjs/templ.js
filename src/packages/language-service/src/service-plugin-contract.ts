@@ -1,12 +1,6 @@
 import type { DiagnosticOptions, IntellisenseOptions } from '@templjs/volar';
 import type { ServerInitializationOptions } from './schema-loading.js';
-
-export type TempljsHostServiceAdapterId =
-  | 'templjs-markdown-host'
-  | 'templjs-yaml'
-  | 'templjs-html-host'
-  | 'templjs-json-host'
-  | 'templjs-prettier-host';
+import type { TempljsHostServiceAdapterId } from './adapter-runtime-contract.js';
 
 export type ServicePluginRuntimePlanningContext = {
   sourceUri: string;

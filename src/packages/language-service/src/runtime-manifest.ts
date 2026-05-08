@@ -1,28 +1,12 @@
 import type {
   ServicePluginOrchestrationOptions,
-  TempljsHostServiceAdapterId,
 } from './service-plugin-contract.js';
-
-export type AdapterRuntimeCapability =
-  | 'completion'
-  | 'hover'
-  | 'definition'
-  | 'diagnostics'
-  | 'formatting';
-
-export type AdapterRuntimeResolutionMode = 'immediate' | 'deferred';
-
-export type AdapterRuntimeManifestEntry = {
-  id: TempljsHostServiceAdapterId;
-  languageIds: string[];
-  capabilities: AdapterRuntimeCapability[];
-  resolutionMode: AdapterRuntimeResolutionMode;
-};
-
-export type AdapterRuntimeManifest = {
-  version: 1;
-  adapters: AdapterRuntimeManifestEntry[];
-};
+import type {
+  AdapterRuntimeManifest,
+  AdapterRuntimeManifestEntry,
+  AdapterRuntimeResolution,
+  TempljsHostServiceAdapterId,
+} from './adapter-runtime-contract.js';
 
 const BASE_ADAPTER_ENTRIES: AdapterRuntimeManifestEntry[] = [
   {
@@ -30,24 +14,40 @@ const BASE_ADAPTER_ENTRIES: AdapterRuntimeManifestEntry[] = [
     languageIds: ['markdown', 'templjs-markdown'],
     capabilities: ['diagnostics'],
     resolutionMode: 'immediate',
+    requirements: {
+      extensionIds: ['DavidAnson.vscode-markdownlint'],
+      settingsKeys: ['[markdown]'],
+    },
   },
   {
     id: 'templjs-yaml',
     languageIds: ['yaml', 'templjs-yaml'],
     capabilities: ['diagnostics', 'completion'],
     resolutionMode: 'immediate',
+    requirements: {
+      extensionIds: ['redhat.vscode-yaml'],
+      settingsKeys: ['[yaml]'],
+    },
   },
   {
     id: 'templjs-html-host',
     languageIds: ['html', 'templjs-html'],
     capabilities: ['diagnostics', 'completion', 'hover', 'definition'],
     resolutionMode: 'immediate',
+    requirements: {
+      extensionIds: ['vscode.html-language-features'],
+      settingsKeys: ['[html]'],
+    },
   },
   {
     id: 'templjs-json-host',
     languageIds: ['json', 'templjs-json'],
     capabilities: ['diagnostics', 'completion', 'hover', 'definition'],
     resolutionMode: 'immediate',
+    requirements: {
+      extensionIds: ['vscode.json-language-features'],
+      settingsKeys: ['[json]'],
+    },
   },
 ];
 
@@ -81,11 +81,22 @@ export function resolveAdapterRuntimeManifest(
       languageIds: prettierHostLanguages,
       capabilities: ['formatting'],
       resolutionMode: 'deferred',
+      requirements: {
+        extensionIds: ['esbenp.prettier-vscode'],
+        settingsKeys: ['editor.defaultFormatter', '[markdown]', '[json]', '[yaml]', '[html]'],
+      },
     });
   }
 
   return {
-    version: 1,
+    version: 2,
     adapters,
   };
+}
+
+export function getResolvedAdapterRuntime(
+  options: ServicePluginOrchestrationOptions,
+  adapterId: TempljsHostServiceAdapterId
+): AdapterRuntimeResolution | undefined {
+  return options.initializationOptions?.adapterRuntimes?.[adapterId];
 }

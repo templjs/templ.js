@@ -356,6 +356,7 @@ describe('extension-activation', () => {
         schemaPath?: string;
         contentSchemaPath?: string;
         schemaPatterns?: Record<string, { schemaPath?: string; contentSchemaPath?: string }>;
+        adapterRuntimes?: Record<string, { state: string; reason: string }>;
         prettierHostLanguages?: string[];
         documentContext?: { uri: string; content: string };
       };
@@ -372,6 +373,20 @@ describe('extension-activation', () => {
       },
     });
     expect(clientOptions.initializationOptions.prettierHostLanguages).toEqual(['markdown', 'json']);
+    expect(clientOptions.initializationOptions.adapterRuntimes).toMatchObject({
+      'templjs-markdown-host': {
+        state: 'unavailable',
+        reason: 'unavailable-vscode-extension-markdownlint',
+      },
+      'templjs-yaml': {
+        state: 'unavailable',
+        reason: 'unavailable-vscode-extension-yaml',
+      },
+      'templjs-prettier-host': {
+        state: 'enabled',
+        reason: 'resolved-vscode-formatter-selection',
+      },
+    });
     expect(clientOptions.initializationOptions.documentContext).toEqual({
       uri: 'file:///workspace/backlog/054_bug_no_schema_aware_authoring.md',
       content: '---\n$templ-schema: .templjs/root.json\n---\n{{ user.name }}',
@@ -415,6 +430,7 @@ describe('extension-activation', () => {
         schemaPath?: string;
         contentSchemaPath?: string;
         schemaPatterns?: Record<string, { schemaPath?: string; contentSchemaPath?: string }>;
+        adapterRuntimes?: Record<string, { state: string; reason: string }>;
         prettierHostLanguages?: string[];
       };
     };
@@ -430,6 +446,10 @@ describe('extension-activation', () => {
       },
     });
     expect(clientOptions.initializationOptions.prettierHostLanguages).toEqual(['markdown', 'json']);
+    expect(clientOptions.initializationOptions.adapterRuntimes?.['templjs-prettier-host']).toMatchObject({
+      state: 'enabled',
+      reason: 'resolved-vscode-formatter-selection',
+    });
 
     delete (globalThis as { require?: unknown }).require;
   });
@@ -463,6 +483,7 @@ describe('extension-activation', () => {
         schemaPath?: string;
         contentSchemaPath?: string;
         schemaPatterns?: Record<string, { schemaPath?: string; contentSchemaPath?: string }>;
+        adapterRuntimes?: Record<string, { state: string; reason: string }>;
         prettierHostLanguages?: string[];
       };
     };
@@ -470,6 +491,10 @@ describe('extension-activation', () => {
     expect(clientOptions.initializationOptions.contentSchemaPath).toBeUndefined();
     expect(clientOptions.initializationOptions.schemaPatterns).toBeUndefined();
     expect(clientOptions.initializationOptions.prettierHostLanguages).toEqual([]);
+    expect(clientOptions.initializationOptions.adapterRuntimes?.['templjs-prettier-host']).toMatchObject({
+      state: 'disabled',
+      reason: 'disabled-no-prettier-host-languages',
+    });
   });
 
   it('pushes command and language client into extension subscriptions', async () => {
