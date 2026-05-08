@@ -209,9 +209,7 @@ function resolveAdapterRuntimes(prettierHostLanguages: string[]): AdapterRuntime
     },
     'templjs-html-host': {
       state: hasHtmlLs ? 'enabled' : 'unavailable',
-      reason: hasHtmlLs
-        ? 'resolved-vscode-extension-html'
-        : 'unavailable-vscode-extension-html',
+      reason: hasHtmlLs ? 'resolved-vscode-extension-html' : 'unavailable-vscode-extension-html',
       provider: {
         kind: 'vscode-extension',
         id: 'vscode.html-language-features',
@@ -220,9 +218,7 @@ function resolveAdapterRuntimes(prettierHostLanguages: string[]): AdapterRuntime
     },
     'templjs-json-host': {
       state: hasJsonLs ? 'enabled' : 'unavailable',
-      reason: hasJsonLs
-        ? 'resolved-vscode-extension-json'
-        : 'unavailable-vscode-extension-json',
+      reason: hasJsonLs ? 'resolved-vscode-extension-json' : 'unavailable-vscode-extension-json',
       provider: {
         kind: 'vscode-extension',
         id: 'vscode.json-language-features',
