@@ -19,6 +19,13 @@ export function planJsonAdapterRuntime(
     };
   }
 
+  if (options.initializationOptions?.jsonLSRegisteredForJson === false) {
+    return {
+      enabled: false,
+      reason: 'disabled-json-ls-not-registered-for-json',
+    };
+  }
+
   return {
     enabled: true,
     reason: 'default-enabled',
