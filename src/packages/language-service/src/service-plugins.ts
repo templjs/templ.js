@@ -19,6 +19,8 @@ import {
   planMarkdownAdapterRuntime,
 } from './markdown-adapter.js';
 import { createJsonHostAdapter, planJsonAdapterRuntime } from './json-adapter.js';
+import { createYamlHostDiagnosticsAdapter, planYamlAdapterRuntime } from './yaml-adapter.js';
+import { createJsonHostAdapter, planJsonAdapterRuntime } from './json-adapter.js';
 import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
 import {
   getConfiguredPrettierHostLanguages,
