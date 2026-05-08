@@ -171,10 +171,13 @@ function isRedhatYamlRegisteredForYaml(): boolean {
 }
 
 function resolveAdapterRuntimes(prettierHostLanguages: string[]): AdapterRuntimeMap {
+  const hasMarkdownlint = isMarkdownlintRegisteredForMd();
+  const hasRedhatYaml = isRedhatYamlRegisteredForYaml();
+
   const runtimes: AdapterRuntimeMap = {
     'templjs-markdown-host': {
-      state: isMarkdownlintRegisteredForMd() ? 'enabled' : 'unavailable',
-      reason: isMarkdownlintRegisteredForMd()
+      state: hasMarkdownlint ? 'enabled' : 'unavailable',
+      reason: hasMarkdownlint
         ? 'resolved-vscode-extension-markdownlint'
         : 'unavailable-vscode-extension-markdownlint',
       provider: {
@@ -184,8 +187,8 @@ function resolveAdapterRuntimes(prettierHostLanguages: string[]): AdapterRuntime
       languageIds: ['markdown', 'templjs-markdown'],
     },
     'templjs-yaml': {
-      state: isRedhatYamlRegisteredForYaml() ? 'enabled' : 'unavailable',
-      reason: isRedhatYamlRegisteredForYaml()
+      state: hasRedhatYaml ? 'enabled' : 'unavailable',
+      reason: hasRedhatYaml
         ? 'resolved-vscode-extension-yaml'
         : 'unavailable-vscode-extension-yaml',
       provider: {
