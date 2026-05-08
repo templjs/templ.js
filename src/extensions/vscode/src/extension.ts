@@ -645,10 +645,9 @@ function getTypeScriptSdkPath(): string | undefined {
   try {
     const tsServerPath = require.resolve('typescript/lib/tsserverlibrary.js');
     return path.dirname(tsServerPath);
-  } catch {
-    /* v8 ignore next */
+  } /* v8 ignore start */ catch {
     return undefined;
-  }
+  } /* v8 ignore stop */
 }
 
 /**
