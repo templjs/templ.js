@@ -60,6 +60,18 @@ describe('createServicePlugins', () => {
     expect(plugins[6]?.name).toBe('templjs-json-host');
   });
 
+  it('skips markdown host adapter when markdownlint is not registered for .md', () => {
+    const plugins = createServicePlugins({
+      getIntellisenseOptions: () => ({}),
+      getDiagnosticOptions: () => ({}),
+      initializationOptions: {
+        markdownlintRegisteredForMd: false,
+      } as never,
+    });
+
+    expect(plugins.some((plugin) => plugin.name === 'templjs-markdown-host')).toBe(false);
+  });
+
   it('adds prettier host plugin only for configured host languages', () => {
     const plugins = createServicePlugins({
       getIntellisenseOptions: () => ({}),

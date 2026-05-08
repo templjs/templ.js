@@ -124,7 +124,7 @@ describe('language-service service-plugins coverage branches', () => {
       {} as never
     );
 
-    expect(servicePluginTesting.createMarkdownHostDiagnosticsPlugin({} as never).name).toBe(
+    expect(servicePluginTesting.createMarkdownHostDiagnosticsPlugin({} as never)?.name).toBe(
       'templjs-markdown-host'
     );
     expect(servicePluginTesting.createTempljsMarkdownDiagnosticsPlugin({} as never).name).toBe(
@@ -132,6 +132,29 @@ describe('language-service service-plugins coverage branches', () => {
     );
     expect(servicePluginTesting.createHtmlHostServicePlugin().name).toBe('templjs-html-host');
     expect(servicePluginTesting.createJsonHostServicePlugin().name).toBe('templjs-json-host');
+  });
+
+  it('disables markdown host adapter when markdownlint is not registered for .md', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(
+      servicePluginTesting.planMarkdownAdapterRuntime({
+        initializationOptions: {
+          markdownlintRegisteredForMd: false,
+        },
+      } as never)
+    ).toEqual({
+      enabled: false,
+      reason: 'disabled-markdownlint-not-registered-for-md',
+    });
+
+    expect(
+      servicePluginTesting.createMarkdownHostDiagnosticsPlugin({
+        initializationOptions: {
+          markdownlintRegisteredForMd: false,
+        },
+      } as never)
+    ).toBeUndefined();
   });
 
   it('remaps matching language ids before delegating diagnostics', async () => {

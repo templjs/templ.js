@@ -157,6 +157,14 @@ function getPrettierHostLanguagesFromSettings(): string[] {
   return selected;
 }
 
+/**
+ * Returns true when a markdownlint extension is installed, indicating the server
+ * should defer markdown diagnostics to that extension rather than running its own adapter.
+ */
+function isMarkdownlintRegisteredForMd(): boolean {
+  return vscode.extensions.getExtension('DavidAnson.vscode-markdownlint') !== undefined;
+}
+
 function shouldRefreshFormatterSelection(event: vscode.ConfigurationChangeEvent): boolean {
   if (event.affectsConfiguration('editor.defaultFormatter')) {
     return true;
@@ -394,6 +402,7 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
       documentContext,
       traceMode,
       prettierHostLanguages,
+      markdownlintRegisteredForMd: isMarkdownlintRegisteredForMd(),
     },
   };
 

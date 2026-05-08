@@ -6,10 +6,11 @@ summary: Implement markdown adapter with runtime planning logic (e.g., if markdo
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
+status: in-progress
+status_reason: implementation
 priority: high
 estimated: 4
-actual: 0
+actual: 1
 ---
 
 ## Goal
@@ -29,12 +30,12 @@ Current `createMarkdownHostDiagnosticsPlugin` and `createTempljsMarkdownDiagnost
 
 ## Tasks
 
-- [ ] Define markdown adapter capabilities (file patterns, supported language servers, feature list).
-- [ ] Implement runtime planning logic for markdown language server availability.
-- [ ] Audit `createMarkdownHostDiagnosticsPlugin` and `createTempljsMarkdownDiagnosticsPlugin` implementations.
-- [ ] Move non-trivial logic (>20 lines) into separate files; keep trivial logic in service-plugins.ts.
-- [ ] Add capability-aware gating for markdown features (e.g., only engage diagnostics if host LS registered).
-- [ ] Add tests for adapter initialization, capability publishing, and runtime gating.
+- [x] Define markdown adapter capabilities (file patterns, supported language servers, feature list).
+- [x] Implement runtime planning logic for markdown language server availability.
+- [x] Audit `createMarkdownHostDiagnosticsPlugin` and `createTempljsMarkdownDiagnosticsPlugin` implementations.
+- [x] Move non-trivial logic (>20 lines) into separate files; keep trivial logic in service-plugins.ts.
+- [x] Add capability-aware gating for markdown features (e.g., only engage diagnostics if host LS registered).
+- [x] Add tests for adapter initialization, capability publishing, and runtime gating.
 
 ## Deliverables
 
