@@ -27,6 +27,7 @@ export interface ServerInitializationOptions {
   traceMode?: 'off' | 'messages' | 'verbose';
   prettierHostLanguages?: string[];
   markdownlintRegisteredForMd?: boolean;
+  redhatYamlRegisteredForYaml?: boolean;
   documentContext?: {
     uri?: string;
     content?: string;

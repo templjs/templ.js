@@ -14,12 +14,12 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { create as createVolarHtmlServicePlugin } from 'volar-service-html';
 import { create as createVolarJsonServicePlugin } from 'volar-service-json';
 import { create as createVolarPrettierServicePlugin } from 'volar-service-prettier';
-import { create as createVolarYamlServicePlugin } from 'volar-service-yaml';
 import { loadSchemaSourceSync, resolveDocumentSchemaSources } from './schema-loading.js';
 import {
   createMarkdownHostDiagnosticsAdapter,
   planMarkdownAdapterRuntime,
 } from './markdown-adapter.js';
+import { createYamlHostDiagnosticsAdapter, planYamlAdapterRuntime } from './yaml-adapter.js';
 import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
 import {
   getConfiguredPrettierHostLanguages,
@@ -403,33 +403,8 @@ function withLanguageIdRemap(
   };
 }
 
-function createYamlDiagnosticsPlugin(_options: PluginOptions): LanguageServicePlugin {
-  const base = withLanguageIdRemap(createVolarYamlServicePlugin(), 'templjs-yaml', 'yaml');
-  return {
-    ...base,
-    name: 'templjs-yaml',
-    capabilities: {
-      completionProvider: {
-        triggerCharacters: [':', '-', '{', '['],
-      },
-      diagnosticProvider: {
-        interFileDependencies: false,
-        workspaceDiagnostics: false,
-      },
-    },
-    create(context) {
-      const instance = base.create(context);
-      return {
-        ...instance,
-        async provideDiagnostics(document, token) {
-          // Source-level templjs documents carry raw template syntax — skip them.
-          // Cleaned virtual codes already carry 'yaml' or are remapped by withLanguageIdRemap.
-          if (document.languageId.startsWith('templjs-')) return;
-          return instance.provideDiagnostics?.(document, token);
-        },
-      };
-    },
-  };
+function createYamlDiagnosticsPlugin(options: PluginOptions): LanguageServicePlugin | undefined {
+  return createYamlHostDiagnosticsAdapter(options);
 }
 
 function createMarkdownHostDiagnosticsPlugin(
@@ -720,6 +695,7 @@ export function createServicePlugins(options: PluginOptions): LanguageServicePlu
     `[templjs-runtime] manifest version=${runtimeManifest.version} adapters=${runtimeManifest.adapters.length}`
   );
 
+  const yamlPlugin = createYamlDiagnosticsPlugin(options);
   const prettierPlugin = createPrettierHostServicePlugin(options);
 
   return [
@@ -727,7 +703,7 @@ export function createServicePlugins(options: PluginOptions): LanguageServicePlu
     createTempljsDiagnosticsPlugin(options),
     createTempljsMarkdownDiagnosticsPlugin(options),
     ...(markdownHostPlugin ? [markdownHostPlugin] : []),
-    createYamlDiagnosticsPlugin(options),
+    ...(yamlPlugin ? [yamlPlugin] : []),
     createHtmlHostServicePlugin(),
     createJsonHostServicePlugin(),
     ...(prettierPlugin ? [prettierPlugin] : []),
@@ -759,6 +735,7 @@ export const servicePluginTesting = {
   createTempljsMarkdownDiagnosticsPlugin,
   createMarkdownHostDiagnosticsPlugin,
   createYamlDiagnosticsPlugin,
+  planYamlAdapterRuntime,
   createHtmlHostServicePlugin,
   createJsonHostServicePlugin,
   createPrettierHostServicePlugin,
