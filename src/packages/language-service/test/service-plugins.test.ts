@@ -214,6 +214,45 @@ describe('language-service service-plugins coverage branches', () => {
     ).toBeDefined();
   });
 
+  it('disables prettier adapter when adapter runtime map marks it unavailable', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(
+      servicePluginTesting.planPrettierAdapterRuntime({
+        initializationOptions: {
+          adapterRuntimes: {
+            'templjs-prettier-host': {
+              state: 'unavailable',
+              reason: 'unavailable-vscode-formatter-selection',
+            },
+          },
+        },
+      } as never)
+    ).toEqual({ enabled: false, languages: [], reason: 'unavailable-vscode-formatter-selection' });
+  });
+
+  it('uses resolved reason when adapter runtime map marks prettier host as enabled', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(
+      servicePluginTesting.planPrettierAdapterRuntime({
+        initializationOptions: {
+          prettierHostLanguages: ['html'],
+          adapterRuntimes: {
+            'templjs-prettier-host': {
+              state: 'enabled',
+              reason: 'resolved-vscode-formatter-selection',
+            },
+          },
+        },
+      } as never)
+    ).toEqual({
+      enabled: true,
+      languages: ['html'],
+      reason: 'resolved-vscode-formatter-selection',
+    });
+  });
+
   it('disables yaml adapter when redhat.vscode-yaml is not registered for .yaml', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
 
