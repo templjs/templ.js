@@ -1,6 +1,5 @@
 import type { LanguageServicePlugin, LanguageServiceContext } from '@volar/language-service';
 import { URI } from 'vscode-uri';
-import prettier from 'prettier';
 import {
   collectDiagnostics,
   TempljsServicePlugin,
@@ -13,13 +12,13 @@ import { pathToFileURL } from 'url';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { create as createVolarHtmlServicePlugin } from 'volar-service-html';
 import { create as createVolarJsonServicePlugin } from 'volar-service-json';
-import { create as createVolarPrettierServicePlugin } from 'volar-service-prettier';
 import { create as createVolarYamlServicePlugin } from 'volar-service-yaml';
 import { loadSchemaSourceSync, resolveDocumentSchemaSources } from './schema-loading.js';
 import {
   createMarkdownHostDiagnosticsAdapter,
   planMarkdownAdapterRuntime,
 } from './markdown-adapter.js';
+import { createPrettierHostAdapter, planPrettierAdapterRuntime } from './prettier-adapter.js';
 import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
 import {
   getConfiguredPrettierHostLanguages,
@@ -459,23 +458,7 @@ function createJsonHostServicePlugin(): LanguageServicePlugin {
 function createPrettierHostServicePlugin(
   options: PluginOptions
 ): LanguageServicePlugin | undefined {
-  const runtimeManifest = resolveAdapterRuntimeManifest(options);
-  const prettierEntry = runtimeManifest.adapters.find(
-    (adapter) => adapter.id === 'templjs-prettier-host'
-  );
-  const languages = prettierEntry?.languageIds ?? [];
-  if (languages.length === 0) {
-    return undefined;
-  }
-
-  const basePlugin = createVolarPrettierServicePlugin(prettier, {
-    documentSelector: languages,
-  });
-
-  return {
-    ...basePlugin,
-    name: 'templjs-prettier-host',
-  };
+  return createPrettierHostAdapter(options);
 }
 
 function createTextDocumentLike(uri: string, languageId: string, text: string) {
@@ -762,6 +745,7 @@ export const servicePluginTesting = {
   createHtmlHostServicePlugin,
   createJsonHostServicePlugin,
   createPrettierHostServicePlugin,
+  planPrettierAdapterRuntime,
   planMarkdownAdapterRuntime,
   getConfiguredPrettierHostLanguages,
   resolveAdapterRuntimeManifest,

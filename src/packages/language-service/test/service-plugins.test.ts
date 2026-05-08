@@ -157,6 +157,34 @@ describe('language-service service-plugins coverage branches', () => {
     ).toBeUndefined();
   });
 
+  it('disables prettier adapter when no languages are configured', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(
+      servicePluginTesting.planPrettierAdapterRuntime({ initializationOptions: {} } as never)
+    ).toEqual({ enabled: false, languages: [], reason: 'disabled-no-languages-configured' });
+
+    expect(
+      servicePluginTesting.createPrettierHostServicePlugin({ initializationOptions: {} } as never)
+    ).toBeUndefined();
+  });
+
+  it('enables prettier adapter with configured languages', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(
+      servicePluginTesting.planPrettierAdapterRuntime({
+        initializationOptions: { prettierHostLanguages: ['markdown', 'json'] },
+      } as never)
+    ).toEqual({ enabled: true, languages: ['markdown', 'json'], reason: 'configured-languages' });
+
+    expect(
+      servicePluginTesting.createPrettierHostServicePlugin({
+        initializationOptions: { prettierHostLanguages: ['yaml'] },
+      } as never)
+    ).toBeDefined();
+  });
+
   it('remaps matching language ids before delegating diagnostics', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
     const provideDiagnostics = vi.fn(async (document) => [document.languageId]);
