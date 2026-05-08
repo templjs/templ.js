@@ -10,6 +10,7 @@
 
 import * as path from 'path';
 import * as vscode from 'vscode';
+import type { AdapterRuntimeMap } from '@templjs/language-service';
 import {
   LanguageClient,
   type LanguageClientOptions,
@@ -173,6 +174,65 @@ function isJsonLSRegisteredForJson(): boolean {
   return vscode.extensions.getExtension('vscode.json-language-features') !== undefined;
 }
 
+function resolveAdapterRuntimes(prettierHostLanguages: string[]): AdapterRuntimeMap {
+  const hasMarkdownlint = isMarkdownlintRegisteredForMd();
+  const hasRedhatYaml = isRedhatYamlRegisteredForYaml();
+  const hasJsonLs = isJsonLSRegisteredForJson();
+
+  const runtimes: AdapterRuntimeMap = {
+    'templjs-markdown-host': {
+      state: hasMarkdownlint ? 'enabled' : 'unavailable',
+      reason: hasMarkdownlint
+        ? 'resolved-vscode-extension-markdownlint'
+        : 'unavailable-vscode-extension-markdownlint',
+      provider: {
+        kind: 'vscode-extension',
+        id: 'DavidAnson.vscode-markdownlint',
+      },
+      languageIds: ['markdown', 'templjs-markdown'],
+    },
+    'templjs-yaml': {
+      state: hasRedhatYaml ? 'enabled' : 'unavailable',
+      reason: hasRedhatYaml
+        ? 'resolved-vscode-extension-yaml'
+        : 'unavailable-vscode-extension-yaml',
+      provider: {
+        kind: 'vscode-extension',
+        id: 'redhat.vscode-yaml',
+      },
+      languageIds: ['yaml', 'templjs-yaml'],
+    },
+    'templjs-json-host': {
+      state: hasJsonLs ? 'enabled' : 'unavailable',
+      reason: hasJsonLs
+        ? 'resolved-vscode-extension-json'
+        : 'unavailable-vscode-extension-json',
+      provider: {
+        kind: 'vscode-extension',
+        id: 'vscode.json-language-features',
+      },
+      languageIds: ['json', 'templjs-json'],
+    },
+    'templjs-prettier-host': {
+      state: prettierHostLanguages.length > 0 ? 'enabled' : 'disabled',
+      reason:
+        prettierHostLanguages.length > 0
+          ? 'resolved-vscode-formatter-selection'
+          : 'disabled-no-prettier-host-languages',
+      provider: {
+        kind: 'vscode-extension',
+        id: 'esbenp.prettier-vscode',
+      },
+      languageIds: prettierHostLanguages,
+      settings: {
+        prettierHostLanguages,
+      },
+    },
+  };
+
+  return runtimes;
+}
+
 function shouldRefreshFormatterSelection(event: vscode.ConfigurationChangeEvent): boolean {
   if (event.affectsConfiguration('editor.defaultFormatter')) {
     return true;
@@ -295,6 +355,7 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
   const schemaPatterns = getSchemaPatternsFromSettings();
   const documentContext = getActiveDocumentContext();
   const prettierHostLanguages = getPrettierHostLanguagesFromSettings();
+  const adapterRuntimes = resolveAdapterRuntimes(prettierHostLanguages);
 
   const clientOptions: LanguageClientOptions = {
     middleware: {
@@ -410,9 +471,9 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
       documentContext,
       traceMode,
       prettierHostLanguages,
+      adapterRuntimes,
       markdownlintRegisteredForMd: isMarkdownlintRegisteredForMd(),
       redhatYamlRegisteredForYaml: isRedhatYamlRegisteredForYaml(),
-      jsonLSRegisteredForJson: isJsonLSRegisteredForJson(),
     },
   };
 
@@ -609,6 +670,7 @@ export const extensionTesting = {
   getFirstTargetUri,
   isPrettierFormatterSelection,
   getPrettierHostLanguagesFromSettings,
+  resolveAdapterRuntimes,
   shouldRefreshFormatterSelection,
   isTempljsDocument,
   getActiveDocumentContext,
