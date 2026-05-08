@@ -157,6 +157,33 @@ describe('language-service service-plugins coverage branches', () => {
     ).toBeUndefined();
   });
 
+  it('disables yaml adapter when redhat.vscode-yaml is not registered for .yaml', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(
+      servicePluginTesting.planYamlAdapterRuntime({
+        initializationOptions: { redhatYamlRegisteredForYaml: false },
+      } as never)
+    ).toEqual({ enabled: false, reason: 'disabled-yaml-ls-not-registered-for-yaml' });
+
+    expect(
+      servicePluginTesting.createYamlDiagnosticsPlugin({
+        initializationOptions: { redhatYamlRegisteredForYaml: false },
+      } as never)
+    ).toBeUndefined();
+  });
+
+  it('enables yaml adapter by default when redhatYamlRegisteredForYaml is not set', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(servicePluginTesting.planYamlAdapterRuntime({} as never)).toEqual({
+      enabled: true,
+      reason: 'default-enabled',
+    });
+
+    expect(servicePluginTesting.createYamlDiagnosticsPlugin({} as never)).toBeDefined();
+  });
+
   it('remaps matching language ids before delegating diagnostics', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
     const provideDiagnostics = vi.fn(async (document) => [document.languageId]);
