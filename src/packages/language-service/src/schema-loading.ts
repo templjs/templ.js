@@ -3,6 +3,7 @@ import * as path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { minimatch } from 'minimatch';
 import { getFrontmatterSchemaAliases } from '@templjs/core';
+import type { AdapterRuntimeMap } from './adapter-runtime-contract.js';
 import {
   resolveSchemaFilePath,
   resolveSchemaFilePathSync,
@@ -28,7 +29,7 @@ export interface ServerInitializationOptions {
   prettierHostLanguages?: string[];
   markdownlintRegisteredForMd?: boolean;
   redhatYamlRegisteredForYaml?: boolean;
-  htmlLSRegisteredForHtml?: boolean;
+  adapterRuntimes?: AdapterRuntimeMap;
   documentContext?: {
     uri?: string;
     content?: string;
