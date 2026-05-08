@@ -1,19 +1,21 @@
 import type { LanguageServicePlugin } from '@volar/language-service';
 import { create as createVolarHtmlServicePlugin } from 'volar-service-html';
 import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
+import { getResolvedAdapterRuntime } from './runtime-manifest.js';
 
 export type HtmlAdapterRuntimePlan = {
   enabled: boolean;
-  reason: 'default-enabled' | 'disabled-html-ls-not-registered-for-html';
+  reason: string;
 };
 
 export function planHtmlAdapterRuntime(
   options: ServicePluginOrchestrationOptions
 ): HtmlAdapterRuntimePlan {
-  if (options.initializationOptions?.htmlLSRegisteredForHtml === false) {
+  const resolvedRuntime = getResolvedAdapterRuntime(options, 'templjs-html-host');
+  if (resolvedRuntime) {
     return {
-      enabled: false,
-      reason: 'disabled-html-ls-not-registered-for-html',
+      enabled: resolvedRuntime.state === 'enabled',
+      reason: resolvedRuntime.reason,
     };
   }
 

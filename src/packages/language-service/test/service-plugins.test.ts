@@ -234,18 +234,32 @@ describe('language-service service-plugins coverage branches', () => {
 
     expect(
       servicePluginTesting.planHtmlAdapterRuntime({
-        initializationOptions: { htmlLSRegisteredForHtml: false },
+        initializationOptions: {
+          adapterRuntimes: {
+            'templjs-html-host': {
+              state: 'unavailable',
+              reason: 'unavailable-vscode-extension-html',
+            },
+          },
+        },
       } as never)
-    ).toEqual({ enabled: false, reason: 'disabled-html-ls-not-registered-for-html' });
+    ).toEqual({ enabled: false, reason: 'unavailable-vscode-extension-html' });
 
     expect(
       servicePluginTesting.createHtmlHostServicePlugin({
-        initializationOptions: { htmlLSRegisteredForHtml: false },
+        initializationOptions: {
+          adapterRuntimes: {
+            'templjs-html-host': {
+              state: 'unavailable',
+              reason: 'unavailable-vscode-extension-html',
+            },
+          },
+        },
       } as never)
     ).toBeUndefined();
   });
 
-  it('enables html adapter by default when htmlLSRegisteredForHtml is not set', async () => {
+  it('enables html adapter by default when no runtime override is provided', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
 
     expect(servicePluginTesting.planHtmlAdapterRuntime({} as never)).toEqual({
