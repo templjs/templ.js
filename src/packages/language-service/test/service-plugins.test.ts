@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 vi.mock('../../../extensions/vscode/src/service-plugins', async () => {
   const actual = await import('../src/index.ts');
@@ -291,5 +294,34 @@ describe('language-service service-plugins coverage branches', () => {
         languageId: 'yaml',
       })
     ).toBe(true);
+  });
+
+  it('resolves both schema and content schema from initialization options', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+    const workspace = mkdtempSync(join(tmpdir(), 'templjs-ls-'));
+    const schemaPath = join(workspace, 'templ.schema.json');
+    const contentSchemaPath = join(workspace, 'content.schema.json');
+
+    try {
+      writeFileSync(schemaPath, JSON.stringify({ type: 'object' }), 'utf8');
+      writeFileSync(contentSchemaPath, JSON.stringify({ type: 'string' }), 'utf8');
+
+      const options = servicePluginTesting.toDiagnosticOptions(
+        {
+          workspaceFolder: workspace,
+          initializationOptions: {
+            schemaPath,
+            contentSchemaPath,
+          },
+        } as never,
+        `file://${workspace}/doc.md.templ`,
+        '# Title'
+      );
+
+      expect(options.schema).toEqual({ type: 'object' });
+      expect(options.contentSchema).toEqual({ type: 'string' });
+    } finally {
+      rmSync(workspace, { recursive: true, force: true });
+    }
   });
 });
