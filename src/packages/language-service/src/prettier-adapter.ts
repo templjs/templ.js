@@ -2,7 +2,10 @@ import type { LanguageServicePlugin } from '@volar/language-service';
 import prettier from 'prettier';
 import { create as createVolarPrettierServicePlugin } from 'volar-service-prettier';
 import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
-import { getConfiguredPrettierHostLanguages, getResolvedAdapterRuntime } from './runtime-manifest.js';
+import {
+  getConfiguredPrettierHostLanguages,
+  getResolvedAdapterRuntime,
+} from './runtime-manifest.js';
 
 export type PrettierAdapterRuntimePlan = {
   enabled: boolean;
