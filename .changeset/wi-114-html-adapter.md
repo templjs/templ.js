@@ -1,8 +1,4 @@
 ---
-'@templjs/core': patch
-'@templjs/cli': patch
-'@templjs/volar': patch
-'@templjs/context-graph': patch
 '@templjs/language-service': patch
 'templjs': patch
 ---
