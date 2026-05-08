@@ -1,6 +1,7 @@
 import type { LanguageServicePlugin } from '@volar/language-service';
 import { create as createVolarMarkdownServicePlugin } from 'volar-service-markdown';
 import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
+import { getResolvedAdapterRuntime } from './runtime-manifest.js';
 
 const DEFAULT_MARKDOWN_DIAGNOSTICS_OPTIONS = {
   validateReferences: 'warning',
@@ -14,12 +15,20 @@ const DEFAULT_MARKDOWN_DIAGNOSTICS_OPTIONS = {
 
 export type MarkdownAdapterRuntimePlan = {
   enabled: boolean;
-  reason: 'default-enabled' | 'disabled-markdownlint-not-registered-for-md';
+  reason: string;
 };
 
 export function planMarkdownAdapterRuntime(
   options: ServicePluginOrchestrationOptions
 ): MarkdownAdapterRuntimePlan {
+  const resolvedRuntime = getResolvedAdapterRuntime(options, 'templjs-markdown-host');
+  if (resolvedRuntime) {
+    return {
+      enabled: resolvedRuntime.state === 'enabled',
+      reason: resolvedRuntime.reason,
+    };
+  }
+
   if (options.initializationOptions?.markdownlintRegisteredForMd === false) {
     return {
       enabled: false,

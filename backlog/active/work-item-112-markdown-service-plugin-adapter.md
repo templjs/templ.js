@@ -6,11 +6,14 @@ summary: Implement markdown adapter with runtime planning logic (e.g., if markdo
 type: work-item
 subtype: task
 lifecycle: active
-status: in-progress
-status_reason: implementation
+status: ready-for-review
+status_reason: implemented
 priority: high
 estimated: 4
 actual: 1
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/96
 ---
 
 ## Goal
@@ -45,11 +48,11 @@ Current `createMarkdownHostDiagnosticsPlugin` and `createTempljsMarkdownDiagnost
 
 ## Acceptance Criteria
 
-- [ ] Markdown adapter publishes correct capabilities.
-- [ ] Runtime planning prevents markdown plugins from engaging if language server not registered.
-- [ ] Plugin code organization follows contract guidance (colocated ≤20 lines, separate files >20 lines).
-- [ ] All tests pass; interface is contract-compliant.
-- [ ] Build/test and frontmatter validation pass.
+- [x] Markdown adapter publishes correct capabilities.
+- [x] Runtime planning prevents markdown plugins from engaging if language server not registered.
+- [x] Plugin code organization follows contract guidance (colocated ≤20 lines, separate files >20 lines).
+- [x] All tests pass; interface is contract-compliant.
+- [x] Build/test and frontmatter validation pass.
 
 ## Relationships
 

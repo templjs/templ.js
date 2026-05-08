@@ -60,6 +60,16 @@ function withVolar24Context<T extends Record<string, any>>(context: T): T {
 describe('language-service service-plugins coverage branches', () => {
   it('normalizes prettier host languages and omits unsupported entries', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
+    const manifest = servicePluginTesting.resolveAdapterRuntimeManifest({} as never);
+
+    expect(
+      manifest.adapters.find((adapter) => adapter.id === 'templjs-markdown-host')
+    ).toMatchObject({
+      requirements: {
+        extensionIds: ['DavidAnson.vscode-markdownlint'],
+        settingsKeys: ['[markdown]'],
+      },
+    });
     expect(
       servicePluginTesting.getConfiguredPrettierHostLanguages({
         initializationOptions: {
@@ -140,6 +150,22 @@ describe('language-service service-plugins coverage branches', () => {
     expect(
       servicePluginTesting.planMarkdownAdapterRuntime({
         initializationOptions: {
+          adapterRuntimes: {
+            'templjs-markdown-host': {
+              state: 'unavailable',
+              reason: 'unavailable-vscode-extension-markdownlint',
+            },
+          },
+        },
+      } as never)
+    ).toEqual({
+      enabled: false,
+      reason: 'unavailable-vscode-extension-markdownlint',
+    });
+
+    expect(
+      servicePluginTesting.planMarkdownAdapterRuntime({
+        initializationOptions: {
           markdownlintRegisteredForMd: false,
         },
       } as never)
@@ -159,6 +185,19 @@ describe('language-service service-plugins coverage branches', () => {
 
   it('disables yaml adapter when redhat.vscode-yaml is not registered for .yaml', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(
+      servicePluginTesting.planYamlAdapterRuntime({
+        initializationOptions: {
+          adapterRuntimes: {
+            'templjs-yaml': {
+              state: 'unavailable',
+              reason: 'unavailable-vscode-extension-yaml',
+            },
+          },
+        },
+      } as never)
+    ).toEqual({ enabled: false, reason: 'unavailable-vscode-extension-yaml' });
 
     expect(
       servicePluginTesting.planYamlAdapterRuntime({
