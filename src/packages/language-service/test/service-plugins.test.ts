@@ -145,7 +145,9 @@ describe('language-service service-plugins coverage branches', () => {
       'templjs-markdown-diagnostics'
     );
     expect(servicePluginTesting.createHtmlHostServicePlugin().name).toBe('templjs-html-host');
-    expect(servicePluginTesting.createJsonHostServicePlugin().name).toBe('templjs-json-host');
+    expect(servicePluginTesting.createJsonHostServicePlugin({} as never)?.name).toBe(
+      'templjs-json-host'
+    );
   });
 
   it('disables markdown host adapter when markdownlint is not registered for .md', async () => {
@@ -187,111 +189,31 @@ describe('language-service service-plugins coverage branches', () => {
     ).toBeUndefined();
   });
 
-  it('disables prettier adapter when no languages are configured', async () => {
+  it('disables json adapter when vscode.json-language-features is not registered', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
 
     expect(
-      servicePluginTesting.planPrettierAdapterRuntime({ initializationOptions: {} } as never)
-    ).toEqual({ enabled: false, languages: [], reason: 'disabled-no-languages-configured' });
-
-    expect(
-      servicePluginTesting.createPrettierHostServicePlugin({ initializationOptions: {} } as never)
-    ).toBeUndefined();
-  });
-
-  it('enables prettier adapter with configured languages', async () => {
-    const { servicePluginTesting } = await import('../src/index.ts');
-
-    expect(
-      servicePluginTesting.planPrettierAdapterRuntime({
-        initializationOptions: { prettierHostLanguages: ['markdown', 'json'] },
+      servicePluginTesting.planJsonAdapterRuntime({
+        initializationOptions: { jsonLSRegisteredForJson: false },
       } as never)
-    ).toEqual({ enabled: true, languages: ['markdown', 'json'], reason: 'configured-languages' });
+    ).toEqual({ enabled: false, reason: 'disabled-json-ls-not-registered-for-json' });
 
     expect(
-      servicePluginTesting.createPrettierHostServicePlugin({
-        initializationOptions: { prettierHostLanguages: ['yaml'] },
-      } as never)
-    ).toBeDefined();
-  });
-
-  it('disables prettier adapter when adapter runtime map marks it unavailable', async () => {
-    const { servicePluginTesting } = await import('../src/index.ts');
-
-    expect(
-      servicePluginTesting.planPrettierAdapterRuntime({
-        initializationOptions: {
-          adapterRuntimes: {
-            'templjs-prettier-host': {
-              state: 'unavailable',
-              reason: 'unavailable-vscode-formatter-selection',
-            },
-          },
-        },
-      } as never)
-    ).toEqual({ enabled: false, languages: [], reason: 'unavailable-vscode-formatter-selection' });
-  });
-
-  it('uses resolved reason when adapter runtime map marks prettier host as enabled', async () => {
-    const { servicePluginTesting } = await import('../src/index.ts');
-
-    expect(
-      servicePluginTesting.planPrettierAdapterRuntime({
-        initializationOptions: {
-          prettierHostLanguages: ['html'],
-          adapterRuntimes: {
-            'templjs-prettier-host': {
-              state: 'enabled',
-              reason: 'resolved-vscode-formatter-selection',
-            },
-          },
-        },
-      } as never)
-    ).toEqual({
-      enabled: true,
-      languages: ['html'],
-      reason: 'resolved-vscode-formatter-selection',
-    });
-  });
-
-  it('disables yaml adapter when redhat.vscode-yaml is not registered for .yaml', async () => {
-    const { servicePluginTesting } = await import('../src/index.ts');
-
-    expect(
-      servicePluginTesting.planYamlAdapterRuntime({
-        initializationOptions: {
-          adapterRuntimes: {
-            'templjs-yaml': {
-              state: 'unavailable',
-              reason: 'unavailable-vscode-extension-yaml',
-            },
-          },
-        },
-      } as never)
-    ).toEqual({ enabled: false, reason: 'unavailable-vscode-extension-yaml' });
-
-    expect(
-      servicePluginTesting.planYamlAdapterRuntime({
-        initializationOptions: { redhatYamlRegisteredForYaml: false },
-      } as never)
-    ).toEqual({ enabled: false, reason: 'disabled-yaml-ls-not-registered-for-yaml' });
-
-    expect(
-      servicePluginTesting.createYamlDiagnosticsPlugin({
-        initializationOptions: { redhatYamlRegisteredForYaml: false },
+      servicePluginTesting.createJsonHostServicePlugin({
+        initializationOptions: { jsonLSRegisteredForJson: false },
       } as never)
     ).toBeUndefined();
   });
 
-  it('enables yaml adapter by default when redhatYamlRegisteredForYaml is not set', async () => {
+  it('enables json adapter by default when jsonLSRegisteredForJson is not set', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
 
-    expect(servicePluginTesting.planYamlAdapterRuntime({} as never)).toEqual({
+    expect(servicePluginTesting.planJsonAdapterRuntime({} as never)).toEqual({
       enabled: true,
       reason: 'default-enabled',
     });
 
-    expect(servicePluginTesting.createYamlDiagnosticsPlugin({} as never)).toBeDefined();
+    expect(servicePluginTesting.createJsonHostServicePlugin({} as never)).toBeDefined();
   });
 
   it('remaps matching language ids before delegating diagnostics', async () => {

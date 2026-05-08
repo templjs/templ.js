@@ -166,55 +166,8 @@ function isMarkdownlintRegisteredForMd(): boolean {
   return vscode.extensions.getExtension('DavidAnson.vscode-markdownlint') !== undefined;
 }
 
-function isRedhatYamlRegisteredForYaml(): boolean {
-  return vscode.extensions.getExtension('redhat.vscode-yaml') !== undefined;
-}
-
-function resolveAdapterRuntimes(prettierHostLanguages: string[]): AdapterRuntimeMap {
-  const hasMarkdownlint = isMarkdownlintRegisteredForMd();
-  const hasRedhatYaml = isRedhatYamlRegisteredForYaml();
-
-  const runtimes: AdapterRuntimeMap = {
-    'templjs-markdown-host': {
-      state: hasMarkdownlint ? 'enabled' : 'unavailable',
-      reason: hasMarkdownlint
-        ? 'resolved-vscode-extension-markdownlint'
-        : 'unavailable-vscode-extension-markdownlint',
-      provider: {
-        kind: 'vscode-extension',
-        id: 'DavidAnson.vscode-markdownlint',
-      },
-      languageIds: ['markdown', 'templjs-markdown'],
-    },
-    'templjs-yaml': {
-      state: hasRedhatYaml ? 'enabled' : 'unavailable',
-      reason: hasRedhatYaml
-        ? 'resolved-vscode-extension-yaml'
-        : 'unavailable-vscode-extension-yaml',
-      provider: {
-        kind: 'vscode-extension',
-        id: 'redhat.vscode-yaml',
-      },
-      languageIds: ['yaml', 'templjs-yaml'],
-    },
-    'templjs-prettier-host': {
-      state: prettierHostLanguages.length > 0 ? 'enabled' : 'disabled',
-      reason:
-        prettierHostLanguages.length > 0
-          ? 'resolved-vscode-formatter-selection'
-          : 'disabled-no-prettier-host-languages',
-      provider: {
-        kind: 'vscode-extension',
-        id: 'esbenp.prettier-vscode',
-      },
-      languageIds: prettierHostLanguages,
-      settings: {
-        prettierHostLanguages,
-      },
-    },
-  };
-
-  return runtimes;
+function isJsonLSRegisteredForJson(): boolean {
+  return vscode.extensions.getExtension('vscode.json-language-features') !== undefined;
 }
 
 function shouldRefreshFormatterSelection(event: vscode.ConfigurationChangeEvent): boolean {
@@ -457,7 +410,7 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
       prettierHostLanguages,
       adapterRuntimes,
       markdownlintRegisteredForMd: isMarkdownlintRegisteredForMd(),
-      redhatYamlRegisteredForYaml: isRedhatYamlRegisteredForYaml(),
+      jsonLSRegisteredForJson: isJsonLSRegisteredForJson(),
     },
   };
 
