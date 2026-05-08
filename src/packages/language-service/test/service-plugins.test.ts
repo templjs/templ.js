@@ -217,19 +217,21 @@ describe('language-service service-plugins coverage branches', () => {
     ).toBeUndefined();
   });
 
-  it('enables yaml adapter by default when redhatYamlRegisteredForYaml is not set', async () => {
-    const { servicePluginTesting } = await import('../src/index.ts');
-
-    expect(servicePluginTesting.planYamlAdapterRuntime({} as never)).toEqual({
-      enabled: true,
-      reason: 'default-enabled',
-    });
-
-    expect(servicePluginTesting.createYamlDiagnosticsPlugin({} as never)).toBeDefined();
-  });
-
   it('disables json adapter when vscode.json-language-features is not registered', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(
+      servicePluginTesting.planJsonAdapterRuntime({
+        initializationOptions: {
+          adapterRuntimes: {
+            'templjs-json-host': {
+              state: 'unavailable',
+              reason: 'unavailable-vscode-extension-json',
+            },
+          },
+        },
+      } as never)
+    ).toEqual({ enabled: false, reason: 'unavailable-vscode-extension-json' });
 
     expect(
       servicePluginTesting.planJsonAdapterRuntime({
@@ -242,6 +244,17 @@ describe('language-service service-plugins coverage branches', () => {
         initializationOptions: { jsonLSRegisteredForJson: false },
       } as never)
     ).toBeUndefined();
+  });
+
+  it('enables yaml adapter by default when redhatYamlRegisteredForYaml is not set', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(servicePluginTesting.planYamlAdapterRuntime({} as never)).toEqual({
+      enabled: true,
+      reason: 'default-enabled',
+    });
+
+    expect(servicePluginTesting.createYamlDiagnosticsPlugin({} as never)).toBeDefined();
   });
 
   it('enables json adapter by default when jsonLSRegisteredForJson is not set', async () => {
