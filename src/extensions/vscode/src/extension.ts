@@ -169,6 +169,10 @@ function isRedhatYamlRegisteredForYaml(): boolean {
   return vscode.extensions.getExtension('redhat.vscode-yaml') !== undefined;
 }
 
+function isHtmlLSRegisteredForHtml(): boolean {
+  return vscode.extensions.getExtension('vscode.html-language-features') !== undefined;
+}
+
 function shouldRefreshFormatterSelection(event: vscode.ConfigurationChangeEvent): boolean {
   if (event.affectsConfiguration('editor.defaultFormatter')) {
     return true;
@@ -408,6 +412,7 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
       prettierHostLanguages,
       markdownlintRegisteredForMd: isMarkdownlintRegisteredForMd(),
       redhatYamlRegisteredForYaml: isRedhatYamlRegisteredForYaml(),
+      htmlLSRegisteredForHtml: isHtmlLSRegisteredForHtml(),
     },
   };
 

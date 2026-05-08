@@ -28,6 +28,7 @@ export interface ServerInitializationOptions {
   prettierHostLanguages?: string[];
   markdownlintRegisteredForMd?: boolean;
   redhatYamlRegisteredForYaml?: boolean;
+  htmlLSRegisteredForHtml?: boolean;
   documentContext?: {
     uri?: string;
     content?: string;
