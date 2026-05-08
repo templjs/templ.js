@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 
 vi.mock('../../../extensions/vscode/src/service-plugins', async () => {
@@ -313,7 +312,7 @@ describe('language-service service-plugins coverage branches', () => {
             contentSchemaPath,
           },
         } as never,
-        pathToFileURL(join(workspace, 'doc.md.templ')).toString(),
+        `file://${workspace}/doc.md.templ`,
         '# Title'
       );
 
