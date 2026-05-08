@@ -165,6 +165,10 @@ function isMarkdownlintRegisteredForMd(): boolean {
   return vscode.extensions.getExtension('DavidAnson.vscode-markdownlint') !== undefined;
 }
 
+function isRedhatYamlRegisteredForYaml(): boolean {
+  return vscode.extensions.getExtension('redhat.vscode-yaml') !== undefined;
+}
+
 function isJsonLSRegisteredForJson(): boolean {
   return vscode.extensions.getExtension('vscode.json-language-features') !== undefined;
 }
@@ -407,6 +411,7 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
       traceMode,
       prettierHostLanguages,
       markdownlintRegisteredForMd: isMarkdownlintRegisteredForMd(),
+      redhatYamlRegisteredForYaml: isRedhatYamlRegisteredForYaml(),
       jsonLSRegisteredForJson: isJsonLSRegisteredForJson(),
     },
   };
