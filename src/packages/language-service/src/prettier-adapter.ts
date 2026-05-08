@@ -2,17 +2,25 @@ import type { LanguageServicePlugin } from '@volar/language-service';
 import prettier from 'prettier';
 import { create as createVolarPrettierServicePlugin } from 'volar-service-prettier';
 import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
-import { getConfiguredPrettierHostLanguages } from './runtime-manifest.js';
+import { getConfiguredPrettierHostLanguages, getResolvedAdapterRuntime } from './runtime-manifest.js';
 
 export type PrettierAdapterRuntimePlan = {
   enabled: boolean;
   languages: string[];
-  reason: 'configured-languages' | 'disabled-no-languages-configured';
+  reason: string;
 };
 
 export function planPrettierAdapterRuntime(
   options: ServicePluginOrchestrationOptions
 ): PrettierAdapterRuntimePlan {
+  const resolvedRuntime = getResolvedAdapterRuntime(options, 'templjs-prettier-host');
+  if (resolvedRuntime && resolvedRuntime.state !== 'enabled') {
+    return {
+      enabled: false,
+      languages: [],
+      reason: resolvedRuntime.reason,
+    };
+  }
   const languages = getConfiguredPrettierHostLanguages(options);
   if (languages.length === 0) {
     return {
@@ -25,7 +33,7 @@ export function planPrettierAdapterRuntime(
   return {
     enabled: true,
     languages,
-    reason: 'configured-languages',
+    reason: resolvedRuntime?.reason ?? 'configured-languages',
   };
 }
 

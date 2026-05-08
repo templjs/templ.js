@@ -12,7 +12,6 @@ import { pathToFileURL } from 'url';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { create as createVolarHtmlServicePlugin } from 'volar-service-html';
 import { create as createVolarJsonServicePlugin } from 'volar-service-json';
-import { create as createVolarYamlServicePlugin } from 'volar-service-yaml';
 import { loadSchemaSourceSync, resolveDocumentSchemaSources } from './schema-loading.js';
 import {
   createMarkdownHostDiagnosticsAdapter,
