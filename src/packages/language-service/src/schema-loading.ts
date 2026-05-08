@@ -31,7 +31,6 @@ export interface ServerInitializationOptions {
   jsonLSRegisteredForJson?: boolean;
   redhatYamlRegisteredForYaml?: boolean;
   adapterRuntimes?: AdapterRuntimeMap;
-  jsonLSRegisteredForJson?: boolean;
   documentContext?: {
     uri?: string;
     content?: string;

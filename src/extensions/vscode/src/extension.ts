@@ -490,7 +490,6 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
       adapterRuntimes,
       markdownlintRegisteredForMd: isMarkdownlintRegisteredForMd(),
       redhatYamlRegisteredForYaml: isRedhatYamlRegisteredForYaml(),
-      jsonLSRegisteredForJson: isJsonLSRegisteredForJson(),
     },
   };
 
