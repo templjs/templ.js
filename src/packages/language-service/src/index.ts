@@ -24,15 +24,21 @@ export { default as schemaLoading } from './schema-loading.js';
 export type {
   ServicePluginOrchestrationOptions,
   ServicePluginRuntimePlanningContext,
-  TempljsHostServiceAdapterId,
 } from './service-plugin-contract.js';
 
-export {
-  resolveAdapterRuntimeManifest,
-  type AdapterRuntimeCapability,
-  type AdapterRuntimeManifest,
-  type AdapterRuntimeManifestEntry,
-  type AdapterRuntimeResolutionMode,
-} from './runtime-manifest.js';
+export type {
+  AdapterRuntimeCapability,
+  AdapterRuntimeManifest,
+  AdapterRuntimeManifestEntry,
+  AdapterRuntimeMap,
+  AdapterRuntimeProvider,
+  AdapterRuntimeRequirements,
+  AdapterRuntimeResolution,
+  AdapterRuntimeResolutionMode,
+  AdapterRuntimeResolutionState,
+  TempljsHostServiceAdapterId,
+} from './adapter-runtime-contract.js';
+
+export { getResolvedAdapterRuntime, resolveAdapterRuntimeManifest } from './runtime-manifest.js';
 export type DocumentSchemaConfig = import('./schema-loading.js').SchemaPatternConfig;
 export type SchemaPatterns = Record<string, import('./schema-loading.js').SchemaPatternConfig>;
