@@ -433,9 +433,9 @@ function createYamlDiagnosticsPlugin(_options: PluginOptions): LanguageServicePl
 }
 
 function createMarkdownHostDiagnosticsPlugin(
-  _options: PluginOptions
+  options: PluginOptions
 ): LanguageServicePlugin | undefined {
-  return createMarkdownHostDiagnosticsAdapter(_options);
+  return createMarkdownHostDiagnosticsAdapter(options);
 }
 
 function createHtmlHostServicePlugin(): LanguageServicePlugin {

@@ -133,6 +133,7 @@ const hostDiagCollection = {
 const createDiagnosticCollection = vi.fn(() => hostDiagCollection);
 const onDidChangeDiagnostics = vi.fn(() => ({ dispose: vi.fn() }));
 const getDiagnostics = vi.fn((_uri?: unknown) => []);
+const getExtension = vi.fn((_id: string) => undefined);
 
 vi.mock('vscode', () => ({
   commands: {
@@ -165,6 +166,9 @@ vi.mock('vscode', () => ({
     onDidChangeConfiguration,
     openTextDocument,
     textDocuments: [],
+  },
+  extensions: {
+    getExtension,
   },
   languages: {
     createDiagnosticCollection,

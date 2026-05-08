@@ -3,6 +3,7 @@
 '@templjs/cli': patch
 '@templjs/volar': patch
 '@templjs/context-graph': patch
+'@templjs/language-service': patch
 'vscode-templjs': patch
 ---
 
