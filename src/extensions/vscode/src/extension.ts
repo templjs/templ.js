@@ -170,10 +170,6 @@ function isRedhatYamlRegisteredForYaml(): boolean {
   return vscode.extensions.getExtension('redhat.vscode-yaml') !== undefined;
 }
 
-function isHtmlLSRegisteredForHtml(): boolean {
-  return vscode.extensions.getExtension('vscode.html-language-features') !== undefined;
-}
-
 function isJsonLSRegisteredForJson(): boolean {
   return vscode.extensions.getExtension('vscode.json-language-features') !== undefined;
 }
@@ -181,7 +177,6 @@ function isJsonLSRegisteredForJson(): boolean {
 function resolveAdapterRuntimes(prettierHostLanguages: string[]): AdapterRuntimeMap {
   const hasMarkdownlint = isMarkdownlintRegisteredForMd();
   const hasRedhatYaml = isRedhatYamlRegisteredForYaml();
-  const hasHtmlLs = isHtmlLSRegisteredForHtml();
   const hasJsonLs = isJsonLSRegisteredForJson();
 
   const runtimes: AdapterRuntimeMap = {
@@ -206,15 +201,6 @@ function resolveAdapterRuntimes(prettierHostLanguages: string[]): AdapterRuntime
         id: 'redhat.vscode-yaml',
       },
       languageIds: ['yaml', 'templjs-yaml'],
-    },
-    'templjs-html-host': {
-      state: hasHtmlLs ? 'enabled' : 'unavailable',
-      reason: hasHtmlLs ? 'resolved-vscode-extension-html' : 'unavailable-vscode-extension-html',
-      provider: {
-        kind: 'vscode-extension',
-        id: 'vscode.html-language-features',
-      },
-      languageIds: ['html', 'templjs-html'],
     },
     'templjs-json-host': {
       state: hasJsonLs ? 'enabled' : 'unavailable',
