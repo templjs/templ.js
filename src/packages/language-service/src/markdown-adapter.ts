@@ -491,3 +491,23 @@ export function createMarkdownlintHostDiagnosticsAdapter(
     },
   };
 }
+
+export const markdownAdapterTesting = {
+  isMarkdownLanguage,
+  toMarkdownlintCode,
+  toMarkdownlintMessage,
+  buildLineOffsets,
+  lineAndColumnToOffset,
+  offsetToLineAndCharacter,
+  buildCleanedToSourceOffsets,
+  toDiagnostic,
+  extractIssuesFromResult,
+  parseTextDiagnostics,
+  parseMarkdownlintDiagnostics,
+  writeTempMarkdownFile,
+  resolveMarkdownlintBinaryCandidates,
+  getSourceUri,
+  getSourceDocumentText,
+  collectMarkdownlintDiagnostics,
+  cleanMarkdownlintInput,
+};
