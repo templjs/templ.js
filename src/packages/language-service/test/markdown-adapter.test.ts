@@ -6,7 +6,7 @@ const execFileMock = vi.hoisted(() => vi.fn());
 vi.mock('node:child_process', () => ({
   execFile: Object.assign((...args: unknown[]) => execFileMock(...args), {
     [Symbol.for('nodejs.util.promisify.custom')]: (...args: unknown[]) =>
-      new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+      new Promise<{ stdout: unknown; stderr: unknown }>((resolve, reject) => {
         execFileMock(...args, (error: unknown, stdout: unknown, stderr: unknown) => {
           if (error) {
             reject(
@@ -18,10 +18,7 @@ vi.mock('node:child_process', () => ({
             return;
           }
 
-          resolve({
-            stdout: String(stdout ?? ''),
-            stderr: String(stderr ?? ''),
-          });
+          resolve({ stdout, stderr });
         });
       }),
   }),
@@ -140,6 +137,12 @@ describe('markdown-adapter', () => {
       line: 0,
       character: 3,
     });
+    expect(markdownAdapterTesting.offsetToLineAndCharacter([0, undefined as never, 10], 4)).toEqual(
+      {
+        line: 1,
+        character: 4,
+      }
+    );
 
     const sparseOffsets = [] as unknown as number[];
     sparseOffsets[2] = 1;
@@ -197,6 +200,12 @@ describe('markdown-adapter', () => {
     ).toEqual([issue]);
     expect(
       markdownAdapterTesting.extractIssuesFromResult({ '/other/doc.md': [issue] }, '/tmp/doc.md')
+    ).toEqual([issue]);
+    expect(
+      markdownAdapterTesting.extractIssuesFromResult(
+        { '/other/another.md': [issue], bad: 'value' },
+        '/tmp/doc.md'
+      )
     ).toEqual([issue]);
     expect(markdownAdapterTesting.extractIssuesFromResult({ bad: 'value' }, '/tmp/doc.md')).toEqual(
       []
@@ -296,6 +305,32 @@ describe('markdown-adapter', () => {
         'file:///same.md'
       )
     ).toBe('# from document');
+
+    expect(
+      markdownAdapterTesting.getSourceDocumentText(
+        {
+          decodeEmbeddedDocumentUri: vi.fn(() => undefined),
+          language: {
+            scripts: {
+              get: vi
+                .fn()
+                .mockImplementationOnce(() => undefined)
+                .mockImplementationOnce(() => ({
+                  snapshot: {
+                    getText: () => '# from source fallback',
+                    getLength: () => '# from source fallback'.length,
+                  },
+                })),
+            },
+          },
+        } as never,
+        {
+          uri: 'embedded://doc',
+          getText: () => '# from document',
+        },
+        'file:///source-fallback.md'
+      )
+    ).toBe('# from source fallback');
 
     expect(
       markdownAdapterTesting.getSourceUri(
@@ -414,7 +449,11 @@ describe('markdown-adapter', () => {
     const errorLog = vi.fn();
     execFileMock.mockImplementationOnce((...args: unknown[]) => {
       const callback = callbackFromArgs(args);
-      callback(Object.assign(new Error('boom'), { code: 2, stdout: '', stderr: '' }), '', '');
+      callback(
+        Object.assign(new Error('boom'), { stdout: undefined, stderr: undefined }),
+        undefined,
+        undefined
+      );
     });
 
     const noOutputDiagnostics = await markdownAdapterTesting.collectMarkdownlintDiagnostics(

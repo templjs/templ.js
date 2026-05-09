@@ -88,6 +88,41 @@ describe('volar index coverage branches', () => {
     expect(cleaned.cleaned.split('\n')[1]).toBe('_');
   });
 
+  it('ignores invalid text-only expression padding and preserves standalone newlines', () => {
+    const source = ['{{ x }}', '{{ y }}'].join('\n');
+    const cleaned = cleanTemplateContent(source, undefined, {
+      mode: 'text-only',
+      // Invalid (newline) padding should be ignored.
+      expressionPaddingCharacter: '\n',
+    });
+
+    expect(cleaned.cleaned).toBe('\n');
+  });
+
+  it('preserves newline characters while masking trim-adjacent whitespace in preserve-width mode', () => {
+    const source = ['A', '{%- if ok %}', 'B', '{% endif -%}', 'C'].join('\n');
+    const cleaned = cleanTemplateContent(source);
+
+    expect(cleaned.cleaned).toBe('A\n            \nB\n            \nC');
+  });
+
+  it('masks adjacent spaces while keeping adjacent newlines around trim markers', () => {
+    const source = ['A ', ' {%- if ok %}B{% endif -%} ', 'C'].join('\n');
+    const cleaned = cleanTemplateContent(source);
+
+    expect(cleaned.cleaned).toBe('A \n             B             \nC');
+  });
+
+  it('preserves newlines that occur inside expression tokens in text-only mode', () => {
+    const source = ['{{', 'x', '}}'].join('\n');
+    const cleaned = cleanTemplateContent(source, undefined, {
+      mode: 'text-only',
+      expressionPaddingCharacter: '\n',
+    });
+
+    expect(cleaned.cleaned).toBe('\n\n');
+  });
+
   it('suppresses trimmed whitespace from trim markers in text-only mode', () => {
     // -%} trims the whitespace (including blank lines) that follows.
     const source = [

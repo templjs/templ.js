@@ -62,6 +62,12 @@ function withVolar24Context<T extends Record<string, any>>(context: T): T {
 }
 
 describe('language-service service-plugins coverage branches', () => {
+  it('exposes schemaLoading through index facade', async () => {
+    const languageService = await import('../src/index.ts');
+    expect(languageService.schemaLoading).toBeDefined();
+    expect(typeof languageService.schemaLoading.loadSchemaSource).toBe('function');
+  });
+
   it('covers adapter registry exports and runtime resolution branches', async () => {
     const languageService = await import('../src/index.ts');
 
