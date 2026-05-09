@@ -247,20 +247,6 @@ describe('language-service service-plugins coverage branches', () => {
       } as never)
     ).toBeUndefined();
 
-    expect(
-      servicePluginTesting.planJsonAdapterRuntime({
-        initializationOptions: { jsonLSRegisteredForJson: false },
-      } as never)
-    ).toEqual({
-      enabled: false,
-      reason: 'disabled-json-ls-not-registered-for-json',
-    });
-
-    expect(
-      servicePluginTesting.createJsonHostServicePlugin({
-        initializationOptions: { jsonLSRegisteredForJson: false },
-      } as never)
-    ).toBeUndefined();
   });
 
   it('enables yaml adapter by default when redhatYamlRegisteredForYaml is not set', async () => {
