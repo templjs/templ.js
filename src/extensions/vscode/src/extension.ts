@@ -203,7 +203,9 @@ function resolveAdapterRuntimes(prettierHostLanguages: string[]): AdapterRuntime
       languageIds: ['yaml', 'templjs-yaml'],
     },
     'templjs-html-host': {
+      /* v8 ignore next */
       state: hasHtmlLs ? 'enabled' : 'unavailable',
+      /* v8 ignore next */
       reason: hasHtmlLs ? 'resolved-vscode-extension-html' : 'unavailable-vscode-extension-html',
       provider: {
         kind: 'vscode-extension',
