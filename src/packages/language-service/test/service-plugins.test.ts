@@ -62,6 +62,119 @@ function withVolar24Context<T extends Record<string, any>>(context: T): T {
 }
 
 describe('language-service service-plugins coverage branches', () => {
+  it('covers adapter registry exports and runtime resolution branches', async () => {
+    const languageService = await import('../src/index.ts');
+
+    expect(languageService.getSupportedFormattingHostLanguages()).toEqual([
+      'markdown',
+      'json',
+      'yaml',
+      'html',
+    ]);
+    expect(languageService.getFormattingExtensionIds()).toEqual(['esbenp.prettier-vscode']);
+    expect(languageService.getFormattingLanguageConfigurationKeys()).toEqual([
+      '[markdown]',
+      '[json]',
+      '[yaml]',
+      '[html]',
+    ]);
+
+    expect(
+      languageService.getConfiguredFormattingHostLanguages({
+        initializationOptions: {
+          formattingHostLanguages: [' markdown ', 'json', 'json', 'bogus'],
+        },
+      } as never)
+    ).toEqual(['markdown', 'json']);
+
+    expect(
+      languageService.getConfiguredFormattingHostLanguages({
+        initializationOptions: {
+          prettierHostLanguages: [' yaml ', 'html', 42],
+        },
+      } as never)
+    ).toEqual(['yaml', 'html']);
+
+    expect(languageService.getConfiguredFormattingHostLanguages({} as never)).toEqual([]);
+
+    const prettierEntry = languageService.getAdapterRuntimeEntry('templjs-prettier-host');
+    expect(prettierEntry).toBeDefined();
+    expect(prettierEntry?.manifest({ initializationOptions: {} } as never)).toBeUndefined();
+    expect(
+      prettierEntry?.manifest({
+        initializationOptions: { formattingHostLanguages: ['markdown', 'yaml'] },
+      } as never)
+    ).toMatchObject({
+      id: 'templjs-prettier-host',
+      languageIds: ['markdown', 'yaml'],
+      capabilities: ['formatting'],
+      resolutionMode: 'deferred',
+    });
+
+    const unavailableRuntimeMap = languageService.resolveAdapterRuntimeMapFromRegistry({
+      formattingHostLanguages: [],
+      isExtensionInstalled: () => false,
+    });
+    expect(unavailableRuntimeMap['templjs-markdown-host']).toMatchObject({
+      state: 'unavailable',
+      reason: 'unavailable-vscode-extension-markdown',
+    });
+    expect(unavailableRuntimeMap['templjs-prettier-host']).toMatchObject({
+      state: 'disabled',
+      reason: 'disabled-no-prettier-host-languages',
+    });
+
+    const availableRuntimeMap = languageService.resolveAdapterRuntimeMapFromRegistry({
+      formattingHostLanguages: ['markdown'],
+      isExtensionInstalled: (id) => id !== 'redhat.vscode-yaml',
+    });
+    expect(availableRuntimeMap['templjs-markdown-host']).toMatchObject({
+      state: 'enabled',
+      reason: 'resolved-vscode-extension-markdown',
+    });
+    expect(availableRuntimeMap['templjs-yaml']).toMatchObject({
+      state: 'unavailable',
+      reason: 'unavailable-vscode-extension-yaml',
+    });
+    expect(availableRuntimeMap['templjs-prettier-host']).toMatchObject({
+      state: 'enabled',
+      reason: 'resolved-vscode-formatter-selection',
+    });
+
+    const originalJsonEntry = languageService.getAdapterRuntimeEntry('templjs-json-host');
+    const overrideJsonEntry = {
+      id: 'templjs-json-host',
+      manifest: () => ({
+        id: 'templjs-json-host',
+        languageIds: ['json', 'templjs-json'],
+        capabilities: ['diagnostics'],
+        resolutionMode: 'immediate',
+        requirements: { required: [], optional: [] },
+      }),
+      resolveRuntime: () => ({
+        state: 'enabled',
+        reason: 'resolved-vscode-extension-json',
+        provider: { kind: 'vscode-extension', id: 'vscode.json-language-features' },
+        languageIds: ['json', 'templjs-json'],
+      }),
+    };
+
+    languageService.registerAdapterRuntimeEntry(overrideJsonEntry as never);
+    try {
+      expect(languageService.getAdapterRuntimeEntry('templjs-json-host')).toBe(overrideJsonEntry);
+      expect(
+        languageService
+          .listAdapterRuntimeEntries()
+          .find((entry) => entry.id === 'templjs-json-host')
+      ).toBe(overrideJsonEntry);
+    } finally {
+      expect(languageService.unregisterAdapterRuntimeEntry('templjs-json-host')).toBe(true);
+      if (originalJsonEntry) {
+        languageService.registerAdapterRuntimeEntry(originalJsonEntry);
+      }
+    }
+  });
+
   it('supports host adapter registry overrides through index exports', async () => {
     const languageService = await import('../src/index.ts');
     const key = 'templjs-prettier-host';
