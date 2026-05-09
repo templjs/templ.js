@@ -25,6 +25,7 @@ const onDidOpenTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidChangeTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidCloseTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidChangeConfiguration = vi.fn(() => ({ dispose: vi.fn() }));
+const onDidChangeExtensions = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidChangeDiagnostics = vi.fn(() => ({ dispose: vi.fn() }));
 const hostDiagnosticCollection = {
   set: vi.fn(),
@@ -86,6 +87,7 @@ vi.mock('vscode', () => ({
   },
   extensions: {
     getExtension,
+    onDidChange: onDidChangeExtensions,
   },
   languages: {
     createDiagnosticCollection,

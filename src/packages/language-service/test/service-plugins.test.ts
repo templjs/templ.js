@@ -130,6 +130,15 @@ describe('language-service service-plugins coverage branches', () => {
       reason: 'disabled-no-prettier-host-languages',
     });
 
+    const missingPrettierRuntimeMap = languageService.resolveAdapterRuntimeMapFromRegistry({
+      formattingHostLanguages: ['markdown'],
+      isExtensionInstalled: () => false,
+    });
+    expect(missingPrettierRuntimeMap['templjs-prettier-host']).toMatchObject({
+      state: 'unavailable',
+      reason: 'unavailable-vscode-extension-prettier',
+    });
+
     const availableRuntimeMap = languageService.resolveAdapterRuntimeMapFromRegistry({
       formattingHostLanguages: ['markdown'],
       isExtensionInstalled: (id) => id !== 'redhat.vscode-yaml',
