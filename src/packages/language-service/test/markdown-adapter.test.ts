@@ -133,6 +133,25 @@ describe('markdown-adapter', () => {
       code: 'MD041',
       severity: 2,
     });
+
+    // Trigger nullish fallback branches in offset helpers.
+    expect(markdownAdapterTesting.lineAndColumnToOffset([], 99, 1)).toBe(1);
+    expect(markdownAdapterTesting.offsetToLineAndCharacter([], 3)).toEqual({
+      line: 0,
+      character: 3,
+    });
+
+    const sparseOffsets = [] as unknown as number[];
+    sparseOffsets[2] = 1;
+    expect(markdownAdapterTesting.buildCleanedToSourceOffsets(sparseOffsets, 2)).toEqual([0, 2, 2]);
+
+    expect(
+      markdownAdapterTesting.toDiagnostic(
+        {},
+        '# Title\n',
+        markdownAdapterTesting.cleanMarkdownlintInput('# Title\n')
+      )
+    ).toMatchObject({ source: 'markdownlint', code: undefined });
   });
 
   it('parses markdownlint output from json and text fallback formats', () => {
@@ -153,6 +172,19 @@ describe('markdown-adapter', () => {
       },
     ]);
 
+    expect(
+      markdownAdapterTesting.parseTextDiagnostics(
+        ['   ', 'not-a-diagnostic-line', '/tmp/file.md:7 MD009 Trailing spaces'].join('\n')
+      )
+    ).toEqual([
+      {
+        lineNumber: 7,
+        errorRange: [1, 1],
+        ruleNames: 'MD009',
+        errorDetail: 'Trailing spaces',
+      },
+    ]);
+
     expect(markdownAdapterTesting.parseMarkdownlintDiagnostics('', '/tmp/file.md')).toEqual([]);
   });
 
@@ -169,6 +201,7 @@ describe('markdown-adapter', () => {
     expect(markdownAdapterTesting.extractIssuesFromResult({ bad: 'value' }, '/tmp/doc.md')).toEqual(
       []
     );
+    expect(markdownAdapterTesting.extractIssuesFromResult(0 as never, '/tmp/doc.md')).toEqual([]);
   });
 
   it('writes temp markdown files and cleans template content for markdownlint', async () => {
@@ -186,12 +219,121 @@ describe('markdown-adapter', () => {
     expect(nonFileTemp.tempFilePath.endsWith('document.md')).toBe(true);
     await nonFileTemp.cleanup();
 
+    const invalidFileTemp = await markdownAdapterTesting.writeTempMarkdownFile(
+      'file://%zz',
+      '# Title'
+    );
+    expect(invalidFileTemp.tempFilePath.endsWith('document.md')).toBe(true);
+    await invalidFileTemp.cleanup();
+
+    const rootFileTemp = await markdownAdapterTesting.writeTempMarkdownFile('file:///', '# Title');
+    expect(rootFileTemp.tempFilePath.endsWith('document.md')).toBe(true);
+    await rootFileTemp.cleanup();
+
     const cleaned = markdownAdapterTesting.cleanMarkdownlintInput(
       ['## Subtitle', '{% set x = 1 -%}', '{% for x in xs -%}', '', '{{ x }}', '', '```yaml'].join(
         '\n'
       )
     );
     expect(cleaned.cleaned.split('\n')).toEqual(['## Subtitle', '_', '', '```yaml']);
+  });
+
+  it('covers binary candidate and source-document fallback branches', () => {
+    expect(
+      markdownAdapterTesting.resolveMarkdownlintBinaryCandidates({
+        initializationOptions: {
+          adapterRuntimes: {
+            'templjs-markdownlint-host': {
+              state: 'enabled',
+              reason: 'resolved-binary',
+              binaryPath: ' custom-mdlint ',
+            },
+          },
+        },
+      } as never)
+    ).toEqual(['custom-mdlint', 'markdownlint']);
+
+    const context = {
+      decodeEmbeddedDocumentUri: vi.fn(() => [URI.parse('file:///source.md.templ')]),
+      language: {
+        scripts: {
+          get: vi.fn(() => ({
+            id: URI.parse('file:///source.md.templ'),
+            snapshot: {
+              getText: () => '# from snapshot',
+              getLength: () => '# from snapshot'.length,
+            },
+          })),
+        },
+      },
+    };
+
+    expect(markdownAdapterTesting.getSourceUri(context as never, 'embedded://doc')).toBe(
+      'file:///source.md.templ'
+    );
+
+    expect(
+      markdownAdapterTesting.getSourceDocumentText(
+        context as never,
+        {
+          uri: 'embedded://doc',
+          getText: () => '# from document',
+        },
+        'file:///source.md.templ'
+      )
+    ).toBe('# from snapshot');
+
+    expect(
+      markdownAdapterTesting.getSourceDocumentText(
+        {
+          decodeEmbeddedDocumentUri: vi.fn(() => undefined),
+          language: { scripts: { get: vi.fn(() => undefined) } },
+        } as never,
+        {
+          uri: 'file:///same.md',
+          getText: () => '# from document',
+        },
+        'file:///same.md'
+      )
+    ).toBe('# from document');
+
+    expect(
+      markdownAdapterTesting.getSourceUri(
+        {
+          decodeEmbeddedDocumentUri: vi.fn(() => undefined),
+          language: { scripts: { get: vi.fn(() => undefined) } },
+        } as never,
+        'file:///fallback.md'
+      )
+    ).toBe('file:///fallback.md');
+
+    expect(
+      markdownAdapterTesting.getSourceDocumentText(
+        {
+          decodeEmbeddedDocumentUri: vi.fn(() => undefined),
+          language: { scripts: { get: vi.fn(() => ({})) } },
+        } as never,
+        {
+          uri: 'embedded://doc',
+          getText: () => '# no snapshot',
+        },
+        'file:///other.md'
+      )
+    ).toBe('# no snapshot');
+
+    expect(
+      markdownAdapterTesting.resolveMarkdownlintBinaryCandidates({
+        initializationOptions: {
+          adapterRuntimes: {
+            'templjs-markdownlint-host': {
+              state: 'enabled',
+              reason: 'resolved-binary',
+              binaryPath: '   ',
+            },
+          },
+        },
+      } as never)
+    ).toEqual(['markdownlint']);
   });
 
   it('collects diagnostics for success, ENOENT, and stderr fallback paths', async () => {
@@ -268,9 +410,52 @@ describe('markdown-adapter', () => {
 
     expect(fallbackDiagnostics).toHaveLength(1);
     expect(fallbackDiagnostics[0]).toMatchObject({ source: 'markdownlint', code: 'MD012' });
+
+    const errorLog = vi.fn();
+    execFileMock.mockImplementationOnce((...args: unknown[]) => {
+      const callback = callbackFromArgs(args);
+      callback(Object.assign(new Error('boom'), { code: 2, stdout: '', stderr: '' }), '', '');
+    });
+
+    const noOutputDiagnostics = await markdownAdapterTesting.collectMarkdownlintDiagnostics(
+      { workspaceFolder: process.cwd(), initializationOptions: {}, log: errorLog } as never,
+      'untitled:doc',
+      '# Title\n',
+      markdownAdapterTesting.cleanMarkdownlintInput('# Title\n')
+    );
+
+    expect(noOutputDiagnostics).toEqual([]);
+    expect(errorLog).toHaveBeenCalled();
+
+    execFileMock.mockImplementationOnce((...args: unknown[]) => {
+      const callback = callbackFromArgs(args);
+      callback(null, undefined, undefined);
+    });
+
+    const emptyStdoutDiagnostics = await markdownAdapterTesting.collectMarkdownlintDiagnostics(
+      { workspaceFolder: process.cwd(), initializationOptions: {} } as never,
+      'untitled:doc',
+      '# Title\n',
+      markdownAdapterTesting.cleanMarkdownlintInput('# Title\n')
+    );
+
+    expect(emptyStdoutDiagnostics).toEqual([]);
   });
 
   it('creates markdown host plugins and maps diagnostics through markdownlint adapter', async () => {
+    expect(
+      createMarkdownHostDiagnosticsAdapter({
+        initializationOptions: {
+          adapterRuntimes: {
+            'templjs-markdown-host': {
+              state: 'unavailable',
+              reason: 'unavailable-vscode-extension-markdown',
+            },
+          },
+        },
+      } as never)
+    ).toBeUndefined();
+
     const markdownHostPlugin = createMarkdownHostDiagnosticsAdapter({} as never);
     expect(markdownHostPlugin?.name).toBe('templjs-markdown-host');
 
