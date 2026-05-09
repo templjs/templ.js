@@ -170,6 +170,10 @@ function isRedhatYamlRegisteredForYaml(): boolean {
   return vscode.extensions.getExtension('redhat.vscode-yaml') !== undefined;
 }
 
+function isJsonLSRegisteredForJson(): boolean {
+  return vscode.extensions.getExtension('vscode.json-language-features') !== undefined;
+}
+
 function isHtmlLSRegisteredForHtml(): boolean {
   return vscode.extensions.getExtension('vscode.html-language-features') !== undefined;
 }
@@ -177,6 +181,7 @@ function isHtmlLSRegisteredForHtml(): boolean {
 function resolveAdapterRuntimes(prettierHostLanguages: string[]): AdapterRuntimeMap {
   const hasMarkdownlint = isMarkdownlintRegisteredForMd();
   const hasRedhatYaml = isRedhatYamlRegisteredForYaml();
+  const hasJsonLs = isJsonLSRegisteredForJson();
   const hasHtmlLs = isHtmlLSRegisteredForHtml();
 
   const runtimes: AdapterRuntimeMap = {
@@ -201,6 +206,15 @@ function resolveAdapterRuntimes(prettierHostLanguages: string[]): AdapterRuntime
         id: 'redhat.vscode-yaml',
       },
       languageIds: ['yaml', 'templjs-yaml'],
+    },
+    'templjs-json-host': {
+      state: hasJsonLs ? 'enabled' : 'unavailable',
+      reason: hasJsonLs ? 'resolved-vscode-extension-json' : 'unavailable-vscode-extension-json',
+      provider: {
+        kind: 'vscode-extension',
+        id: 'vscode.json-language-features',
+      },
+      languageIds: ['json', 'templjs-json'],
     },
     'templjs-html-host': {
       state: hasHtmlLs ? 'enabled' : 'unavailable',
@@ -628,6 +642,7 @@ function getSchemaPathFromSettings(): string | undefined {
 }
 
 function getTypeScriptSdkPath(): string | undefined {
+  /* v8 ignore start */
   try {
     const tsServerPath = require.resolve('typescript/lib/tsserverlibrary.js');
     return path.dirname(tsServerPath);
@@ -635,6 +650,7 @@ function getTypeScriptSdkPath(): string | undefined {
     /* v8 ignore next -- only hit when TypeScript cannot be resolved in the host runtime */
     return undefined;
   }
+  /* v8 ignore stop */
 }
 
 /**
