@@ -628,14 +628,13 @@ function getSchemaPathFromSettings(): string | undefined {
 }
 
 function getTypeScriptSdkPath(): string | undefined {
-  /* v8 ignore start */
   try {
     const tsServerPath = require.resolve('typescript/lib/tsserverlibrary.js');
     return path.dirname(tsServerPath);
   } catch {
+    /* v8 ignore next -- only hit when TypeScript cannot be resolved in the host runtime */
     return undefined;
   }
-  /* v8 ignore stop */
 }
 
 /**
