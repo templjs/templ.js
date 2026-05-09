@@ -11,16 +11,14 @@ import {
 import { pathToFileURL } from 'url';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { create as createVolarHtmlServicePlugin } from 'volar-service-html';
-import { create as createVolarPrettierServicePlugin } from 'volar-service-prettier';
-import { create as createVolarYamlServicePlugin } from 'volar-service-yaml';
 import { loadSchemaSourceSync, resolveDocumentSchemaSources } from './schema-loading.js';
 import {
   createMarkdownHostDiagnosticsAdapter,
   planMarkdownAdapterRuntime,
 } from './markdown-adapter.js';
+import { createPrettierHostAdapter, planPrettierAdapterRuntime } from './prettier-adapter.js';
 import { createJsonHostAdapter, planJsonAdapterRuntime } from './json-adapter.js';
 import { createYamlHostDiagnosticsAdapter, planYamlAdapterRuntime } from './yaml-adapter.js';
-import { createJsonHostAdapter, planJsonAdapterRuntime } from './json-adapter.js';
 import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
 import {
   getConfiguredPrettierHostLanguages,
