@@ -6,10 +6,14 @@ summary: Implement HTML adapter with runtime planning logic and capability publi
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
+status: ready-for-review
+status_reason: implemented
 priority: medium
 estimated: 2
-actual: 0
+actual: 2
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/98
 ---
 
 ## Goal
@@ -28,12 +32,12 @@ Current `createHtmlHostServicePlugin` delegates HTML support. Adapter must publi
 
 ## Tasks
 
-- [ ] Define HTML adapter capabilities (file patterns, supported servers, feature list).
-- [ ] Implement runtime planning logic for HTML language server availability.
-- [ ] Audit `createHtmlHostServicePlugin` implementation.
-- [ ] Move non-trivial logic (>20 lines) into separate files; keep trivial logic in service-plugins.ts.
-- [ ] Add capability-aware gating for HTML features.
-- [ ] Add tests for adapter initialization and capability publishing.
+- [x] Define HTML adapter capabilities (file patterns, supported servers, feature list).
+- [x] Implement runtime planning logic for HTML language server availability.
+- [x] Audit `createHtmlHostServicePlugin` implementation.
+- [x] Move non-trivial logic (>20 lines) into separate files; keep trivial logic in service-plugins.ts.
+- [x] Add capability-aware gating for HTML features.
+- [x] Add tests for adapter initialization and capability publishing.
 
 ## Deliverables
 
@@ -43,10 +47,10 @@ Current `createHtmlHostServicePlugin` delegates HTML support. Adapter must publi
 
 ## Acceptance Criteria
 
-- [ ] HTML adapter publishes correct capabilities.
-- [ ] Plugin code organization follows contract guidance.
-- [ ] All tests pass; interface is contract-compliant.
-- [ ] Build/test and frontmatter validation pass.
+- [x] HTML adapter publishes correct capabilities.
+- [x] Plugin code organization follows contract guidance.
+- [x] All tests pass; interface is contract-compliant.
+- [x] Build/test and frontmatter validation pass.
 
 ## Relationships
 
