@@ -174,10 +174,15 @@ function isJsonLSRegisteredForJson(): boolean {
   return vscode.extensions.getExtension('vscode.json-language-features') !== undefined;
 }
 
+function isHtmlLSRegisteredForHtml(): boolean {
+  return vscode.extensions.getExtension('vscode.html-language-features') !== undefined;
+}
+
 function resolveAdapterRuntimes(prettierHostLanguages: string[]): AdapterRuntimeMap {
   const hasMarkdownlint = isMarkdownlintRegisteredForMd();
   const hasRedhatYaml = isRedhatYamlRegisteredForYaml();
   const hasJsonLs = isJsonLSRegisteredForJson();
+  const hasHtmlLs = isHtmlLSRegisteredForHtml();
 
   const runtimes: AdapterRuntimeMap = {
     'templjs-markdown-host': {
@@ -210,6 +215,15 @@ function resolveAdapterRuntimes(prettierHostLanguages: string[]): AdapterRuntime
         id: 'vscode.json-language-features',
       },
       languageIds: ['json', 'templjs-json'],
+    },
+    'templjs-html-host': {
+      state: hasHtmlLs ? 'enabled' : 'unavailable',
+      reason: hasHtmlLs ? 'resolved-vscode-extension-html' : 'unavailable-vscode-extension-html',
+      provider: {
+        kind: 'vscode-extension',
+        id: 'vscode.html-language-features',
+      },
+      languageIds: ['html', 'templjs-html'],
     },
     'templjs-prettier-host': {
       state: prettierHostLanguages.length > 0 ? 'enabled' : 'disabled',
@@ -633,6 +647,7 @@ function getTypeScriptSdkPath(): string | undefined {
     const tsServerPath = require.resolve('typescript/lib/tsserverlibrary.js');
     return path.dirname(tsServerPath);
   } catch {
+    /* v8 ignore next -- only hit when TypeScript cannot be resolved in the host runtime */
     return undefined;
   }
   /* v8 ignore stop */
