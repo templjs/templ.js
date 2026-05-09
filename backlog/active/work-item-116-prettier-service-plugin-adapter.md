@@ -6,10 +6,14 @@ summary: Implement Prettier adapter with runtime planning logic and capability p
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
+status: in-progress
+status_reason: implementation
 priority: medium
 estimated: 2
 actual: 0
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/100
 ---
 
 ## Goal
