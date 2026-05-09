@@ -414,7 +414,9 @@ describe('extension-activation', () => {
       };
     };
 
-    expect(clientOptions.initializationOptions.adapterRuntimes?.['templjs-html-host']).toMatchObject({
+    expect(
+      clientOptions.initializationOptions.adapterRuntimes?.['templjs-html-host']
+    ).toMatchObject({
       state: 'enabled',
       reason: 'resolved-vscode-extension-html',
     });
