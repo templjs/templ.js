@@ -9,6 +9,8 @@ export function isMarkdownTempljsLanguage(languageId: string | undefined): boole
 
 export type FencedRange = { start: number; end: number };
 
+const MAX_FENCE_SIZE = 100;
+
 /**
  * Detects markdown fenced code ranges (``` or ~~~) in the provided text.
  * Returns an array of ranges representing code blocks to be masked for template processing.
@@ -39,9 +41,13 @@ export function detectMarkdownFencedCodeRanges(text: string): FencedRange[] {
       }
 
       const marker = openMatch[1][0] as '`' | '~';
+      const fenceSize = openMatch[1].length;
+      if (fenceSize > MAX_FENCE_SIZE) {
+        continue;
+      }
       openFence = {
         marker,
-        size: openMatch[1].length,
+        size: fenceSize,
         startOffset,
       };
       continue;

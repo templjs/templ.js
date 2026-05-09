@@ -125,6 +125,7 @@ const onDidOpenTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidChangeTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidCloseTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidChangeConfiguration = vi.fn(() => ({ dispose: vi.fn() }));
+const onDidChangeExtensions = vi.fn(() => ({ dispose: vi.fn() }));
 const openTextDocument = vi.fn(() => Promise.resolve({}));
 const hostDiagCollection = {
   set: vi.fn(),
@@ -171,6 +172,7 @@ vi.mock('vscode', () => ({
   },
   extensions: {
     getExtension,
+    onDidChange: onDidChangeExtensions,
   },
   languages: {
     createDiagnosticCollection,
@@ -239,6 +241,7 @@ describe('extension-activation', () => {
     outputChannel.dispose.mockClear();
     getExtension.mockReset();
     getExtension.mockImplementation((_id: string) => undefined);
+    onDidChangeExtensions.mockClear();
     getConfiguration.mockClear();
     start.mockClear();
     stop.mockClear();
@@ -256,6 +259,7 @@ describe('extension-activation', () => {
     module.activate(context as never);
 
     expect(registerCommand).toHaveBeenCalledWith('templjs.test', expect.any(Function));
+    expect(onDidChangeExtensions).toHaveBeenCalledWith(expect.any(Function));
     expect(context.subscriptions.length).toBeGreaterThan(0);
     expect(
       showInformationMessage.mock.calls.length + showErrorMessage.mock.calls.length
@@ -402,8 +406,8 @@ describe('extension-activation', () => {
         reason: 'unavailable-vscode-extension-yaml',
       },
       'templjs-prettier-host': {
-        state: 'enabled',
-        reason: 'resolved-vscode-formatter-selection',
+        state: 'unavailable',
+        reason: 'unavailable-vscode-extension-prettier',
       },
     });
     expect(clientOptions.initializationOptions.documentContext).toEqual({
@@ -525,8 +529,8 @@ describe('extension-activation', () => {
     expect(
       clientOptions.initializationOptions.adapterRuntimes?.['templjs-prettier-host']
     ).toMatchObject({
-      state: 'enabled',
-      reason: 'resolved-vscode-formatter-selection',
+      state: 'unavailable',
+      reason: 'unavailable-vscode-extension-prettier',
     });
 
     delete (globalThis as { require?: unknown }).require;

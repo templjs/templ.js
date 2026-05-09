@@ -299,6 +299,14 @@ export function activate(context: vscode.ExtensionContext): void {
       void restartLanguageClient(context);
     })
   );
+  context.subscriptions.push(
+    vscode.extensions.onDidChange(() => {
+      outputChannel?.appendLine(
+        '[templjs] Installed extensions changed; restarting language client to refresh adapter runtimes'
+      );
+      void restartLanguageClient(context);
+    })
+  );
 
   // Host language delegation via virtual documents.
   // Serves cleaned template content under `templjs-virtual://` so VS Code routes each

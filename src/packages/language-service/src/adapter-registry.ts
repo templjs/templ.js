@@ -215,21 +215,33 @@ const defaultAdapterRuntimeRegistryEntries: AdapterRuntimeRegistryEntry[] = [
         },
       };
     },
-    resolveRuntime: ({ formattingHostLanguages }) => ({
-      state: formattingHostLanguages.length > 0 ? 'enabled' : 'disabled',
-      reason:
-        formattingHostLanguages.length > 0
-          ? 'resolved-vscode-formatter-selection'
-          : 'disabled-no-prettier-host-languages',
-      provider: {
-        kind: 'vscode-extension',
-        id: 'esbenp.prettier-vscode',
-      },
-      languageIds: formattingHostLanguages,
-      settings: {
-        formattingHostLanguages,
-      },
-    }),
+    resolveRuntime: ({ formattingHostLanguages, isExtensionInstalled }) => {
+      const extensionId = 'esbenp.prettier-vscode';
+      const extensionInstalled = isExtensionInstalled(extensionId);
+
+      return {
+        state:
+          formattingHostLanguages.length === 0
+            ? 'disabled'
+            : extensionInstalled
+              ? 'enabled'
+              : 'unavailable',
+        reason:
+          formattingHostLanguages.length === 0
+            ? 'disabled-no-prettier-host-languages'
+            : extensionInstalled
+              ? 'resolved-vscode-formatter-selection'
+              : 'unavailable-vscode-extension-prettier',
+        provider: {
+          kind: 'vscode-extension',
+          id: extensionId,
+        },
+        languageIds: formattingHostLanguages,
+        settings: {
+          formattingHostLanguages,
+        },
+      };
+    },
   },
 ];
 

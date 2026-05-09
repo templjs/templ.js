@@ -4,6 +4,8 @@ import { URI } from 'vscode-uri';
 const execFileMock = vi.hoisted(() => vi.fn());
 
 vi.mock('node:child_process', () => ({
+  // Node's util.promisify uses this symbol to discover a custom promise wrapper.
+  // We expose it here so execFileAsync in the adapter exercises the mocked promise path.
   execFile: Object.assign((...args: unknown[]) => execFileMock(...args), {
     [Symbol.for('nodejs.util.promisify.custom')]: (...args: unknown[]) =>
       new Promise<{ stdout: unknown; stderr: unknown }>((resolve, reject) => {
@@ -401,6 +403,13 @@ describe('markdown-adapter', () => {
       markdownAdapterTesting.cleanMarkdownlintInput(sourceText)
     );
 
+    expect(execFileMock).toHaveBeenCalledWith(
+      'markdownlint',
+      expect.any(Array),
+      expect.objectContaining({ timeout: 10_000, killSignal: 'SIGKILL' }),
+      expect.any(Function)
+    );
+
     expect(diagnostics).toHaveLength(1);
     expect(diagnostics[0]).toMatchObject({
       source: 'markdownlint',
@@ -465,6 +474,24 @@ describe('markdown-adapter', () => {
 
     expect(noOutputDiagnostics).toEqual([]);
     expect(errorLog).toHaveBeenCalled();
+
+    const timeoutLog = vi.fn();
+    execFileMock.mockImplementationOnce((...args: unknown[]) => {
+      const callback = callbackFromArgs(args);
+      callback(Object.assign(new Error('timed out'), { code: 'ETIMEDOUT', signal: 'SIGKILL' }));
+    });
+
+    const timedOutDiagnostics = await markdownAdapterTesting.collectMarkdownlintDiagnostics(
+      { workspaceFolder: process.cwd(), initializationOptions: {}, log: timeoutLog } as never,
+      'untitled:doc',
+      '# Title\n',
+      markdownAdapterTesting.cleanMarkdownlintInput('# Title\n')
+    );
+
+    expect(timedOutDiagnostics).toEqual([]);
+    expect(timeoutLog).toHaveBeenCalledWith(
+      '[templjs-runtime] markdownlint subprocess timed out command=markdownlint'
+    );
 
     execFileMock.mockImplementationOnce((...args: unknown[]) => {
       const callback = callbackFromArgs(args);

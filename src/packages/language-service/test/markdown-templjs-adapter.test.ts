@@ -47,4 +47,13 @@ describe('markdown-templjs-adapter', () => {
     expect(masked.length).toBe(text.length);
     expect(maskRangesForTemplateSemantics('plain', [])).toBe('plain');
   });
+
+  it('ignores oversized fences to keep close-pattern matching bounded', () => {
+    const hugeFence = '`'.repeat(101);
+    const text = [hugeFence, '{{ hidden }}', hugeFence].join('\n');
+
+    const ranges = detectMarkdownFencedCodeRanges(text);
+
+    expect(ranges).toEqual([]);
+  });
 });

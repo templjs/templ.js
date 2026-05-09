@@ -377,6 +377,8 @@ async function collectMarkdownlintDiagnostics(
         const { stdout } = await execFileAsync(command, ['--json', tempFile.tempFilePath], {
           cwd: options.workspaceFolder,
           maxBuffer: 1024 * 1024,
+          timeout: 10_000,
+          killSignal: 'SIGKILL',
         });
 
         return parseMarkdownlintDiagnostics(String(stdout ?? ''), tempFile.tempFilePath).map(
@@ -385,12 +387,18 @@ async function collectMarkdownlintDiagnostics(
       } catch (error) {
         const typedError = error as {
           code?: string | number;
+          signal?: string;
           stdout?: string | Buffer;
           stderr?: string | Buffer;
         };
 
         if (typedError.code === 'ENOENT') {
           options.log?.(`[templjs-runtime] markdownlint binary not found: ${command}`);
+          continue;
+        }
+
+        if (typedError.code === 'ETIMEDOUT' || typedError.signal === 'SIGKILL') {
+          options.log?.(`[templjs-runtime] markdownlint subprocess timed out command=${command}`);
           continue;
         }
 
