@@ -144,7 +144,9 @@ describe('language-service service-plugins coverage branches', () => {
     expect(servicePluginTesting.createTempljsMarkdownDiagnosticsPlugin({} as never).name).toBe(
       'templjs-markdown-diagnostics'
     );
-    expect(servicePluginTesting.createHtmlHostServicePlugin().name).toBe('templjs-html-host');
+    expect(servicePluginTesting.createHtmlHostServicePlugin({} as never)?.name).toBe(
+      'templjs-html-host'
+    );
     expect(servicePluginTesting.createJsonHostServicePlugin().name).toBe('templjs-json-host');
   });
 
@@ -292,6 +294,47 @@ describe('language-service service-plugins coverage branches', () => {
     });
 
     expect(servicePluginTesting.createYamlDiagnosticsPlugin({} as never)).toBeDefined();
+  });
+
+  it('disables html adapter when vscode.html-language-features is not registered', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(
+      servicePluginTesting.planHtmlAdapterRuntime({
+        initializationOptions: {
+          adapterRuntimes: {
+            'templjs-html-host': {
+              state: 'unavailable',
+              reason: 'unavailable-vscode-extension-html',
+            },
+          },
+        },
+      } as never)
+    ).toEqual({ enabled: false, reason: 'unavailable-vscode-extension-html' });
+
+    expect(
+      servicePluginTesting.createHtmlHostServicePlugin({
+        initializationOptions: {
+          adapterRuntimes: {
+            'templjs-html-host': {
+              state: 'unavailable',
+              reason: 'unavailable-vscode-extension-html',
+            },
+          },
+        },
+      } as never)
+    ).toBeUndefined();
+  });
+
+  it('enables html adapter by default when no runtime override is provided', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(servicePluginTesting.planHtmlAdapterRuntime({} as never)).toEqual({
+      enabled: true,
+      reason: 'default-enabled',
+    });
+
+    expect(servicePluginTesting.createHtmlHostServicePlugin({} as never)).toBeDefined();
   });
 
   it('remaps matching language ids before delegating diagnostics', async () => {
