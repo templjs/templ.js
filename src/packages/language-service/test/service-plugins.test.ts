@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
 
 vi.mock('../../../extensions/vscode/src/service-plugins', async () => {
   const actual = await import('../src/index.ts');
@@ -147,7 +147,9 @@ describe('language-service service-plugins coverage branches', () => {
     expect(servicePluginTesting.createHtmlHostServicePlugin({} as never)?.name).toBe(
       'templjs-html-host'
     );
-    expect(servicePluginTesting.createJsonHostServicePlugin().name).toBe('templjs-json-host');
+    expect(servicePluginTesting.createJsonHostServicePlugin({} as never)?.name).toBe(
+      'templjs-json-host'
+    );
   });
 
   it('disables markdown host adapter when markdownlint is not registered for .md', async () => {
@@ -285,6 +287,36 @@ describe('language-service service-plugins coverage branches', () => {
     ).toBeUndefined();
   });
 
+  it('disables json adapter when vscode.json-language-features is not registered', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(
+      servicePluginTesting.planJsonAdapterRuntime({
+        initializationOptions: {
+          adapterRuntimes: {
+            'templjs-json-host': {
+              state: 'unavailable',
+              reason: 'unavailable-vscode-extension-json',
+            },
+          },
+        },
+      } as never)
+    ).toEqual({ enabled: false, reason: 'unavailable-vscode-extension-json' });
+
+    expect(
+      servicePluginTesting.createJsonHostServicePlugin({
+        initializationOptions: {
+          adapterRuntimes: {
+            'templjs-json-host': {
+              state: 'unavailable',
+              reason: 'unavailable-vscode-extension-json',
+            },
+          },
+        },
+      } as never)
+    ).toBeUndefined();
+  });
+
   it('enables yaml adapter by default when redhatYamlRegisteredForYaml is not set', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
 
@@ -294,6 +326,17 @@ describe('language-service service-plugins coverage branches', () => {
     });
 
     expect(servicePluginTesting.createYamlDiagnosticsPlugin({} as never)).toBeDefined();
+  });
+
+  it('enables json adapter by default when no runtime override is provided', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(servicePluginTesting.planJsonAdapterRuntime({} as never)).toEqual({
+      enabled: true,
+      reason: 'default-enabled',
+    });
+
+    expect(servicePluginTesting.createJsonHostServicePlugin({} as never)).toBeDefined();
   });
 
   it('disables html adapter when vscode.html-language-features is not registered', async () => {

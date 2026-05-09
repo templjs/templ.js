@@ -395,6 +395,33 @@ describe('extension-activation', () => {
     });
   });
 
+  it('enables json host adapter runtime when vscode json language features is installed', async () => {
+    getExtension.mockImplementation((id: string) =>
+      id === 'vscode.json-language-features' ? ({ id } as unknown) : undefined
+    );
+
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const clientOptions = languageClientConstructor.mock.calls[0][3] as {
+      initializationOptions: {
+        adapterRuntimes?: Record<string, { state: string; reason: string }>;
+      };
+    };
+
+    expect(
+      clientOptions.initializationOptions.adapterRuntimes?.['templjs-json-host']
+    ).toMatchObject({
+      state: 'enabled',
+      reason: 'resolved-vscode-extension-json',
+    });
+  });
+
   it('enables html host adapter runtime when vscode html language features is installed', async () => {
     getExtension.mockImplementation((id: string) =>
       id === 'vscode.html-language-features' ? ({ id } as unknown) : undefined
