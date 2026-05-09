@@ -50,26 +50,32 @@ describe('createServicePlugins', () => {
       getDiagnosticOptions: () => ({}),
     });
 
-    expect(plugins).toHaveLength(7);
+    expect(plugins).toHaveLength(8);
     expect(plugins[0]?.name).toBe('templjs-intellisense');
     expect(plugins[1]?.name).toBe('templjs-diagnostics');
     expect(plugins[2]?.name).toBe('templjs-markdown-diagnostics');
     expect(plugins[3]?.name).toBe('templjs-markdown-host');
-    expect(plugins[4]?.name).toBe('templjs-yaml');
-    expect(plugins[5]?.name).toBe('templjs-html-host');
-    expect(plugins[6]?.name).toBe('templjs-json-host');
+    expect(plugins[4]?.name).toBe('templjs-markdownlint-host');
+    expect(plugins[5]?.name).toBe('templjs-yaml');
+    expect(plugins[6]?.name).toBe('templjs-html-host');
+    expect(plugins[7]?.name).toBe('templjs-json-host');
   });
 
-  it('skips markdown host adapter when markdownlint is not registered for .md', () => {
+  it('skips markdownlint host adapter when runtime is unavailable', () => {
     const plugins = createServicePlugins({
       getIntellisenseOptions: () => ({}),
       getDiagnosticOptions: () => ({}),
       initializationOptions: {
-        markdownlintRegisteredForMd: false,
+        adapterRuntimes: {
+          'templjs-markdownlint-host': {
+            state: 'unavailable',
+            reason: 'unavailable-binary-markdownlint',
+          },
+        },
       } as never,
     });
 
-    expect(plugins.some((plugin) => plugin.name === 'templjs-markdown-host')).toBe(false);
+    expect(plugins.some((plugin) => plugin.name === 'templjs-markdownlint-host')).toBe(false);
   });
 
   it('adds prettier host plugin only for configured host languages', () => {
@@ -1227,7 +1233,7 @@ describe('createServicePlugins', () => {
       )
     ).toBeUndefined();
 
-    const directYamlPlugin = servicePluginTesting.createYamlDiagnosticsPlugin({
+    const directYamlPlugin = servicePluginTesting.createYamlHostDiagnosticsAdapter({
       getIntellisenseOptions: () => ({}),
       getDiagnosticOptions: () => ({}),
     });

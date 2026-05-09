@@ -32,7 +32,7 @@ describe('volar index coverage branches', () => {
     expect(snapshot.snapshot.getChangeRange()).toBeUndefined();
   });
 
-  it('cleans template content with tokenizer and regex fallback paths', async () => {
+  it('cleans template content via tokenizer-only path', async () => {
     const cleaned = cleanTemplateContent('Hello {{ name }}\n{% if ok %}\nHi\n{% endif %}');
     expect(cleaned.cleaned).not.toContain('{{');
     expect(cleaned.originalToCleanedOffsets).toHaveLength(
@@ -51,25 +51,64 @@ describe('volar index coverage branches', () => {
     });
 
     const mod = await import('../src/index.js');
-    expect(mod.cleanTemplateContent('plain text').cleaned).toBe('plain text');
-    const fallback = mod.cleanTemplateContent('start\n{{ value }}\nend');
-    expect(fallback.cleaned).toBe('start\n           \nend');
-    expect(fallback.originalToCleanedOffsets.at(-1)).toBe(fallback.cleaned.length);
-    const multilineFallback = mod.cleanTemplateContent(
-      'before\n{% if ok\n%}value\n{% endif %}\nafter'
-    );
-    expect(multilineFallback.cleaned).toContain('\nafter');
-    expect(multilineFallback.originalToCleanedOffsets.at(-1)).toBe(
-      multilineFallback.cleaned.length
-    );
+    expect(() => mod.cleanTemplateContent('plain text')).toThrow('boom');
   });
 
   it('applies trim-marker semantics to adjacent whitespace in cleaned content', () => {
     const source = 'A\n{%- if show -%}\nB';
     const cleaned = cleanTemplateContent(source);
 
-    expect(cleaned.cleaned).toBe('A                 B');
+    expect(cleaned.cleaned).toBe('A\n               \nB');
     expect(cleaned.originalToCleanedOffsets).toHaveLength(source.length + 1);
+  });
+
+  it('supports expression padding-character override in preserve-width mode', () => {
+    const source = 'A {{x}} B {% if ok %} C';
+    const cleaned = cleanTemplateContent(source, undefined, {
+      expressionPaddingCharacter: '_',
+    });
+
+    const expressionStart = source.indexOf('{{x}}');
+    const statementStart = source.indexOf('{% if ok %}');
+
+    expect(cleaned.cleaned.slice(expressionStart, expressionStart + '{{x}}'.length)).toBe('_____');
+    expect(cleaned.cleaned.slice(statementStart, statementStart + '{% if ok %}'.length)).toBe(
+      ' '.repeat('{% if ok %}'.length)
+    );
+  });
+
+  it('supports expression padding-character override in text-only mode', () => {
+    const source = ['## Subtitle', '{{ x }}', '', '```yaml', 'key: value', '```'].join('\n');
+    const cleaned = cleanTemplateContent(source, undefined, {
+      mode: 'text-only',
+      expressionPaddingCharacter: '_',
+    });
+
+    // The whole expression is represented by a single padding char.
+    expect(cleaned.cleaned.split('\n')[1]).toBe('_');
+  });
+
+  it('suppresses trimmed whitespace from trim markers in text-only mode', () => {
+    // -%} trims the whitespace (including blank lines) that follows.
+    const source = [
+      '## Subtitle',
+      '{% set collection = ["a", "b", "c"] -%}',
+      '{% for x in collection -%}',
+      '',
+      '{{ x }}',
+      '',
+      '```yaml',
+    ].join('\n');
+    const cleaned = cleanTemplateContent(source, undefined, {
+      mode: 'text-only',
+      expressionPaddingCharacter: '_',
+    });
+    const lines = cleaned.cleaned.split('\n');
+    // All three non-text lines (set, for, blank) collapse: expression appears immediately after heading.
+    expect(lines[0]).toBe('## Subtitle');
+    expect(lines[1]).toBe('_'); // {{ x }}
+    expect(lines[2]).toBe(''); // blank line after {{ x }}
+    expect(lines[3]).toBe('```yaml');
   });
 
   it('returns undefined for unsupported language ids and rebuilds virtual code from a non-templjs cache entry', () => {

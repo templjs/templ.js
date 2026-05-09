@@ -9,8 +9,14 @@
  */
 
 import * as path from 'path';
+import { spawnSync } from 'node:child_process';
 import * as vscode from 'vscode';
-import type { AdapterRuntimeMap } from '@templjs/language-service';
+import {
+  getFormattingExtensionIds,
+  getFormattingLanguageConfigurationKeys,
+  getSupportedFormattingHostLanguages,
+  resolveAdapterRuntimeMapFromRegistry,
+} from '@templjs/language-service';
 import {
   LanguageClient,
   type LanguageClientOptions,
@@ -26,8 +32,10 @@ let activeEditorTraceSubscription: vscode.Disposable | undefined;
 
 type TraceMode = 'off' | 'messages' | 'verbose';
 
-const PRETTIER_FORMATTER_IDS = new Set(['esbenp.prettier-vscode']);
-const HOST_BASE_LANGUAGES = ['markdown', 'json', 'yaml', 'html'] as const;
+const FORMATTING_EXTENSION_IDS = new Set(getFormattingExtensionIds().map((id) => id.toLowerCase()));
+const FORMATTING_LANGUAGE_CONFIGURATION_KEYS = getFormattingLanguageConfigurationKeys();
+const FORMATTING_CANDIDATE_LANGUAGES = getSupportedFormattingHostLanguages();
+const FORMATTING_SETTING_KEY = 'templjs.formattingHostLanguages';
 
 function getTraceMode(): TraceMode {
   const configured = vscode.workspace
@@ -127,22 +135,36 @@ function getFirstTargetUri(defResult: unknown): string {
   return 'unknown';
 }
 
-function isPrettierFormatterSelection(formatterId: string | undefined): boolean {
+function isFormatterSelection(formatterId: string | undefined): boolean {
   if (!formatterId) {
     return false;
   }
 
-  return PRETTIER_FORMATTER_IDS.has(formatterId.trim().toLowerCase());
+  return FORMATTING_EXTENSION_IDS.has(formatterId.trim().toLowerCase());
 }
 
-function getPrettierHostLanguagesFromSettings(): string[] {
+function getFormattingHostLanguagesFromSettings(): string[] {
+  const configuredHostLanguages = vscode.workspace
+    .getConfiguration('templjs')
+    .get<string[]>(FORMATTING_SETTING_KEY.replace(/^templjs\./, ''));
+
+  if (Array.isArray(configuredHostLanguages)) {
+    const allowedLanguages = new Set(FORMATTING_CANDIDATE_LANGUAGES);
+    const normalized = configuredHostLanguages
+      .filter((value): value is string => typeof value === 'string')
+      .map((value) => value.trim().toLowerCase())
+      .filter((value) => allowedLanguages.has(value));
+
+    return Array.from(new Set(normalized));
+  }
+
   const allSettings = vscode.workspace.getConfiguration();
   const globalFormatter = vscode.workspace
     .getConfiguration('editor')
     .get<string>('defaultFormatter');
 
   const selected: string[] = [];
-  for (const language of HOST_BASE_LANGUAGES) {
+  for (const language of FORMATTING_CANDIDATE_LANGUAGES) {
     const languageBlock = allSettings.get<Record<string, unknown>>(`[${language}]`);
     const languageFormatter =
       languageBlock && typeof languageBlock['editor.defaultFormatter'] === 'string'
@@ -150,7 +172,7 @@ function getPrettierHostLanguagesFromSettings(): string[] {
         : undefined;
 
     const effectiveFormatter = languageFormatter ?? globalFormatter;
-    if (isPrettierFormatterSelection(effectiveFormatter)) {
+    if (isFormatterSelection(effectiveFormatter)) {
       selected.push(language);
     }
   }
@@ -158,99 +180,70 @@ function getPrettierHostLanguagesFromSettings(): string[] {
   return selected;
 }
 
-/**
- * Returns true when a markdownlint extension is installed, indicating the server
- * should defer markdown diagnostics to that extension rather than running its own adapter.
- */
-function isMarkdownlintRegisteredForMd(): boolean {
-  return vscode.extensions.getExtension('DavidAnson.vscode-markdownlint') !== undefined;
+function discoverBinaryPath(binaryName: string): string | undefined {
+  const command = process.platform === 'win32' ? 'where' : 'command';
+  const args = process.platform === 'win32' ? [binaryName] : ['-v', binaryName];
+
+  try {
+    const result = spawnSync(command, args, {
+      encoding: 'utf8',
+      windowsHide: true,
+      shell: process.platform !== 'win32',
+    });
+
+    if (result.status !== 0) {
+      return undefined;
+    }
+
+    const firstLine = String(result.stdout ?? '')
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find((line) => line.length > 0);
+
+    return firstLine;
+  } catch {
+    return undefined;
+  }
 }
 
-function isRedhatYamlRegisteredForYaml(): boolean {
-  return vscode.extensions.getExtension('redhat.vscode-yaml') !== undefined;
-}
+function resolveAdapterRuntimes(formattingHostLanguages: string[]) {
+  const runtimes = resolveAdapterRuntimeMapFromRegistry({
+    formattingHostLanguages,
+    isExtensionInstalled: (extensionId: string) =>
+      vscode.extensions.getExtension(extensionId) !== undefined,
+  });
 
-function isJsonLSRegisteredForJson(): boolean {
-  return vscode.extensions.getExtension('vscode.json-language-features') !== undefined;
-}
-
-function isHtmlLSRegisteredForHtml(): boolean {
-  return vscode.extensions.getExtension('vscode.html-language-features') !== undefined;
-}
-
-function resolveAdapterRuntimes(prettierHostLanguages: string[]): AdapterRuntimeMap {
-  const hasMarkdownlint = isMarkdownlintRegisteredForMd();
-  const hasRedhatYaml = isRedhatYamlRegisteredForYaml();
-  const hasJsonLs = isJsonLSRegisteredForJson();
-  const hasHtmlLs = isHtmlLSRegisteredForHtml();
-
-  const runtimes: AdapterRuntimeMap = {
-    'templjs-markdown-host': {
-      state: hasMarkdownlint ? 'enabled' : 'unavailable',
-      reason: hasMarkdownlint
-        ? 'resolved-vscode-extension-markdownlint'
-        : 'unavailable-vscode-extension-markdownlint',
-      provider: {
-        kind: 'vscode-extension',
-        id: 'DavidAnson.vscode-markdownlint',
-      },
-      languageIds: ['markdown', 'templjs-markdown'],
-    },
-    'templjs-yaml': {
-      state: hasRedhatYaml ? 'enabled' : 'unavailable',
-      reason: hasRedhatYaml
-        ? 'resolved-vscode-extension-yaml'
-        : 'unavailable-vscode-extension-yaml',
-      provider: {
-        kind: 'vscode-extension',
-        id: 'redhat.vscode-yaml',
-      },
-      languageIds: ['yaml', 'templjs-yaml'],
-    },
-    'templjs-json-host': {
-      state: hasJsonLs ? 'enabled' : 'unavailable',
-      reason: hasJsonLs ? 'resolved-vscode-extension-json' : 'unavailable-vscode-extension-json',
-      provider: {
-        kind: 'vscode-extension',
-        id: 'vscode.json-language-features',
-      },
-      languageIds: ['json', 'templjs-json'],
-    },
-    'templjs-html-host': {
-      state: hasHtmlLs ? 'enabled' : 'unavailable',
-      reason: hasHtmlLs ? 'resolved-vscode-extension-html' : 'unavailable-vscode-extension-html',
-      provider: {
-        kind: 'vscode-extension',
-        id: 'vscode.html-language-features',
-      },
-      languageIds: ['html', 'templjs-html'],
-    },
-    'templjs-prettier-host': {
-      state: prettierHostLanguages.length > 0 ? 'enabled' : 'disabled',
-      reason:
-        prettierHostLanguages.length > 0
-          ? 'resolved-vscode-formatter-selection'
-          : 'disabled-no-prettier-host-languages',
-      provider: {
-        kind: 'vscode-extension',
-        id: 'esbenp.prettier-vscode',
-      },
-      languageIds: prettierHostLanguages,
-      settings: {
-        prettierHostLanguages,
-      },
-    },
-  };
+  const markdownlintRuntime = runtimes['templjs-markdownlint-host'];
+  if (markdownlintRuntime) {
+    const markdownlintBinaryPath = discoverBinaryPath('markdownlint');
+    if (markdownlintBinaryPath) {
+      markdownlintRuntime.state = 'enabled';
+      markdownlintRuntime.reason = 'resolved-binary-markdownlint';
+      markdownlintRuntime.provider = {
+        kind: 'binary',
+        id: 'markdownlint',
+      };
+      markdownlintRuntime.binaryPath = markdownlintBinaryPath;
+    } else {
+      markdownlintRuntime.state = 'unavailable';
+      markdownlintRuntime.reason = 'unavailable-binary-markdownlint';
+      delete markdownlintRuntime.binaryPath;
+    }
+  }
 
   return runtimes;
 }
 
 function shouldRefreshFormatterSelection(event: vscode.ConfigurationChangeEvent): boolean {
+  if (event.affectsConfiguration(FORMATTING_SETTING_KEY)) {
+    return true;
+  }
+
   if (event.affectsConfiguration('editor.defaultFormatter')) {
     return true;
   }
 
-  return HOST_BASE_LANGUAGES.some((language) => event.affectsConfiguration(`[${language}]`));
+  return FORMATTING_LANGUAGE_CONFIGURATION_KEYS.some((key) => event.affectsConfiguration(key));
 }
 
 function isTempljsDocument(document: vscode.TextDocument): boolean {
@@ -301,7 +294,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
 
       outputChannel?.appendLine(
-        '[templjs] Formatter selection changed; restarting language client to refresh Prettier host-language delegation'
+        '[templjs] Formatter selection changed; restarting language client to refresh formatter host-language delegation'
       );
       void restartLanguageClient(context);
     })
@@ -366,8 +359,8 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
   const contentSchemaPath = getContentSchemaPathFromSettings();
   const schemaPatterns = getSchemaPatternsFromSettings();
   const documentContext = getActiveDocumentContext();
-  const prettierHostLanguages = getPrettierHostLanguagesFromSettings();
-  const adapterRuntimes = resolveAdapterRuntimes(prettierHostLanguages);
+  const formattingHostLanguages = getFormattingHostLanguagesFromSettings();
+  const adapterRuntimes = resolveAdapterRuntimes(formattingHostLanguages);
 
   const clientOptions: LanguageClientOptions = {
     middleware: {
@@ -482,10 +475,8 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
       schemaPatterns,
       documentContext,
       traceMode,
-      prettierHostLanguages,
+      formattingHostLanguages,
       adapterRuntimes,
-      markdownlintRegisteredForMd: isMarkdownlintRegisteredForMd(),
-      redhatYamlRegisteredForYaml: isRedhatYamlRegisteredForYaml(),
     },
   };
 
@@ -682,8 +673,9 @@ export const extensionTesting = {
   extractLabels,
   hoverContentToString,
   getFirstTargetUri,
-  isPrettierFormatterSelection,
-  getPrettierHostLanguagesFromSettings,
+  isFormatterSelection,
+  getFormattingHostLanguagesFromSettings,
+  discoverBinaryPath,
   resolveAdapterRuntimes,
   shouldRefreshFormatterSelection,
   isTempljsDocument,

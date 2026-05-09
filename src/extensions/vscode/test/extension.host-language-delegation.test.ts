@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const spawnSync = vi.fn(() => ({ status: 1, stdout: '' }));
+
 const registerCommand = vi.fn(() => ({ dispose: vi.fn() }));
 const outputChannel = {
   appendLine: vi.fn(),
@@ -97,6 +99,14 @@ vi.mock('vscode-languageclient/node', () => ({
   LanguageClient: languageClientConstructor,
   TransportKind: { ipc: 1 },
 }));
+
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>();
+  return {
+    ...actual,
+    spawnSync,
+  };
+});
 
 vi.mock('../src/virtual-document-provider', () => ({
   VIRTUAL_SCHEME: 'templjs-virtual',
@@ -248,7 +258,7 @@ describe('extension host language delegation', () => {
       affectsConfiguration: (section: string) =>
         section === '[markdown]' ||
         section === '[json]' ||
-        section === 'templjs.prettierHostLanguages',
+        section === 'templjs.formattingHostLanguages',
     });
 
     await Promise.resolve();
@@ -335,7 +345,7 @@ describe('extension host language delegation', () => {
     }) => void;
     const event = {
       affectsConfiguration: (section: string) =>
-        section === '[markdown]' || section === 'templjs.prettierHostLanguages',
+        section === '[markdown]' || section === 'templjs.formattingHostLanguages',
     };
 
     configHandler(event);
