@@ -246,7 +246,6 @@ describe('language-service service-plugins coverage branches', () => {
         },
       } as never)
     ).toBeUndefined();
-
   });
 
   it('enables yaml adapter by default when redhatYamlRegisteredForYaml is not set', async () => {
