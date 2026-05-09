@@ -26,8 +26,8 @@ export interface ServerInitializationOptions {
   contentSchemaPath?: string;
   schemaPatterns?: Record<string, SchemaPatternConfig>;
   traceMode?: 'off' | 'messages' | 'verbose';
+  formattingHostLanguages?: string[];
   prettierHostLanguages?: string[];
-  markdownlintRegisteredForMd?: boolean;
   redhatYamlRegisteredForYaml?: boolean;
   adapterRuntimes?: AdapterRuntimeMap;
   documentContext?: {

@@ -17,7 +17,12 @@ import type {
 } from '@volar/language-core';
 import type * as ts from 'typescript';
 import { URI } from 'vscode-uri';
-import { tokenize, TokenType, type DelimiterConfig as CoreDelimiterConfig } from '@templjs/core';
+import {
+  tokenize,
+  TokenType,
+  type DelimiterConfig as CoreDelimiterConfig,
+  type Token,
+} from '@templjs/core';
 import {
   buildDelimiterPairPattern,
   buildTemplateBlockPattern,
@@ -687,6 +692,45 @@ export interface CleanedTemplateResult {
   originalToCleanedOffsets: number[];
 }
 
+export interface CleanTemplateOptions {
+  mode?: 'preserve-width' | 'text-only';
+  /**
+   * Optional single-character override used when masking expression tokens (for example `{{ value }}`).
+   * Defaults to a space in `preserve-width` mode and is optional in `text-only` mode.
+   */
+  expressionPaddingCharacter?: string;
+}
+
+function resolveExpressionPaddingCharacter(options?: CleanTemplateOptions): string {
+  const candidate = options?.expressionPaddingCharacter;
+  if (
+    typeof candidate !== 'string' ||
+    candidate.length !== 1 ||
+    candidate === '\n' ||
+    candidate === '\r'
+  ) {
+    return ' ';
+  }
+
+  return candidate;
+}
+
+function resolveOptionalExpressionPaddingCharacter(
+  options?: CleanTemplateOptions
+): string | undefined {
+  const candidate = options?.expressionPaddingCharacter;
+  if (
+    typeof candidate !== 'string' ||
+    candidate.length !== 1 ||
+    candidate === '\n' ||
+    candidate === '\r'
+  ) {
+    return undefined;
+  }
+
+  return candidate;
+}
+
 function toCoreDelimiterConfig(
   delimiters?: Partial<TemplateDelimiterConfig>
 ): CoreDelimiterConfig | undefined {
@@ -729,14 +773,26 @@ function positionToOffset(lineOffsets: number[], line: number, column: number): 
 
 function cleanWithCoreTokenizer(
   source: string,
-  delimiters?: Partial<TemplateDelimiterConfig>
+  delimiters?: Partial<TemplateDelimiterConfig>,
+  expressionPaddingCharacter = ' '
 ): CleanedTemplateResult {
   const lineOffsets = buildLineOffsets(source);
   const chars = [...source];
-  const tokens = tokenize(source, {
-    delimiters: toCoreDelimiterConfig(delimiters),
-    recoverUnclosedDelimiters: true,
-  });
+  let tokens: Token[];
+  try {
+    tokens = tokenize(source, {
+      delimiters: toCoreDelimiterConfig(delimiters),
+      recoverUnclosedDelimiters: true,
+    });
+  } catch {
+    // If tokenization fails, return source unchanged to avoid crashing callers
+    // (e.g., VS Code virtual document providers). This graceful fallback ensures the
+    // extension remains stable even with malformed template syntax.
+    return {
+      cleaned: source,
+      originalToCleanedOffsets: buildIdentityOffsets(source.length),
+    };
+  }
 
   function maskAdjacentTrimWhitespace(
     start: number,
@@ -749,7 +805,10 @@ function cleanWithCoreTokenizer(
         if (!/[\t\n\r ]/.test(chars[i])) {
           break;
         }
-        chars[i] = ' ';
+        const ch = chars[i];
+        if (ch !== '\n' && ch !== '\r') {
+          chars[i] = ' ';
+        }
       }
     }
 
@@ -758,7 +817,10 @@ function cleanWithCoreTokenizer(
         if (!/[\t\n\r ]/.test(chars[i])) {
           break;
         }
-        chars[i] = ' ';
+        const ch = chars[i];
+        if (ch !== '\n' && ch !== '\r') {
+          chars[i] = ' ';
+        }
       }
     }
   }
@@ -768,12 +830,14 @@ function cleanWithCoreTokenizer(
       continue;
     }
 
+    const paddingCharacter = token.type === TokenType.EXPRESSION ? expressionPaddingCharacter : ' ';
+
     const start = positionToOffset(lineOffsets, token.start.line, token.start.column);
     const end = positionToOffset(lineOffsets, token.end.line, token.end.column);
     for (let i = start; i < end && i < chars.length; i++) {
       const ch = chars[i];
       if (ch !== '\n' && ch !== '\r') {
-        chars[i] = ' ';
+        chars[i] = paddingCharacter;
       }
     }
 
@@ -786,59 +850,94 @@ function cleanWithCoreTokenizer(
   };
 }
 
-function cleanWithRegexFallback(
+function cleanWithCoreTokenizerTextOnly(
   source: string,
-  delimiters?: Partial<TemplateDelimiterConfig>
+  delimiters?: Partial<TemplateDelimiterConfig>,
+  expressionPaddingCharacter?: string
 ): CleanedTemplateResult {
-  const patterns = compileDelimiterPatterns(delimiters ?? {});
-  const originalToCleanedOffsets = new Array<number>(source.length + 1);
-  let cleaned = '';
-  let dstPos = 0;
-  let srcPos = 0;
+  const lineOffsets = buildLineOffsets(source);
+  const includeChars = new Array<boolean>(source.length).fill(false);
+  // Only the first char of each expression token is padded; the rest are silent.
+  const expressionPaddingPositions = new Array<boolean>(source.length).fill(false);
+  // Chars trimmed by -%} / {%- markers are suppressed entirely (including newlines).
+  const suppressedChars = new Array<boolean>(source.length).fill(false);
+  let tokens: Token[];
+  try {
+    tokens = tokenize(source, {
+      delimiters: toCoreDelimiterConfig(delimiters),
+      recoverUnclosedDelimiters: true,
+    });
+  } catch {
+    // If tokenization fails, return source unchanged to avoid crashing callers.
+    // This graceful fallback ensures the extension remains stable even with malformed
+    // template syntax.
+    return {
+      cleaned: source,
+      originalToCleanedOffsets: buildIdentityOffsets(source.length),
+    };
+  }
 
+  for (const token of tokens) {
+    const start = positionToOffset(lineOffsets, token.start.line, token.start.column);
+    const end = positionToOffset(lineOffsets, token.end.line, token.end.column);
+    if (token.type === TokenType.TEXT) {
+      for (let i = start; i < end && i < includeChars.length; i++) {
+        includeChars[i] = true;
+      }
+      continue;
+    }
+
+    // Suppress whitespace that a trim marker would consume in the rendered output.
+    if (token.trimLeft) {
+      for (let i = start - 1; i >= 0; i--) {
+        if (!/[\t\n\r ]/.test(source[i] ?? '')) break;
+        suppressedChars[i] = true;
+      }
+    }
+    if (token.trimRight) {
+      for (let i = end; i < source.length; i++) {
+        if (!/[\t\n\r ]/.test(source[i] ?? '')) break;
+        suppressedChars[i] = true;
+      }
+    }
+
+    // Represent the whole expression with a single padding char so expression-only
+    // lines are non-empty without producing false width-related diagnostics.
+    if (
+      token.type === TokenType.EXPRESSION &&
+      expressionPaddingCharacter &&
+      start < source.length
+    ) {
+      expressionPaddingPositions[start] = true;
+    }
+  }
+
+  const originalToCleanedOffsets = new Array<number>(source.length + 1);
   originalToCleanedOffsets[0] = 0;
 
-  const templatePattern = new RegExp(patterns.templateBlockPattern.source, 'g');
-  let lastIndex = 0;
-  let match;
-
-  while ((match = templatePattern.exec(source)) !== null) {
-    const beforeBlock = source.substring(lastIndex, match.index);
-    cleaned += beforeBlock;
-    for (let i = 0; i < beforeBlock.length; i++) {
-      srcPos++;
+  let cleaned = '';
+  let dstPos = 0;
+  for (let srcPos = 0; srcPos < source.length; srcPos++) {
+    const sourceChar = source[srcPos] ?? '';
+    if (suppressedChars[srcPos]) {
+      // consumed by trim marker — emit nothing
+    } else if (includeChars[srcPos]) {
+      cleaned += sourceChar;
       dstPos++;
-      originalToCleanedOffsets[srcPos] = dstPos;
+    } else if (expressionPaddingPositions[srcPos]) {
+      cleaned += expressionPaddingCharacter;
+      dstPos++;
+    } else if (sourceChar === '\n') {
+      cleaned += sourceChar;
+      dstPos++;
     }
-
-    const templateBlock = match[0];
-    const placeholder = templateBlock
-      .split('\n')
-      .map((line, idx) => (idx === 0 ? ' '.repeat(line.length) : '\n'))
-      .join('');
-
-    cleaned += placeholder;
-    const firstNewline = templateBlock.indexOf('\n');
-    for (let i = 0; i < templateBlock.length; i++) {
-      const ch = templateBlock[i];
-      const advance = firstNewline === -1 || i < firstNewline ? 1 : ch === '\n' ? 1 : 0;
-      srcPos++;
-      dstPos += advance;
-      originalToCleanedOffsets[srcPos] = dstPos;
-    }
-
-    lastIndex = templatePattern.lastIndex;
+    originalToCleanedOffsets[srcPos + 1] = dstPos;
   }
 
-  const remaining = source.substring(lastIndex);
-  cleaned += remaining;
-  for (let i = 0; i < remaining.length; i++) {
-    srcPos++;
-    dstPos++;
-    originalToCleanedOffsets[srcPos] = dstPos;
-  }
-
-  return { cleaned, originalToCleanedOffsets };
+  return {
+    cleaned,
+    originalToCleanedOffsets,
+  };
 }
 
 /**
@@ -850,14 +949,18 @@ function cleanWithRegexFallback(
  */
 export function cleanTemplateContent(
   source: string,
-  delimiters?: Partial<TemplateDelimiterConfig>
+  delimiters?: Partial<TemplateDelimiterConfig>,
+  options?: CleanTemplateOptions
 ): CleanedTemplateResult {
-  try {
-    return cleanWithCoreTokenizer(source, delimiters);
-  } catch {
-    // Fallback keeps behavior resilient for malformed, partially typed templates.
-    return cleanWithRegexFallback(source, delimiters);
+  if (options?.mode === 'text-only') {
+    return cleanWithCoreTokenizerTextOnly(
+      source,
+      delimiters,
+      resolveOptionalExpressionPaddingCharacter(options)
+    );
   }
+
+  return cleanWithCoreTokenizer(source, delimiters, resolveExpressionPaddingCharacter(options));
 }
 
 class TempljsLanguagePlugin implements LanguagePlugin<URI> {

@@ -1,7 +1,13 @@
 export {
   createServicePlugins as createTempljsServicePlugins,
+  registerCoreServicePlugin,
+  unregisterCoreServicePlugin,
+  listCoreServicePluginKeys,
+  listCoreServicePluginFactories,
   servicePluginTesting,
 } from './service-plugins.js';
+
+export type { CoreServicePluginFactory, CoreServicePluginKey } from './service-plugins.js';
 
 export {
   DEFAULT_SCHEMA_LOAD_TIMEOUT_MS,
@@ -27,6 +33,8 @@ export type {
 } from './service-plugin-contract.js';
 
 export type {
+  AdapterRuntimeProviderKind,
+  AdapterRuntimeRequirement,
   AdapterRuntimeCapability,
   AdapterRuntimeManifest,
   AdapterRuntimeManifestEntry,
@@ -38,6 +46,32 @@ export type {
   AdapterRuntimeResolutionState,
   TempljsHostServiceAdapterId,
 } from './adapter-runtime-contract.js';
+
+export {
+  ADAPTER_RUNTIME_CAPABILITIES,
+  ADAPTER_RUNTIME_PROVIDER_KINDS,
+} from './adapter-runtime-contract.js';
+
+export {
+  getFormattingExtensionIds,
+  getFormattingLanguageConfigurationKeys,
+  getSupportedFormattingHostLanguages,
+  getConfiguredFormattingHostLanguages,
+  registerAdapterRuntimeEntry,
+  unregisterAdapterRuntimeEntry,
+  getAdapterRuntimeEntry,
+  listAdapterRuntimeEntries,
+  resolveAdapterRuntimeMapFromRegistry,
+} from './adapter-registry.js';
+
+export {
+  registerHostAdapterPlugin,
+  unregisterHostAdapterPlugin,
+  getHostAdapterPluginFactory,
+  listHostAdapterPluginKeys,
+  type HostAdapterPluginFactory,
+  type HostAdapterPluginRegistryKey,
+} from './host-adapter-plugin-registry.js';
 
 export { getResolvedAdapterRuntime, resolveAdapterRuntimeManifest } from './runtime-manifest.js';
 export type DocumentSchemaConfig = import('./schema-loading.js').SchemaPatternConfig;

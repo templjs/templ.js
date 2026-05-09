@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const spawnSync = vi.fn(() => ({ status: 1, stdout: '' }));
+
 const configurationValues: Record<string, unknown> = {
   schemaPath: '.templjs/schema.json',
   contentSchemaPath: '.templjs/content-schema.json',
@@ -123,6 +125,7 @@ const onDidOpenTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidChangeTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidCloseTextDocument = vi.fn(() => ({ dispose: vi.fn() }));
 const onDidChangeConfiguration = vi.fn(() => ({ dispose: vi.fn() }));
+const onDidChangeExtensions = vi.fn(() => ({ dispose: vi.fn() }));
 const openTextDocument = vi.fn(() => Promise.resolve({}));
 const hostDiagCollection = {
   set: vi.fn(),
@@ -169,6 +172,7 @@ vi.mock('vscode', () => ({
   },
   extensions: {
     getExtension,
+    onDidChange: onDidChangeExtensions,
   },
   languages: {
     createDiagnosticCollection,
@@ -186,6 +190,14 @@ vi.mock('vscode-languageclient/node.js', () => ({
   TransportKind: { ipc: 'ipc' },
   LanguageClient: languageClientConstructor,
 }));
+
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>();
+  return {
+    ...actual,
+    spawnSync,
+  };
+});
 
 describe('extension-activation', () => {
   beforeEach(() => {
@@ -229,6 +241,7 @@ describe('extension-activation', () => {
     outputChannel.dispose.mockClear();
     getExtension.mockReset();
     getExtension.mockImplementation((_id: string) => undefined);
+    onDidChangeExtensions.mockClear();
     getConfiguration.mockClear();
     start.mockClear();
     stop.mockClear();
@@ -246,6 +259,7 @@ describe('extension-activation', () => {
     module.activate(context as never);
 
     expect(registerCommand).toHaveBeenCalledWith('templjs.test', expect.any(Function));
+    expect(onDidChangeExtensions).toHaveBeenCalledWith(expect.any(Function));
     expect(context.subscriptions.length).toBeGreaterThan(0);
     expect(
       showInformationMessage.mock.calls.length + showErrorMessage.mock.calls.length
@@ -359,7 +373,7 @@ describe('extension-activation', () => {
         contentSchemaPath?: string;
         schemaPatterns?: Record<string, { schemaPath?: string; contentSchemaPath?: string }>;
         adapterRuntimes?: Record<string, { state: string; reason: string }>;
-        prettierHostLanguages?: string[];
+        formattingHostLanguages?: string[];
         documentContext?: { uri: string; content: string };
       };
     };
@@ -374,19 +388,26 @@ describe('extension-activation', () => {
         contentSchemaPath: 'https://schemas.example.com/work-item-content.json',
       },
     });
-    expect(clientOptions.initializationOptions.prettierHostLanguages).toEqual(['markdown', 'json']);
+    expect(clientOptions.initializationOptions.formattingHostLanguages).toEqual([
+      'markdown',
+      'json',
+    ]);
     expect(clientOptions.initializationOptions.adapterRuntimes).toMatchObject({
       'templjs-markdown-host': {
         state: 'unavailable',
-        reason: 'unavailable-vscode-extension-markdownlint',
+        reason: 'unavailable-vscode-extension-markdown',
+      },
+      'templjs-markdownlint-host': {
+        state: 'unavailable',
+        reason: 'unavailable-binary-markdownlint',
       },
       'templjs-yaml': {
         state: 'unavailable',
         reason: 'unavailable-vscode-extension-yaml',
       },
       'templjs-prettier-host': {
-        state: 'enabled',
-        reason: 'resolved-vscode-formatter-selection',
+        state: 'unavailable',
+        reason: 'unavailable-vscode-extension-prettier',
       },
     });
     expect(clientOptions.initializationOptions.documentContext).toEqual({
@@ -487,7 +508,7 @@ describe('extension-activation', () => {
         contentSchemaPath?: string;
         schemaPatterns?: Record<string, { schemaPath?: string; contentSchemaPath?: string }>;
         adapterRuntimes?: Record<string, { state: string; reason: string }>;
-        prettierHostLanguages?: string[];
+        formattingHostLanguages?: string[];
       };
     };
     expect(clientOptions.initializationOptions.typescript?.tsdk).toMatch(/typescript[\\/]lib/);
@@ -501,12 +522,15 @@ describe('extension-activation', () => {
         contentSchemaPath: 'https://schemas.example.com/work-item-content.json',
       },
     });
-    expect(clientOptions.initializationOptions.prettierHostLanguages).toEqual(['markdown', 'json']);
+    expect(clientOptions.initializationOptions.formattingHostLanguages).toEqual([
+      'markdown',
+      'json',
+    ]);
     expect(
       clientOptions.initializationOptions.adapterRuntimes?.['templjs-prettier-host']
     ).toMatchObject({
-      state: 'enabled',
-      reason: 'resolved-vscode-formatter-selection',
+      state: 'unavailable',
+      reason: 'unavailable-vscode-extension-prettier',
     });
 
     delete (globalThis as { require?: unknown }).require;
@@ -542,13 +566,13 @@ describe('extension-activation', () => {
         contentSchemaPath?: string;
         schemaPatterns?: Record<string, { schemaPath?: string; contentSchemaPath?: string }>;
         adapterRuntimes?: Record<string, { state: string; reason: string }>;
-        prettierHostLanguages?: string[];
+        formattingHostLanguages?: string[];
       };
     };
     expect(clientOptions.initializationOptions.schemaPath).toBeUndefined();
     expect(clientOptions.initializationOptions.contentSchemaPath).toBeUndefined();
     expect(clientOptions.initializationOptions.schemaPatterns).toBeUndefined();
-    expect(clientOptions.initializationOptions.prettierHostLanguages).toEqual([]);
+    expect(clientOptions.initializationOptions.formattingHostLanguages).toEqual([]);
     expect(
       clientOptions.initializationOptions.adapterRuntimes?.['templjs-prettier-host']
     ).toMatchObject({
@@ -889,10 +913,17 @@ describe('extension-activation', () => {
       'two',
     ]);
     expect(helpers.extractLabels({ items: [{ label: 'one' }, { label: 7 }, {}] })).toEqual(['one']);
+    expect(helpers.extractLabels({ items: [{ label: '' }] })).toEqual([]);
     expect(helpers.hoverContentToString({ contents: ['a', { value: 'b' }] } as never)).toBe(
       'a | b'
     );
+    expect(helpers.hoverContentToString({ contents: [{ language: 'md' }] } as never)).toContain(
+      '[object Object]'
+    );
     expect(helpers.hoverContentToString({ contents: { value: 'b' } } as never)).toBe('');
+    expect(helpers.getFirstTargetUri({ uri: { toString: () => 'file:///x.md' } })).toBe(
+      'file:///x.md'
+    );
     expect(helpers.getFirstTargetUri([{ targetUri: { toString: () => 'file:///x.json' } }])).toBe(
       'file:///x.json'
     );
@@ -919,8 +950,47 @@ describe('extension-activation', () => {
       uri: 'file:///workspace/test.yaml.templ',
       content: 'content',
     });
+
+    configurationValues.formattingHostLanguages = [' markdown ', 'json', 'bogus'];
+    expect(helpers.getFormattingHostLanguagesFromSettings()).toEqual(['markdown', 'json']);
+
+    configurationValues.formattingHostLanguages = undefined;
+    configurationValues.defaultFormatter = 'esbenp.prettier-vscode';
+    configurationValues['[markdown]'] = {};
+    configurationValues['[json]'] = {};
+    configurationValues['[yaml]'] = { 'editor.defaultFormatter': 'esbenp.prettier-vscode' };
+    expect(helpers.getFormattingHostLanguagesFromSettings()).toEqual([
+      'markdown',
+      'json',
+      'yaml',
+      'html',
+    ]);
+
+    spawnSync.mockReturnValueOnce({ status: 0, stdout: '/usr/local/bin/markdownlint\n' } as never);
+    expect(helpers.discoverBinaryPath('markdownlint')).toBe('/usr/local/bin/markdownlint');
+
+    activeTextEditor.document.uri.scheme = 'untitled';
+    expect(helpers.getActiveDocumentContext()).toBeUndefined();
+    activeTextEditor.document.uri.scheme = 'file';
+
     expect(helpers.getSchemaPathFromSettings()).toBe('.templjs/root.json');
     expect(helpers.getContentSchemaPathFromSettings()).toBeUndefined();
+
+    configurationValues.schemaPath = '   ';
+    expect(helpers.getSchemaPathFromSettings()).toBeUndefined();
+
+    configurationValues.schemas = {
+      '**/*.md.templ': {
+        schemaPath: '.templjs/root.json',
+      },
+    };
+    expect(helpers.getSchemaPatternsFromSettings()).toEqual({
+      '**/*.md.templ': {
+        schemaPath: '.templjs/root.json',
+      },
+    });
+
+    configurationValues.schemas = {};
     expect(helpers.getSchemaPatternsFromSettings()).toBeUndefined();
     expect(typeof helpers.getTypeScriptSdkPath()).toBe('string');
   });

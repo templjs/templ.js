@@ -13,12 +13,25 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { loadSchemaSourceSync, resolveDocumentSchemaSources } from './schema-loading.js';
 import {
   createMarkdownHostDiagnosticsAdapter,
+  createMarkdownlintHostDiagnosticsAdapter,
   planMarkdownAdapterRuntime,
+  planMarkdownHostAdapterRuntime,
+  planMarkdownlintAdapterRuntime,
 } from './markdown-adapter.js';
+import {
+  isMarkdownTempljsLanguage,
+  detectMarkdownFencedCodeRanges,
+  maskRangesForTemplateSemantics,
+  isOffsetInRanges,
+} from './markdown-templjs-adapter.js';
 import { createPrettierHostAdapter, planPrettierAdapterRuntime } from './prettier-adapter.js';
 import { createJsonHostAdapter, planJsonAdapterRuntime } from './json-adapter.js';
 import { createYamlHostDiagnosticsAdapter, planYamlAdapterRuntime } from './yaml-adapter.js';
 import { createHtmlHostAdapter, planHtmlAdapterRuntime } from './html-adapter.js';
+import {
+  getHostAdapterPluginFactory,
+  listHostAdapterPluginKeys,
+} from './host-adapter-plugin-registry.js';
 import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
 import {
   getConfiguredPrettierHostLanguages,
@@ -26,6 +39,9 @@ import {
 } from './runtime-manifest.js';
 
 type PluginOptions = ServicePluginOrchestrationOptions;
+
+export type CoreServicePluginFactory = (options: PluginOptions) => LanguageServicePlugin;
+export type CoreServicePluginKey = `core:${string}`;
 
 type ResolvedSchemaOptions = {
   schema?: object;
@@ -196,10 +212,6 @@ function getSourceOffsetFromPosition(
 function getVirtualCodeId(context: LanguageServiceContext, uri: string): string | undefined {
   const decoded = context.decodeEmbeddedDocumentUri(URI.parse(uri));
   return decoded?.[1];
-}
-
-function isMarkdownTempljsLanguage(languageId: string | undefined): boolean {
-  return languageId === 'templjs-markdown';
 }
 
 function shouldSkipTempljsDiagnostics(
@@ -402,112 +414,8 @@ function withLanguageIdRemap(
   };
 }
 
-function createYamlDiagnosticsPlugin(options: PluginOptions): LanguageServicePlugin | undefined {
-  return createYamlHostDiagnosticsAdapter(options);
-}
-
-function createMarkdownHostDiagnosticsPlugin(
-  options: PluginOptions
-): LanguageServicePlugin | undefined {
-  return createMarkdownHostDiagnosticsAdapter(options);
-}
-
-function createHtmlHostServicePlugin(options: PluginOptions): LanguageServicePlugin | undefined {
-  return createHtmlHostAdapter(options);
-}
-
-function createJsonHostServicePlugin(options: PluginOptions): LanguageServicePlugin | undefined {
-  return createJsonHostAdapter(options);
-}
-
-function createPrettierHostServicePlugin(
-  options: PluginOptions
-): LanguageServicePlugin | undefined {
-  return createPrettierHostAdapter(options);
-}
-
 function createTextDocumentLike(uri: string, languageId: string, text: string) {
   return TextDocument.create(uri, languageId, 1, text);
-}
-
-function detectMarkdownFencedCodeRanges(text: string): Array<{ start: number; end: number }> {
-  const ranges: Array<{ start: number; end: number }> = [];
-  const lines = text.split(/\r?\n/);
-  let offset = 0;
-
-  let openFence:
-    | {
-        marker: '`' | '~';
-        size: number;
-        startOffset: number;
-      }
-    | undefined;
-
-  for (const line of lines) {
-    const startOffset = offset;
-    const endOffset = startOffset + line.length;
-    const lineBreakLength = text.startsWith('\r\n', endOffset) ? 2 : 1;
-    offset = Math.min(text.length, endOffset + lineBreakLength);
-
-    if (!openFence) {
-      const openMatch = line.match(/^\s{0,3}(`{3,}|~{3,})[^`~]*$/);
-      if (!openMatch) {
-        continue;
-      }
-
-      const marker = openMatch[1][0] as '`' | '~';
-      openFence = {
-        marker,
-        size: openMatch[1].length,
-        startOffset,
-      };
-      continue;
-    }
-
-    const closePattern = new RegExp(`^\\s{0,3}${openFence.marker}{${openFence.size},}\\s*$`);
-    if (!closePattern.test(line)) {
-      continue;
-    }
-
-    ranges.push({
-      start: openFence.startOffset,
-      end: offset,
-    });
-    openFence = undefined;
-  }
-
-  if (openFence) {
-    ranges.push({
-      start: openFence.startOffset,
-      end: text.length,
-    });
-  }
-
-  return ranges;
-}
-
-function isOffsetInRanges(offset: number, ranges: Array<{ start: number; end: number }>): boolean {
-  return ranges.some((range) => offset >= range.start && offset < range.end);
-}
-
-function maskRangesForTemplateSemantics(
-  text: string,
-  ranges: Array<{ start: number; end: number }>
-): string {
-  if (ranges.length === 0) {
-    return text;
-  }
-
-  const chars = [...text];
-  for (const range of ranges) {
-    for (let i = range.start; i < Math.min(range.end, chars.length); i += 1) {
-      if (chars[i] !== '\n' && chars[i] !== '\r') {
-        chars[i] = ' ';
-      }
-    }
-  }
-
-  return chars.join('');
 }
 
 function toDiagnosticSeverity(severity: number | undefined): 1 | 2 | 3 | 4 | undefined {
@@ -661,28 +569,44 @@ function createTempljsMarkdownDiagnosticsPlugin(options: PluginOptions): Languag
   };
 }
 
+const coreServicePluginRegistryMap = new Map<CoreServicePluginKey, CoreServicePluginFactory>([
+  ['core:templjs-additional', createTempljsAdditionalPlugin],
+  ['core:templjs-diagnostics', createTempljsDiagnosticsPlugin],
+  ['core:templjs-markdown-diagnostics', createTempljsMarkdownDiagnosticsPlugin],
+]);
+
+export function registerCoreServicePlugin(
+  key: CoreServicePluginKey,
+  factory: CoreServicePluginFactory
+): void {
+  coreServicePluginRegistryMap.set(key, factory);
+}
+
+export function unregisterCoreServicePlugin(key: CoreServicePluginKey): boolean {
+  return coreServicePluginRegistryMap.delete(key);
+}
+
+export function listCoreServicePluginKeys(): CoreServicePluginKey[] {
+  return [...coreServicePluginRegistryMap.keys()];
+}
+
+export function listCoreServicePluginFactories(): CoreServicePluginFactory[] {
+  return [...coreServicePluginRegistryMap.values()];
+}
+
 export function createServicePlugins(options: PluginOptions): LanguageServicePlugin[] {
   const runtimeManifest = resolveAdapterRuntimeManifest(options);
-  const markdownHostPlugin = createMarkdownHostDiagnosticsAdapter(options);
   options.log?.(
     `[templjs-runtime] manifest version=${runtimeManifest.version} adapters=${runtimeManifest.adapters.length}`
   );
 
-  const yamlPlugin = createYamlDiagnosticsPlugin(options);
-  const prettierPlugin = createPrettierHostServicePlugin(options);
-  const jsonPlugin = createJsonHostServicePlugin(options);
-  const htmlPlugin = createHtmlHostServicePlugin(options);
+  const corePlugins = listCoreServicePluginFactories().map((factory) => factory(options));
 
-  return [
-    createTempljsAdditionalPlugin(options),
-    createTempljsDiagnosticsPlugin(options),
-    createTempljsMarkdownDiagnosticsPlugin(options),
-    ...(markdownHostPlugin ? [markdownHostPlugin] : []),
-    ...(yamlPlugin ? [yamlPlugin] : []),
-    ...(htmlPlugin ? [htmlPlugin] : []),
-    ...(jsonPlugin ? [jsonPlugin] : []),
-    ...(prettierPlugin ? [prettierPlugin] : []),
-  ];
+  const hostPlugins = runtimeManifest.adapters
+    .map((adapter) => getHostAdapterPluginFactory(adapter.id)?.(options))
+    .filter((plugin): plugin is LanguageServicePlugin => plugin !== undefined);
+
+  return [...corePlugins, ...hostPlugins];
 }
 
 /* c8 ignore start */
@@ -708,15 +632,24 @@ export const servicePluginTesting = {
   createTempljsAdditionalPlugin,
   createTempljsDiagnosticsPlugin,
   createTempljsMarkdownDiagnosticsPlugin,
-  createMarkdownHostDiagnosticsPlugin,
-  createYamlDiagnosticsPlugin,
+  registerCoreServicePlugin,
+  unregisterCoreServicePlugin,
+  listCoreServicePluginKeys,
+  listCoreServicePluginFactories,
+  createMarkdownHostDiagnosticsAdapter,
+  createMarkdownlintHostDiagnosticsAdapter,
+  createYamlHostDiagnosticsAdapter,
+  createHtmlHostAdapter,
+  createJsonHostAdapter,
+  createPrettierHostAdapter,
+  getHostAdapterPluginFactory,
+  listHostAdapterPluginKeys,
   planYamlAdapterRuntime,
-  createHtmlHostServicePlugin,
   planHtmlAdapterRuntime,
-  createJsonHostServicePlugin,
   planJsonAdapterRuntime,
-  createPrettierHostServicePlugin,
   planPrettierAdapterRuntime,
+  planMarkdownHostAdapterRuntime,
+  planMarkdownlintAdapterRuntime,
   planMarkdownAdapterRuntime,
   getConfiguredPrettierHostLanguages,
   resolveAdapterRuntimeManifest,

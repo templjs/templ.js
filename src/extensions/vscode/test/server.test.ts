@@ -163,6 +163,7 @@ describe('language-server-bootstrap', () => {
       'templjs-diagnostics',
       'templjs-markdown-diagnostics',
       'templjs-markdown-host',
+      'templjs-markdownlint-host',
       'templjs-yaml',
       'templjs-html-host',
       'templjs-json-host',

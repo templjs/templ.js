@@ -62,6 +62,169 @@ function withVolar24Context<T extends Record<string, any>>(context: T): T {
 }
 
 describe('language-service service-plugins coverage branches', () => {
+  it('exposes schemaLoading through index facade', async () => {
+    const languageService = await import('../src/index.ts');
+    expect(languageService.schemaLoading).toBeDefined();
+    expect(typeof languageService.schemaLoading.loadSchemaSource).toBe('function');
+  });
+
+  it('covers adapter registry exports and runtime resolution branches', async () => {
+    const languageService = await import('../src/index.ts');
+
+    expect(languageService.getSupportedFormattingHostLanguages()).toEqual([
+      'markdown',
+      'json',
+      'yaml',
+      'html',
+    ]);
+    expect(languageService.getFormattingExtensionIds()).toEqual(['esbenp.prettier-vscode']);
+    expect(languageService.getFormattingLanguageConfigurationKeys()).toEqual([
+      '[markdown]',
+      '[json]',
+      '[yaml]',
+      '[html]',
+    ]);
+
+    expect(
+      languageService.getConfiguredFormattingHostLanguages({
+        initializationOptions: {
+          formattingHostLanguages: [' markdown ', 'json', 'json', 'bogus'],
+        },
+      } as never)
+    ).toEqual(['markdown', 'json']);
+
+    expect(
+      languageService.getConfiguredFormattingHostLanguages({
+        initializationOptions: {
+          prettierHostLanguages: [' yaml ', 'html', 42],
+        },
+      } as never)
+    ).toEqual(['yaml', 'html']);
+
+    expect(languageService.getConfiguredFormattingHostLanguages({} as never)).toEqual([]);
+
+    const prettierEntry = languageService.getAdapterRuntimeEntry('templjs-prettier-host');
+    expect(prettierEntry).toBeDefined();
+    expect(prettierEntry?.manifest({ initializationOptions: {} } as never)).toBeUndefined();
+    expect(
+      prettierEntry?.manifest({
+        initializationOptions: { formattingHostLanguages: ['markdown', 'yaml'] },
+      } as never)
+    ).toMatchObject({
+      id: 'templjs-prettier-host',
+      languageIds: ['markdown', 'yaml'],
+      capabilities: ['formatting'],
+      resolutionMode: 'deferred',
+    });
+
+    const unavailableRuntimeMap = languageService.resolveAdapterRuntimeMapFromRegistry({
+      formattingHostLanguages: [],
+      isExtensionInstalled: () => false,
+    });
+    expect(unavailableRuntimeMap['templjs-markdown-host']).toMatchObject({
+      state: 'unavailable',
+      reason: 'unavailable-vscode-extension-markdown',
+    });
+    expect(unavailableRuntimeMap['templjs-prettier-host']).toMatchObject({
+      state: 'disabled',
+      reason: 'disabled-no-prettier-host-languages',
+    });
+
+    const missingPrettierRuntimeMap = languageService.resolveAdapterRuntimeMapFromRegistry({
+      formattingHostLanguages: ['markdown'],
+      isExtensionInstalled: () => false,
+    });
+    expect(missingPrettierRuntimeMap['templjs-prettier-host']).toMatchObject({
+      state: 'unavailable',
+      reason: 'unavailable-vscode-extension-prettier',
+    });
+
+    const availableRuntimeMap = languageService.resolveAdapterRuntimeMapFromRegistry({
+      formattingHostLanguages: ['markdown'],
+      isExtensionInstalled: (id) => id !== 'redhat.vscode-yaml',
+    });
+    expect(availableRuntimeMap['templjs-markdown-host']).toMatchObject({
+      state: 'enabled',
+      reason: 'resolved-vscode-extension-markdown',
+    });
+    expect(availableRuntimeMap['templjs-yaml']).toMatchObject({
+      state: 'unavailable',
+      reason: 'unavailable-vscode-extension-yaml',
+    });
+    expect(availableRuntimeMap['templjs-prettier-host']).toMatchObject({
+      state: 'enabled',
+      reason: 'resolved-vscode-formatter-selection',
+    });
+
+    const originalJsonEntry = languageService.getAdapterRuntimeEntry('templjs-json-host');
+    const overrideJsonEntry = {
+      id: 'templjs-json-host',
+      manifest: () => ({
+        id: 'templjs-json-host',
+        languageIds: ['json', 'templjs-json'],
+        capabilities: ['diagnostics'],
+        resolutionMode: 'immediate',
+        requirements: { required: [], optional: [] },
+      }),
+      resolveRuntime: () => ({
+        state: 'enabled',
+        reason: 'resolved-vscode-extension-json',
+        provider: { kind: 'vscode-extension', id: 'vscode.json-language-features' },
+        languageIds: ['json', 'templjs-json'],
+      }),
+    };
+
+    languageService.registerAdapterRuntimeEntry(overrideJsonEntry as never);
+    try {
+      expect(languageService.getAdapterRuntimeEntry('templjs-json-host')).toBe(overrideJsonEntry);
+      expect(
+        languageService
+          .listAdapterRuntimeEntries()
+          .find((entry) => entry.id === 'templjs-json-host')
+      ).toBe(overrideJsonEntry);
+    } finally {
+      expect(languageService.unregisterAdapterRuntimeEntry('templjs-json-host')).toBe(true);
+      if (originalJsonEntry) {
+        languageService.registerAdapterRuntimeEntry(originalJsonEntry);
+      }
+    }
+  });
+
+  it('supports host adapter registry overrides through index exports', async () => {
+    const languageService = await import('../src/index.ts');
+    const key = 'templjs-prettier-host';
+    const originalFactory = languageService.getHostAdapterPluginFactory(key);
+    const overrideFactory = vi.fn(() => undefined);
+
+    languageService.registerHostAdapterPlugin(key, overrideFactory);
+
+    try {
+      expect(languageService.getHostAdapterPluginFactory(key)).toBe(overrideFactory);
+      expect(languageService.listHostAdapterPluginKeys()).toContain(key);
+      expect(languageService.servicePluginTesting.getHostAdapterPluginFactory(key)).toBe(
+        overrideFactory
+      );
+    } finally {
+      expect(languageService.unregisterHostAdapterPlugin(key)).toBe(true);
+      if (originalFactory) {
+        languageService.registerHostAdapterPlugin(key, originalFactory);
+      }
+    }
+  });
+
+  it('ensures every manifest adapter has a host adapter plugin registration', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+    const manifest = servicePluginTesting.resolveAdapterRuntimeManifest({
+      initializationOptions: {
+        formattingHostLanguages: ['markdown', 'json', 'yaml', 'html'],
+      },
+    } as never);
+
+    for (const adapter of manifest.adapters) {
+      expect(servicePluginTesting.getHostAdapterPluginFactory(adapter.id)).toBeDefined();
+    }
+  });
+
   it('normalizes prettier host languages and omits unsupported entries', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
     const manifest = servicePluginTesting.resolveAdapterRuntimeManifest({} as never);
@@ -70,8 +233,20 @@ describe('language-service service-plugins coverage branches', () => {
       manifest.adapters.find((adapter) => adapter.id === 'templjs-markdown-host')
     ).toMatchObject({
       requirements: {
-        extensionIds: ['DavidAnson.vscode-markdownlint'],
-        settingsKeys: ['[markdown]'],
+        required: [{ kind: 'extension-id', id: 'vscode.markdown-language-features' }],
+        optional: [{ kind: 'vscode-setting-key', key: '[markdown]' }],
+      },
+    });
+
+    expect(
+      manifest.adapters.find((adapter) => adapter.id === 'templjs-markdownlint-host')
+    ).toMatchObject({
+      requirements: {
+        required: [{ kind: 'binary-name', name: 'markdownlint' }],
+        optional: [
+          { kind: 'env-var', name: 'PATH' },
+          { kind: 'vscode-setting-key', key: '[markdown]' },
+        ],
       },
     });
     expect(
@@ -82,7 +257,7 @@ describe('language-service service-plugins coverage branches', () => {
       } as never)
     ).toEqual(['markdown', 'yaml']);
     expect(
-      servicePluginTesting.createPrettierHostServicePlugin({
+      servicePluginTesting.createPrettierHostAdapter({
         initializationOptions: {},
       } as never)
     ).toBeUndefined();
@@ -90,7 +265,7 @@ describe('language-service service-plugins coverage branches', () => {
 
   it('skips yaml diagnostics for templjs source documents and keeps unclosed fenced ranges', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
-    const yamlPlugin = servicePluginTesting.createYamlDiagnosticsPlugin({} as never);
+    const yamlPlugin = servicePluginTesting.createYamlHostDiagnosticsAdapter({} as never);
     const instance = yamlPlugin.create({} as never);
 
     expect(
@@ -138,54 +313,80 @@ describe('language-service service-plugins coverage branches', () => {
       {} as never
     );
 
-    expect(servicePluginTesting.createMarkdownHostDiagnosticsPlugin({} as never)?.name).toBe(
+    expect(servicePluginTesting.createMarkdownHostDiagnosticsAdapter({} as never)?.name).toBe(
       'templjs-markdown-host'
+    );
+    expect(servicePluginTesting.createMarkdownlintHostDiagnosticsAdapter({} as never)?.name).toBe(
+      'templjs-markdownlint-host'
     );
     expect(servicePluginTesting.createTempljsMarkdownDiagnosticsPlugin({} as never).name).toBe(
       'templjs-markdown-diagnostics'
     );
-    expect(servicePluginTesting.createHtmlHostServicePlugin({} as never)?.name).toBe(
-      'templjs-html-host'
-    );
-    expect(servicePluginTesting.createJsonHostServicePlugin({} as never)?.name).toBe(
-      'templjs-json-host'
-    );
+    expect(servicePluginTesting.createHtmlHostAdapter({} as never)?.name).toBe('templjs-html-host');
+    expect(servicePluginTesting.createJsonHostAdapter({} as never)?.name).toBe('templjs-json-host');
   });
 
-  it('disables markdown host adapter when markdownlint is not registered for .md', async () => {
+  it('disables markdownlint host adapter when runtime is unavailable', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
 
     expect(
       servicePluginTesting.planMarkdownAdapterRuntime({
         initializationOptions: {
           adapterRuntimes: {
-            'templjs-markdown-host': {
+            'templjs-markdownlint-host': {
               state: 'unavailable',
-              reason: 'unavailable-vscode-extension-markdownlint',
+              reason: 'unavailable-binary-markdownlint',
             },
           },
         },
       } as never)
     ).toEqual({
       enabled: false,
-      reason: 'unavailable-vscode-extension-markdownlint',
+      reason: 'unavailable-binary-markdownlint',
     });
 
     expect(
-      servicePluginTesting.planMarkdownAdapterRuntime({
+      servicePluginTesting.createMarkdownlintHostDiagnosticsAdapter({
         initializationOptions: {
-          markdownlintRegisteredForMd: false,
+          adapterRuntimes: {
+            'templjs-markdownlint-host': {
+              state: 'unavailable',
+              reason: 'unavailable-binary-markdownlint',
+            },
+          },
+        },
+      } as never)
+    ).toBeUndefined();
+  });
+
+  it('disables markdown host adapter when markdown language service runtime is unavailable', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(
+      servicePluginTesting.planMarkdownHostAdapterRuntime({
+        initializationOptions: {
+          adapterRuntimes: {
+            'templjs-markdown-host': {
+              state: 'unavailable',
+              reason: 'unavailable-vscode-extension-markdown',
+            },
+          },
         },
       } as never)
     ).toEqual({
       enabled: false,
-      reason: 'disabled-markdownlint-not-registered-for-md',
+      reason: 'unavailable-vscode-extension-markdown',
     });
 
     expect(
-      servicePluginTesting.createMarkdownHostDiagnosticsPlugin({
+      servicePluginTesting.createMarkdownHostDiagnosticsAdapter({
         initializationOptions: {
-          markdownlintRegisteredForMd: false,
+          adapterRuntimes: {
+            'templjs-markdown-host': {
+              state: 'unavailable',
+              reason: 'unavailable-vscode-extension-markdown',
+            },
+          },
         },
       } as never)
     ).toBeUndefined();
@@ -199,7 +400,7 @@ describe('language-service service-plugins coverage branches', () => {
     ).toEqual({ enabled: false, languages: [], reason: 'disabled-no-languages-configured' });
 
     expect(
-      servicePluginTesting.createPrettierHostServicePlugin({ initializationOptions: {} } as never)
+      servicePluginTesting.createPrettierHostAdapter({ initializationOptions: {} } as never)
     ).toBeUndefined();
   });
 
@@ -213,7 +414,7 @@ describe('language-service service-plugins coverage branches', () => {
     ).toEqual({ enabled: true, languages: ['markdown', 'json'], reason: 'configured-languages' });
 
     expect(
-      servicePluginTesting.createPrettierHostServicePlugin({
+      servicePluginTesting.createPrettierHostAdapter({
         initializationOptions: { prettierHostLanguages: ['yaml'] },
       } as never)
     ).toBeDefined();
@@ -281,7 +482,7 @@ describe('language-service service-plugins coverage branches', () => {
     ).toEqual({ enabled: false, reason: 'disabled-yaml-ls-not-registered-for-yaml' });
 
     expect(
-      servicePluginTesting.createYamlDiagnosticsPlugin({
+      servicePluginTesting.createYamlHostDiagnosticsAdapter({
         initializationOptions: { redhatYamlRegisteredForYaml: false },
       } as never)
     ).toBeUndefined();
@@ -304,7 +505,7 @@ describe('language-service service-plugins coverage branches', () => {
     ).toEqual({ enabled: false, reason: 'unavailable-vscode-extension-json' });
 
     expect(
-      servicePluginTesting.createJsonHostServicePlugin({
+      servicePluginTesting.createJsonHostAdapter({
         initializationOptions: {
           adapterRuntimes: {
             'templjs-json-host': {
@@ -325,7 +526,7 @@ describe('language-service service-plugins coverage branches', () => {
       reason: 'default-enabled',
     });
 
-    expect(servicePluginTesting.createYamlDiagnosticsPlugin({} as never)).toBeDefined();
+    expect(servicePluginTesting.createYamlHostDiagnosticsAdapter({} as never)).toBeDefined();
   });
 
   it('enables json adapter by default when no runtime override is provided', async () => {
@@ -336,7 +537,7 @@ describe('language-service service-plugins coverage branches', () => {
       reason: 'default-enabled',
     });
 
-    expect(servicePluginTesting.createJsonHostServicePlugin({} as never)).toBeDefined();
+    expect(servicePluginTesting.createJsonHostAdapter({} as never)).toBeDefined();
   });
 
   it('disables html adapter when vscode.html-language-features is not registered', async () => {
@@ -356,7 +557,7 @@ describe('language-service service-plugins coverage branches', () => {
     ).toEqual({ enabled: false, reason: 'unavailable-vscode-extension-html' });
 
     expect(
-      servicePluginTesting.createHtmlHostServicePlugin({
+      servicePluginTesting.createHtmlHostAdapter({
         initializationOptions: {
           adapterRuntimes: {
             'templjs-html-host': {
@@ -377,7 +578,7 @@ describe('language-service service-plugins coverage branches', () => {
       reason: 'default-enabled',
     });
 
-    expect(servicePluginTesting.createHtmlHostServicePlugin({} as never)).toBeDefined();
+    expect(servicePluginTesting.createHtmlHostAdapter({} as never)).toBeDefined();
   });
 
   it('remaps matching language ids before delegating diagnostics', async () => {
@@ -405,26 +606,45 @@ describe('language-service service-plugins coverage branches', () => {
     );
   });
 
-  it('passes default markdown diagnostic options into the markdown host service factory', async () => {
-    vi.resetModules();
-    const markdownFactory = vi.fn(
-      (options: { getDiagnosticOptions: () => Promise<Record<string, unknown>> }) => ({
-        create: () => ({}),
-        options,
-      })
-    );
-    vi.doMock('volar-service-markdown', () => ({ create: markdownFactory }));
-
+  it('creates markdown host adapter with diagnostics capability', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
-    servicePluginTesting.createMarkdownHostDiagnosticsPlugin({} as never);
 
-    const diagnosticOptions = await markdownFactory.mock.calls[0][0].getDiagnosticOptions();
-    expect(diagnosticOptions).toMatchObject({
-      validateReferences: 'warning',
-      validateFragmentLinks: 'warning',
-      validateFileLinks: 'warning',
+    const markdownHostPlugin = servicePluginTesting.createMarkdownHostDiagnosticsAdapter(
+      {} as never
+    );
+    expect(markdownHostPlugin).toBeDefined();
+    expect(markdownHostPlugin?.name).toBe('templjs-markdown-host');
+    expect(markdownHostPlugin?.capabilities).toMatchObject({
+      diagnosticProvider: {
+        interFileDependencies: false,
+        workspaceDiagnostics: false,
+      },
     });
-    vi.doUnmock('volar-service-markdown');
+
+    const markdownlintPlugin = servicePluginTesting.createMarkdownlintHostDiagnosticsAdapter(
+      {} as never
+    );
+    expect(markdownlintPlugin).toBeDefined();
+    expect(markdownlintPlugin?.name).toBe('templjs-markdownlint-host');
+    expect(markdownlintPlugin?.capabilities).toMatchObject({
+      diagnosticProvider: {
+        interFileDependencies: false,
+        workspaceDiagnostics: false,
+      },
+    });
+
+    const disabledMarkdownlintPlugin =
+      servicePluginTesting.createMarkdownlintHostDiagnosticsAdapter({
+        initializationOptions: {
+          adapterRuntimes: {
+            'templjs-markdownlint-host': {
+              state: 'unavailable',
+              reason: 'unavailable-binary-markdownlint',
+            },
+          },
+        },
+      } as never);
+    expect(disabledMarkdownlintPlugin).toBeUndefined();
   });
 
   it('builds default diagnostic and intellisense options and recognizes yaml documents', async () => {
