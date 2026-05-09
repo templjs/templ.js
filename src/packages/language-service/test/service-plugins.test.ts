@@ -62,6 +62,28 @@ function withVolar24Context<T extends Record<string, any>>(context: T): T {
 }
 
 describe('language-service service-plugins coverage branches', () => {
+  it('supports host adapter registry overrides through index exports', async () => {
+    const languageService = await import('../src/index.ts');
+    const key = 'templjs-prettier-host';
+    const originalFactory = languageService.getHostAdapterPluginFactory(key);
+    const overrideFactory = vi.fn(() => undefined);
+
+    languageService.registerHostAdapterPlugin(key, overrideFactory);
+
+    try {
+      expect(languageService.getHostAdapterPluginFactory(key)).toBe(overrideFactory);
+      expect(languageService.listHostAdapterPluginKeys()).toContain(key);
+      expect(languageService.servicePluginTesting.getHostAdapterPluginFactory(key)).toBe(
+        overrideFactory
+      );
+    } finally {
+      expect(languageService.unregisterHostAdapterPlugin(key)).toBe(true);
+      if (originalFactory) {
+        languageService.registerHostAdapterPlugin(key, originalFactory);
+      }
+    }
+  });
+
   it('ensures every manifest adapter has a host adapter plugin registration', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
     const manifest = servicePluginTesting.resolveAdapterRuntimeManifest({
