@@ -909,10 +909,17 @@ describe('extension-activation', () => {
       'two',
     ]);
     expect(helpers.extractLabels({ items: [{ label: 'one' }, { label: 7 }, {}] })).toEqual(['one']);
+    expect(helpers.extractLabels({ items: [{ label: '' }] })).toEqual([]);
     expect(helpers.hoverContentToString({ contents: ['a', { value: 'b' }] } as never)).toBe(
       'a | b'
     );
+    expect(helpers.hoverContentToString({ contents: [{ language: 'md' }] } as never)).toContain(
+      '[object Object]'
+    );
     expect(helpers.hoverContentToString({ contents: { value: 'b' } } as never)).toBe('');
+    expect(helpers.getFirstTargetUri({ uri: { toString: () => 'file:///x.md' } })).toBe(
+      'file:///x.md'
+    );
     expect(helpers.getFirstTargetUri([{ targetUri: { toString: () => 'file:///x.json' } }])).toBe(
       'file:///x.json'
     );
@@ -939,8 +946,47 @@ describe('extension-activation', () => {
       uri: 'file:///workspace/test.yaml.templ',
       content: 'content',
     });
+
+    configurationValues.formattingHostLanguages = [' markdown ', 'json', 'bogus'];
+    expect(helpers.getFormattingHostLanguagesFromSettings()).toEqual(['markdown', 'json']);
+
+    configurationValues.formattingHostLanguages = undefined;
+    configurationValues.defaultFormatter = 'esbenp.prettier-vscode';
+    configurationValues['[markdown]'] = {};
+    configurationValues['[json]'] = {};
+    configurationValues['[yaml]'] = { 'editor.defaultFormatter': 'esbenp.prettier-vscode' };
+    expect(helpers.getFormattingHostLanguagesFromSettings()).toEqual([
+      'markdown',
+      'json',
+      'yaml',
+      'html',
+    ]);
+
+    spawnSync.mockReturnValueOnce({ status: 0, stdout: '/usr/local/bin/markdownlint\n' } as never);
+    expect(helpers.discoverBinaryPath('markdownlint')).toBe('/usr/local/bin/markdownlint');
+
+    activeTextEditor.document.uri.scheme = 'untitled';
+    expect(helpers.getActiveDocumentContext()).toBeUndefined();
+    activeTextEditor.document.uri.scheme = 'file';
+
     expect(helpers.getSchemaPathFromSettings()).toBe('.templjs/root.json');
     expect(helpers.getContentSchemaPathFromSettings()).toBeUndefined();
+
+    configurationValues.schemaPath = '   ';
+    expect(helpers.getSchemaPathFromSettings()).toBeUndefined();
+
+    configurationValues.schemas = {
+      '**/*.md.templ': {
+        schemaPath: '.templjs/root.json',
+      },
+    };
+    expect(helpers.getSchemaPatternsFromSettings()).toEqual({
+      '**/*.md.templ': {
+        schemaPath: '.templjs/root.json',
+      },
+    });
+
+    configurationValues.schemas = {};
     expect(helpers.getSchemaPatternsFromSettings()).toBeUndefined();
     expect(typeof helpers.getTypeScriptSdkPath()).toBe('string');
   });
