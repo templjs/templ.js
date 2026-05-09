@@ -227,6 +227,8 @@ describe('extension-activation', () => {
     onDidChangeActiveTextEditor.mockClear();
     createOutputChannel.mockClear();
     outputChannel.dispose.mockClear();
+    getExtension.mockReset();
+    getExtension.mockImplementation((_id: string) => undefined);
     getConfiguration.mockClear();
     start.mockClear();
     stop.mockClear();
@@ -390,6 +392,33 @@ describe('extension-activation', () => {
     expect(clientOptions.initializationOptions.documentContext).toEqual({
       uri: 'file:///workspace/backlog/054_bug_no_schema_aware_authoring.md',
       content: '---\n$templ-schema: .templjs/root.json\n---\n{{ user.name }}',
+    });
+  });
+
+  it('enables html host adapter runtime when vscode html language features is installed', async () => {
+    getExtension.mockImplementation((id: string) =>
+      id === 'vscode.html-language-features' ? ({ id } as unknown) : undefined
+    );
+
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const clientOptions = languageClientConstructor.mock.calls[0][3] as {
+      initializationOptions: {
+        adapterRuntimes?: Record<string, { state: string; reason: string }>;
+      };
+    };
+
+    expect(
+      clientOptions.initializationOptions.adapterRuntimes?.['templjs-html-host']
+    ).toMatchObject({
+      state: 'enabled',
+      reason: 'resolved-vscode-extension-html',
     });
   });
 
