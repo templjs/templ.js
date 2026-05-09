@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
+import { tmpdir } from 'node:os';
 
 vi.mock('../../../extensions/vscode/src/service-plugins', async () => {
   const actual = await import('../src/index.ts');
@@ -187,6 +187,73 @@ describe('language-service service-plugins coverage branches', () => {
         },
       } as never)
     ).toBeUndefined();
+  });
+
+  it('disables prettier adapter when no languages are configured', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(
+      servicePluginTesting.planPrettierAdapterRuntime({ initializationOptions: {} } as never)
+    ).toEqual({ enabled: false, languages: [], reason: 'disabled-no-languages-configured' });
+
+    expect(
+      servicePluginTesting.createPrettierHostServicePlugin({ initializationOptions: {} } as never)
+    ).toBeUndefined();
+  });
+
+  it('enables prettier adapter with configured languages', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(
+      servicePluginTesting.planPrettierAdapterRuntime({
+        initializationOptions: { prettierHostLanguages: ['markdown', 'json'] },
+      } as never)
+    ).toEqual({ enabled: true, languages: ['markdown', 'json'], reason: 'configured-languages' });
+
+    expect(
+      servicePluginTesting.createPrettierHostServicePlugin({
+        initializationOptions: { prettierHostLanguages: ['yaml'] },
+      } as never)
+    ).toBeDefined();
+  });
+
+  it('disables prettier adapter when adapter runtime map marks it unavailable', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(
+      servicePluginTesting.planPrettierAdapterRuntime({
+        initializationOptions: {
+          adapterRuntimes: {
+            'templjs-prettier-host': {
+              state: 'unavailable',
+              reason: 'unavailable-vscode-formatter-selection',
+            },
+          },
+        },
+      } as never)
+    ).toEqual({ enabled: false, languages: [], reason: 'unavailable-vscode-formatter-selection' });
+  });
+
+  it('uses resolved reason when adapter runtime map marks prettier host as enabled', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(
+      servicePluginTesting.planPrettierAdapterRuntime({
+        initializationOptions: {
+          prettierHostLanguages: ['html'],
+          adapterRuntimes: {
+            'templjs-prettier-host': {
+              state: 'enabled',
+              reason: 'resolved-vscode-formatter-selection',
+            },
+          },
+        },
+      } as never)
+    ).toEqual({
+      enabled: true,
+      languages: ['html'],
+      reason: 'resolved-vscode-formatter-selection',
+    });
   });
 
   it('disables yaml adapter when redhat.vscode-yaml is not registered for .yaml', async () => {
