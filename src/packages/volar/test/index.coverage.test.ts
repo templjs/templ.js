@@ -51,7 +51,11 @@ describe('volar index coverage branches', () => {
     });
 
     const mod = await import('../src/index.js');
-    expect(() => mod.cleanTemplateContent('plain text')).toThrow('boom');
+    // When tokenize fails, cleanTemplateContent gracefully returns source unchanged
+    // rather than crashing the caller (e.g., VS Code virtual document provider)
+    const result = mod.cleanTemplateContent('plain text');
+    expect(result.cleaned).toBe('plain text');
+    expect(result.originalToCleanedOffsets).toEqual(Array.from({ length: 11 }, (_, i) => i));
   });
 
   it('applies trim-marker semantics to adjacent whitespace in cleaned content', () => {

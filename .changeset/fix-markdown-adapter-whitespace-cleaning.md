@@ -1,8 +1,8 @@
 ---
+'templjs': patch
 '@templjs/language-service': patch
 '@templjs/language-server': patch
 '@templjs/volar': patch
-'@templjs/context-graph': patch
 ---
 
 <!-- markdownlint-disable MD041 -->

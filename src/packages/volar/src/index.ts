@@ -17,7 +17,12 @@ import type {
 } from '@volar/language-core';
 import type * as ts from 'typescript';
 import { URI } from 'vscode-uri';
-import { tokenize, TokenType, type DelimiterConfig as CoreDelimiterConfig } from '@templjs/core';
+import {
+  tokenize,
+  TokenType,
+  type DelimiterConfig as CoreDelimiterConfig,
+  type Token,
+} from '@templjs/core';
 import {
   buildDelimiterPairPattern,
   buildTemplateBlockPattern,
@@ -773,10 +778,21 @@ function cleanWithCoreTokenizer(
 ): CleanedTemplateResult {
   const lineOffsets = buildLineOffsets(source);
   const chars = [...source];
-  const tokens = tokenize(source, {
-    delimiters: toCoreDelimiterConfig(delimiters),
-    recoverUnclosedDelimiters: true,
-  });
+  let tokens: Token[];
+  try {
+    tokens = tokenize(source, {
+      delimiters: toCoreDelimiterConfig(delimiters),
+      recoverUnclosedDelimiters: true,
+    });
+  } catch {
+    // If tokenization fails, return source unchanged to avoid crashing callers
+    // (e.g., VS Code virtual document providers). This graceful fallback ensures the
+    // extension remains stable even with malformed template syntax.
+    return {
+      cleaned: source,
+      originalToCleanedOffsets: buildIdentityOffsets(source.length),
+    };
+  }
 
   function maskAdjacentTrimWhitespace(
     start: number,
@@ -845,10 +861,21 @@ function cleanWithCoreTokenizerTextOnly(
   const expressionPaddingPositions = new Array<boolean>(source.length).fill(false);
   // Chars trimmed by -%} / {%- markers are suppressed entirely (including newlines).
   const suppressedChars = new Array<boolean>(source.length).fill(false);
-  const tokens = tokenize(source, {
-    delimiters: toCoreDelimiterConfig(delimiters),
-    recoverUnclosedDelimiters: true,
-  });
+  let tokens: Token[];
+  try {
+    tokens = tokenize(source, {
+      delimiters: toCoreDelimiterConfig(delimiters),
+      recoverUnclosedDelimiters: true,
+    });
+  } catch {
+    // If tokenization fails, return source unchanged to avoid crashing callers.
+    // This graceful fallback ensures the extension remains stable even with malformed
+    // template syntax.
+    return {
+      cleaned: source,
+      originalToCleanedOffsets: buildIdentityOffsets(source.length),
+    };
+  }
 
   for (const token of tokens) {
     const start = positionToOffset(lineOffsets, token.start.line, token.start.column);

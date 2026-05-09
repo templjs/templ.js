@@ -90,11 +90,15 @@ export function maskRangesForTemplateSemantics(text: string, ranges: FencedRange
     const rangeContent = masked.slice(range.start, range.end);
     const after = masked.slice(range.end);
 
-    // Replace code block content with spaces to preserve offsets
-    const maskedRange = rangeContent
-      .split('\n')
-      .map((line) => ' '.repeat(line.length))
-      .join('\n');
+    // Replace code block content with spaces to preserve offsets.
+    // Preserve line ending style (CRLF vs LF) for proper offset mapping on Windows.
+    const lines = rangeContent.split(/(\r\n|\n|\r)/);
+    const maskedRange = lines
+      .map((line, idx) => {
+        // Every other element is the line ending match, preserve it as-is
+        return idx % 2 === 1 ? line : ' '.repeat(line.length);
+      })
+      .join('');
     masked = before + maskedRange + after;
   }
 
