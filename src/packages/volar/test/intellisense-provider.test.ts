@@ -626,10 +626,10 @@ describe('IntellisenseProvider', () => {
     expect(def?.range).toBeTruthy();
   });
 
-  it('returns local declaration definition for aliases used in statement expressions', () => {
+  it('resolves statement expression property access through schema navigation', () => {
     const text =
-      '{% for relationship in relationships %}{% if relationship %}ok{% endif %}{% endfor %}';
-    const offset = text.indexOf('if relationship') + 6;
+      '{% for relationship in relationships %}{% if relationship.name %}ok{% endif %}{% endfor %}';
+    const offset = text.indexOf('relationship.name') + 13;
 
     const def = provider.getDefinition(text, offset, {
       schema: sampleSchema,
@@ -637,8 +637,22 @@ describe('IntellisenseProvider', () => {
       documentUri: 'file:///workspace/project.md.tpl',
     });
 
-    expect(def?.uri).toBe('file:///workspace/project.md.tpl');
-    expect(def?.range).toBeTruthy();
+    expect(def?.uri).toBe('file:///schema.json');
+    expect(def?.path).toBe('relationships[0].name');
+  });
+
+  it('falls through to schema definition for property access on local aliases', () => {
+    const text = '{% for item in items %}{{ item.name }}{% endfor %}';
+    const offset = text.indexOf('item.name') + 6;
+
+    const def = provider.getDefinition(text, offset, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(def?.uri).toBe('file:///schema.json');
+    expect(def?.path).toBe('items[0].name');
   });
 
   it('returns schema definition for iterable token in for statements', () => {
