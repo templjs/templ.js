@@ -72,16 +72,24 @@ When adding new implementations:
 
 ### Critical Constraint: Split Versioning
 
-The 4 published npm packages **must maintain synchronized versions**:
+**Core npm packages** (7 total, but 4 maintain synchronized versions):
 
-- `@templjs/core`
-- `@templjs/cli`
-- `@templjs/volar`
-- `@templjs/context-graph`
+**Synchronized train** (must maintain same version):
 
-The VS Code extension is **versioned independently**:
+- `@templjs/core` — Parser, renderer, query engine
+- `@templjs/cli` — Command-line interface
+- `@templjs/volar` — Volar language plugin
+- `@templjs/context-graph` — N-provider semantic foundation
 
-- `vscode-templjs`
+**Dependent packages** (follow synchronized train version):
+
+- `@templjs/language-core` — Volar language plugin contracts
+- `@templjs/language-service` — Volar service plugins (adapters, diagnostics routing)
+- `@templjs/language-server` — LSP server entrypoint
+
+**VS Code extension** (versioned independently):
+
+- `vscode-templjs` — VS Code IDE client
 
 Configuration: [`.changeset/config.json`](.changeset/config.json)
 
@@ -110,7 +118,7 @@ This breaks automation and creates version misalignment. Example anti-patterns:
 2. **Run tests & linting** before PR.
 3. **Create changeset**: `pnpm changeset`
    - If multiple unrelated changes: one changeset per logical change
-   - For npm package work, keep `@templjs/core`, `@templjs/cli`, `@templjs/volar`, and `@templjs/context-graph` aligned
+   - For npm package work, keep the synchronized train aligned: `@templjs/core`, `@templjs/cli`, `@templjs/volar`, `@templjs/context-graph` (always same version); dependent packages auto-increment from synchronized train
    - For extension-only work, select `vscode-templjs` independently
    - Write changelog entry from the user perspective
 4. **Commit changeset**: `git add .changeset/ && git commit`
