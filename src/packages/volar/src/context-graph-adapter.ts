@@ -1311,7 +1311,11 @@ export class ContextGraphSemanticReadAdapter {
           continue;
         }
 
-        if (binding.kind !== 'for-alias' && binding.kind !== 'for-value-alias') {
+        if (
+          binding.kind !== 'for-alias' &&
+          binding.kind !== 'for-value-alias' &&
+          binding.kind !== 'set-variable'
+        ) {
           continue;
         }
 
@@ -1320,9 +1324,12 @@ export class ContextGraphSemanticReadAdapter {
           resolved.startsWith(`${binding.name}.`) ||
           resolved.startsWith(`${binding.name}[`)
         ) {
-          const iterableBase = binding.sourcePath.endsWith(']')
-            ? binding.sourcePath
-            : `${binding.sourcePath}[0]`;
+          const iterableBase =
+            binding.kind === 'set-variable'
+              ? binding.sourcePath
+              : binding.sourcePath.endsWith(']')
+                ? binding.sourcePath
+                : `${binding.sourcePath}[0]`;
           resolved = `${iterableBase}${resolved.slice(binding.name.length)}`;
           usedBindingIndexes.add(bindingIndex);
           changed = true;
