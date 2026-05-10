@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { LexerOptions, PathSegment } from '../../src/index.js';
-import { extractTemplateBindings } from '../../src/index.js';
+import { extractTemplateBindings, getTemplateBindingsAtOffset } from '../../src/index.js';
 import { pathSegmentToString } from '../../src/semantic/template-scopes.js';
 
 describe('template-scopes helpers', () => {
@@ -128,6 +128,65 @@ describe('template-scopes helpers', () => {
         expect.objectContaining({ name: 'value', sourcePath: 'environment_vars' }),
       ])
     );
+  });
+
+  it('extracts set-variable bindings and resolves in-scope bindings at offset', () => {
+    const template = [
+      '{% if condition %}',
+      '{% set local = user.profile.name %}',
+      '{{ local }}',
+      '{% endif %}',
+      '{{ local }}',
+    ].join('\n');
+
+    const bindings = extractTemplateBindings(template);
+    const setBinding = bindings.find((binding) => binding.kind === 'set-variable');
+
+    expect(setBinding).toBeDefined();
+    expect(setBinding).toEqual(
+      expect.objectContaining({
+        kind: 'set-variable',
+        name: 'local',
+        sourcePath: 'user.profile.name',
+      })
+    );
+
+    const localInsideIfOffset = template.indexOf('{{ local }}') + 4;
+    const localOutsideIfOffset = template.lastIndexOf('{{ local }}') + 4;
+
+    expect(
+      getTemplateBindingsAtOffset(bindings, localInsideIfOffset).some(
+        (binding) => binding.name === 'local'
+      )
+    ).toBe(true);
+    expect(
+      getTemplateBindingsAtOffset(bindings, localOutsideIfOffset).some(
+        (binding) => binding.name === 'local'
+      )
+    ).toBe(false);
+  });
+
+  it('sorts overlapping in-scope bindings by nearest scope start offset', () => {
+    const bindings = [
+      {
+        kind: 'for-alias' as const,
+        name: 'outer',
+        sourcePath: 'users',
+        scopeStartOffset: 0,
+        scopeEndOffset: 100,
+      },
+      {
+        kind: 'set-variable' as const,
+        name: 'inner',
+        sourcePath: 'users[0]',
+        scopeStartOffset: 10,
+        scopeEndOffset: 50,
+      },
+    ];
+
+    const inScope = getTemplateBindingsAtOffset(bindings, 20);
+
+    expect(inScope.map((binding) => binding.name)).toEqual(['inner', 'outer']);
   });
 
   it('handles empty custom comment delimiters while normalizing loop delimiters', () => {
@@ -558,6 +617,118 @@ describe('template-scopes helpers', () => {
         name: 'item',
         sourcePath: 'users',
         declarationStartOffset: 6,
+      }),
+    ]);
+  });
+
+  it('collects fallback set-variable bindings with normalized source paths', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({ ast: null, errors: [new Error('recover me')] }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    const bindings = module.extractTemplateBindings('{% set local = users[item + 1] %}');
+
+    expect(bindings).toEqual([
+      expect.objectContaining({
+        kind: 'set-variable',
+        name: 'local',
+        sourceExpression: 'users[item + 1]',
+        sourcePath: 'users[0]',
+      }),
+    ]);
+  });
+
+  it('gracefully handles set nodes when opening statement tags cannot be located', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({
+        ast: {
+          type: 'template',
+          start: { line: 1, column: 0 },
+          end: { line: 1, column: 1 },
+          children: [
+            {
+              type: 'set',
+              name: 'local',
+              value: {
+                type: 'variable',
+                name: 'users',
+                path: [],
+                start: { line: 10, column: 0 },
+                end: { line: 10, column: 5 },
+              },
+              start: { line: 10, column: 0 },
+              end: { line: 10, column: 10 },
+            },
+          ],
+        },
+        errors: [],
+      }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    const bindings = module.extractTemplateBindings('x');
+
+    expect(bindings).toEqual([
+      expect.objectContaining({
+        kind: 'set-variable',
+        name: 'local',
+        sourcePath: 'users',
+        sourceExpression: 'users',
+        declarationStartOffset: undefined,
+        declarationEndOffset: undefined,
+      }),
+    ]);
+  });
+
+  it('falls back to undefined set source expression when neither source text nor path can be derived', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({
+        ast: {
+          type: 'template',
+          start: { line: 1, column: 0 },
+          end: { line: 1, column: 1 },
+          children: [
+            {
+              type: 'set',
+              name: 'local',
+              value: {
+                type: 'literal',
+                valueType: 'number',
+                value: 1,
+                start: { line: 10, column: 0 },
+                end: { line: 10, column: 1 },
+              },
+              start: { line: 10, column: 0 },
+              end: { line: 10, column: 10 },
+            },
+          ],
+        },
+        errors: [],
+      }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    const bindings = module.extractTemplateBindings('x');
+
+    expect(bindings).toEqual([
+      expect.objectContaining({
+        kind: 'set-variable',
+        name: 'local',
+        sourcePath: undefined,
+        sourceExpression: undefined,
       }),
     ]);
   });
