@@ -976,7 +976,6 @@ class TempljsLanguagePlugin implements LanguagePlugin<URI> {
 
   getLanguageId = (scriptId: URI): string | undefined => {
     const uri = scriptId.toString();
-    if (/\.(templ|tmpl|tpl)($|\?)/i.test(uri)) return 'templjs-markdown';
     if (/\.(templ|tmpl|tpl)\.(md|markdown)$/i.test(uri)) return 'templjs-markdown';
     if (/\.(templ|tmpl|tpl)\.(json)$/i.test(uri)) return 'templjs-json';
     if (/\.(templ|tmpl|tpl)\.(ya?ml)$/i.test(uri)) return 'templjs-yaml';
@@ -985,6 +984,7 @@ class TempljsLanguagePlugin implements LanguagePlugin<URI> {
     if (/\.json\.(templ|tmpl|tpl)($|\?)/i.test(uri)) return 'templjs-json';
     if (/\.(md|markdown)\.(templ|tmpl|tpl)($|\?)/i.test(uri)) return 'templjs-markdown';
     if (/\.html?\.(templ|tmpl|tpl)($|\?)/i.test(uri)) return 'templjs-html';
+    if (/\.(templ|tmpl|tpl)($|\?)/i.test(uri)) return 'templjs-markdown';
     return undefined;
   };
 
