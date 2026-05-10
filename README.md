@@ -54,7 +54,7 @@ In progress across the repo:
 | Core          | Output validation pipeline                            | Planned     | In architecture/PRD, not yet end-to-end in runtime                   |
 | CLI           | `render` / `validate` / `init` commands               | Implemented | JSON/YAML/TOML/XML input; `.templjs.json`; `--watch` supported       |
 | IDE           | Volar language plugin                                 | Implemented | Virtual mapping, diagnostics, completions, hover, definitions        |
-| IDE           | VS Code extension + `.tmpl` support                   | Implemented | Preferred `.tmpl`; `.templ.*` stays supported for compatibility      |
+| IDE           | VS Code extension + `.tmpl` support                   | Implemented | Preferred `.tmpl`; host-first template suffixes are supported        |
 | Extensibility | Multi-syntax themes/adapters (Jinja2/Handlebars/etc.) | Planned     | v1.0 focuses on one syntax style; architecture allows expansion      |
 | CI/CD         | Lint/type-check/test/build workflows                  | Implemented | GitHub Actions pipelines configured                                  |
 
@@ -154,7 +154,7 @@ Current extension targets commonly use the `.tmpl` suffix:
 - `.md.tmpl`
 - `.html.tmpl`
 
-Compatibility suffixes such as `.templ.yaml`, `.templ.json`, `.templ.md`, and `.templ.html` remain fully supported. Detection behavior can vary slightly by integration surface, so `.tmpl` and `.templ.*` should both be treated as first-class supported conventions.
+Compatibility suffixes remain fully supported for host-first naming patterns such as `.md.templ`, `.json.templ`, `.yaml.templ`, and `.html.templ` (alongside `.tmpl`/`.tpl` variants).
 
 For troubleshooting language features, see [VS Code triage logs](src/extensions/vscode/README.md#triage-logs) for quick setup and symptom-specific checks for go-to-definition, hover, and IntelliSense duplicate entries.
 

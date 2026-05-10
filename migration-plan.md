@@ -95,21 +95,22 @@ All planning artifacts are committed and stable:
 
 ---
 
-### Phase 4: CLI Tool (Week 7)
+### Phase 4: CLI Tool (Week 7) ✅ COMPLETE
 
 **Deliverable**: render/validate/init commands + watch mode + config support  
-**Effort**: 46 hours
+**Effort**: 46 hours  
+**Status**: ✅ Completed
 
 **Work Items**:
 
-- [[017 CLI Commands MVP]] ✅
-- [[032 Add CLI Config File Support]]
-- [[033 Implement Schema Parity (JSON/YAML/TOML)]]
-- [[018 Add Watch Mode and File I/O]]
-- [[029 Implement Signal Handling]]
-- [[019 Write CLI Tests (50+)]]
+- ✅ [[017 CLI Commands MVP]] - render/validate/init commands with format detection
+- ✅ [[032 Add CLI Config File Support]] - .templjs.json discovery and flag override logic
+- ✅ [[033 Implement Schema Parity (JSON/YAML/TOML)]] - Multi-format parsing and validation (48+ tests)
+- ✅ [[018 Add Watch Mode and File I/O]] - File watching, streaming I/O, signal handling
+- ✅ [[029 Implement Signal Handling]] - SIGTERM/SIGINT handling, error context preservation
+- ✅ [[019 Write CLI Tests (50+)]] - Command coverage and integration tests
 
-**Success**: `templjs render` works; config file support; multi-format validation; watch mode <500ms response; CLI handles pipes and signals
+**Success**: ✅ `templjs render` works; config file support; multi-format validation; watch mode <500ms response; CLI handles pipes and signals
 
 ---
 
