@@ -5,12 +5,13 @@ title: '084: Implement Template Render Whitespace Controls'
 summary: Implement Template Render Whitespace Controls
 type: work-item
 subtype: story
-lifecycle: active
-status: ready-for-review
-status_reason: implemented
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: medium
 estimated: 5
 actual: 5
+completed_date: '2026-05-10'
 commits:
   78e0adf: 'feat(core): add whitespace controls and fixture parity (WI-084)'
 links:
