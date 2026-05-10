@@ -930,7 +930,7 @@ function cleanWithCoreTokenizerTextOnly(
     } else if (expressionPaddingPositions[srcPos]) {
       cleaned += expressionPaddingCharacter;
       dstPos++;
-    } else if (sourceChar === '\n') {
+    } else if (sourceChar === '\n' || sourceChar === '\r') {
       cleaned += sourceChar;
       dstPos++;
     }
