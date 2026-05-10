@@ -5,9 +5,9 @@ title: '084: Implement Template Render Whitespace Controls'
 summary: Implement Template Render Whitespace Controls
 type: work-item
 subtype: story
-lifecycle: draft
-status: proposed
-status_reason: needs-triage
+lifecycle: active
+status: ready-for-review
+status_reason: implemented
 priority: medium
 estimated: 5
 actual: 5
