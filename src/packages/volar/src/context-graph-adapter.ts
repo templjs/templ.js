@@ -1,5 +1,6 @@
 import {
-  extractTemplateScopeBindings,
+  extractTemplateBindings,
+  getTemplateBindingsAtOffset,
   getFrontmatterKeyValueAtOffset,
   getFrontmatterSchemaAliases,
   getFrontmatterSchemaReferenceAtOffset,
@@ -10,7 +11,7 @@ import {
   type SemanticOperation,
   type SemanticZone,
   SchemaValidator,
-  type TemplateScopeBinding,
+  type TemplateBinding,
   type SchemaMetadata,
 } from '@templjs/core';
 import { existsSync, readFileSync } from 'fs';
@@ -1294,7 +1295,7 @@ export class ContextGraphSemanticReadAdapter {
     return snapshot;
   }
 
-  private expandScopedPath(path: string, bindings: TemplateScopeBinding[]): string {
+  private expandScopedPath(path: string, bindings: TemplateBinding[]): string {
     let resolved = path;
     const usedBindingIndexes = new Set<number>();
 
@@ -1306,15 +1307,23 @@ export class ContextGraphSemanticReadAdapter {
           continue;
         }
 
+        if (!binding.sourcePath) {
+          continue;
+        }
+
+        if (binding.kind !== 'for-alias' && binding.kind !== 'for-value-alias') {
+          continue;
+        }
+
         if (
-          resolved === binding.alias ||
-          resolved.startsWith(`${binding.alias}.`) ||
-          resolved.startsWith(`${binding.alias}[`)
+          resolved === binding.name ||
+          resolved.startsWith(`${binding.name}.`) ||
+          resolved.startsWith(`${binding.name}[`)
         ) {
-          const iterableBase = binding.iterablePath.endsWith(']')
-            ? binding.iterablePath
-            : `${binding.iterablePath}[0]`;
-          resolved = `${iterableBase}${resolved.slice(binding.alias.length)}`;
+          const iterableBase = binding.sourcePath.endsWith(']')
+            ? binding.sourcePath
+            : `${binding.sourcePath}[0]`;
+          resolved = `${iterableBase}${resolved.slice(binding.name.length)}`;
           usedBindingIndexes.add(bindingIndex);
           changed = true;
           break;
@@ -1569,21 +1578,13 @@ export class ContextGraphSemanticReadAdapter {
   }
 
   resolveScopedPath(text: string, path: string, offset: number): string {
-    const bindings = (extractTemplateScopeBindings(text) as TemplateScopeBinding[])
-      .filter(
-        (binding: TemplateScopeBinding) =>
-          offset >= binding.scopeStartOffset && offset < binding.scopeEndOffset
-      )
-      .sort(
-        (left: TemplateScopeBinding, right: TemplateScopeBinding) =>
-          right.scopeStartOffset - left.scopeStartOffset
-      );
+    const bindings = getTemplateBindingsAtOffset(extractTemplateBindings(text), offset);
 
     return this.expandScopedPath(path, bindings);
   }
 
-  getScopeBindings(text: string): TemplateScopeBinding[] {
-    return extractTemplateScopeBindings(text);
+  getScopeBindings(text: string): TemplateBinding[] {
+    return extractTemplateBindings(text);
   }
 
   resolveLocalAliasDefinition(
@@ -1591,21 +1592,13 @@ export class ContextGraphSemanticReadAdapter {
     alias: string,
     offset: number
   ): { start: number; end: number } | null {
-    const bindings = (extractTemplateScopeBindings(text) as TemplateScopeBinding[])
-      .filter(
-        (binding: TemplateScopeBinding) =>
-          offset >= binding.scopeStartOffset && offset < binding.scopeEndOffset
-      )
-      .sort(
-        (left: TemplateScopeBinding, right: TemplateScopeBinding) =>
-          right.scopeStartOffset - left.scopeStartOffset
-      );
+    const bindings = getTemplateBindingsAtOffset(extractTemplateBindings(text), offset);
 
     for (const binding of bindings) {
       const matchesAlias =
-        alias === binding.alias ||
-        alias.startsWith(`${binding.alias}.`) ||
-        alias.startsWith(`${binding.alias}[`);
+        alias === binding.name ||
+        alias.startsWith(`${binding.name}.`) ||
+        alias.startsWith(`${binding.name}[`);
       if (matchesAlias) {
         if (
           binding.declarationStartOffset === undefined ||

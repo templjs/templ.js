@@ -359,6 +359,17 @@ describe('IntellisenseProvider', () => {
     expect(hover?.contents).toBe('item: local loop alias');
   });
 
+  it('returns local alias hover info inside statement expressions', () => {
+    const text = '{% for item in users %}{% if item %}ok{% endif %}{% endfor %}';
+    const offset = text.indexOf('if item') + 4;
+
+    const hover = provider.getHover(text, offset, {
+      schema: sampleSchema,
+    });
+
+    expect(hover?.contents).toBe('item: local loop alias');
+  });
+
   it('returns signature help for custom filters', () => {
     const help = provider.getSignatureHelp('{{ user.name | custom() }}', 22, {
       customFilters: [
@@ -604,6 +615,21 @@ describe('IntellisenseProvider', () => {
   it('returns local declaration definition for loop alias variables', () => {
     const text = '{% for relationship in relationships %}{{ relationship.name }}{% endfor %}';
     const offset = text.indexOf('relationship.name') + 2;
+
+    const def = provider.getDefinition(text, offset, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(def?.uri).toBe('file:///workspace/project.md.tpl');
+    expect(def?.range).toBeTruthy();
+  });
+
+  it('returns local declaration definition for aliases used in statement expressions', () => {
+    const text =
+      '{% for relationship in relationships %}{% if relationship %}ok{% endif %}{% endfor %}';
+    const offset = text.indexOf('if relationship') + 6;
 
     const def = provider.getDefinition(text, offset, {
       schema: sampleSchema,

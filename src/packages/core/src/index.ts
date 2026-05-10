@@ -39,7 +39,10 @@ export type { CharContextFrame, CharContextSummary } from './parser/parsers.js';
 export { SchemaValidator } from './schema/SchemaValidator.js';
 export { extractPaths, isValidPath } from './schema/queryPathValidator.js';
 export { inferSchemaFromValue, mergeSchemas } from './schema/schemaInference.js';
-export { extractTemplateScopeBindings } from './semantic/template-scopes.js';
+export {
+  extractTemplateBindings,
+  getTemplateBindingsAtOffset,
+} from './semantic/template-scopes.js';
 export {
   detectFrontmatterRange,
   getSemanticProfileId,
@@ -79,7 +82,7 @@ import { QueryEngine } from './query-engine/query-engine.js';
 import { tokenize } from './lexer/lexer.js';
 import { parse } from './parser/parser.js';
 import { render } from './renderer/renderer.js';
-import { extractTemplateScopeBindings } from './semantic/template-scopes.js';
+import { extractTemplateBindings } from './semantic/template-scopes.js';
 import type { RenderOptions } from './renderer/types.js';
 
 /**
@@ -252,7 +255,7 @@ export default {
   createParser,
   createRenderer,
   createQueryEngine,
-  extractTemplateScopeBindings,
+  extractTemplateBindings,
   renderTemplate,
   validateTemplate,
 };

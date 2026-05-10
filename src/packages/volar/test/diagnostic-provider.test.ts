@@ -107,6 +107,120 @@ describe('DiagnosticProvider', () => {
     expect(diagnostics.some((diag) => diag.code === 'templjs.undefinedVariable')).toBe(true);
   });
 
+  it('reports invalid for statements', () => {
+    const diagnostics = collectDiagnostics('{% for x in %}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
+    expect(diagnostics.some((diag) => diag.code === 'templjs.unclosedStatement')).toBe(false);
+  });
+
+  it('reports invalid for statement with whitespace-control marker', () => {
+    // -%} strips trailing whitespace; the `-` must not be mistaken for expression content
+    const diagnostics = collectDiagnostics('{% for x in -%}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
+    expect(diagnostics.some((diag) => diag.code === 'templjs.unclosedStatement')).toBe(false);
+  });
+
+  it('does not flag valid for statement with whitespace-control marker', () => {
+    const diagnostics = collectDiagnostics('{% for x in items -%}{% endfor %}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(false);
+  });
+
+  it('reports invalid if statements', () => {
+    const diagnostics = collectDiagnostics('{% if %}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
+  });
+
+  it('reports invalid if statement with whitespace-control marker', () => {
+    const diagnostics = collectDiagnostics('{%- if -%}', { schema: sampleSchema });
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
+  });
+
+  it('reports invalid while statements', () => {
+    const diagnostics = collectDiagnostics('{% while %}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
+  });
+
+  it('reports invalid switch statements', () => {
+    const diagnostics = collectDiagnostics('{% switch %}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
+  });
+
+  it('reports invalid switch statement with whitespace-control marker', () => {
+    const diagnostics = collectDiagnostics('{% switch -%}', { schema: sampleSchema });
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
+  });
+
+  it('reports invalid block statements', () => {
+    const diagnostics = collectDiagnostics('{% block %}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
+  });
+
+  it('reports invalid set statements', () => {
+    const diagnostics = collectDiagnostics('{% set %}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
+    expect(diagnostics.some((diag) => diag.code === 'templjs.unclosedStatement')).toBe(false);
+  });
+
+  it('reports invalid set statement with whitespace-control marker', () => {
+    const diagnostics = collectDiagnostics('{%- set -%}', { schema: sampleSchema });
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
+  });
+
+  it('does not emit unclosedStatement for valid set', () => {
+    const diagnostics = collectDiagnostics('{% set foo = bar %}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.unclosedStatement')).toBe(false);
+  });
+
+  it('reports invalid case statements', () => {
+    const diagnostics = collectDiagnostics('{% case %}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
+    expect(diagnostics.some((diag) => diag.code === 'templjs.unclosedStatement')).toBe(false);
+  });
+
+  it('reports invalid case statement with whitespace-control marker', () => {
+    const diagnostics = collectDiagnostics('{% case -%}', { schema: sampleSchema });
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
+  });
+
+  it('reports invalid default statements', () => {
+    const diagnostics = collectDiagnostics('{% default invalid %}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
+    expect(diagnostics.some((diag) => diag.code === 'templjs.unclosedStatement')).toBe(false);
+  });
+
   it('does not flag loop alias property paths as undefined in expressions', () => {
     const schema = {
       type: 'object',

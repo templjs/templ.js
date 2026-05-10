@@ -206,6 +206,27 @@ describe('LanguagePlugin', () => {
   });
 
   describe('updateVirtualCode', () => {
+    it('keeps create/update methods bound when detached from the plugin instance', () => {
+      const detachedCreateVirtualCode = plugin.createVirtualCode;
+      const detachedUpdateVirtualCode = plugin.updateVirtualCode;
+      const snapshot = {
+        getText: () => 'Bound {{ value }}',
+        getLength: () => 'Bound {{ value }}'.length,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = detachedCreateVirtualCode(
+        'file:///detached.md.tmpl',
+        'templjs-markdown',
+        snapshot
+      );
+
+      expect(virtualCode).toBeDefined();
+      expect(() =>
+        detachedUpdateVirtualCode('file:///detached.md.tmpl', virtualCode, snapshot)
+      ).not.toThrow();
+    });
+
     it('should update virtual code on document change', () => {
       const oldContent = 'Old {{ var }}';
       const newContent = 'New {{ variable }}';

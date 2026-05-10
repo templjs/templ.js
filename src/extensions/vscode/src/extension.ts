@@ -255,7 +255,10 @@ function isTempljsDocument(document: vscode.TextDocument): boolean {
     return true;
   }
 
-  return /\.(md|markdown|json|ya?ml|html|htm)\.(templ|tmpl|tpl)$/i.test(document.uri.fsPath);
+  return (
+    /\.(md|markdown|json|ya?ml|html|htm)\.(templ|tmpl|tpl)$/i.test(document.uri.fsPath) ||
+    /\.(tmpl|tpl)$/i.test(document.uri.fsPath)
+  );
 }
 
 /**
@@ -452,6 +455,7 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
       { scheme: 'file', language: 'templjs-json' },
       { scheme: 'file', language: 'templjs-markdown' },
       { scheme: 'file', language: 'templjs-html' },
+      { scheme: 'file', pattern: '**/*.tmpl' },
       { scheme: 'file', pattern: '**/*.md.templ' },
       { scheme: 'file', pattern: '**/*.md.tmpl' },
       { scheme: 'file', pattern: '**/*.md.tpl' },

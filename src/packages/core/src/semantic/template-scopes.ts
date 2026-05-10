@@ -7,34 +7,28 @@ import type {
   ExpressionNode,
   ForNode,
   PathSegment,
+  SetNode,
   TemplateNode,
 } from '../parser/types.js';
 
-export interface TemplateScopeBinding {
-  alias: string;
-  iterablePath: string;
+export type TemplateBindingKind = 'for-alias' | 'for-value-alias' | 'set-variable';
+
+export interface TemplateBinding {
+  kind: TemplateBindingKind;
+  name: string;
   scopeStartOffset: number;
   scopeEndOffset: number;
   declarationStartOffset?: number;
   declarationEndOffset?: number;
+  sourcePath?: string;
+  sourceExpression?: string;
 }
 
 interface NormalizedTemplate {
   text: string;
   toOriginalOffset: (normalizedOffset: number | undefined) => number | undefined;
 }
-/**
- * Resolves delimiter configuration from options, supporting both array-based
- * and legacy underscore-based formats.
- *
- * Precedence order for each delimiter type:
- * 1. Array format: options.delimiters.<type>[0|1]
- * 2. Underscore format: options.delimiters.<type>_start/_end
- * 3. DEFAULT_DELIMITERS fallback
- *
- * @param options - Lexer options containing delimiter configuration
- * @returns Fully resolved delimiter config with both array and underscore formats
- */
+
 function getResolvedDelimiters(options?: LexerOptions): Required<DelimiterConfig> {
   const statementStart =
     options?.delimiters?.statement?.[0] ??
@@ -92,30 +86,12 @@ function normalizeTemplateDelimiters(template: string, options?: LexerOptions): 
   }
 
   const pairs = [
-    {
-      from: resolved.statement_start,
-      to: DEFAULT_DELIMITERS.statement_start,
-    },
-    {
-      from: resolved.statement_end,
-      to: DEFAULT_DELIMITERS.statement_end,
-    },
-    {
-      from: resolved.expression_start,
-      to: DEFAULT_DELIMITERS.expression_start,
-    },
-    {
-      from: resolved.expression_end,
-      to: DEFAULT_DELIMITERS.expression_end,
-    },
-    {
-      from: resolved.comment_start,
-      to: DEFAULT_DELIMITERS.comment_start,
-    },
-    {
-      from: resolved.comment_end,
-      to: DEFAULT_DELIMITERS.comment_end,
-    },
+    { from: resolved.statement_start, to: DEFAULT_DELIMITERS.statement_start },
+    { from: resolved.statement_end, to: DEFAULT_DELIMITERS.statement_end },
+    { from: resolved.expression_start, to: DEFAULT_DELIMITERS.expression_start },
+    { from: resolved.expression_end, to: DEFAULT_DELIMITERS.expression_end },
+    { from: resolved.comment_start, to: DEFAULT_DELIMITERS.comment_start },
+    { from: resolved.comment_end, to: DEFAULT_DELIMITERS.comment_end },
   ].sort((left, right) => right.from.length - left.from.length);
 
   const normalizedChars: string[] = [];
@@ -197,8 +173,6 @@ export function pathSegmentToString(segment: PathSegment): string {
     return `[${String(segment.value.value)}]`;
   }
 
-  // For non-literal index expressions (segment.value.type !== 'literal'), normalize to [0]
-  // for scope resolution; the original expression (segment.value.value) is intentionally not preserved.
   return '[0]';
 }
 
@@ -215,7 +189,7 @@ function expressionToPath(node: ExpressionNode): string | null {
   }
 }
 
-function normalizeIterablePathFromForExpression(rawExpression: string): string | null {
+function normalizePathFromExpression(rawExpression: string): string | null {
   const beforeFilter = rawExpression.split('|', 1)[0]?.trim();
   if (!beforeFilter) {
     return null;
@@ -241,14 +215,117 @@ function normalizeIterablePathFromForExpression(rawExpression: string): string |
   });
 }
 
-function collectBindingsFallback(template: string): TemplateScopeBinding[] {
+function getForDeclarationOffsets(
+  template: string,
+  node: ForNode,
+  statementEnd: string
+): Array<{ name: string; start: number; end: number }> {
+  const nodeStart = positionToOffset(template, node.start.line, node.start.column);
+  const openingTagEnd = template.indexOf(statementEnd, nodeStart);
+  if (openingTagEnd === -1) {
+    return [];
+  }
+
+  const openingTag = template.slice(nodeStart, openingTagEnd + statementEnd.length);
+  const match = openingTag.match(/\bfor\s+([A-Za-z_][\w]*)(?:\s*,\s*([A-Za-z_][\w]*))?\s+in\b/);
+  if (!match || typeof match.index !== 'number') {
+    return [];
+  }
+
+  const names = [match[1], match[2]].filter((value): value is string => Boolean(value));
+  const results: Array<{ name: string; start: number; end: number }> = [];
+  let searchFrom = match.index;
+
+  for (const name of names) {
+    const start = openingTag.indexOf(name, searchFrom);
+    if (start === -1) {
+      continue;
+    }
+    results.push({
+      name,
+      start: nodeStart + start,
+      end: nodeStart + start + name.length,
+    });
+    searchFrom = start + name.length;
+  }
+
+  return results;
+}
+
+function getForSourceExpression(
+  template: string,
+  node: ForNode,
+  statementEnd: string
+): string | undefined {
+  const nodeStart = positionToOffset(template, node.start.line, node.start.column);
+  const openingTagEnd = template.indexOf(statementEnd, nodeStart);
+  if (openingTagEnd === -1) {
+    return undefined;
+  }
+  const rawInner = template
+    .slice(nodeStart, openingTagEnd + statementEnd.length)
+    .slice(DEFAULT_DELIMITERS.statement_start.length, -statementEnd.length)
+    .trim();
+  const match = rawInner.match(/^for\s+[A-Za-z_][\w]*(?:\s*,\s*[A-Za-z_][\w]*)?\s+in\s+([\s\S]+)$/);
+  return match?.[1]?.trim();
+}
+
+function getSetDeclarationOffset(
+  template: string,
+  node: SetNode,
+  statementEnd: string
+): { start: number; end: number } | undefined {
+  const nodeStart = positionToOffset(template, node.start.line, node.start.column);
+  const openingTagEnd = template.indexOf(statementEnd, nodeStart);
+  if (openingTagEnd === -1) {
+    return undefined;
+  }
+  const rawInner = template
+    .slice(nodeStart, openingTagEnd + statementEnd.length)
+    .slice(DEFAULT_DELIMITERS.statement_start.length, -statementEnd.length)
+    .trim();
+  const match = rawInner.match(/^set\s+([A-Za-z_][\w]*)\s*=\s*[\s\S]+$/);
+  if (!match || typeof match.index !== 'number') {
+    return undefined;
+  }
+  const name = match[1];
+  const relativeStart = rawInner.indexOf(name, match.index);
+  if (relativeStart === -1) {
+    return undefined;
+  }
+  return {
+    start: nodeStart + DEFAULT_DELIMITERS.statement_start.length + relativeStart,
+    end: nodeStart + DEFAULT_DELIMITERS.statement_start.length + relativeStart + name.length,
+  };
+}
+
+function getSetSourceExpression(
+  template: string,
+  node: SetNode,
+  statementEnd: string
+): string | undefined {
+  const nodeStart = positionToOffset(template, node.start.line, node.start.column);
+  const openingTagEnd = template.indexOf(statementEnd, nodeStart);
+  if (openingTagEnd === -1) {
+    return undefined;
+  }
+  const rawInner = template
+    .slice(nodeStart, openingTagEnd + statementEnd.length)
+    .slice(DEFAULT_DELIMITERS.statement_start.length, -statementEnd.length)
+    .trim();
+  const match = rawInner.match(/^set\s+[A-Za-z_][\w]*\s*=\s*([\s\S]+)$/);
+  return match?.[1]?.trim();
+}
+
+function collectBindingsFallback(template: string): TemplateBinding[] {
   const startDelimiter = DEFAULT_DELIMITERS.statement_start;
   const endDelimiter = DEFAULT_DELIMITERS.statement_end;
-  const bindings: TemplateScopeBinding[] = [];
+  const bindings: TemplateBinding[] = [];
 
   type OpenLoop = {
-    aliases: string[];
-    iterablePath: string;
+    names: Array<{ name: string; kind: TemplateBindingKind }>;
+    sourcePath: string;
+    sourceExpression: string;
     scopeStartOffset: number;
     declarationOffsets: Record<string, { start: number; end: number } | undefined>;
   };
@@ -271,31 +348,39 @@ function collectBindingsFallback(template: string): TemplateScopeBinding[] {
     const content = template.slice(contentStart, statementEnd).trim();
 
     const forMatch = content.match(
-      /^for\s+([A-Za-z_][\w]*)(?:\s*,\s*([A-Za-z_][\w]*))?\s+in\s+(.+)$/
+      /^for\s+([A-Za-z_][\w]*)(?:\s*,\s*([A-Za-z_][\w]*))?\s+in\s+([\s\S]+)$/
     );
     if (forMatch) {
-      const aliases = [forMatch[1], forMatch[2]].filter((value): value is string => Boolean(value));
-      const iterablePath = normalizeIterablePathFromForExpression(forMatch[3]);
+      const sourceExpression = forMatch[3].trim();
+      const sourcePath = normalizePathFromExpression(sourceExpression);
 
-      if (iterablePath) {
+      if (sourcePath) {
+        const names: Array<{ name: string; kind: TemplateBindingKind }> = [
+          { name: forMatch[1], kind: 'for-alias' },
+        ];
+        if (forMatch[2]) {
+          names.push({ name: forMatch[2], kind: 'for-value-alias' });
+        }
+
         const declarationOffsets: Record<string, { start: number; end: number } | undefined> = {};
         let searchFrom = 0;
-        for (const alias of aliases) {
-          const relativeIndex = content.indexOf(alias, searchFrom);
+        for (const nameInfo of names) {
+          const relativeIndex = content.indexOf(nameInfo.name, searchFrom);
           if (relativeIndex >= 0) {
-            declarationOffsets[alias] = {
+            declarationOffsets[nameInfo.name] = {
               start: contentStart + relativeIndex,
-              end: contentStart + relativeIndex + alias.length,
+              end: contentStart + relativeIndex + nameInfo.name.length,
             };
-            searchFrom = relativeIndex + alias.length;
+            searchFrom = relativeIndex + nameInfo.name.length;
           } else {
-            declarationOffsets[alias] = undefined;
+            declarationOffsets[nameInfo.name] = undefined;
           }
         }
 
         stack.push({
-          aliases,
-          iterablePath,
+          names,
+          sourcePath,
+          sourceExpression,
           scopeStartOffset: statementEnd + endDelimiter.length,
           declarationOffsets,
         });
@@ -305,14 +390,42 @@ function collectBindingsFallback(template: string): TemplateScopeBinding[] {
       continue;
     }
 
+    const setMatch = content.match(/^set\s+([A-Za-z_][\w]*)\s*=\s+([\s\S]+)$/);
+    if (setMatch) {
+      const declarationStart = content.indexOf(setMatch[1]);
+      const declarationOffset =
+        declarationStart >= 0
+          ? {
+              start: contentStart + declarationStart,
+              end: contentStart + declarationStart + setMatch[1].length,
+            }
+          : undefined;
+
+      bindings.push({
+        kind: 'set-variable',
+        name: setMatch[1],
+        sourceExpression: setMatch[2].trim(),
+        sourcePath: normalizePathFromExpression(setMatch[2]) ?? undefined,
+        scopeStartOffset: statementEnd + endDelimiter.length,
+        scopeEndOffset: template.length,
+        declarationStartOffset: declarationOffset?.start,
+        declarationEndOffset: declarationOffset?.end,
+      });
+
+      cursor = statementEnd + endDelimiter.length;
+      continue;
+    }
+
     if (/^endfor\b/.test(content)) {
       const openLoop = stack.pop();
       if (openLoop) {
-        for (const alias of openLoop.aliases) {
-          const declaration = openLoop.declarationOffsets[alias];
+        for (const nameInfo of openLoop.names) {
+          const declaration = openLoop.declarationOffsets[nameInfo.name];
           bindings.push({
-            alias,
-            iterablePath: openLoop.iterablePath,
+            kind: nameInfo.kind,
+            name: nameInfo.name,
+            sourcePath: openLoop.sourcePath,
+            sourceExpression: openLoop.sourceExpression,
             scopeStartOffset: openLoop.scopeStartOffset,
             scopeEndOffset: statementStart,
             declarationStartOffset: declaration?.start,
@@ -327,11 +440,13 @@ function collectBindingsFallback(template: string): TemplateScopeBinding[] {
 
   while (stack.length > 0) {
     const openLoop = stack.pop()!;
-    for (const alias of openLoop.aliases) {
-      const declaration = openLoop.declarationOffsets[alias];
+    for (const nameInfo of openLoop.names) {
+      const declaration = openLoop.declarationOffsets[nameInfo.name];
       bindings.push({
-        alias,
-        iterablePath: openLoop.iterablePath,
+        kind: nameInfo.kind,
+        name: nameInfo.name,
+        sourcePath: openLoop.sourcePath,
+        sourceExpression: openLoop.sourceExpression,
         scopeStartOffset: openLoop.scopeStartOffset,
         scopeEndOffset: template.length,
         declarationStartOffset: declaration?.start,
@@ -343,59 +458,26 @@ function collectBindingsFallback(template: string): TemplateScopeBinding[] {
   return bindings.sort((left, right) => left.scopeStartOffset - right.scopeStartOffset);
 }
 
-function getDeclarationOffsets(
-  template: string,
-  node: ForNode,
-  statementEnd: string
-): Array<{ alias: string; start: number; end: number }> {
-  const nodeStart = positionToOffset(template, node.start.line, node.start.column);
-  const openingTagEnd = template.indexOf(statementEnd, nodeStart);
-  if (openingTagEnd === -1) {
-    return [];
-  }
-
-  const openingTag = template.slice(nodeStart, openingTagEnd + statementEnd.length);
-  const match = openingTag.match(/\bfor\s+([A-Za-z_][\w]*)(?:\s*,\s*([A-Za-z_][\w]*))?\s+in\b/);
-  if (!match || typeof match.index !== 'number') {
-    return [];
-  }
-
-  const aliases = [match[1], match[2]].filter((alias): alias is string => Boolean(alias));
-  const results: Array<{ alias: string; start: number; end: number }> = [];
-  let searchFrom = match.index;
-
-  for (const alias of aliases) {
-    const aliasStart = openingTag.indexOf(alias, searchFrom);
-    if (aliasStart === -1) {
-      continue;
-    }
-    results.push({
-      alias,
-      start: nodeStart + aliasStart,
-      end: nodeStart + aliasStart + alias.length,
-    });
-    searchFrom = aliasStart + alias.length;
-  }
-
-  return results;
-}
-
 function collectBindings(
   template: string,
   node: ASTNode,
-  bindings: TemplateScopeBinding[],
-  statementEnd: string
+  bindings: TemplateBinding[],
+  statementEnd: string,
+  scopeBoundary: number
 ): void {
   switch (node.type) {
     case 'template':
       for (const child of node.children) {
-        collectBindings(template, child, bindings, statementEnd);
+        collectBindings(template, child, bindings, statementEnd, template.length);
       }
       return;
     case 'for': {
-      const iterablePath = expressionToPath(node.iterable);
-      if (iterablePath) {
-        const declarations = getDeclarationOffsets(template, node, statementEnd);
+      const sourcePath = expressionToPath(node.iterable);
+      const sourceExpression =
+        getForSourceExpression(template, node, statementEnd) ?? sourcePath ?? '';
+
+      if (sourcePath) {
+        const declarations = getForDeclarationOffsets(template, node, statementEnd);
         const nodeStart = positionToOffset(template, node.start.line, node.start.column);
         const openingTagEnd = template.indexOf(statementEnd, nodeStart);
         const openingTagEndOffset =
@@ -404,57 +486,115 @@ function collectBindings(
           node.body.length > 0
             ? positionToOffset(template, node.body[0].start.line, node.body[0].start.column)
             : openingTagEndOffset;
+        const scopeEndOffset = positionToOffset(template, node.end.line, node.end.column);
 
-        for (const alias of [node.iterator, node.valueIterator].filter(
-          (value): value is string => typeof value === 'string' && value.length > 0
-        )) {
-          const declaration = declarations.find((entry) => entry.alias === alias);
+        const names: Array<{ name: string; kind: TemplateBindingKind }> = [
+          { name: node.iterator, kind: 'for-alias' },
+        ];
+        if (node.valueIterator) {
+          names.push({ name: node.valueIterator, kind: 'for-value-alias' });
+        }
+
+        for (const nameInfo of names) {
+          const declaration = declarations.find((entry) => entry.name === nameInfo.name);
           bindings.push({
-            alias,
-            iterablePath,
+            kind: nameInfo.kind,
+            name: nameInfo.name,
+            sourcePath,
+            sourceExpression,
             scopeStartOffset,
-            scopeEndOffset: positionToOffset(template, node.end.line, node.end.column),
+            scopeEndOffset,
             declarationStartOffset: declaration?.start,
             declarationEndOffset: declaration?.end,
           });
         }
       }
 
+      const forBoundary = positionToOffset(template, node.end.line, node.end.column);
       for (const child of node.body) {
-        collectBindings(template, child, bindings, statementEnd);
+        collectBindings(template, child, bindings, statementEnd, forBoundary);
       }
       return;
     }
-    case 'if':
+    case 'set': {
+      const declaration = getSetDeclarationOffset(template, node, statementEnd);
+      const sourcePath = expressionToPath(node.value) ?? undefined;
+      const sourceExpression =
+        getSetSourceExpression(template, node, statementEnd) ?? sourcePath ?? undefined;
+      const nodeStart = positionToOffset(template, node.start.line, node.start.column);
+      const nodeEnd = positionToOffset(template, node.end.line, node.end.column);
+      const scopeStartOffset = declaration?.end ?? Math.max(nodeStart, nodeEnd);
+
+      bindings.push({
+        kind: 'set-variable',
+        name: node.name,
+        sourcePath,
+        sourceExpression,
+        scopeStartOffset,
+        scopeEndOffset: scopeBoundary,
+        declarationStartOffset: declaration?.start,
+        declarationEndOffset: declaration?.end,
+      });
+      return;
+    }
+    case 'if': {
+      const ifBoundary = positionToOffset(template, node.end.line, node.end.column);
       for (const child of node.body) {
-        collectBindings(template, child, bindings, statementEnd);
+        collectBindings(template, child, bindings, statementEnd, ifBoundary);
       }
       for (const child of node.elseBody ?? []) {
-        collectBindings(template, child, bindings, statementEnd);
+        collectBindings(template, child, bindings, statementEnd, ifBoundary);
       }
       return;
-    case 'block':
+    }
+    case 'block': {
+      const blockBoundary = positionToOffset(template, node.end.line, node.end.column);
       for (const child of node.body) {
-        collectBindings(template, child, bindings, statementEnd);
+        collectBindings(template, child, bindings, statementEnd, blockBoundary);
       }
       return;
+    }
     default:
       return;
   }
 }
 
-export function extractTemplateScopeBindings(
+function mapBindingOffsets(
+  binding: TemplateBinding,
+  toOriginalOffset: (normalizedOffset: number | undefined) => number | undefined
+): TemplateBinding {
+  return {
+    ...binding,
+    scopeStartOffset: toOriginalOffset(binding.scopeStartOffset) ?? binding.scopeStartOffset,
+    scopeEndOffset: toOriginalOffset(binding.scopeEndOffset) ?? binding.scopeEndOffset,
+    declarationStartOffset: toOriginalOffset(binding.declarationStartOffset),
+    declarationEndOffset: toOriginalOffset(binding.declarationEndOffset),
+  };
+}
+
+export function getTemplateBindingsAtOffset(
+  bindings: TemplateBinding[],
+  offset: number
+): TemplateBinding[] {
+  return bindings
+    .filter((binding) => offset >= binding.scopeStartOffset && offset < binding.scopeEndOffset)
+    .sort((left, right) => right.scopeStartOffset - left.scopeStartOffset);
+}
+
+export function extractTemplateBindings(
   template: string,
   options?: LexerOptions
-): TemplateScopeBinding[] {
+): TemplateBinding[] {
   const normalized = normalizeTemplateDelimiters(template, options);
   const statementEnd = DEFAULT_DELIMITERS.statement_end;
+
   try {
     const parseResult = parse(tokenize(normalized.text));
     const ast = parseResult.ast as TemplateNode | null;
-    const bindings: TemplateScopeBinding[] = [];
+    const bindings: TemplateBinding[] = [];
+
     if (ast) {
-      collectBindings(normalized.text, ast, bindings, statementEnd);
+      collectBindings(normalized.text, ast, bindings, statementEnd, normalized.text.length);
     }
 
     const recoveredBindings =
@@ -466,29 +606,9 @@ export function extractTemplateScopeBindings(
       return [];
     }
 
-    return bindings.length
-      ? bindings
-          .map((binding) => ({
-            ...binding,
-            scopeStartOffset:
-              normalized.toOriginalOffset(binding.scopeStartOffset) ?? binding.scopeStartOffset,
-            scopeEndOffset:
-              normalized.toOriginalOffset(binding.scopeEndOffset) ?? binding.scopeEndOffset,
-            declarationStartOffset: normalized.toOriginalOffset(binding.declarationStartOffset),
-            declarationEndOffset: normalized.toOriginalOffset(binding.declarationEndOffset),
-          }))
-          .sort((left, right) => left.scopeStartOffset - right.scopeStartOffset)
-      : recoveredBindings
-          .map((binding) => ({
-            ...binding,
-            scopeStartOffset:
-              normalized.toOriginalOffset(binding.scopeStartOffset) ?? binding.scopeStartOffset,
-            scopeEndOffset:
-              normalized.toOriginalOffset(binding.scopeEndOffset) ?? binding.scopeEndOffset,
-            declarationStartOffset: normalized.toOriginalOffset(binding.declarationStartOffset),
-            declarationEndOffset: normalized.toOriginalOffset(binding.declarationEndOffset),
-          }))
-          .sort((left, right) => left.scopeStartOffset - right.scopeStartOffset);
+    return recoveredBindings
+      .map((binding) => mapBindingOffsets(binding, normalized.toOriginalOffset))
+      .sort((left, right) => left.scopeStartOffset - right.scopeStartOffset);
   } catch {
     return [];
   }
