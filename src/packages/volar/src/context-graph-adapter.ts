@@ -1311,7 +1311,11 @@ export class ContextGraphSemanticReadAdapter {
           continue;
         }
 
-        if (binding.kind !== 'for-alias' && binding.kind !== 'for-value-alias' && binding.kind !== 'set-variable') {
+        if (
+          binding.kind !== 'for-alias' &&
+          binding.kind !== 'for-value-alias' &&
+          binding.kind !== 'set-variable'
+        ) {
           continue;
         }
 
