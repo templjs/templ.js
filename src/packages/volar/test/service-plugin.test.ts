@@ -365,6 +365,45 @@ describe('TempljsServicePlugin', () => {
       expect(diagnostics.some((d) => d.code === 'templjs.undefinedVariable')).toBe(false);
     });
 
+    it('reports invalid for statements', () => {
+      const plugin = new TempljsServicePlugin();
+
+      const diagnostics = plugin.collectDiagnostics('{% for x in %}', {
+        schema: sampleSchema,
+      });
+
+      expect(diagnostics.some((d) => d.code === 'templjs.invalidStatement')).toBe(true);
+      expect(diagnostics.some((d) => d.code === 'templjs.unclosedStatement')).toBe(false);
+    });
+
+    it('reports invalid if/while/switch/block statements', () => {
+      const plugin = new TempljsServicePlugin();
+
+      const invalidStatements = ['{% if %}', '{% while %}', '{% switch %}', '{% block %}'];
+
+      for (const statement of invalidStatements) {
+        const diagnostics = plugin.collectDiagnostics(statement, {
+          schema: sampleSchema,
+        });
+
+        expect(diagnostics.some((d) => d.code === 'templjs.invalidStatement')).toBe(true);
+      }
+    });
+
+    it('reports invalid set/case/default statements', () => {
+      const plugin = new TempljsServicePlugin();
+
+      const invalidStatements = ['{% set %}', '{% case %}', '{% default invalid %}'];
+
+      for (const statement of invalidStatements) {
+        const diagnostics = plugin.collectDiagnostics(statement, {
+          schema: sampleSchema,
+        });
+
+        expect(diagnostics.some((d) => d.code === 'templjs.invalidStatement')).toBe(true);
+      }
+    });
+
     it('detects invalid filters', () => {
       const plugin = new TempljsServicePlugin();
       const text = '{{ user.name | unknownFilter }}';

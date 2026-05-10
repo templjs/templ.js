@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { LexerOptions, PathSegment } from '../../src/index.js';
-import { extractTemplateScopeBindings } from '../../src/index.js';
+import { extractTemplateBindings, getTemplateBindingsAtOffset } from '../../src/index.js';
 import { pathSegmentToString } from '../../src/semantic/template-scopes.js';
 
 describe('template-scopes helpers', () => {
@@ -47,13 +47,13 @@ describe('template-scopes helpers', () => {
 
   it('extracts loop bindings from standard delimiters', () => {
     const template = '{% for item in users %}{{ item.name }}{% endfor %}';
-    const bindings = extractTemplateScopeBindings(template);
+    const bindings = extractTemplateBindings(template);
 
     expect(bindings).toHaveLength(1);
     expect(bindings[0]).toEqual(
       expect.objectContaining({
-        alias: 'item',
-        iterablePath: 'users',
+        name: 'item',
+        sourcePath: 'users',
       })
     );
     expect(bindings[0].scopeStartOffset).toBeGreaterThan(bindings[0].declarationEndOffset ?? 0);
@@ -71,20 +71,20 @@ describe('template-scopes helpers', () => {
       '{% endblock %}',
     ].join('');
 
-    const bindings = extractTemplateScopeBindings(template);
+    const bindings = extractTemplateBindings(template);
 
     expect(bindings).toHaveLength(1);
     expect(bindings[0]).toEqual(
       expect.objectContaining({
-        alias: 'item',
-        iterablePath: 'users',
+        name: 'item',
+        sourcePath: 'users',
       })
     );
   });
 
   it('uses opening tag end as scope start when a loop body is empty', () => {
     const template = '{% for item in users %}{% endfor %}';
-    const bindings = extractTemplateScopeBindings(template);
+    const bindings = extractTemplateBindings(template);
 
     expect(bindings).toHaveLength(1);
     expect(bindings[0].scopeStartOffset).toBeGreaterThanOrEqual(
@@ -105,13 +105,13 @@ describe('template-scopes helpers', () => {
       },
     };
 
-    const bindings = extractTemplateScopeBindings(template, options);
+    const bindings = extractTemplateBindings(template, options);
 
     expect(bindings).toHaveLength(1);
     expect(bindings[0]).toEqual(
       expect.objectContaining({
-        alias: 'item',
-        iterablePath: 'users',
+        name: 'item',
+        sourcePath: 'users',
       })
     );
     expect(bindings[0].declarationStartOffset).toBe(template.indexOf('item in users'));
@@ -119,15 +119,74 @@ describe('template-scopes helpers', () => {
 
   it('extracts both aliases from key-value loop bindings', () => {
     const template = '{% for key, value in environment_vars %}{{ key }}={{ value }}{% endfor %}';
-    const bindings = extractTemplateScopeBindings(template);
+    const bindings = extractTemplateBindings(template);
 
     expect(bindings).toHaveLength(2);
     expect(bindings).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ alias: 'key', iterablePath: 'environment_vars' }),
-        expect.objectContaining({ alias: 'value', iterablePath: 'environment_vars' }),
+        expect.objectContaining({ name: 'key', sourcePath: 'environment_vars' }),
+        expect.objectContaining({ name: 'value', sourcePath: 'environment_vars' }),
       ])
     );
+  });
+
+  it('extracts set-variable bindings and resolves in-scope bindings at offset', () => {
+    const template = [
+      '{% if condition %}',
+      '{% set local = user.profile.name %}',
+      '{{ local }}',
+      '{% endif %}',
+      '{{ local }}',
+    ].join('\n');
+
+    const bindings = extractTemplateBindings(template);
+    const setBinding = bindings.find((binding) => binding.kind === 'set-variable');
+
+    expect(setBinding).toBeDefined();
+    expect(setBinding).toEqual(
+      expect.objectContaining({
+        kind: 'set-variable',
+        name: 'local',
+        sourcePath: 'user.profile.name',
+      })
+    );
+
+    const localInsideIfOffset = template.indexOf('{{ local }}') + 4;
+    const localOutsideIfOffset = template.lastIndexOf('{{ local }}') + 4;
+
+    expect(
+      getTemplateBindingsAtOffset(bindings, localInsideIfOffset).some(
+        (binding) => binding.name === 'local'
+      )
+    ).toBe(true);
+    expect(
+      getTemplateBindingsAtOffset(bindings, localOutsideIfOffset).some(
+        (binding) => binding.name === 'local'
+      )
+    ).toBe(false);
+  });
+
+  it('sorts overlapping in-scope bindings by nearest scope start offset', () => {
+    const bindings = [
+      {
+        kind: 'for-alias' as const,
+        name: 'outer',
+        sourcePath: 'users',
+        scopeStartOffset: 0,
+        scopeEndOffset: 100,
+      },
+      {
+        kind: 'set-variable' as const,
+        name: 'inner',
+        sourcePath: 'users[0]',
+        scopeStartOffset: 10,
+        scopeEndOffset: 50,
+      },
+    ];
+
+    const inScope = getTemplateBindingsAtOffset(bindings, 20);
+
+    expect(inScope.map((binding) => binding.name)).toEqual(['inner', 'outer']);
   });
 
   it('handles empty custom comment delimiters while normalizing loop delimiters', () => {
@@ -143,25 +202,25 @@ describe('template-scopes helpers', () => {
       },
     };
 
-    const bindings = extractTemplateScopeBindings(template, options);
+    const bindings = extractTemplateBindings(template, options);
     expect(bindings).toHaveLength(1);
     expect(bindings[0]).toEqual(
       expect.objectContaining({
-        alias: 'item',
-        iterablePath: 'users',
+        name: 'item',
+        sourcePath: 'users',
       })
     );
   });
 
   it('skips loop bindings when the iterable cannot be normalized to a path', () => {
     const template = '{% for item in helper(users) %}{{ item }}{% endfor %}';
-    expect(extractTemplateScopeBindings(template)).toEqual([]);
+    expect(extractTemplateBindings(template)).toEqual([]);
   });
 
   it('normalizes computed iterable indexes to [0]', () => {
     const template = '{% for item in users[item + 1] %}{{ item }}{% endfor %}';
-    expect(extractTemplateScopeBindings(template)).toEqual([
-      expect.objectContaining({ alias: 'item', iterablePath: 'users[0]' }),
+    expect(extractTemplateBindings(template)).toEqual([
+      expect.objectContaining({ name: 'item', sourcePath: 'users[0]' }),
     ]);
   });
 
@@ -175,7 +234,7 @@ describe('template-scopes helpers', () => {
     }));
 
     const module = await import('../../src/semantic/template-scopes.js');
-    const bindings = module.extractTemplateScopeBindings(
+    const bindings = module.extractTemplateBindings(
       [
         '{% for named in users["name"] %}{% endfor %}',
         '{% for indexed in users[2] %}{% endfor %}',
@@ -185,9 +244,9 @@ describe('template-scopes helpers', () => {
 
     expect(bindings).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ alias: 'named', iterablePath: 'users[name]' }),
-        expect.objectContaining({ alias: 'indexed', iterablePath: 'users[2]' }),
-        expect.objectContaining({ alias: 'computed', iterablePath: 'users[0]' }),
+        expect.objectContaining({ name: 'named', sourcePath: 'users[name]' }),
+        expect.objectContaining({ name: 'indexed', sourcePath: 'users[2]' }),
+        expect.objectContaining({ name: 'computed', sourcePath: 'users[0]' }),
       ])
     );
   });
@@ -201,7 +260,7 @@ describe('template-scopes helpers', () => {
     }));
 
     const module = await import('../../src/semantic/template-scopes.js');
-    expect(module.extractTemplateScopeBindings('{% for item in users %}{% endfor %}')).toEqual([]);
+    expect(module.extractTemplateBindings('{% for item in users %}{% endfor %}')).toEqual([]);
   });
 
   it('returns an empty list when parsing succeeds without an AST', async () => {
@@ -214,7 +273,7 @@ describe('template-scopes helpers', () => {
     }));
 
     const module = await import('../../src/semantic/template-scopes.js');
-    expect(module.extractTemplateScopeBindings('{% for item in users %}{% endfor %}')).toEqual([]);
+    expect(module.extractTemplateBindings('{% for item in users %}{% endfor %}')).toEqual([]);
   });
 
   it('skips recovered fallback loops when the iterable expression is blank or not path-like', async () => {
@@ -227,10 +286,8 @@ describe('template-scopes helpers', () => {
     }));
 
     const module = await import('../../src/semantic/template-scopes.js');
-    expect(
-      module.extractTemplateScopeBindings('{% for item in   | reverse %}{% endfor %}')
-    ).toEqual([]);
-    expect(module.extractTemplateScopeBindings('{% for item in +1 %}{% endfor %}')).toEqual([]);
+    expect(module.extractTemplateBindings('{% for item in   | reverse %}{% endfor %}')).toEqual([]);
+    expect(module.extractTemplateBindings('{% for item in +1 %}{% endfor %}')).toEqual([]);
   });
 
   it('handles declaration extraction fallback when opening tags cannot be matched', async () => {
@@ -266,10 +323,12 @@ describe('template-scopes helpers', () => {
     }));
 
     const module = await import('../../src/semantic/template-scopes.js');
-    expect(module.extractTemplateScopeBindings('plain')).toEqual([
+    expect(module.extractTemplateBindings('plain')).toEqual([
       {
-        alias: 'item',
-        iterablePath: 'users',
+        kind: 'for-alias',
+        name: 'item',
+        sourcePath: 'users',
+        sourceExpression: 'users',
         scopeStartOffset: 'plain'.length,
         scopeEndOffset: 'plain'.length,
         declarationStartOffset: undefined,
@@ -311,10 +370,12 @@ describe('template-scopes helpers', () => {
     }));
 
     const module = await import('../../src/semantic/template-scopes.js');
-    expect(module.extractTemplateScopeBindings('nonsense %}')).toEqual([
+    expect(module.extractTemplateBindings('nonsense %}')).toEqual([
       {
-        alias: 'item',
-        iterablePath: 'users',
+        kind: 'for-alias',
+        name: 'item',
+        sourcePath: 'users',
+        sourceExpression: 'users',
         scopeStartOffset: 11,
         scopeEndOffset: 10,
         declarationStartOffset: undefined,
@@ -364,10 +425,12 @@ describe('template-scopes helpers', () => {
     }));
 
     const module = await import('../../src/semantic/template-scopes.js');
-    expect(module.extractTemplateScopeBindings('x')).toEqual([
+    expect(module.extractTemplateBindings('x')).toEqual([
       {
-        alias: 'item',
-        iterablePath: 'users',
+        kind: 'for-alias',
+        name: 'item',
+        sourcePath: 'users',
+        sourceExpression: 'users',
         scopeStartOffset: 0,
         scopeEndOffset: 0,
         declarationStartOffset: undefined,
@@ -376,7 +439,7 @@ describe('template-scopes helpers', () => {
     ]);
   });
 
-  it('falls back when alias lookup cannot be found in a matched opening tag', () => {
+  it('falls back when name lookup cannot be found in a matched opening tag', () => {
     const originalIndexOf = String.prototype.indexOf;
     const indexOfSpy = vi.spyOn(String.prototype, 'indexOf').mockImplementation(function (
       searchString: string,
@@ -394,9 +457,9 @@ describe('template-scopes helpers', () => {
     });
 
     const template = '{% for item in users %}{{ item }}{% endfor %}';
-    let bindings: ReturnType<typeof extractTemplateScopeBindings>;
+    let bindings: ReturnType<typeof extractTemplateBindings>;
     try {
-      bindings = extractTemplateScopeBindings(template);
+      bindings = extractTemplateBindings(template);
     } finally {
       indexOfSpy.mockRestore();
     }
@@ -440,7 +503,7 @@ describe('template-scopes helpers', () => {
 
     const module = await import('../../src/semantic/template-scopes.js');
     expect(
-      module.extractTemplateScopeBindings('plain text', {
+      module.extractTemplateBindings('plain text', {
         delimiters: {
           statement_start: '<%',
           statement_end: '%>',
@@ -452,8 +515,10 @@ describe('template-scopes helpers', () => {
       })
     ).toEqual([
       {
-        alias: 'item',
-        iterablePath: 'users',
+        kind: 'for-alias',
+        name: 'item',
+        sourcePath: 'users',
+        sourceExpression: 'users',
         scopeStartOffset: 'plain text'.length,
         scopeEndOffset: 'plain text'.length,
         declarationStartOffset: undefined,
@@ -495,17 +560,17 @@ describe('template-scopes helpers', () => {
     }));
 
     const module = await import('../../src/semantic/template-scopes.js');
-    expect(module.extractTemplateScopeBindings('plain text')).toEqual([]);
+    expect(module.extractTemplateBindings('plain text')).toEqual([]);
   });
 
   it('extends fallback loop bindings to the end of the template when an endfor is missing', () => {
     const template = '{% for item in users %}{{ item }}';
-    const bindings = extractTemplateScopeBindings(template);
+    const bindings = extractTemplateBindings(template);
 
     expect(bindings).toEqual([
       expect.objectContaining({
-        alias: 'item',
-        iterablePath: 'users',
+        name: 'item',
+        sourcePath: 'users',
         scopeStartOffset: 23,
         scopeEndOffset: 23,
       }),
@@ -522,7 +587,7 @@ describe('template-scopes helpers', () => {
     }));
 
     const module = await import('../../src/semantic/template-scopes.js');
-    expect(module.extractTemplateScopeBindings('{% for item in users')).toEqual([]);
+    expect(module.extractTemplateBindings('{% for item in users')).toEqual([]);
   });
 
   it('maps recovered fallback bindings back to original offsets with custom delimiters', async () => {
@@ -537,7 +602,7 @@ describe('template-scopes helpers', () => {
     const module = await import('../../src/semantic/template-scopes.js');
     const template = '<% for item in users %><< item >>';
     expect(
-      module.extractTemplateScopeBindings(template, {
+      module.extractTemplateBindings(template, {
         delimiters: {
           statement_start: '<%',
           statement_end: '%>',
@@ -549,9 +614,121 @@ describe('template-scopes helpers', () => {
       })
     ).toEqual([
       expect.objectContaining({
-        alias: 'item',
-        iterablePath: 'users',
+        name: 'item',
+        sourcePath: 'users',
         declarationStartOffset: 6,
+      }),
+    ]);
+  });
+
+  it('collects fallback set-variable bindings with normalized source paths', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({ ast: null, errors: [new Error('recover me')] }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    const bindings = module.extractTemplateBindings('{% set local = users[item + 1] %}');
+
+    expect(bindings).toEqual([
+      expect.objectContaining({
+        kind: 'set-variable',
+        name: 'local',
+        sourceExpression: 'users[item + 1]',
+        sourcePath: 'users[0]',
+      }),
+    ]);
+  });
+
+  it('gracefully handles set nodes when opening statement tags cannot be located', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({
+        ast: {
+          type: 'template',
+          start: { line: 1, column: 0 },
+          end: { line: 1, column: 1 },
+          children: [
+            {
+              type: 'set',
+              name: 'local',
+              value: {
+                type: 'variable',
+                name: 'users',
+                path: [],
+                start: { line: 10, column: 0 },
+                end: { line: 10, column: 5 },
+              },
+              start: { line: 10, column: 0 },
+              end: { line: 10, column: 10 },
+            },
+          ],
+        },
+        errors: [],
+      }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    const bindings = module.extractTemplateBindings('x');
+
+    expect(bindings).toEqual([
+      expect.objectContaining({
+        kind: 'set-variable',
+        name: 'local',
+        sourcePath: 'users',
+        sourceExpression: 'users',
+        declarationStartOffset: undefined,
+        declarationEndOffset: undefined,
+      }),
+    ]);
+  });
+
+  it('falls back to undefined set source expression when neither source text nor path can be derived', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({
+        ast: {
+          type: 'template',
+          start: { line: 1, column: 0 },
+          end: { line: 1, column: 1 },
+          children: [
+            {
+              type: 'set',
+              name: 'local',
+              value: {
+                type: 'literal',
+                valueType: 'number',
+                value: 1,
+                start: { line: 10, column: 0 },
+                end: { line: 10, column: 1 },
+              },
+              start: { line: 10, column: 0 },
+              end: { line: 10, column: 10 },
+            },
+          ],
+        },
+        errors: [],
+      }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    const bindings = module.extractTemplateBindings('x');
+
+    expect(bindings).toEqual([
+      expect.objectContaining({
+        kind: 'set-variable',
+        name: 'local',
+        sourcePath: undefined,
+        sourceExpression: undefined,
       }),
     ]);
   });
@@ -566,10 +743,10 @@ describe('template-scopes helpers', () => {
     }));
 
     const module = await import('../../src/semantic/template-scopes.js');
-    expect(module.extractTemplateScopeBindings('{% endfor %}')).toEqual([]);
+    expect(module.extractTemplateBindings('{% endfor %}')).toEqual([]);
   });
 
-  it('keeps fallback bindings when a later alias cannot be located in a key-value loop', () => {
+  it('keeps fallback bindings when a later name cannot be located in a key-value loop', () => {
     const originalIndexOf = String.prototype.indexOf;
     const indexOfSpy = vi.spyOn(String.prototype, 'indexOf').mockImplementation(function (
       searchString: string,
@@ -586,24 +763,22 @@ describe('template-scopes helpers', () => {
       return originalIndexOf.call(this.toString(), searchString, position);
     });
 
-    let bindings: ReturnType<typeof extractTemplateScopeBindings>;
+    let bindings: ReturnType<typeof extractTemplateBindings>;
     try {
-      bindings = extractTemplateScopeBindings(
-        '{% for key, value in users %}{{ value }}{% endfor %}'
-      );
+      bindings = extractTemplateBindings('{% for key, value in users %}{{ value }}{% endfor %}');
     } finally {
       indexOfSpy.mockRestore();
     }
 
     expect(bindings).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ alias: 'key', declarationStartOffset: expect.any(Number) }),
-        expect.objectContaining({ alias: 'value', declarationStartOffset: undefined }),
+        expect.objectContaining({ name: 'key', declarationStartOffset: expect.any(Number) }),
+        expect.objectContaining({ name: 'value', declarationStartOffset: undefined }),
       ])
     );
   });
 
-  it('keeps fallback key-value bindings when a later alias cannot be located during recovery', async () => {
+  it('keeps fallback key-value bindings when a later name cannot be located during recovery', async () => {
     vi.resetModules();
     vi.doMock('../../src/lexer/lexer.js', () => ({ tokenize: (value: string) => value }));
     vi.doMock('../../src/parser/parser.js', () => ({
@@ -628,14 +803,14 @@ describe('template-scopes helpers', () => {
 
     try {
       const module = await import('../../src/semantic/template-scopes.js');
-      const bindings = module.extractTemplateScopeBindings(
+      const bindings = module.extractTemplateBindings(
         '{% for key, value in users %}{{ value }}{% endfor %}'
       );
 
       expect(bindings).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ alias: 'key', declarationStartOffset: expect.any(Number) }),
-          expect.objectContaining({ alias: 'value', declarationStartOffset: undefined }),
+          expect.objectContaining({ name: 'key', declarationStartOffset: expect.any(Number) }),
+          expect.objectContaining({ name: 'value', declarationStartOffset: undefined }),
         ])
       );
     } finally {
@@ -653,10 +828,10 @@ describe('template-scopes helpers', () => {
     }));
 
     const module = await import('../../src/semantic/template-scopes.js');
-    expect(module.extractTemplateScopeBindings('{% for item in users %}{% endfor %}')).toEqual([
+    expect(module.extractTemplateBindings('{% for item in users %}{% endfor %}')).toEqual([
       expect.objectContaining({
-        alias: 'item',
-        iterablePath: 'users',
+        name: 'item',
+        sourcePath: 'users',
       }),
     ]);
   });
@@ -671,12 +846,12 @@ describe('template-scopes helpers', () => {
     }));
 
     const module = await import('../../src/semantic/template-scopes.js');
-    const bindings = module.extractTemplateScopeBindings(
+    const bindings = module.extractTemplateBindings(
       '{% for first in groups %}{% endfor %}{% for second in items %}{% endfor %}'
     );
 
     expect(bindings).toHaveLength(2);
-    expect(bindings.map((binding) => binding.alias)).toEqual(['first', 'second']);
+    expect(bindings.map((binding) => binding.name)).toEqual(['first', 'second']);
     expect(bindings[0].scopeStartOffset).toBeLessThanOrEqual(bindings[1].scopeStartOffset);
   });
 });

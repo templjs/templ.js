@@ -183,6 +183,33 @@ function createScopedPathResolver(
   };
 }
 
+type LocalAliasResolution = {
+  alias: string;
+  declaration: { start: number; end: number };
+  isAliasTokenOnly: boolean;
+};
+
+function resolveLocalAliasReference(
+  semanticReadAdapter: SemanticReadAdapter,
+  text: string,
+  variablePath: string,
+  offset: number
+): LocalAliasResolution | null {
+  const declaration = semanticReadAdapter.resolveLocalAliasDefinition(text, variablePath, offset);
+  if (!declaration) {
+    return null;
+  }
+
+  const alias = variablePath.split(/[.[]/, 1)[0] ?? variablePath;
+  const isAliasTokenOnly = /^[A-Za-z_][\w]*$/.test(variablePath);
+
+  return {
+    alias,
+    declaration,
+    isAliasTokenOnly,
+  };
+}
+
 function buildSemanticQueryContext(
   text: string,
   offset: number,
@@ -1052,6 +1079,19 @@ export class IntellisenseProvider {
 
       const variablePath = getVariablePathAtOffset(expressionPart, Math.max(0, relativeOffset));
       if (variablePath) {
+        const localAlias = resolveLocalAliasReference(
+          this.semanticReadAdapter,
+          text,
+          variablePath,
+          offset
+        );
+        if (localAlias?.isAliasTokenOnly) {
+          options?.debugLog?.(
+            `[intellisense] hover alias=${localAlias.alias} source=statement-expression-local result=present`
+          );
+          return { contents: `${localAlias.alias}: local loop alias` };
+        }
+
         return getHoverDetailsForPath(variablePath);
       }
 
@@ -1079,13 +1119,14 @@ export class IntellisenseProvider {
 
     const variablePath = getVariablePathAtOffset(content, Math.max(0, relativeOffset));
     if (variablePath) {
-      const aliasOnly = /^[A-Za-z_][\w]*$/.test(variablePath);
-      const aliasDefinition = aliasOnly
-        ? this.semanticReadAdapter.resolveLocalAliasDefinition(text, variablePath, offset)
-        : null;
-      if (aliasDefinition && aliasOnly) {
-        const aliasName = variablePath.split(/[.[]/, 1)[0] ?? variablePath;
-        return { contents: `${aliasName}: local loop alias` };
+      const localAlias = resolveLocalAliasReference(
+        this.semanticReadAdapter,
+        text,
+        variablePath,
+        offset
+      );
+      if (localAlias?.isAliasTokenOnly) {
+        return { contents: `${localAlias.alias}: local loop alias` };
       }
 
       return getHoverDetailsForPath(variablePath);
@@ -1242,20 +1283,21 @@ export class IntellisenseProvider {
       const variablePath = getVariablePathAtOffset(variableSegment, Math.max(0, relativeOffset));
       if (!variablePath) return null;
 
-      const aliasDefinition = this.semanticReadAdapter.resolveLocalAliasDefinition(
+      const localAlias = resolveLocalAliasReference(
+        this.semanticReadAdapter,
         text,
         variablePath,
         offset
       );
-      if (aliasDefinition && options?.documentUri) {
+      if (localAlias && options?.documentUri) {
         options?.debugLog?.(
           `[intellisense] definition source=local-alias variable=${variablePath} uri=${options.documentUri}`
         );
         return {
           uri: options.documentUri,
           range: {
-            start: getPositionForOffset(text, aliasDefinition.start),
-            end: getPositionForOffset(text, aliasDefinition.end),
+            start: getPositionForOffset(text, localAlias.declaration.start),
+            end: getPositionForOffset(text, localAlias.declaration.end),
           },
         };
       }
@@ -1345,20 +1387,21 @@ export class IntellisenseProvider {
     const variablePath = getVariablePathAtOffset(variableSegment, Math.max(0, relativeOffset));
     if (!variablePath) return null;
 
-    const aliasDefinition = this.semanticReadAdapter.resolveLocalAliasDefinition(
+    const localAlias = resolveLocalAliasReference(
+      this.semanticReadAdapter,
       text,
       variablePath,
       offset
     );
-    if (aliasDefinition && options?.documentUri) {
+    if (localAlias && options?.documentUri) {
       options?.debugLog?.(
         `[intellisense] definition source=statement-local-alias variable=${variablePath} uri=${options.documentUri}`
       );
       return {
         uri: options.documentUri,
         range: {
-          start: getPositionForOffset(text, aliasDefinition.start),
-          end: getPositionForOffset(text, aliasDefinition.end),
+          start: getPositionForOffset(text, localAlias.declaration.start),
+          end: getPositionForOffset(text, localAlias.declaration.end),
         },
       };
     }

@@ -1,25 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { extractTemplateScopeBindings } from '../index.js';
+import { extractTemplateBindings } from '../index.js';
 import { pathSegmentToString } from './template-scopes.js';
 
-describe('extractTemplateScopeBindings', () => {
+describe('extractTemplateBindings', () => {
   it('returns an empty array for an empty template', () => {
-    expect(extractTemplateScopeBindings('')).toEqual([]);
+    expect(extractTemplateBindings('')).toEqual([]);
   });
 
   it('returns an empty array when no for-loops are present', () => {
-    expect(extractTemplateScopeBindings('{{ name }}')).toEqual([]);
+    expect(extractTemplateBindings('{{ name }}')).toEqual([]);
   });
 
   it('extracts for-loop aliases with iterable paths', () => {
     const template = '{% for relationship in relationships %}{{ relationship.target }}{% endfor %}';
 
-    const bindings = extractTemplateScopeBindings(template);
+    const bindings = extractTemplateBindings(template);
 
     expect(bindings).toHaveLength(1);
     expect(bindings[0]).toMatchObject({
-      alias: 'relationship',
-      iterablePath: 'relationships',
+      name: 'relationship',
+      sourcePath: 'relationships',
     });
     expect(bindings[0].scopeEndOffset).toBeGreaterThan(bindings[0].scopeStartOffset);
   });
@@ -33,25 +33,25 @@ describe('extractTemplateScopeBindings', () => {
       '{% endfor %}',
     ].join('\n');
 
-    const bindings = extractTemplateScopeBindings(template);
+    const bindings = extractTemplateBindings(template);
 
     expect(bindings).toHaveLength(2);
-    expect(bindings[0].iterablePath).toBe('items');
-    expect(bindings[1].iterablePath).toBe('item.children');
+    expect(bindings[0].sourcePath).toBe('items');
+    expect(bindings[1].sourcePath).toBe('item.children');
     expect(bindings[1].scopeStartOffset).toBeGreaterThan(bindings[0].scopeStartOffset);
   });
 
   it('returns an empty array for invalid templates', () => {
-    expect(extractTemplateScopeBindings('{% for item in %}')).toEqual([]);
+    expect(extractTemplateBindings('{% for item in %}')).toEqual([]);
   });
 
   it('recovers scope bindings for unclosed for-loops', () => {
     const template = ['{% for x in collection %}', '{{ x }}'].join('\n');
 
-    const bindings = extractTemplateScopeBindings(template);
+    const bindings = extractTemplateBindings(template);
 
     expect(bindings).toHaveLength(1);
-    expect(bindings[0]).toMatchObject({ alias: 'x', iterablePath: 'collection' });
+    expect(bindings[0]).toMatchObject({ name: 'x', sourcePath: 'collection' });
     expect(bindings[0].scopeEndOffset).toBeGreaterThanOrEqual(bindings[0].scopeStartOffset);
   });
 
@@ -63,9 +63,9 @@ describe('extractTemplateScopeBindings', () => {
       '{% endfor %}',
     ].join('\n');
 
-    const bindings = extractTemplateScopeBindings(template);
+    const bindings = extractTemplateBindings(template);
 
-    expect(bindings.some((binding) => binding.alias === 'c' && binding.iterablePath === 'id')).toBe(
+    expect(bindings.some((binding) => binding.name === 'c' && binding.sourcePath === 'id')).toBe(
       true
     );
   });
@@ -80,17 +80,17 @@ describe('extractTemplateScopeBindings', () => {
       '{% endfor %}',
     ].join('\n');
 
-    const bindings = extractTemplateScopeBindings(template);
+    const bindings = extractTemplateBindings(template);
 
     expect(bindings).toHaveLength(2);
-    expect(bindings[0]).toMatchObject({ alias: 'user', iterablePath: 'users' });
-    expect(bindings[1]).toMatchObject({ alias: 'project', iterablePath: 'projects' });
+    expect(bindings[0]).toMatchObject({ name: 'user', sourcePath: 'users' });
+    expect(bindings[1]).toMatchObject({ name: 'project', sourcePath: 'projects' });
   });
 
   it('starts empty for-loop scope at the opening-tag boundary', () => {
     const template = '{% for item in items %}{% endfor %}';
 
-    const bindings = extractTemplateScopeBindings(template);
+    const bindings = extractTemplateBindings(template);
 
     expect(bindings).toHaveLength(1);
     expect(bindings[0].declarationStartOffset).toBeDefined();
@@ -111,10 +111,10 @@ describe('extractTemplateScopeBindings', () => {
       '{% endif %}',
     ].join('\n');
 
-    const bindings = extractTemplateScopeBindings(template);
+    const bindings = extractTemplateBindings(template);
 
     expect(bindings).toHaveLength(2);
-    expect(bindings.map((binding) => binding.alias)).toEqual(['item', 'project']);
+    expect(bindings.map((binding) => binding.name)).toEqual(['item', 'project']);
   });
 
   it('normalizes property, literal, string, and computed path segments', () => {
@@ -134,36 +134,36 @@ describe('extractTemplateScopeBindings', () => {
   it('extracts iterable paths through paren and filter expressions', () => {
     const template = '{% for item in (items | default([])) %}{{ item.name }}{% endfor %}';
 
-    const bindings = extractTemplateScopeBindings(template);
+    const bindings = extractTemplateBindings(template);
 
     expect(bindings).toHaveLength(1);
-    expect(bindings[0]).toMatchObject({ alias: 'item', iterablePath: 'items' });
+    expect(bindings[0]).toMatchObject({ name: 'item', sourcePath: 'items' });
   });
 
   it('normalizes computed bracket index expressions to [0] in iterable paths', () => {
     // Regression: users[activeIndex + 1] must not be truncated at the space
     const template = '{% for item in users[activeIndex + 1] %}{{ item.name }}{% endfor %}';
 
-    const bindings = extractTemplateScopeBindings(template);
+    const bindings = extractTemplateBindings(template);
 
     expect(bindings).toHaveLength(1);
-    expect(bindings[0]).toMatchObject({ alias: 'item', iterablePath: 'users[0]' });
+    expect(bindings[0]).toMatchObject({ name: 'item', sourcePath: 'users[0]' });
   });
 
   it('preserves quoted string bracket segments in iterable paths', () => {
     // Regression: users["full name"] must not be truncated at the space inside quotes
     const template = '{% for item in users["full name"] %}{{ item.name }}{% endfor %}';
 
-    const bindings = extractTemplateScopeBindings(template);
+    const bindings = extractTemplateBindings(template);
 
     expect(bindings).toHaveLength(1);
-    expect(bindings[0].iterablePath).toBe('users[full name]');
+    expect(bindings[0].sourcePath).toBe('users[full name]');
   });
 
   it('extracts bindings when custom delimiters are configured', () => {
     const template = '<< for item in items >>\n  {{ item.name }}\n<< endfor >>';
 
-    const bindings = extractTemplateScopeBindings(template, {
+    const bindings = extractTemplateBindings(template, {
       delimiters: {
         statement_start: '<<',
         statement_end: '>>',
@@ -175,13 +175,13 @@ describe('extractTemplateScopeBindings', () => {
     });
 
     expect(bindings).toHaveLength(1);
-    expect(bindings[0]).toMatchObject({ alias: 'item', iterablePath: 'items' });
+    expect(bindings[0]).toMatchObject({ name: 'item', sourcePath: 'items' });
   });
 
-  it('computes correct alias declaration offsets with custom delimiters', () => {
+  it('computes correct name declaration offsets with custom delimiters', () => {
     const template = '<< for item in items >>';
 
-    const bindings = extractTemplateScopeBindings(template, {
+    const bindings = extractTemplateBindings(template, {
       delimiters: {
         statement_start: '<<',
         statement_end: '>>',
@@ -196,7 +196,7 @@ describe('extractTemplateScopeBindings', () => {
     const [binding] = bindings;
     expect(binding.declarationStartOffset).toBeDefined();
     expect(binding.declarationEndOffset).toBeDefined();
-    // The alias "item" must be identifiable in the source
+    // The name "item" must be identifiable in the source
     expect(template.slice(binding.declarationStartOffset!, binding.declarationEndOffset!)).toBe(
       'item'
     );
@@ -205,7 +205,7 @@ describe('extractTemplateScopeBindings', () => {
   it('remaps declaration offsets when statement delimiters change length', () => {
     const template = '[[[ for item in items ]]]';
 
-    const bindings = extractTemplateScopeBindings(template, {
+    const bindings = extractTemplateBindings(template, {
       delimiters: {
         statement_start: '[[[',
         statement_end: ']]]',

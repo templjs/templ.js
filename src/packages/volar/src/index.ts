@@ -138,15 +138,18 @@ function detectBaseFormat(fileUriString: string): BaseFormat {
     // Extract filename from URI (handle both file:// and regular paths)
     const filePath = fileUriString.replace(/^file:\/\//, '').replace(/^.*\//, '');
 
-    if (filePath.endsWith('.tmpl') || filePath.endsWith('.templ') || filePath.endsWith('.tpl')) {
-      const suffixLength = filePath.endsWith('.tmpl') ? 5 : filePath.endsWith('.templ') ? 6 : 4;
-      const baseName = filePath.slice(0, -suffixLength);
-      const lastDot = baseName.lastIndexOf('.');
-      if (lastDot > -1) {
-        const ext = baseName.slice(lastDot);
-        const format = EXTENSION_TO_BASE_FORMAT[ext];
-        if (format) return format;
-      }
+    const hostFirstMatch = filePath.match(/\.(md|markdown|json|ya?ml|html?)\.(templ|tmpl|tpl)$/i);
+    const templFirstMatch = filePath.match(/\.(templ|tmpl|tpl)\.(md|markdown|json|ya?ml|html?)$/i);
+    const hostExtension = hostFirstMatch?.[1] ?? templFirstMatch?.[2];
+
+    if (hostExtension) {
+      const format = EXTENSION_TO_BASE_FORMAT[`.${hostExtension.toLowerCase()}`];
+      if (format) return format;
+    }
+
+    if (/\.(templ|tmpl|tpl)$/i.test(filePath)) {
+      // Bare template files default to markdown delegation for richer authoring support.
+      return 'markdown';
     }
   } catch {
     // Fallback to plain text
@@ -971,34 +974,39 @@ class TempljsLanguagePlugin implements LanguagePlugin<URI> {
     this.patterns = compileDelimiterPatterns(options.delimiters);
   }
 
-  getLanguageId(scriptId: URI): string | undefined {
+  getLanguageId = (scriptId: URI): string | undefined => {
     const uri = scriptId.toString();
+    if (/\.(templ|tmpl|tpl)\.(md|markdown)$/i.test(uri)) return 'templjs-markdown';
+    if (/\.(templ|tmpl|tpl)\.(json)$/i.test(uri)) return 'templjs-json';
+    if (/\.(templ|tmpl|tpl)\.(ya?ml)$/i.test(uri)) return 'templjs-yaml';
+    if (/\.(templ|tmpl|tpl)\.(html?)$/i.test(uri)) return 'templjs-html';
     if (/\.ya?ml\.(templ|tmpl|tpl)($|\?)/i.test(uri)) return 'templjs-yaml';
     if (/\.json\.(templ|tmpl|tpl)($|\?)/i.test(uri)) return 'templjs-json';
     if (/\.(md|markdown)\.(templ|tmpl|tpl)($|\?)/i.test(uri)) return 'templjs-markdown';
     if (/\.html?\.(templ|tmpl|tpl)($|\?)/i.test(uri)) return 'templjs-html';
+    if (/\.(templ|tmpl|tpl)($|\?)/i.test(uri)) return 'templjs-markdown';
     return undefined;
-  }
+  };
 
-  createVirtualCode(
+  createVirtualCode = (
     scriptId: URI,
     _languageId: string,
     snapshot: ts.IScriptSnapshot,
     _ctx: CodegenContext<URI>
-  ): VirtualCode {
+  ): VirtualCode => {
     const baseFormat = detectBaseFormat(scriptId.toString());
     const source = snapshot.getText(0, snapshot.getLength());
     const virtualCode = new TempljsVirtualCode(source, baseFormat, snapshot, this.patterns);
     this.virtualCodeByUri.set(scriptId.toString(), virtualCode);
     return virtualCode;
-  }
+  };
 
-  updateVirtualCode(
+  updateVirtualCode = (
     scriptId: URI,
     _virtualCode: TempljsVirtualCode,
     snapshot: ts.IScriptSnapshot,
     _ctx: CodegenContext<URI>
-  ): TempljsVirtualCode {
+  ): TempljsVirtualCode => {
     const baseFormat = detectBaseFormat(scriptId.toString());
     const cachedVirtualCode = this.virtualCodeByUri.get(scriptId.toString()) ?? _virtualCode;
 
@@ -1017,7 +1025,7 @@ class TempljsLanguagePlugin implements LanguagePlugin<URI> {
     );
     this.virtualCodeByUri.set(scriptId.toString(), updated);
     return updated;
-  }
+  };
 }
 
 /**
