@@ -93,7 +93,7 @@ Implementation references:
 3. Compatibility suffixes remain supported when needed:
    - `.md.templ`, `.json.templ`, `.yaml.templ`, `.html.templ`
    - `.md.tpl`, `.json.tpl`, `.yaml.tpl`, `.html.tpl`
-   - `.templ.md`, `.templ.json`, `.templ.yaml`, `.templ.html`
+   - `.md.templ`, `.json.templ`, `.yaml.templ`, `.html.templ`
 4. Optionally configure schema-aware authoring:
 
    ```json

@@ -25,7 +25,7 @@ authoritative strategic anchors:
 
 ## Source Guidance
 
-Review date: 2026-05-01.
+Review date: 2026-05-09 (updated post-WI-097–104 completion).
 
 Volar guidance:
 
@@ -198,9 +198,13 @@ Embedded frontmatter code:
 
 ## Current Implementation Audit
 
+**Status**: ✅ COMPLETED. This section documents the target architecture and migration requirements that were addressed in WI-097 through WI-104 (archived 2026-05-06). The findings below are **historical** and describe the state as-of 2026-05-01. Current implementation now follows the target architecture outlined in "Target Architecture" section above.
+
 ### `src/packages/volar/src/index.ts`
 
-As-is:
+**Status**: ✅ COMPLETE — Virtual code model migrated (WI-100).
+
+As-is (historical):
 
 - `TempljsVirtualCode` uses `id = 'root'`.
 - Root `languageId` is set to the detected host language, such as `markdown`, `json`,
@@ -241,7 +245,9 @@ How to make it:
 
 ### `src/extensions/vscode/src/server.ts`
 
-As-is:
+**Status**: ✅ COMPLETE — Server moved to @templjs/language-server (WI-099).
+
+As-is (historical):
 
 - The VS Code extension package contains the language server implementation.
 - It creates the Volar connection/server and initializes language/service plugins.
@@ -277,7 +283,9 @@ How to make it:
 
 ### `src/extensions/vscode/src/service-plugins.ts`
 
-As-is:
+**Status**: ✅ COMPLETE — Service plugins moved to @templjs/language-service (WI-099, WI-101).
+
+As-is (historical):
 
 - The VS Code extension package builds TemplJS service plugins.
 - It resolves source files through Volar context internals.
@@ -315,7 +323,9 @@ How to make it:
 
 ### `src/packages/volar/src/diagnostic-provider.ts`
 
-As-is:
+**Status**: ✅ COMPLETE — Diagnostics refactored to use context-graph facts (WI-102).
+
+As-is (historical):
 
 - Diagnostics extract blocks and detect unclosed delimiters with local scanners.
 - Statement tags, filters, variable references, and scope paths are interpreted in
@@ -347,7 +357,9 @@ How to make it:
 
 ### `src/packages/volar/src/intellisense-provider.ts`
 
-As-is:
+**Status**: ✅ COMPLETE — IntelliSense refactored to use context-graph facts (WI-102).
+
+As-is (historical):
 
 - Completion, hover, and definition use local text extraction for expressions,
   filters, aliases, frontmatter context, and path prefixes.
