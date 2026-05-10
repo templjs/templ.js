@@ -69,7 +69,7 @@ Establish `@templjs/context-graph` as a reusable semantic foundation for N indep
 - [x] [[work-item-057-context-graph-kernel-and-api]]
 - [x] [[work-item-058-context-graph-volar-adapter-and-semantic-reads]]
 - [x] [[work-item-059-context-graph-api-boundary-and-rust-ready-contracts]]
-- [ ] [[work-item-060-context-graph-hover-definition-exclusive-cutover]]
+- [x] [[work-item-060-context-graph-hover-definition-exclusive-cutover]]
 
 ## Relationships
 
