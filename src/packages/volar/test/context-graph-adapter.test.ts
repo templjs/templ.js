@@ -403,6 +403,14 @@ describe('ContextGraphSemanticReadAdapter.resolveLocalAliasDefinition', () => {
     expect(result).not.toBeNull();
   });
 
+  it('expands set-variable bindings without loop-style array coercion', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const text = '{% set foo = user %}{{ foo.name }}';
+    const resolved = adapter.resolveScopedPath(text, 'foo.name', text.indexOf('foo.name') + 1);
+
+    expect(resolved).toBe('user.name');
+  });
+
   it('returns null when an alias matches but declaration offsets are missing', () => {
     const adapter = createContextGraphSemanticReadAdapter();
     const extractSpy = vi.spyOn(core, 'extractTemplateBindings').mockReturnValue([
