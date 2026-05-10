@@ -139,9 +139,17 @@ function detectBaseFormat(fileUriString: string): BaseFormat {
     const filePath = fileUriString.replace(/^file:\/\//, '').replace(/^.*\//, '');
 
     const hostFirstMatch = filePath.match(/\.(md|markdown|json|ya?ml|html?)\.(templ|tmpl|tpl)$/i);
-    if (hostFirstMatch) {
-      const format = EXTENSION_TO_BASE_FORMAT[`.${hostFirstMatch[1].toLowerCase()}`];
+    const templFirstMatch = filePath.match(/\.(templ|tmpl|tpl)\.(md|markdown|json|ya?ml|html?)$/i);
+    const hostExtension = hostFirstMatch?.[1] ?? templFirstMatch?.[2];
+
+    if (hostExtension) {
+      const format = EXTENSION_TO_BASE_FORMAT[`.${hostExtension.toLowerCase()}`];
       if (format) return format;
+    }
+
+    if (/\.(templ|tmpl|tpl)$/i.test(filePath)) {
+      // Bare template files default to markdown delegation for richer authoring support.
+      return 'markdown';
     }
   } catch {
     // Fallback to plain text
@@ -968,6 +976,7 @@ class TempljsLanguagePlugin implements LanguagePlugin<URI> {
 
   getLanguageId = (scriptId: URI): string | undefined => {
     const uri = scriptId.toString();
+    if (/\.(templ|tmpl|tpl)($|\?)/i.test(uri)) return 'templjs-markdown';
     if (/\.(templ|tmpl|tpl)\.(md|markdown)$/i.test(uri)) return 'templjs-markdown';
     if (/\.(templ|tmpl|tpl)\.(json)$/i.test(uri)) return 'templjs-json';
     if (/\.(templ|tmpl|tpl)\.(ya?ml)$/i.test(uri)) return 'templjs-yaml';

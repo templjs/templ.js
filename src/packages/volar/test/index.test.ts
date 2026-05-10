@@ -51,6 +51,12 @@ describe('LanguagePlugin', () => {
       expect(plugin.getLanguageId('file:///example.tpl.yaml')).toBe('templjs-yaml');
       expect(plugin.getLanguageId('file:///example.templ.html')).toBe('templjs-html');
     });
+
+    it('detects bare template suffixes as markdown templjs documents', () => {
+      expect(plugin.getLanguageId('file:///example.tmpl')).toBe('templjs-markdown');
+      expect(plugin.getLanguageId('file:///example.tpl')).toBe('templjs-markdown');
+      expect(plugin.getLanguageId('file:///example.templ')).toBe('templjs-markdown');
+    });
   });
 
   describe('createVirtualCode', () => {
@@ -70,6 +76,28 @@ describe('LanguagePlugin', () => {
         expect(virtualCode?.languageId).toBe(expectedLanguage);
       }
     );
+
+    it('derives base format from templ-first suffix ordering and bare template suffixes', () => {
+      const makeSnapshot = (text: string) => ({
+        getText: () => text,
+        getLength: () => text.length,
+        getChangeRange: () => undefined,
+      });
+
+      const templFirst = plugin.createVirtualCode(
+        'file:///templ-first.templ.json',
+        'templjs-json',
+        makeSnapshot('{"k":"v"}')
+      );
+      expect(templFirst?.languageId).toBe('json');
+
+      const bareTemplate = plugin.createVirtualCode(
+        'file:///bare-template.tmpl',
+        'templjs-markdown',
+        makeSnapshot('# hello')
+      );
+      expect(bareTemplate?.languageId).toBe('markdown');
+    });
 
     it('creates host and DSL embedded virtual documents', () => {
       const content = '# Title\n\n{{ page.heading }}\n\n{% if page.show %}\nBody\n{% endif %}';
@@ -1275,7 +1303,7 @@ describe('LanguagePlugin', () => {
       expect(virtualCode?.languageId).toBe('markdown');
     });
 
-    it('should not detect markdown from .templ.md extension', () => {
+    it('should detect markdown from .templ.md extension', () => {
       const mockSnapshot = {
         getText: () => '# Templated',
         getLength: () => 12,
@@ -1288,10 +1316,10 @@ describe('LanguagePlugin', () => {
         mockSnapshot
       );
 
-      expect(virtualCode?.languageId).toBe('plaintext');
+      expect(virtualCode?.languageId).toBe('markdown');
     });
 
-    it('should not detect json from .templ.json extension', () => {
+    it('should detect json from .templ.json extension', () => {
       const mockSnapshot = {
         getText: () => '{ "name": "templ" }',
         getLength: () => 20,
@@ -1304,10 +1332,10 @@ describe('LanguagePlugin', () => {
         mockSnapshot
       );
 
-      expect(virtualCode?.languageId).toBe('plaintext');
+      expect(virtualCode?.languageId).toBe('json');
     });
 
-    it('should not detect yaml from .templ.yaml extension', () => {
+    it('should detect yaml from .templ.yaml extension', () => {
       const mockSnapshot = {
         getText: () => 'key: templ',
         getLength: () => 11,
@@ -1320,10 +1348,10 @@ describe('LanguagePlugin', () => {
         mockSnapshot
       );
 
-      expect(virtualCode?.languageId).toBe('plaintext');
+      expect(virtualCode?.languageId).toBe('yaml');
     });
 
-    it('should not detect yaml from .templ.yml extension', () => {
+    it('should detect yaml from .templ.yml extension', () => {
       const mockSnapshot = {
         getText: () => 'key: templ',
         getLength: () => 11,
@@ -1336,10 +1364,10 @@ describe('LanguagePlugin', () => {
         mockSnapshot
       );
 
-      expect(virtualCode?.languageId).toBe('plaintext');
+      expect(virtualCode?.languageId).toBe('yaml');
     });
 
-    it('should not detect html from .templ.html extension', () => {
+    it('should detect html from .templ.html extension', () => {
       const mockSnapshot = {
         getText: () => '<div>templ</div>',
         getLength: () => 17,
@@ -1352,7 +1380,7 @@ describe('LanguagePlugin', () => {
         mockSnapshot
       );
 
-      expect(virtualCode?.languageId).toBe('plaintext');
+      expect(virtualCode?.languageId).toBe('html');
     });
 
     it('should detect markdown from .markdown.tmpl extension', () => {
@@ -1492,7 +1520,7 @@ describe('LanguagePlugin', () => {
       expect(typeof virtualCode?.languageId).toBe('string');
     });
 
-    it('should default to plaintext for .tmpl without base extension', () => {
+    it('should default to markdown for .tmpl without base extension', () => {
       const mockSnapshot = {
         getText: () => 'content',
         getLength: () => 7,
@@ -1505,10 +1533,10 @@ describe('LanguagePlugin', () => {
         mockSnapshot
       );
 
-      expect(virtualCode?.languageId).toBe('plaintext');
+      expect(virtualCode?.languageId).toBe('markdown');
     });
 
-    it('should default to plaintext for .templ without base extension', () => {
+    it('should default to markdown for .templ without base extension', () => {
       const mockSnapshot = {
         getText: () => 'content',
         getLength: () => 7,
@@ -1521,7 +1549,7 @@ describe('LanguagePlugin', () => {
         mockSnapshot
       );
 
-      expect(virtualCode?.languageId).toBe('plaintext');
+      expect(virtualCode?.languageId).toBe('markdown');
     });
 
     it('should default to plaintext when templ marker uses an unknown extension', () => {
