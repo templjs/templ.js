@@ -321,6 +321,7 @@ describe('extension-activation', () => {
         { scheme: 'file', language: 'templjs-json' },
         { scheme: 'file', language: 'templjs-markdown' },
         { scheme: 'file', language: 'templjs-html' },
+        { scheme: 'file', pattern: '**/*.tmpl' },
         { scheme: 'file', pattern: '**/*.md.templ' },
         { scheme: 'file', pattern: '**/*.md.tmpl' },
         { scheme: 'file', pattern: '**/*.md.tpl' },
@@ -931,6 +932,18 @@ describe('extension-activation', () => {
     expect(
       helpers.isTempljsDocument({
         uri: { scheme: 'file', fsPath: '/workspace/page.md.templ' },
+        languageId: 'plaintext',
+      } as never)
+    ).toBe(true);
+    expect(
+      helpers.isTempljsDocument({
+        uri: { scheme: 'file', fsPath: '/workspace/page.tmpl' },
+        languageId: 'plaintext',
+      } as never)
+    ).toBe(true);
+    expect(
+      helpers.isTempljsDocument({
+        uri: { scheme: 'file', fsPath: '/workspace/page.tpl' },
         languageId: 'plaintext',
       } as never)
     ).toBe(true);
