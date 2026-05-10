@@ -2,7 +2,8 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
-import { afterEach, describe, expect, it } from 'vitest';
+import * as core from '@templjs/core';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createContextGraphSemanticReadAdapter } from '../src/context-graph-adapter.js';
 
 const createdTempDirs: string[] = [];
@@ -400,5 +401,58 @@ describe('ContextGraphSemanticReadAdapter.resolveLocalAliasDefinition', () => {
     const result = adapter.resolveLocalAliasDefinition(text, 'item.name', offset);
 
     expect(result).not.toBeNull();
+  });
+
+  it('returns null when an alias matches but declaration offsets are missing', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const extractSpy = vi.spyOn(core, 'extractTemplateBindings').mockReturnValue([
+      {
+        kind: 'for-alias',
+        name: 'item',
+        scopeStartOffset: 0,
+        scopeEndOffset: 20,
+      },
+    ] as core.TemplateBinding[]);
+
+    try {
+      const result = adapter.resolveLocalAliasDefinition('{% for item in users %}', 'item', 5);
+      expect(result).toBeNull();
+    } finally {
+      extractSpy.mockRestore();
+    }
+  });
+});
+
+describe('ContextGraphSemanticReadAdapter.loadSchemaRef', () => {
+  it('returns undefined when referenced schema content is not valid JSON', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const tempDir = createTempDir();
+    const basePath = path.join(tempDir, 'base.json');
+    const brokenPath = path.join(tempDir, 'broken.json');
+    writeFileSync(basePath, JSON.stringify({ type: 'object' }, null, 2));
+    writeFileSync(brokenPath, '{ invalid json');
+
+    const result = (adapter as any).loadSchemaRef(
+      pathToFileURL(basePath).toString(),
+      './broken.json'
+    );
+
+    expect(result).toBeUndefined();
+  });
+
+  it('returns undefined when a JSON-pointer traversal enters a non-object value', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const tempDir = createTempDir();
+    const basePath = path.join(tempDir, 'base.json');
+    const schemaPath = path.join(tempDir, 'schema.json');
+    writeFileSync(basePath, JSON.stringify({ type: 'object' }, null, 2));
+    writeFileSync(schemaPath, JSON.stringify({ scalar: 1 }, null, 2));
+
+    const result = (adapter as any).loadSchemaRef(
+      pathToFileURL(basePath).toString(),
+      './schema.json#/scalar/deeper'
+    );
+
+    expect(result).toBeUndefined();
   });
 });

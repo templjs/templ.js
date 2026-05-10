@@ -155,6 +155,18 @@ describe('DiagnosticProvider', () => {
     expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
   });
 
+  it('accepts valid while and switch statements with expressions', () => {
+    const whileDiagnostics = collectDiagnostics('{% while user.active %}', {
+      schema: sampleSchema,
+    });
+    const switchDiagnostics = collectDiagnostics('{% switch user.role %}', {
+      schema: sampleSchema,
+    });
+
+    expect(whileDiagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(false);
+    expect(switchDiagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(false);
+  });
+
   it('reports invalid switch statements', () => {
     const diagnostics = collectDiagnostics('{% switch %}', {
       schema: sampleSchema,
@@ -190,6 +202,14 @@ describe('DiagnosticProvider', () => {
     expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
   });
 
+  it('reports invalid set statement with missing right-hand expression after equals', () => {
+    const diagnostics = collectDiagnostics('{% set foo = %}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
+  });
+
   it('does not emit unclosedStatement for valid set', () => {
     const diagnostics = collectDiagnostics('{% set foo = bar %}', {
       schema: sampleSchema,
@@ -212,6 +232,14 @@ describe('DiagnosticProvider', () => {
     expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
   });
 
+  it('accepts valid case statements with an argument', () => {
+    const diagnostics = collectDiagnostics('{% case user.role %}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(false);
+  });
+
   it('reports invalid default statements', () => {
     const diagnostics = collectDiagnostics('{% default invalid %}', {
       schema: sampleSchema,
@@ -219,6 +247,22 @@ describe('DiagnosticProvider', () => {
 
     expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
     expect(diagnostics.some((diag) => diag.code === 'templjs.unclosedStatement')).toBe(false);
+  });
+
+  it('accepts valid default statements without arguments', () => {
+    const diagnostics = collectDiagnostics('{% default %}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(false);
+  });
+
+  it('does not flag unknown statement keywords as invalid-statement syntax errors', () => {
+    const diagnostics = collectDiagnostics('{% include partial %}', {
+      schema: sampleSchema,
+    });
+
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(false);
   });
 
   it('does not flag loop alias property paths as undefined in expressions', () => {

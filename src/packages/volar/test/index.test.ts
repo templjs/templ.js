@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { createTempljsLanguagePlugin } from '../src/index.js';
+import { cleanTemplateContent, createTempljsLanguagePlugin } from '../src/index.js';
 import { collectDiagnostics } from '../src/diagnostic-provider.js';
 import { IntellisenseProvider } from '../src/intellisense-provider.js';
 
@@ -43,6 +43,15 @@ describe('LanguagePlugin', () => {
       length: 65,
     },
   ] as const;
+
+  describe('getLanguageId', () => {
+    it('detects host-first suffixes where templ extension appears before host extension', () => {
+      expect(plugin.getLanguageId('file:///example.templ.md')).toBe('templjs-markdown');
+      expect(plugin.getLanguageId('file:///example.tmpl.json')).toBe('templjs-json');
+      expect(plugin.getLanguageId('file:///example.tpl.yaml')).toBe('templjs-yaml');
+      expect(plugin.getLanguageId('file:///example.templ.html')).toBe('templjs-html');
+    });
+  });
 
   describe('createVirtualCode', () => {
     it.each(languageCases)(
@@ -888,6 +897,37 @@ describe('LanguagePlugin', () => {
       expect(updated.languageId).toBe('markdown');
       expect(updated.snapshot).not.toBe(snapshot);
       expect(updated.snapshot.getLength()).toBeGreaterThan(0);
+    });
+
+    it('returns source unchanged in text-only mode when tokenizer throws', async () => {
+      vi.resetModules();
+      const actualCore = await vi.importActual<typeof import('@templjs/core')>('@templjs/core');
+      vi.doMock('@templjs/core', () => ({
+        ...actualCore,
+        tokenize: () => {
+          throw new Error('forced tokenize failure');
+        },
+      }));
+
+      try {
+        const module = await import('../src/index.js');
+        const source = '# Header\n{{ user.name }}';
+        const cleaned = module.cleanTemplateContent(source, undefined, { mode: 'text-only' });
+
+        expect(cleaned.cleaned).toBe(source);
+        expect(cleaned.originalToCleanedOffsets).toHaveLength(source.length + 1);
+      } finally {
+        vi.doUnmock('@templjs/core');
+        vi.resetModules();
+      }
+    });
+
+    it('supports trim-left tokens in text-only cleaning mode without throwing', () => {
+      const source = 'prefix   {%- if true %}X{% endif %}';
+      const cleaned = cleanTemplateContent(source, undefined, { mode: 'text-only' });
+
+      expect(cleaned.cleaned.length).toBeLessThanOrEqual(source.length);
+      expect(cleaned.originalToCleanedOffsets).toHaveLength(source.length + 1);
     });
 
     it('covers mapOriginalToCleaned fallback branches for empty and sparse offset tables', () => {
