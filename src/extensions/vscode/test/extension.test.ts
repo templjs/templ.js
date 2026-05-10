@@ -938,6 +938,12 @@ describe('extension-activation', () => {
     ).toBe(true);
     expect(
       helpers.isTempljsDocument({
+        uri: { scheme: 'file', fsPath: '/workspace/page.templ' },
+        languageId: 'plaintext',
+      } as never)
+    ).toBe(true);
+    expect(
+      helpers.isTempljsDocument({
         uri: { scheme: 'file', fsPath: '/workspace/page.tmpl' },
         languageId: 'plaintext',
       } as never)

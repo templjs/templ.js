@@ -1282,6 +1282,8 @@ export class IntellisenseProvider {
       }
       const variablePath = getVariablePathAtOffset(variableSegment, Math.max(0, relativeOffset));
       if (!variablePath) return null;
+      const cursorPrefix = variableSegment.slice(0, Math.max(0, relativeOffset + 1));
+      const cursorIsAliasToken = !/[.[]/.test(cursorPrefix);
 
       const localAlias = resolveLocalAliasReference(
         this.semanticReadAdapter,
@@ -1289,7 +1291,7 @@ export class IntellisenseProvider {
         variablePath,
         offset
       );
-      if (localAlias && options?.documentUri) {
+      if (localAlias && cursorIsAliasToken && options?.documentUri) {
         options?.debugLog?.(
           `[intellisense] definition source=local-alias variable=${variablePath} uri=${options.documentUri}`
         );
@@ -1386,6 +1388,8 @@ export class IntellisenseProvider {
     }
     const variablePath = getVariablePathAtOffset(variableSegment, Math.max(0, relativeOffset));
     if (!variablePath) return null;
+    const cursorPrefix = variableSegment.slice(0, Math.max(0, relativeOffset + 1));
+    const cursorIsAliasToken = !/[.[]/.test(cursorPrefix);
 
     const localAlias = resolveLocalAliasReference(
       this.semanticReadAdapter,
@@ -1393,7 +1397,7 @@ export class IntellisenseProvider {
       variablePath,
       offset
     );
-    if (localAlias && options?.documentUri) {
+    if (localAlias && cursorIsAliasToken && options?.documentUri) {
       options?.debugLog?.(
         `[intellisense] definition source=statement-local-alias variable=${variablePath} uri=${options.documentUri}`
       );
