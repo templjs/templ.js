@@ -58,10 +58,6 @@ Current rendering behavior preserves literal whitespace around statements and ex
 - [x] Parser and renderer test suites include explicit trim-control regression coverage.
 - [x] Documentation includes syntax reference and at least one end-to-end example per output format.
 
-## Blockers
-
-- WI-084 depends on [[work-item-062-authoritative-template-parsing-and-delimiter-parity]] and [[work-item-067-extract-authoritative-core-statement-and-expression-analysis]], which are currently `proposed`; lifecycle transition beyond `proposed` is deferred until dependency statuses are reconciled.
-
 ## References
 
 - [docs/prd/v1.0-requirements.md](../docs/prd/v1.0-requirements.md)
@@ -71,9 +67,3 @@ Current rendering behavior preserves literal whitespace around statements and ex
 - [src/extensions/vscode/test-fixtures](../src/extensions/vscode/test-fixtures)
 
 Tracking note: fixture adoption and follow-up compatibility validation completed on 2026-04-02.
-Lifecycle note: status remains `proposed` until dependencies [[work-item-062-authoritative-template-parsing-and-delimiter-parity]] and [[work-item-067-extract-authoritative-core-statement-and-expression-analysis]] advance.
-
-## Relationships
-
-- `depends_on`: [[work-item-062-authoritative-template-parsing-and-delimiter-parity]]
-- `depends_on`: [[work-item-067-extract-authoritative-core-statement-and-expression-analysis]]
