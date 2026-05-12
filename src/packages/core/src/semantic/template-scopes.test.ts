@@ -278,6 +278,14 @@ describe('extractTemplateBindings', () => {
     expect(active[1].name).toBe('item');
   });
 
+  it('treats scope end offsets as exclusive in active-binding lookups', () => {
+    const template = '{% for item in items %}{{ item.name }}{% endfor %}';
+    const bindings = extractTemplateBindings(template);
+    const binding = bindings[0];
+
+    expect(getTemplateBindingsAtOffset(bindings, binding.scopeEndOffset)).toEqual([]);
+  });
+
   it('does not surface malformed for-loop aliases from fallback statement shapes', () => {
     const template = [
       '{% for 1item in users %}{% endfor %}',

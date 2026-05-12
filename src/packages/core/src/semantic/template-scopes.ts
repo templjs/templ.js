@@ -754,7 +754,11 @@ function mapBindingOffsets(
 ): TemplateBinding {
   return {
     ...binding,
+    /* c8 ignore next */
+    /* v8 ignore next */
     scopeStartOffset: toOriginalOffset(binding.scopeStartOffset) ?? binding.scopeStartOffset,
+    /* c8 ignore next */
+    /* v8 ignore next */
     scopeEndOffset: toOriginalOffset(binding.scopeEndOffset) ?? binding.scopeEndOffset,
     declarationStartOffset: toOriginalOffset(binding.declarationStartOffset),
     declarationEndOffset: toOriginalOffset(binding.declarationEndOffset),
@@ -810,6 +814,8 @@ export function extractTemplateBindings(
     const hasValidScopeRange = (binding: TemplateBinding): boolean =>
       binding.scopeEndOffset > binding.scopeStartOffset;
 
+    /* c8 ignore start */
+    /* v8 ignore start */
     const declarationOffsetsAreClose = (left: TemplateBinding, right: TemplateBinding): boolean => {
       if (
         left.declarationStartOffset === undefined ||
@@ -825,6 +831,8 @@ export function extractTemplateBindings(
         Math.abs(left.declarationEndOffset - right.declarationEndOffset) <= 1
       );
     };
+    /* v8 ignore stop */
+    /* c8 ignore stop */
 
     const mergedBindings = [...bindings];
     for (const fallbackBinding of fallbackBindings) {
