@@ -224,7 +224,7 @@ describe('template-scopes helpers', () => {
     ]);
   });
 
-  it('preserves computed iterable expressions that include spaced indices', () => {
+  it('normalizes spaced computed iterable expressions to [0] indices', () => {
     const template = '{% for item in users[activeIndex + 1] %}{{ item }}{% endfor %}';
 
     expect(extractTemplateBindings(template)).toEqual([
@@ -232,7 +232,7 @@ describe('template-scopes helpers', () => {
     ]);
   });
 
-  it('preserves quoted iterable index segments that include spaces', () => {
+  it('normalizes quoted iterable index segments while retaining embedded spaces', () => {
     const template = '{% for item in users["full name"] %}{{ item }}{% endfor %}';
 
     expect(extractTemplateBindings(template)).toEqual([
