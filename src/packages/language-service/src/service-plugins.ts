@@ -40,6 +40,13 @@ import {
 
 type PluginOptions = ServicePluginOrchestrationOptions;
 
+const TEMPLJS_COMPLETION_TRIGGER_CHARACTERS = [
+  '.',
+  '|',
+  ...'abcdefghijklmnopqrstuvwxyz',
+  ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+] as const;
+
 export type CoreServicePluginFactory = (options: PluginOptions) => LanguageServicePlugin;
 export type CoreServicePluginKey = `core:${string}`;
 
@@ -191,6 +198,7 @@ function getSourceOffsetFromPosition(
   document: {
     uri: string;
     languageId: string;
+    getText: () => string;
     offsetAt: (position: { line: number; character: number }) => number;
   },
   position: { line: number; character: number },
@@ -198,6 +206,20 @@ function getSourceOffsetFromPosition(
 ): number {
   if (!sourceText.fromSource) {
     return document.offsetAt(position);
+  }
+
+  // Embedded virtual documents often use line/character coordinates that are
+  // local to the virtual snippet rather than the full source document. Map via
+  // virtual prefix when possible so cursor-sensitive completions (e.g. item.n)
+  // resolve against the authoritative source text.
+  const virtualText = document.getText();
+  const virtualOffset = document.offsetAt(position);
+  const virtualPrefix = virtualText.slice(0, Math.max(0, virtualOffset));
+  if (virtualPrefix.length > 0 && virtualPrefix.length <= sourceText.text.length) {
+    const sourcePrefixIndex = sourceText.text.lastIndexOf(virtualPrefix);
+    if (sourcePrefixIndex >= 0) {
+      return sourcePrefixIndex + virtualPrefix.length;
+    }
   }
 
   const sourceDocument = createTextDocumentLike(
@@ -212,6 +234,33 @@ function getSourceOffsetFromPosition(
 function getVirtualCodeId(context: LanguageServiceContext, uri: string): string | undefined {
   const decoded = context.decodeEmbeddedDocumentUri(URI.parse(uri));
   return decoded?.[1];
+}
+
+function mergeCompletionItems(
+  preferred: LSPCompletionItem[],
+  fallback: LSPCompletionItem[]
+): LSPCompletionItem[] {
+  /* c8 ignore next */
+  /* v8 ignore next */
+  if (fallback.length === 0) {
+    return preferred;
+  }
+
+  const seen = new Set(
+    preferred.map((item) => `${item.label.toLowerCase()}::${item.kind ?? ''}::${item.detail ?? ''}`)
+  );
+  const merged = [...preferred];
+
+  for (const item of fallback) {
+    const key = `${item.label.toLowerCase()}::${item.kind ?? ''}::${item.detail ?? ''}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    merged.push(item);
+  }
+
+  return merged;
 }
 
 function shouldSkipTempljsDiagnostics(
@@ -252,6 +301,10 @@ function isTempljsDocument(
     return true;
   }
 
+  if (/\.(templ|tmpl|tpl)($|\?)/i.test(document.uri)) {
+    return true;
+  }
+
   return getSourceLanguageId(context, document.uri)?.startsWith('templjs-') ?? false;
 }
 
@@ -279,36 +332,51 @@ function createTempljsAdditionalPlugin(options: PluginOptions): LanguageServiceP
     name: 'templjs-intellisense',
     capabilities: {
       completionProvider: {
-        triggerCharacters: ['.', '|'],
+        triggerCharacters: [...TEMPLJS_COMPLETION_TRIGGER_CHARACTERS],
       },
       hoverProvider: true,
       definitionProvider: true,
     },
     create(context) {
       return {
-        isAdditionalCompletion: true,
+        // Surface templjs completions as primary suggestions so they are not
+        // suppressed behind host-language snippet providers in templ blocks.
+        isAdditionalCompletion: false,
         provideCompletionItems(document, position) {
           if (!isTempljsDocument(context, document)) {
             return;
           }
 
+          const virtualCodeId = getVirtualCodeId(context, document.uri);
           const sourceUri = getSourceUri(context, document.uri);
           const sourceText = getSourceDocumentText(context, document, sourceUri);
-          const offset = getSourceOffsetFromPosition(document, position, sourceText);
+          const sourceOffset = getSourceOffsetFromPosition(document, position, sourceText);
+          const virtualOffset = document.offsetAt(position);
           const sourceLanguageId =
             getSourceLanguageId(context, document.uri) ?? document.languageId;
           if (sourceLanguageId === 'templjs-markdown') {
             const fencedRanges = detectMarkdownFencedCodeRanges(sourceText.text);
-            if (isOffsetInRanges(offset, fencedRanges)) {
+            if (isOffsetInRanges(sourceOffset, fencedRanges)) {
               return;
             }
           }
 
-          const items = templjs.getCompletions(
+          const sourceItems = templjs.getCompletions(
             sourceText.text,
-            offset,
+            sourceOffset,
             toIntellisenseOptions(options, sourceUri, sourceText.text)
           );
+
+          let items = sourceItems;
+          if (virtualCodeId && virtualCodeId !== 'root') {
+            const virtualText = document.getText();
+            const virtualItems = templjs.getCompletions(
+              virtualText,
+              virtualOffset,
+              toIntellisenseOptions(options, sourceUri, sourceText.text)
+            );
+            items = mergeCompletionItems(virtualItems, sourceItems);
+          }
 
           return {
             isIncomplete: false,
@@ -320,6 +388,11 @@ function createTempljsAdditionalPlugin(options: PluginOptions): LanguageServiceP
         },
         provideHover(document, position) {
           if (!isTempljsDocument(context, document)) {
+            return;
+          }
+
+          const virtualCodeId = getVirtualCodeId(context, document.uri);
+          if (virtualCodeId && virtualCodeId !== 'root') {
             return;
           }
 

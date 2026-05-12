@@ -89,6 +89,13 @@ type TraceMode = 'off' | 'messages' | 'verbose';
 
 let serverTraceMode: TraceMode = 'off';
 
+const TEMPLJS_COMPLETION_TRIGGER_CHARACTERS = [
+  '.',
+  '|',
+  ...'abcdefghijklmnopqrstuvwxyz',
+  ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+] as const;
+
 // Trace semantics used by trace(message, level):
 // - Default level is 'messages', so trace(...) emits when trace mode is not 'off'.
 // - 'messages' level always emits unless serverTraceMode is 'off'.
@@ -376,7 +383,7 @@ connection.onInitialize(async (params) => {
       ...(initialized?.capabilities ?? {}),
       textDocumentSync: 2,
       completionProvider: {
-        triggerCharacters: ['.', '|'],
+        triggerCharacters: [...TEMPLJS_COMPLETION_TRIGGER_CHARACTERS],
       },
       hoverProvider: true,
       definitionProvider: true,

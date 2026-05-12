@@ -116,7 +116,14 @@ describe('language-server-inprocess-authoring', () => {
     }>;
     const init = await initializeHandler({ rootUri: 'file:///workspace' });
 
-    expect(init.capabilities.completionProvider).toEqual({ triggerCharacters: ['.', '|'] });
+    expect(init.capabilities.completionProvider).toEqual({
+      triggerCharacters: [
+        '.',
+        '|',
+        ...'abcdefghijklmnopqrstuvwxyz',
+        ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+      ],
+    });
     expect(init.capabilities.hoverProvider).toBe(true);
     expect(init.capabilities.definitionProvider).toBe(true);
 
