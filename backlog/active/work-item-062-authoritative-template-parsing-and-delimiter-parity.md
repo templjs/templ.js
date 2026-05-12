@@ -54,7 +54,7 @@ This work item tracks the full refactor needed to make core authoritative, make 
 - [x] Replace `src/packages/volar/src/scope-resolution.ts` with a thin adapter over the core authority instead of raw-text regex parsing.
 - [x] Remove duplicated statement parsing heuristics from `src/packages/volar/src/diagnostic-provider.ts`.
 - [x] Remove duplicated statement parsing heuristics from `src/packages/volar/src/intellisense-provider.ts`.
-- [ ] Audit `src/extensions/vscode/src/server.ts` and keep it limited to configuration, transport, caching, and LSP payload mapping only.
+- [x] Audit `src/extensions/vscode/src/server.ts` and keep it limited to configuration, transport, caching, and LSP payload mapping only.
 - [ ] Document the allowed raw-text exceptions for non-semantic scanning such as TextMate grammar, delimiter validation, and virtual-code masking/range preservation.
 - [ ] Add comprehensive regression tests in core, Volar, and VS Code layers that demonstrate prior drift cases and prove parity for custom delimiters.
 - [ ] Keep the new `AGENTS.md` guardrails up to date with the final authoritative API names and test commands.
