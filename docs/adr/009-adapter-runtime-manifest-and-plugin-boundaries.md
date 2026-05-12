@@ -74,6 +74,13 @@ No language-specific policy or semantic logic should remain in extension-host or
 
 Treat host crash RCA as first-class blocking reliability work. Complete RCA and stabilization before broad adapter expansion.
 
+### 5. Syntax vs Semantics Layering Constraint
+
+- Grammar/parser implementations are the source of truth for syntax structure only.
+- Symbol introduction, scope lifetime, and name-resolution precedence must be expressed as declarative semantic mappings over parsed node kinds.
+- Imperative semantic code is reserved for runtime-dependent concerns that declarative rules cannot express directly (for example schema-derived symbol sets or source-map offset translation).
+- Local variable instances (scope bindings) and schema contract paths are distinct semantic concepts and must not be conflated.
+
 ## Consequences
 
 ### Positive

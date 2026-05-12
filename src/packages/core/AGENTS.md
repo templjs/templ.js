@@ -29,6 +29,13 @@ You are a developer working on the @templjs/core package.
 - **Types**: Export all AST node types from `src/types/`
 - **Performance**: Benchmark parser on 10KB+ templates
 
+## Parser and Binder Layering
+
+- Keep grammar/parser code focused on syntax facts (structure, precedence, nesting, and ranges).
+- Implement symbol introduction and scope resolution as declarative mapping over AST node kinds.
+- Use imperative binder hooks only for runtime-dependent behavior (schema-derived symbols, iterable coercion, mapping edge cases).
+- Do not model schema contract paths as local scope-binding instances; keep variable-instance bindings and schema references separate.
+
 ## Commands
 
 - Test: `cd src/packages/core && pnpm test`

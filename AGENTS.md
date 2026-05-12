@@ -31,6 +31,19 @@ If no specific `AGENTS.md` exists for your working context:
 7. Follow project conventions in `migration-plan.md` and relevant ADRs.
 8. Maintain work item frontmatter alignment with schemas in `schemas/frontmatter/`.
 
+## Syntax vs Semantics Rules
+
+Use this decision order for parser and binder changes:
+
+1. Grammar/parsing defines syntax truth only (token boundaries, node structure, precedence, nesting, recovery).
+2. Binding behavior is expressed as declarative mapping rules over parsed node kinds (what symbols are introduced, scope lifetime, shadowing, and resolution order).
+3. Imperative logic is allowed only when declarative rules cannot express runtime constraints (schema-derived symbol sets, iterable coercion, source-map/offset remapping).
+
+Keep namespaces explicit:
+
+- Local bindings are runtime variable instances and belong in scope-binding models.
+- Schema paths represent contract/type references and must not be modeled as scope-binding instances.
+
 ## Code Language & Module Format Expectation
 
 ### TypeScript ESM as Default

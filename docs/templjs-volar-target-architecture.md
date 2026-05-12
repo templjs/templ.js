@@ -85,6 +85,11 @@ vscode-templjs
 - Provides reusable parse and semantic APIs for CLI, Volar services, diagnostics,
   completion, hover, and definition.
 - Does not depend on Volar or VS Code packages.
+- Applies parser/binder layering rules:
+  - parser and grammar logic define syntax truth only
+  - binding behavior is defined declaratively from parsed node kinds
+  - imperative semantic hooks are used only for runtime-dependent behavior (schema-derived symbols, iterable coercion, and mapping edge cases)
+  - local variable bindings and schema contract references remain separate concepts
 
 `@templjs/context-graph`
 

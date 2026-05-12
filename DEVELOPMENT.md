@@ -279,6 +279,15 @@ test(lexer): add edge case for empty templates
    gh pr create --fill
    ```
 
+### Parser and Semantic-Binding Rule of Thumb
+
+When implementing language features:
+
+1. Keep parser logic responsible for syntax only (structure, precedence, nesting, and ranges).
+2. Express binding and scope behavior as declarative mappings from AST node kinds.
+3. Use imperative binder code only when runtime data is required (for example schema-derived symbol sets, iterable coercion, or host offset translation).
+4. Keep local variable bindings distinct from schema contract references.
+
 ### Adding a Built-In Function
 
 Example: Adding a `capitalize` filter function

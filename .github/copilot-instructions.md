@@ -40,6 +40,13 @@
 - Prefer deterministic token-based parsing over regex when validating template statement syntax. Tokenise the inner content once (`split(/\s+/)`, filter empties and whitespace-control markers such as `-`), then check token counts, positions, and keyword equality structurally.
 - Reserve regex only for single-token character-class checks (e.g. validating that an already-isolated token is a legal identifier). Never write a multi-token regex that spans an unbounded content string.
 
+## Semantic Binding Rules
+
+- Treat grammar as syntax truth only: token boundaries, statement structure, nesting, and expression shape.
+- Express binding semantics with declarative mapping rules keyed by grammar-derived node kinds (symbol introduction, scope lifetime, shadowing, and resolution precedence).
+- Use imperative binder logic only where rules depend on runtime data or complex predicates (for example schema-driven members, iterable coercion, or host-offset mapping).
+- Keep the term/type split explicit: local bindings are variable instances in scope; schema paths are contract references and must not be modeled as scope bindings.
+
 ## Security
 
 - No project-specific security conventions documented yet; avoid inventing patterns beyond the ADRs/PRD.
