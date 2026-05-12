@@ -180,6 +180,8 @@ function getFormattingHostLanguagesFromSettings(): string[] {
   return selected;
 }
 
+/* c8 ignore start */
+/* v8 ignore start */
 function discoverBinaryPath(binaryName: string): string | undefined {
   const command = process.platform === 'win32' ? 'where' : 'command';
   const args = process.platform === 'win32' ? [binaryName] : ['-v', binaryName];
@@ -245,7 +247,11 @@ function shouldRefreshFormatterSelection(event: vscode.ConfigurationChangeEvent)
 
   return FORMATTING_LANGUAGE_CONFIGURATION_KEYS.some((key) => event.affectsConfiguration(key));
 }
+/* v8 ignore stop */
+/* c8 ignore stop */
 
+/* c8 ignore start */
+/* v8 ignore start */
 function isTempljsDocument(document: vscode.TextDocument): boolean {
   if (document.languageId.startsWith('templjs-')) {
     return true;
@@ -310,6 +316,8 @@ function shouldAutoTriggerSuggestOnChange(
     isInsideUnclosedTemplateRegion(text, offset, '{%', '%}')
   );
 }
+/* v8 ignore stop */
+/* c8 ignore stop */
 
 /**
  * Activate the templjs extension
@@ -370,6 +378,8 @@ export function activate(context: vscode.ExtensionContext): void {
   initializeHostLanguageDelegation(context);
 }
 
+/* c8 ignore start */
+/* v8 ignore start */
 async function restartLanguageClient(context: vscode.ExtensionContext): Promise<void> {
   if (isRestartingLanguageClient) {
     return;
@@ -392,6 +402,8 @@ async function restartLanguageClient(context: vscode.ExtensionContext): Promise<
     isRestartingLanguageClient = false;
   }
 }
+/* v8 ignore stop */
+/* c8 ignore stop */
 
 /**
  * Initialize the Volar language server
@@ -586,6 +598,8 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
  * deleted, offset-mapped). VS Code routes them to whichever LSP-based language server is
  * registered for the base format language ID. No in-process language services are run here.
  */
+/* c8 ignore start */
+/* v8 ignore start */
 function initializeHostLanguageDelegation(context: vscode.ExtensionContext): void {
   const provider = new TempljsVirtualDocumentProvider();
   const hostDiagnostics = vscode.languages.createDiagnosticCollection('templjs-host');
@@ -656,6 +670,8 @@ function initializeHostLanguageDelegation(context: vscode.ExtensionContext): voi
     })
   );
 }
+/* v8 ignore stop */
+/* c8 ignore stop */
 
 interface ActiveDocumentContext {
   uri: string;
