@@ -28,6 +28,15 @@ You are editing source files under `src/packages/volar/src/`.
 - Add regression tests for both default delimiters and at least one custom delimiter configuration whenever syntax-aware behavior changes.
 - If a helper scans raw text, limit it to non-semantic tasks such as masking, offset preservation, or fast-path detection, and document that boundary in code.
 
+## Authoritative API and Raw-Text Exceptions
+
+- Authoritative semantic helpers for loop/statement scope come from `@templjs/core` APIs such as `extractTemplateBindings()` and `getTemplateBindingsAtOffset()`.
+- Allowed raw-text scanning exceptions are limited to non-semantic responsibilities:
+  - delimiter token validation and normalization preflight
+  - virtual-code masking and range/offset preservation
+  - TextMate grammar and syntax-highlighting plumbing
+- Disallowed raw-text scanning: regex or ad hoc parsers that infer alias scope, statement structure, or binding semantics from template source text.
+
 ## Boundaries
 
 - ✅ Always: reuse shared core syntax helpers for scope resolution and statement semantics.

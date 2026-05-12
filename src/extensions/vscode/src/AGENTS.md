@@ -32,6 +32,15 @@ Also follow:
 - If delimiter-related configuration is added here, pass it through to the authoritative Volar/core layers rather than interpreting template syntax locally.
 - Keep tests focused on forwarding, integration, and end-to-end behavior rather than duplicating provider unit logic.
 
+## Raw-Text Exception Contract
+
+- `server.ts` and nearby transport modules must not derive loop aliases, iterable paths, or statement semantics from raw template source.
+- Allowed raw-text operations are limited to transport concerns:
+  - request/response payload mapping
+  - URI/document routing
+  - caching and lifecycle state
+- Semantic authority remains in shared providers (core + Volar), including regressions for complex iterable headers.
+
 ## Boundaries
 
 - ✅ Always: keep server logic limited to request plumbing, configuration, caching, and LSP response shaping.
