@@ -220,4 +220,74 @@ describe('language-server-inprocess-authoring', () => {
 
     expect(languageService.getDocumentFormattingEdits).toHaveBeenCalledTimes(4);
   });
+
+  it('forwards complex for-header hover and definition requests without local semantic parsing', async () => {
+    const languageService = {
+      getCompletionItems: vi.fn(async () => ({ isIncomplete: false, items: [] })),
+      getHover: vi.fn(async () => ({
+        contents: { kind: 'markdown', value: 'member: local loop alias' },
+      })),
+      getDefinition: vi.fn(async () => [
+        {
+          targetUri: 'file:///workspace/template.md.tmpl',
+          targetRange: {
+            start: { line: 2, character: 8 },
+            end: { line: 2, character: 14 },
+          },
+          targetSelectionRange: {
+            start: { line: 2, character: 8 },
+            end: { line: 2, character: 14 },
+          },
+        },
+      ]),
+      getDocumentFormattingEdits: vi.fn(async () => []),
+    };
+    getLanguageService.mockResolvedValue(languageService);
+
+    await import('../src/server');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => Promise<{
+      capabilities: {
+        hoverProvider?: boolean;
+        definitionProvider?: boolean;
+      };
+    }>;
+    const init = await initializeHandler({ rootUri: 'file:///workspace' });
+    expect(init.capabilities.hoverProvider).toBe(true);
+    expect(init.capabilities.definitionProvider).toBe(true);
+
+    const hoverHandler = onHover.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      position: { line: number; character: number };
+    }) => Promise<{ contents: { kind: string; value: string } }>;
+    const definitionHandler = onDefinition.mock.calls[0][0] as (params: {
+      textDocument: { uri: string };
+      position: { line: number; character: number };
+    }) => Promise<Array<{ targetUri: string }>>;
+
+    const request = {
+      textDocument: { uri: 'file:///workspace/complex-loop.md.tmpl' },
+      position: { line: 3, character: 11 },
+    };
+
+    const hover = await hoverHandler(request);
+    const definition = await definitionHandler(request);
+
+    expect(hover.contents.value).toBe('member: local loop alias');
+    expect(definition[0]?.targetUri).toBe('file:///workspace/template.md.tmpl');
+
+    const hoverArgs = languageService.getHover.mock.calls[0];
+    expect(hoverArgs[0]).toMatchObject({
+      scheme: 'file',
+      path: '/workspace/complex-loop.md.tmpl',
+    });
+    expect(hoverArgs[1]).toEqual(request.position);
+
+    const definitionArgs = languageService.getDefinition.mock.calls[0];
+    expect(definitionArgs[0]).toMatchObject({
+      scheme: 'file',
+      path: '/workspace/complex-loop.md.tmpl',
+    });
+    expect(definitionArgs[1]).toEqual(request.position);
+  });
 });

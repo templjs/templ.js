@@ -224,6 +224,22 @@ describe('template-scopes helpers', () => {
     ]);
   });
 
+  it('normalizes spaced computed iterable expressions to [0] indices', () => {
+    const template = '{% for item in users[activeIndex + 1] %}{{ item }}{% endfor %}';
+
+    expect(extractTemplateBindings(template)).toEqual([
+      expect.objectContaining({ name: 'item', sourcePath: 'users[0]' }),
+    ]);
+  });
+
+  it('normalizes quoted iterable index segments while retaining embedded spaces', () => {
+    const template = '{% for item in users["full name"] %}{{ item }}{% endfor %}';
+
+    expect(extractTemplateBindings(template)).toEqual([
+      expect.objectContaining({ name: 'item', sourcePath: 'users[full name]' }),
+    ]);
+  });
+
   it('normalizes fallback iterable paths for quoted, numeric, and computed indexes', async () => {
     vi.resetModules();
     vi.doMock('../../src/lexer/lexer.js', () => ({

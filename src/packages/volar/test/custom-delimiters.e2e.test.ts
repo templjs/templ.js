@@ -114,4 +114,47 @@ describe('Custom Delimiters E2E', () => {
     expect(semanticTokens.some((token) => token.type === 'keyword')).toBe(true);
     expect(semanticTokens.some((token) => token.type === 'variable')).toBe(true);
   });
+
+  it('handles nested loop aliases and complex iterable expressions with custom delimiters', () => {
+    const provider = new IntellisenseProvider();
+    const nestedSchema = {
+      type: 'object',
+      properties: {
+        activeIndex: { type: 'number' },
+        groups: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              members: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const text = [
+      '<< for group in groups >>',
+      '<< for member in group.members[activeIndex + 1] >>',
+      '<: member.name :>',
+      '<< endfor >>',
+      '<< endfor >>',
+    ].join('\n');
+
+    const diagnostics = collectDiagnostics(text, { schema: nestedSchema, delimiters });
+    const undefinedDiagnostics = diagnostics.filter((d) => d.code === 'templjs.undefinedVariable');
+    expect(undefinedDiagnostics).toHaveLength(0);
+
+    const hoverOffset = text.indexOf('member.name') + 2;
+    const hover = provider.getHover(text, hoverOffset, { schema: nestedSchema, delimiters });
+    expect(hover?.contents).toBe('groups[0].members[0].name: string');
+  });
 });
