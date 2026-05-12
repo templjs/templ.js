@@ -199,6 +199,7 @@ console.log(ast.errors, dataResult.valid, pathResult.valid);
 - Run `pnpm test`, `pnpm lint`, and `pnpm build` before opening a PR
 - Follow Conventional Commits for commit messages
 - Document architectural changes in [[docs-adr]]
+- For parser and semantic-analysis changes: keep syntax decisions in parser/grammar logic, model binding behavior declaratively from node kinds, and reserve imperative binder code for runtime-dependent edge cases only
 
 ## License
 
