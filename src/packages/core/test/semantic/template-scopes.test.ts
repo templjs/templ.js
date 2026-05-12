@@ -701,6 +701,94 @@ describe('template-scopes helpers', () => {
     ]);
   });
 
+  it('falls back to undefined declaration offsets when set statement syntax cannot be parsed', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({
+        ast: {
+          type: 'template',
+          start: { line: 1, column: 0 },
+          end: { line: 1, column: 20 },
+          children: [
+            {
+              type: 'set',
+              name: 'local',
+              value: {
+                type: 'variable',
+                name: 'users',
+                path: [],
+                start: { line: 1, column: 0 },
+                end: { line: 1, column: 5 },
+              },
+              start: { line: 1, column: 0 },
+              end: { line: 1, column: 15 },
+            },
+          ],
+        },
+        errors: [],
+      }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    const bindings = module.extractTemplateBindings('{% set local users %}');
+
+    expect(bindings).toEqual([
+      expect.objectContaining({
+        kind: 'set-variable',
+        name: 'local',
+        declarationStartOffset: undefined,
+        declarationEndOffset: undefined,
+      }),
+    ]);
+  });
+
+  it('falls back to undefined set source expression when opening tags cannot be located', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({
+        ast: {
+          type: 'template',
+          start: { line: 1, column: 0 },
+          end: { line: 1, column: 1 },
+          children: [
+            {
+              type: 'set',
+              name: 'local',
+              value: {
+                type: 'literal',
+                valueType: 'number',
+                value: 1,
+                start: { line: 10, column: 0 },
+                end: { line: 10, column: 1 },
+              },
+              start: { line: 10, column: 0 },
+              end: { line: 10, column: 10 },
+            },
+          ],
+        },
+        errors: [],
+      }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    const bindings = module.extractTemplateBindings('x');
+
+    expect(bindings).toEqual([
+      expect.objectContaining({
+        kind: 'set-variable',
+        name: 'local',
+        sourcePath: undefined,
+        sourceExpression: undefined,
+      }),
+    ]);
+  });
+
   it('falls back to undefined set source expression when neither source text nor path can be derived', async () => {
     vi.resetModules();
     vi.doMock('../../src/lexer/lexer.js', () => ({

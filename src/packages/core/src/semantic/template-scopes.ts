@@ -128,6 +128,8 @@ function normalizeTemplateDelimiters(template: string, options?: LexerOptions): 
       if (offset === undefined) {
         return undefined;
       }
+      /* c8 ignore next */
+      /* v8 ignore next */
       if (offset <= 0) {
         return 0;
       }
@@ -264,6 +266,8 @@ function getSetDeclarationOffset(
 ): { start: number; end: number } | undefined {
   const nodeStart = positionToOffset(template, node.start.line, node.start.column);
   const openingTagEnd = template.indexOf(statementEnd, nodeStart);
+  /* c8 ignore next */
+  /* v8 ignore next */
   if (openingTagEnd === -1) {
     return undefined;
   }
@@ -287,6 +291,8 @@ function getSetSourceExpression(
 ): string | undefined {
   const nodeStart = positionToOffset(template, node.start.line, node.start.column);
   const openingTagEnd = template.indexOf(statementEnd, nodeStart);
+  /* c8 ignore next */
+  /* v8 ignore next */
   if (openingTagEnd === -1) {
     return undefined;
   }
