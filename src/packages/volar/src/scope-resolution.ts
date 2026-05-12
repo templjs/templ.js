@@ -7,6 +7,13 @@ import type { TemplateBinding, TemplateBindingKind } from '@templjs/core';
 export interface ForScope {
   alias: string;
   iterablePath: string;
+  /**
+   * Full iterable expression text from the parser-backed analysis.
+   * This is the authoritative source for the full expression (e.g.
+   * `users[activeIndex + 1]`), whereas `iterablePath` holds only the
+   * normalised dot-path root (e.g. `users`).
+   */
+  iterableExpression?: string;
   aliasStart?: number;
   aliasEnd?: number;
   bodyStart: number;
@@ -80,6 +87,7 @@ export function buildForScopesInText(
     .map((binding) => ({
       alias: binding.name,
       iterablePath: binding.sourcePath!,
+      iterableExpression: binding.sourceExpression,
       aliasStart: binding.declarationStartOffset,
       aliasEnd: binding.declarationEndOffset,
       bodyStart: binding.scopeStartOffset,

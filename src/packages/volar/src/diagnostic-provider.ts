@@ -487,11 +487,36 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
 
     if (tag === 'for') {
       const { statementContent, contentStartOffset } = parseStatementContent(block, delimiters);
-      const match = statementContent.match(/^for\s+[A-Za-z_][\w]*\s+in\s+([\s\S]+)$/);
+      // Use the core-backed ForScope data to avoid multi-token regex re-parsing.
+      // ForScope.iterableExpression is the authoritative expression extracted by
+      // parseFallbackForStatement in @templjs/core — handles complex iterables such
+      // as users[activeIndex + 1] and users["full name"] correctly.
+      const matchingScope = forScopes.find(
+        (s) => s.bodyStart >= block.start && s.bodyStart <= block.end + 1
+      );
+      const iterableExpression = matchingScope?.iterableExpression;
       const validator = getValidatorForOffset(block.start);
-      if (match && validator) {
-        const iterableExpression = match[1].trim();
-        const iterableStart = statementContent.indexOf(iterableExpression);
+      if (iterableExpression && validator) {
+        // Scan statementContent past exactly 3 tokens ('for', alias, 'in') to find
+        // where the iterable expression starts. Using a direct character walk avoids
+        // indexOf ambiguity when the alias name equals the iterable root
+        // (e.g. `for users in users`). Single-character comparisons only — no
+        // multi-token regex over unbounded content.
+        let cur = 0;
+        let tokensSkipped = 0;
+        while (tokensSkipped < 3 && cur < statementContent.length) {
+          // skip inter-token whitespace (including \n/\r) and standalone '-' markers
+          while (
+            cur < statementContent.length &&
+            (/\s/.test(statementContent[cur]!) || statementContent[cur] === '-')
+          )
+            cur++;
+          // skip one non-whitespace token
+          while (cur < statementContent.length && !/\s/.test(statementContent[cur]!)) cur++;
+          tokensSkipped++;
+        }
+        while (cur < statementContent.length && /\s/.test(statementContent[cur]!)) cur++;
+        const iterableStart = cur;
         const filterRefs = extractFilters(iterableExpression);
         for (const ref of extractVariableReferences(iterableExpression)) {
           const overlapsFilter = filterRefs.some(
