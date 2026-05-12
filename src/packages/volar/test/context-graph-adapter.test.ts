@@ -403,6 +403,24 @@ describe('ContextGraphSemanticReadAdapter.resolveLocalAliasDefinition', () => {
     expect(result).not.toBeNull();
   });
 
+  it('recovers unclosed for-loop aliases with trim markers when template has parse errors', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const text = [
+      '---',
+      'invalid: bar: [{% if %}foo {% endif %}]',
+      '---',
+      '{% set collection = ["a", "b"] %}',
+      '{% for x in collection -%}',
+      '{{ x }}',
+    ].join('\n');
+    const offset = text.indexOf('{{ x }}') + 3;
+
+    const result = adapter.resolveLocalAliasDefinition(text, 'x', offset);
+
+    expect(result).not.toBeNull();
+    expect(text.slice(result!.start, result!.end)).toBe('x');
+  });
+
   it('expands set-variable bindings without loop-style array coercion', () => {
     const adapter = createContextGraphSemanticReadAdapter();
     const text = '{% set foo = user %}{{ foo.name }}';

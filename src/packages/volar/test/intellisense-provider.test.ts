@@ -71,6 +71,23 @@ const nestedScopeSchema = {
   },
 };
 
+const titleItemsSchema = {
+  type: 'object',
+  properties: {
+    title: { type: 'string' },
+    description: { type: 'string' },
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+        },
+      },
+    },
+  },
+};
+
 describe('IntellisenseProvider', () => {
   const provider = new IntellisenseProvider();
 
@@ -240,6 +257,23 @@ describe('IntellisenseProvider', () => {
     expect(items.some((item) => item.label === 'item')).toBe(true);
   });
 
+  it('includes set variables and loop aliases in malformed-template expression completions', () => {
+    const text = [
+      '---',
+      'invalid: bar: [{% if %}foo {% endif %}]',
+      '---',
+      '{% set collection = ["a", "b", "c"] %}',
+      '{% for x in collection -%}',
+      '{{  }}',
+    ].join('\n');
+    const offset = text.indexOf('{{  }}') + 3;
+
+    const items = provider.getCompletions(text, offset, { schema: sampleSchema });
+
+    expect(items.some((item) => item.label === 'collection')).toBe(true);
+    expect(items.some((item) => item.label === 'x')).toBe(true);
+  });
+
   it('includes active for-loop alias in statement-expression completions', () => {
     const text = '{% for item in users %}{% if it %}{% endif %}{% endfor %}';
     const offset = text.lastIndexOf('it') + 'it'.length;
@@ -247,6 +281,76 @@ describe('IntellisenseProvider', () => {
     const items = provider.getCompletions(text, offset, { schema: sampleSchema });
 
     expect(items.some((item) => item.label === 'item')).toBe(true);
+  });
+
+  it('offers schema iterable completions in trim-marker for statements', () => {
+    const text = '{%- for x in i %}';
+    const offset = text.lastIndexOf('i') + 1;
+
+    const items = provider.getCompletions(text, offset, { schema: titleItemsSchema });
+
+    expect(items.some((item) => item.label === 'items')).toBe(true);
+  });
+
+  it('does not suggest set variables before their declaration', () => {
+    const text = ['{% for x in c %}', '{% set collection = ["a", "b"] %}'].join('\n');
+    const offset = text.indexOf('in c') + 'in c'.length;
+
+    const items = provider.getCompletions(text, offset, { schema: titleItemsSchema });
+
+    expect(items.some((item) => item.label === 'collection')).toBe(false);
+  });
+
+  it('suggests set variables after declaration in for iterable completions', () => {
+    const text = ['{% set collection = ["a", "b"] %}', '{% for x in c %}'].join('\n');
+    const offset = text.lastIndexOf('in c') + 'in c'.length;
+
+    const items = provider.getCompletions(text, offset, { schema: titleItemsSchema });
+
+    expect(items.some((item) => item.label === 'collection')).toBe(true);
+  });
+
+  it('offers schema properties for expression prefix completion', () => {
+    const text = '{{ ti }}';
+    const offset = text.indexOf('ti') + 'ti'.length;
+
+    const items = provider.getCompletions(text, offset, { schema: titleItemsSchema });
+
+    expect(items.some((item) => item.label === 'title')).toBe(true);
+  });
+
+  it('offers alias schema properties while typing an unclosed expression', () => {
+    const text = ['{% for item in items %}', '{{ item.n'].join('\n');
+    const offset = text.lastIndexOf('item.n') + 'item.n'.length;
+
+    const items = provider.getCompletions(text, offset, { schema: titleItemsSchema });
+
+    expect(items.some((item) => item.label === 'name')).toBe(true);
+  });
+
+  it('offers alias schema properties in malformed templates with leading trim-marker for loops', () => {
+    const text = [
+      '---',
+      '"$schema": "./example.schema.json",',
+      'invalid: bar: [{% if %}foo ]',
+      '---',
+      '{%- for item in items %}',
+      '{{ item.n',
+    ].join('\n');
+    const offset = text.lastIndexOf('item.n') + 'item.n'.length;
+
+    const items = provider.getCompletions(text, offset, { schema: titleItemsSchema });
+
+    expect(items.some((item) => item.label === 'name')).toBe(true);
+  });
+
+  it('falls back to schema child properties when alias property prefix has no direct match', () => {
+    const text = ['{% for item in items %}', '{{ item.hame }}', '{% endfor %}'].join('\n');
+    const offset = text.lastIndexOf('item.hame') + 'item.hame'.length;
+
+    const items = provider.getCompletions(text, offset, { schema: titleItemsSchema });
+
+    expect(items.some((item) => item.label === 'name')).toBe(true);
   });
 
   it('returns empty completions when schema missing', () => {
@@ -370,6 +474,17 @@ describe('IntellisenseProvider', () => {
     expect(hover?.contents).toBe('item: local loop alias');
   });
 
+  it('returns local variable hover info for statement iterable aliases', () => {
+    const text = '{% set collection = users %}{% for item in collection %}{{ item }}{% endfor %}';
+    const offset = text.indexOf('in collection') + 5;
+
+    const hover = provider.getHover(text, offset, {
+      schema: sampleSchema,
+    });
+
+    expect(hover?.contents).toBe('collection: local template variable');
+  });
+
   it('returns signature help for custom filters', () => {
     const help = provider.getSignatureHelp('{{ user.name | custom() }}', 22, {
       customFilters: [
@@ -475,6 +590,49 @@ describe('IntellisenseProvider', () => {
     });
 
     expect(items.some((item) => item.label === 'email')).toBe(true);
+  });
+
+  it('deduplicates completion items that share the same label, kind, and detail', () => {
+    const dedupeProvider = new IntellisenseProvider({
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [
+        { label: 'x', kind: 'variable', detail: 'local loop alias' },
+        { label: 'x', kind: 'variable', detail: 'local loop alias' },
+        { label: 'y', kind: 'variable', detail: 'string' },
+      ],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: (text, alias, offset) => {
+        if (alias !== 'x') {
+          return null;
+        }
+        const at = text.indexOf('{{ x }}');
+        if (offset < at || at === -1) {
+          return null;
+        }
+
+        const decl = text.indexOf('for x in');
+        return decl === -1
+          ? null
+          : {
+              start: decl + 'for '.length,
+              end: decl + 'for x'.length,
+            };
+      },
+    });
+
+    const text = '{% for x in users %}{{ x }}{% endfor %}';
+    const offset = text.indexOf('{{ x }}') + 3;
+    const completions = dedupeProvider.getCompletions(text, offset, {
+      schema: sampleSchema,
+    });
+
+    const xEntries = completions.filter(
+      (item) => item.label === 'x' && item.kind === 'variable' && item.detail === 'local loop alias'
+    );
+    expect(xEntries).toHaveLength(1);
   });
 
   it('returns definition in later expression after earlier closed expression', () => {

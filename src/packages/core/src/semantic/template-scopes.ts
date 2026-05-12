@@ -226,30 +226,18 @@ function getForDeclarationOffsets(
     return [];
   }
 
-  const openingTag = template.slice(nodeStart, openingTagEnd + statementEnd.length);
-  const match = openingTag.match(/\bfor\s+([A-Za-z_][\w]*)(?:\s*,\s*([A-Za-z_][\w]*))?\s+in\b/);
-  if (!match || typeof match.index !== 'number') {
+  const rawInnerStart = nodeStart + DEFAULT_DELIMITERS.statement_start.length;
+  const rawInner = template.slice(rawInnerStart, openingTagEnd);
+  const parsed = parseFallbackForStatement(rawInner);
+  if (!parsed) {
     return [];
   }
 
-  const names = [match[1], match[2]].filter((value): value is string => Boolean(value));
-  const results: Array<{ name: string; start: number; end: number }> = [];
-  let searchFrom = match.index;
-
-  for (const name of names) {
-    const start = openingTag.indexOf(name, searchFrom);
-    if (start === -1) {
-      continue;
-    }
-    results.push({
-      name,
-      start: nodeStart + start,
-      end: nodeStart + start + name.length,
-    });
-    searchFrom = start + name.length;
-  }
-
-  return results;
+  return parsed.names.map((nameInfo) => ({
+    name: nameInfo.name,
+    start: rawInnerStart + nameInfo.declarationStart,
+    end: rawInnerStart + nameInfo.declarationEnd,
+  }));
 }
 
 function getForSourceExpression(
@@ -262,12 +250,11 @@ function getForSourceExpression(
   if (openingTagEnd === -1) {
     return undefined;
   }
-  const rawInner = template
-    .slice(nodeStart, openingTagEnd + statementEnd.length)
-    .slice(DEFAULT_DELIMITERS.statement_start.length, -statementEnd.length)
-    .trim();
-  const match = rawInner.match(/^for\s+[A-Za-z_][\w]*(?:\s*,\s*[A-Za-z_][\w]*)?\s+in\s+([\s\S]+)$/);
-  return match?.[1]?.trim();
+  const rawInner = template.slice(
+    nodeStart + DEFAULT_DELIMITERS.statement_start.length,
+    openingTagEnd
+  );
+  return parseFallbackForStatement(rawInner)?.sourceExpression;
 }
 
 function getSetDeclarationOffset(
@@ -280,22 +267,16 @@ function getSetDeclarationOffset(
   if (openingTagEnd === -1) {
     return undefined;
   }
-  const rawInner = template
-    .slice(nodeStart, openingTagEnd + statementEnd.length)
-    .slice(DEFAULT_DELIMITERS.statement_start.length, -statementEnd.length)
-    .trim();
-  const match = rawInner.match(/^set\s+([A-Za-z_][\w]*)\s*=\s*[\s\S]+$/);
-  if (!match || typeof match.index !== 'number') {
+  const rawInnerStart = nodeStart + DEFAULT_DELIMITERS.statement_start.length;
+  const rawInner = template.slice(rawInnerStart, openingTagEnd);
+  const parsed = parseFallbackSetStatement(rawInner);
+  if (!parsed) {
     return undefined;
   }
-  const name = match[1];
-  const relativeStart = rawInner.indexOf(name, match.index);
-  if (relativeStart === -1) {
-    return undefined;
-  }
+
   return {
-    start: nodeStart + DEFAULT_DELIMITERS.statement_start.length + relativeStart,
-    end: nodeStart + DEFAULT_DELIMITERS.statement_start.length + relativeStart + name.length,
+    start: rawInnerStart + parsed.declarationStart,
+    end: rawInnerStart + parsed.declarationEnd,
   };
 }
 
@@ -309,12 +290,231 @@ function getSetSourceExpression(
   if (openingTagEnd === -1) {
     return undefined;
   }
-  const rawInner = template
-    .slice(nodeStart, openingTagEnd + statementEnd.length)
-    .slice(DEFAULT_DELIMITERS.statement_start.length, -statementEnd.length)
-    .trim();
-  const match = rawInner.match(/^set\s+[A-Za-z_][\w]*\s*=\s*([\s\S]+)$/);
-  return match?.[1]?.trim();
+  const rawInner = template.slice(
+    nodeStart + DEFAULT_DELIMITERS.statement_start.length,
+    openingTagEnd
+  );
+  return parseFallbackSetStatement(rawInner)?.sourceExpression;
+}
+
+function isWhitespaceChar(char: string | undefined): boolean {
+  return char === ' ' || char === '\t' || char === '\n' || char === '\r';
+}
+
+function isIdentifierStart(char: string | undefined): boolean {
+  if (!char) {
+    return false;
+  }
+  const code = char.charCodeAt(0);
+  return char === '_' || (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+}
+
+function isIdentifierPart(char: string | undefined): boolean {
+  if (!char) {
+    return false;
+  }
+  const code = char.charCodeAt(0);
+  return (
+    char === '_' ||
+    (code >= 65 && code <= 90) ||
+    (code >= 97 && code <= 122) ||
+    (code >= 48 && code <= 57)
+  );
+}
+
+function skipWhitespace(text: string, index: number): number {
+  let cursor = index;
+  while (cursor < text.length && isWhitespaceChar(text[cursor])) {
+    cursor += 1;
+  }
+  return cursor;
+}
+
+function trimStatementTrimMarker(value: string): string {
+  const trimmed = value.trimEnd();
+  if (trimmed.endsWith('-')) {
+    return trimmed.slice(0, -1).trimEnd();
+  }
+  return trimmed;
+}
+
+function stripLeadingStatementTrimMarker(rawContent: string): {
+  content: string;
+  offsetDelta: number;
+} {
+  const firstNonWhitespace = skipWhitespace(rawContent, 0);
+  if (rawContent[firstNonWhitespace] !== '-') {
+    return { content: rawContent, offsetDelta: 0 };
+  }
+
+  const afterMarker = skipWhitespace(rawContent, firstNonWhitespace + 1);
+  return {
+    content: rawContent.slice(afterMarker),
+    offsetDelta: afterMarker,
+  };
+}
+
+function parseLeadingIdentifier(
+  text: string,
+  startIndex: number
+): { value: string; start: number; end: number } | null {
+  const start = skipWhitespace(text, startIndex);
+  if (!isIdentifierStart(text[start])) {
+    return null;
+  }
+
+  let end = start + 1;
+  while (end < text.length && isIdentifierPart(text[end])) {
+    end += 1;
+  }
+
+  return {
+    value: text.slice(start, end),
+    start,
+    end,
+  };
+}
+
+function isKeywordAt(
+  text: string,
+  keyword: string,
+  index: number
+): { start: number; end: number } | null {
+  const start = skipWhitespace(text, index);
+  if (!text.startsWith(keyword, start)) {
+    return null;
+  }
+
+  const end = start + keyword.length;
+  const nextChar = text[end];
+  if (nextChar && !isWhitespaceChar(nextChar) && nextChar !== '=') {
+    return null;
+  }
+
+  return { start, end };
+}
+
+function parseFallbackForStatement(rawContent: string): {
+  names: Array<{
+    name: string;
+    kind: TemplateBindingKind;
+    declarationStart: number;
+    declarationEnd: number;
+  }>;
+  sourceExpression: string;
+} | null {
+  const normalized = stripLeadingStatementTrimMarker(rawContent);
+  const statementContent = normalized.content;
+
+  const forKeyword = isKeywordAt(statementContent, 'for', 0);
+  if (!forKeyword) {
+    return null;
+  }
+
+  const iterator = parseLeadingIdentifier(statementContent, forKeyword.end);
+  if (!iterator) {
+    return null;
+  }
+
+  const names: Array<{
+    name: string;
+    kind: TemplateBindingKind;
+    declarationStart: number;
+    declarationEnd: number;
+  }> = [
+    {
+      name: iterator.value,
+      kind: 'for-alias',
+      declarationStart: iterator.start + normalized.offsetDelta,
+      declarationEnd: iterator.end + normalized.offsetDelta,
+    },
+  ];
+
+  let cursor = skipWhitespace(statementContent, iterator.end);
+  if (statementContent[cursor] === ',') {
+    cursor += 1;
+    const valueIterator = parseLeadingIdentifier(statementContent, cursor);
+    if (!valueIterator) {
+      return null;
+    }
+
+    names.push({
+      name: valueIterator.value,
+      kind: 'for-value-alias',
+      declarationStart: valueIterator.start + normalized.offsetDelta,
+      declarationEnd: valueIterator.end + normalized.offsetDelta,
+    });
+
+    cursor = valueIterator.end;
+  }
+
+  const inKeyword = isKeywordAt(statementContent, 'in', cursor);
+  if (!inKeyword) {
+    return null;
+  }
+
+  const expressionStart = skipWhitespace(statementContent, inKeyword.end);
+  const sourceExpression = trimStatementTrimMarker(statementContent.slice(expressionStart));
+  if (!sourceExpression) {
+    return null;
+  }
+
+  return {
+    names,
+    sourceExpression,
+  };
+}
+
+function parseFallbackSetStatement(rawContent: string): {
+  name: string;
+  declarationStart: number;
+  declarationEnd: number;
+  sourceExpression: string;
+} | null {
+  const normalized = stripLeadingStatementTrimMarker(rawContent);
+  const statementContent = normalized.content;
+
+  const setKeyword = isKeywordAt(statementContent, 'set', 0);
+  if (!setKeyword) {
+    return null;
+  }
+
+  const name = parseLeadingIdentifier(statementContent, setKeyword.end);
+  if (!name) {
+    return null;
+  }
+
+  let cursor = skipWhitespace(statementContent, name.end);
+  if (statementContent[cursor] !== '=') {
+    return null;
+  }
+
+  cursor += 1;
+  const expressionStart = skipWhitespace(statementContent, cursor);
+  const sourceExpression = trimStatementTrimMarker(statementContent.slice(expressionStart));
+  if (!sourceExpression) {
+    return null;
+  }
+
+  return {
+    name: name.value,
+    declarationStart: name.start + normalized.offsetDelta,
+    declarationEnd: name.end + normalized.offsetDelta,
+    sourceExpression,
+  };
+}
+
+function isFallbackEndForStatement(rawContent: string): boolean {
+  const normalized = stripLeadingStatementTrimMarker(rawContent);
+  const statementContent = normalized.content;
+
+  const keyword = isKeywordAt(statementContent, 'endfor', 0);
+  if (!keyword) {
+    return false;
+  }
+
+  const remainder = statementContent.slice(keyword.end).trim();
+  return remainder.length === 0 || remainder === '-';
 }
 
 function collectBindingsFallback(template: string): TemplateBinding[] {
@@ -324,7 +524,7 @@ function collectBindingsFallback(template: string): TemplateBinding[] {
 
   type OpenLoop = {
     names: Array<{ name: string; kind: TemplateBindingKind }>;
-    sourcePath: string;
+    sourcePath?: string;
     sourceExpression: string;
     scopeStartOffset: number;
     declarationOffsets: Record<string, { start: number; end: number } | undefined>;
@@ -345,78 +545,61 @@ function collectBindingsFallback(template: string): TemplateBinding[] {
     }
 
     const contentStart = statementStart + startDelimiter.length;
-    const content = template.slice(contentStart, statementEnd).trim();
+    const rawContent = template.slice(contentStart, statementEnd);
+    const content = rawContent.trim();
 
-    const forMatch = content.match(
-      /^for\s+([A-Za-z_][\w]*)(?:\s*,\s*([A-Za-z_][\w]*))?\s+in\s+([\s\S]+)$/
-    );
-    if (forMatch) {
-      const sourceExpression = forMatch[3].trim();
+    const forStatement = parseFallbackForStatement(rawContent);
+    if (forStatement) {
+      const sourceExpression = forStatement.sourceExpression;
       const sourcePath = normalizePathFromExpression(sourceExpression);
 
-      if (sourcePath) {
-        const names: Array<{ name: string; kind: TemplateBindingKind }> = [
-          { name: forMatch[1], kind: 'for-alias' },
-        ];
-        if (forMatch[2]) {
-          names.push({ name: forMatch[2], kind: 'for-value-alias' });
-        }
-
-        const declarationOffsets: Record<string, { start: number; end: number } | undefined> = {};
-        let searchFrom = 0;
-        for (const nameInfo of names) {
-          const relativeIndex = content.indexOf(nameInfo.name, searchFrom);
-          if (relativeIndex >= 0) {
-            declarationOffsets[nameInfo.name] = {
-              start: contentStart + relativeIndex,
-              end: contentStart + relativeIndex + nameInfo.name.length,
-            };
-            searchFrom = relativeIndex + nameInfo.name.length;
-          } else {
-            declarationOffsets[nameInfo.name] = undefined;
-          }
-        }
-
-        stack.push({
-          names,
-          sourcePath,
-          sourceExpression,
-          scopeStartOffset: statementEnd + endDelimiter.length,
-          declarationOffsets,
-        });
+      const names = forStatement.names.map((nameInfo) => ({
+        name: nameInfo.name,
+        kind: nameInfo.kind,
+      }));
+      const declarationOffsets: Record<string, { start: number; end: number } | undefined> = {};
+      for (const nameInfo of forStatement.names) {
+        declarationOffsets[nameInfo.name] = {
+          start: contentStart + nameInfo.declarationStart,
+          end: contentStart + nameInfo.declarationEnd,
+        };
       }
 
-      cursor = statementEnd + endDelimiter.length;
-      continue;
-    }
-
-    const setMatch = content.match(/^set\s+([A-Za-z_][\w]*)\s*=\s+([\s\S]+)$/);
-    if (setMatch) {
-      const declarationStart = content.indexOf(setMatch[1]);
-      const declarationOffset =
-        declarationStart >= 0
-          ? {
-              start: contentStart + declarationStart,
-              end: contentStart + declarationStart + setMatch[1].length,
-            }
-          : undefined;
-
-      bindings.push({
-        kind: 'set-variable',
-        name: setMatch[1],
-        sourceExpression: setMatch[2].trim(),
-        sourcePath: normalizePathFromExpression(setMatch[2]) ?? undefined,
+      stack.push({
+        names,
+        sourcePath: sourcePath ?? undefined,
+        sourceExpression,
         scopeStartOffset: statementEnd + endDelimiter.length,
-        scopeEndOffset: template.length,
-        declarationStartOffset: declarationOffset?.start,
-        declarationEndOffset: declarationOffset?.end,
+        declarationOffsets,
       });
 
       cursor = statementEnd + endDelimiter.length;
       continue;
     }
 
-    if (/^endfor\b/.test(content)) {
+    const setStatement = parseFallbackSetStatement(rawContent);
+    if (setStatement) {
+      const declarationOffset = {
+        start: contentStart + setStatement.declarationStart,
+        end: contentStart + setStatement.declarationEnd,
+      };
+
+      bindings.push({
+        kind: 'set-variable',
+        name: setStatement.name,
+        sourceExpression: setStatement.sourceExpression,
+        sourcePath: normalizePathFromExpression(setStatement.sourceExpression) ?? undefined,
+        scopeStartOffset: statementEnd + endDelimiter.length,
+        scopeEndOffset: template.length,
+        declarationStartOffset: declarationOffset.start,
+        declarationEndOffset: declarationOffset.end,
+      });
+
+      cursor = statementEnd + endDelimiter.length;
+      continue;
+    }
+
+    if (isFallbackEndForStatement(content)) {
       const openLoop = stack.pop();
       if (openLoop) {
         for (const nameInfo of openLoop.names) {
@@ -597,16 +780,85 @@ export function extractTemplateBindings(
       collectBindings(normalized.text, ast, bindings, statementEnd, normalized.text.length);
     }
 
-    const recoveredBindings =
-      bindings.length === 0 && parseResult.errors.length > 0
-        ? collectBindingsFallback(normalized.text)
-        : bindings;
+    const fallbackBindings =
+      parseResult.errors.length > 0 ? collectBindingsFallback(normalized.text) : [];
 
-    if (recoveredBindings.length === 0) {
+    const bindingQuality = (binding: TemplateBinding): number => {
+      let score = 0;
+      if (binding.scopeEndOffset > binding.scopeStartOffset) {
+        score += 2;
+      }
+      if (binding.sourcePath) {
+        score += 1;
+      }
+      return score;
+    };
+
+    const rangesOverlap = (
+      leftStart: number,
+      leftEnd: number,
+      rightStart: number,
+      rightEnd: number
+    ): boolean => leftStart < rightEnd && rightStart < leftEnd;
+
+    const hasValidScopeRange = (binding: TemplateBinding): boolean =>
+      binding.scopeEndOffset > binding.scopeStartOffset;
+
+    const declarationOffsetsAreClose = (left: TemplateBinding, right: TemplateBinding): boolean => {
+      if (
+        left.declarationStartOffset === undefined ||
+        left.declarationEndOffset === undefined ||
+        right.declarationStartOffset === undefined ||
+        right.declarationEndOffset === undefined
+      ) {
+        return false;
+      }
+
+      return (
+        Math.abs(left.declarationStartOffset - right.declarationStartOffset) <= 1 &&
+        Math.abs(left.declarationEndOffset - right.declarationEndOffset) <= 1
+      );
+    };
+
+    const mergedBindings = [...bindings];
+    for (const fallbackBinding of fallbackBindings) {
+      const matchingIndex = mergedBindings.findIndex(
+        (existingBinding) =>
+          existingBinding.kind === fallbackBinding.kind &&
+          existingBinding.name === fallbackBinding.name &&
+          (rangesOverlap(
+            existingBinding.scopeStartOffset,
+            existingBinding.scopeEndOffset,
+            fallbackBinding.scopeStartOffset,
+            fallbackBinding.scopeEndOffset
+          ) ||
+            !hasValidScopeRange(existingBinding) ||
+            !hasValidScopeRange(fallbackBinding)) &&
+          declarationOffsetsAreClose(existingBinding, fallbackBinding)
+      );
+
+      if (matchingIndex === -1) {
+        mergedBindings.push(fallbackBinding);
+        continue;
+      }
+
+      const existingBinding = mergedBindings[matchingIndex];
+      const existingQuality = bindingQuality(existingBinding);
+      const fallbackQuality = bindingQuality(fallbackBinding);
+      if (
+        fallbackQuality > existingQuality ||
+        (fallbackQuality === existingQuality &&
+          fallbackBinding.scopeEndOffset > existingBinding.scopeEndOffset)
+      ) {
+        mergedBindings[matchingIndex] = fallbackBinding;
+      }
+    }
+
+    if (mergedBindings.length === 0) {
       return [];
     }
 
-    return recoveredBindings
+    return mergedBindings
       .map((binding) => mapBindingOffsets(binding, normalized.toOriginalOffset))
       .sort((left, right) => left.scopeStartOffset - right.scopeStartOffset);
   } catch {

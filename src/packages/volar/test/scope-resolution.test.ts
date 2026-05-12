@@ -62,6 +62,13 @@ describe('scope-resolution', () => {
     expect(resolveScopedPathInText(text, 'item.name', offset)).toBe('items[0].name');
   });
 
+  it('resolves alias paths while typing in an unclosed expression', () => {
+    const text = ['{% for item in items %}', '{{ item.n'].join('\n');
+    const offset = text.lastIndexOf('item.n') + 'item.n'.length - 1;
+
+    expect(resolveScopedPathInText(text, 'item.n', offset)).toBe('items[0].n');
+  });
+
   it('ignores for-loops that appear inside comment blocks', () => {
     const text = [
       '{# {% for ignored in ignoredItems %} #}',

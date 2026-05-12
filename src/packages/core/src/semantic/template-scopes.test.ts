@@ -55,6 +55,45 @@ describe('extractTemplateBindings', () => {
     expect(bindings[0].scopeEndOffset).toBeGreaterThanOrEqual(bindings[0].scopeStartOffset);
   });
 
+  it('recovers for-alias bindings with trim markers when template contains parse errors', () => {
+    const template = [
+      '---',
+      'invalid: bar: [{% if %}foo {% endif %}]',
+      '---',
+      '{% set collection = ["a", "b"] %}',
+      '{% for x in collection -%}',
+      '{{ x }}',
+    ].join('\n');
+
+    const bindings = extractTemplateBindings(template);
+
+    expect(bindings.some((binding) => binding.kind === 'for-alias' && binding.name === 'x')).toBe(
+      true
+    );
+    expect(
+      bindings.some((binding) => binding.kind === 'set-variable' && binding.name === 'collection')
+    ).toBe(true);
+  });
+
+  it('recovers for-alias bindings with leading trim markers in malformed templates', () => {
+    const template = [
+      '---',
+      'invalid: bar: [{% if %}foo {% endif %}]',
+      '---',
+      '{%- for item in items %}',
+      '{{ item.name }}',
+    ].join('\n');
+
+    const bindings = extractTemplateBindings(template);
+    const aliasBinding = bindings.find(
+      (binding) => binding.kind === 'for-alias' && binding.name === 'item'
+    );
+
+    expect(aliasBinding).toBeDefined();
+    expect(aliasBinding?.sourcePath).toBe('items');
+    expect(aliasBinding?.scopeEndOffset).toBe(template.length);
+  });
+
   it('recovers scope bindings when unrelated statement syntax is malformed', () => {
     const template = [
       'id: "{% set id = "yaml-block" %}{{ id }}"',

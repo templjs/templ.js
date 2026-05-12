@@ -13,6 +13,7 @@ import {
   buildForScopesInText,
   resolveScopedPath,
   resolveScopedPathInText as resolveScopedPathInTemplate,
+  getInScopeTemplateBindings,
 } from './scope-resolution.js';
 import {
   extractExpressionFilterReferences,
@@ -74,6 +75,15 @@ interface BlockMatch {
 interface BlockStackEntry {
   tag: string;
   start: number;
+  tagStart: number;
+  tagEnd: number;
+  /** False when the opening statement was syntactically invalid. */
+  syntacticallyValid: boolean;
+  /**
+   * Some invalid openers (notably `if`) should still emit unclosedStatement
+   * when their matching closing tag is missing.
+   */
+  reportUnclosedWhenInvalid: boolean;
 }
 
 interface VariableReference {
@@ -315,6 +325,24 @@ function isPathValidInContext(resolvedPath: string, validator: SchemaValidator):
 }
 
 /**
+ * Returns true if the root segment of `resolvedPath` matches a locally
+ * declared template binding (for-alias, set-variable, etc.) in scope at
+ * `offset`.  When true, schema validation should be skipped because the path
+ * points into a runtime-only variable that is not described by the schema.
+ */
+function isLocalTemplateBinding(
+  text: string,
+  resolvedPath: string,
+  offset: number,
+  delimiters?: Partial<TemplateDelimiters>
+): boolean {
+  const rootSegment = resolvedPath.split('.')[0];
+  const root = rootSegment.replace(/\[.*$/, '');
+  const bindings = getInScopeTemplateBindings(text, offset, delimiters);
+  return bindings.some((b) => b.name === root);
+}
+
+/**
  * Resolve a variable path through any active for-loop scopes in the given template text.
  * Useful in server-side handlers (e.g. go-to-definition) that need the canonical schema
  * path for an alias-based expression like `relationship.target`.
@@ -417,24 +445,43 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
 
     if (['if', 'for', 'block', 'while', 'switch', 'set', 'case', 'default'].includes(tag)) {
       const { statementContent, contentStartOffset } = parseStatementContent(block, delimiters);
+      const tagRelativeOffset = statementContent.search(/[A-Za-z_]/);
+      const tagStartOffset = contentStartOffset + (tagRelativeOffset >= 0 ? tagRelativeOffset : 0);
+      const tagEndOffset = tagStartOffset + tag.length;
       const syntaxValidation = validateStatementSyntax(tag, statementContent);
       if (!syntaxValidation.valid) {
         diagnostics.push({
           message: syntaxValidation.message ?? `Invalid ${tag} statement`,
-          range: createRangeFromOffsets(
-            mapper,
-            contentStartOffset,
-            contentStartOffset + tag.length
-          ),
+          range: createRangeFromOffsets(mapper, tagStartOffset, tagEndOffset),
           severity: DiagnosticSeverity.Error,
           code: 'templjs.invalidStatement',
           suggestion: syntaxValidation.suggestion,
         });
+        // Push block-opener tags even when syntactically invalid so that
+        // matching end-tags (endif, endfor, etc.) are still correctly paired
+        // and not falsely flagged as unexpected.
+        if (!['set', 'case', 'default'].includes(tag)) {
+          statementStack.push({
+            tag,
+            start: block.start,
+            tagStart: tagStartOffset,
+            tagEnd: tagEndOffset,
+            syntacticallyValid: false,
+            reportUnclosedWhenInvalid: tag === 'if',
+          });
+        }
         continue;
       }
 
       if (!['set', 'case', 'default'].includes(tag)) {
-        statementStack.push({ tag, start: block.start });
+        statementStack.push({
+          tag,
+          start: block.start,
+          tagStart: tagStartOffset,
+          tagEnd: tagEndOffset,
+          syntacticallyValid: true,
+          reportUnclosedWhenInvalid: false,
+        });
       }
     }
 
@@ -457,6 +504,9 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
           const scopedPath = resolveScopedPath(ref.path, block.start, forScopes);
           const result = validator.validateQueryPath(scopedPath);
           if (!result.valid) {
+            if (isLocalTemplateBinding(text, scopedPath, block.start, options?.delimiters)) {
+              continue;
+            }
             const offsetBase = contentStartOffset + (iterableStart >= 0 ? iterableStart : 0);
             diagnostics.push({
               message: `Variable "${ref.path}" not found in schema`,
@@ -478,6 +528,9 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
         for (const ref of extractVariableReferences(expressionPart)) {
           const scopedPath = resolveScopedPath(ref.path, block.start, forScopes);
           if (!isPathValidInContext(scopedPath, validator)) {
+            if (isLocalTemplateBinding(text, scopedPath, block.start, options?.delimiters)) {
+              continue;
+            }
             const result = validator.validateQueryPath(scopedPath);
             diagnostics.push({
               message: `Variable "${ref.path}" not found in schema`,
@@ -513,14 +566,13 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
   }
 
   for (const entry of statementStack) {
+    if (!entry.syntacticallyValid && !entry.reportUnclosedWhenInvalid) {
+      continue;
+    }
     const endTag = `end${entry.tag}`;
     diagnostics.push({
       message: `Missing closing tag: ${endTag}`,
-      range: createRangeFromOffsets(
-        mapper,
-        entry.start,
-        entry.start + delimiters.statementStart.length
-      ),
+      range: createRangeFromOffsets(mapper, entry.tagStart, entry.tagEnd),
       severity: DiagnosticSeverity.Error,
       code: 'templjs.unclosedStatement',
       suggestion: `Insert ${delimiters.statementStart} ${endTag} ${delimiters.statementEnd}`,
@@ -584,6 +636,9 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
       for (const ref of extractVariableReferences(content)) {
         const scopedPath = resolveScopedPath(ref.path, block.start, forScopes);
         if (!isPathValidInContext(scopedPath, validator)) {
+          if (isLocalTemplateBinding(text, scopedPath, block.start, options?.delimiters)) {
+            continue;
+          }
           const result = validator.validateQueryPath(scopedPath);
           diagnostics.push({
             message: `Variable "${ref.path}" not found in schema`,

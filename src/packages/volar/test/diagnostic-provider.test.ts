@@ -140,11 +140,54 @@ describe('DiagnosticProvider', () => {
     });
 
     expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
+    expect(diagnostics.some((diag) => diag.code === 'templjs.unclosedStatement')).toBe(true);
+  });
+
+  it('does not flag local set/loop variables as undefined in malformed templates', () => {
+    const text = [
+      '---',
+      '"$schema": "./example.schema.json",',
+      'invalid: bar: [{% if %}foo {% endif %}]',
+      '---',
+      '# Title',
+      '{% set collection = ["a", "b"] %}',
+      '{% for x in collection -%}',
+      '{{ x }}',
+    ].join('\n');
+
+    const diagnostics = collectDiagnostics(text, { schema: sampleSchema });
+
+    expect(
+      diagnostics.some(
+        (diag) =>
+          diag.code === 'templjs.undefinedVariable' &&
+          diag.message.includes('"collection" not found in schema')
+      )
+    ).toBe(false);
+    expect(
+      diagnostics.some(
+        (diag) =>
+          diag.code === 'templjs.undefinedVariable' &&
+          diag.message.includes('"x" not found in schema')
+      )
+    ).toBe(false);
+    expect(diagnostics.some((diag) => diag.code === 'templjs.unexpectedClosing')).toBe(false);
   });
 
   it('reports invalid if statement with whitespace-control marker', () => {
     const diagnostics = collectDiagnostics('{%- if -%}', { schema: sampleSchema });
     expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
+  });
+
+  it('anchors invalid for-statement range to for keyword with trim markers', () => {
+    const diagnostics = collectDiagnostics('{%- for x in -%}', {
+      schema: sampleSchema,
+    });
+
+    const invalidFor = diagnostics.find((diag) => diag.code === 'templjs.invalidStatement');
+    expect(invalidFor).toBeDefined();
+    expect(invalidFor?.range.start.line).toBe(0);
+    expect(invalidFor?.range.start.character).toBe(4);
   });
 
   it('reports invalid while statements', () => {
@@ -448,6 +491,19 @@ describe('DiagnosticProvider', () => {
     const codes = diagnostics.map((diag) => diag.code);
     expect(codes).toContain('templjs.unclosedStatement');
     expect(codes).toContain('templjs.undefinedVariable');
+  });
+
+  it('anchors missing endfor range to for keyword with trim markers', () => {
+    const diagnostics = collectDiagnostics('{%- for item in users -%}\n{{ item }}', {
+      schema: sampleSchema,
+    });
+
+    const missingEndfor = diagnostics.find(
+      (diag) => diag.code === 'templjs.unclosedStatement' && diag.message.includes('endfor')
+    );
+    expect(missingEndfor).toBeDefined();
+    expect(missingEndfor?.range.start.line).toBe(0);
+    expect(missingEndfor?.range.start.character).toBe(4);
   });
 
   it('handles multiple expressions in one line', () => {
