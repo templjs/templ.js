@@ -606,6 +606,48 @@ describe('language-service service-plugins coverage branches', () => {
     );
   });
 
+  it('passes through diagnostics unchanged when language id does not match remap source', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+    const provideDiagnostics = vi.fn(async (document) => [document.languageId]);
+    const remapped = servicePluginTesting.withLanguageIdRemap(
+      {
+        name: 'test-remap-non-match',
+        create: () => ({ provideDiagnostics }),
+      } as never,
+      'templjs-yaml',
+      'yaml'
+    );
+
+    const instance = remapped.create({} as never);
+    const result = await instance.provideDiagnostics?.(
+      servicePluginTesting.createTextDocumentLike('file:///doc.yaml.templ', 'yaml', 'a: 1'),
+      {} as never
+    );
+
+    expect(result).toEqual(['yaml']);
+    expect(provideDiagnostics).toHaveBeenCalledWith(
+      expect.objectContaining({ languageId: 'yaml' }),
+      expect.anything()
+    );
+  });
+
+  it('returns the plugin instance unchanged when diagnostics are not provided', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+    const createOnly = vi.fn(() => ({ provideHover: vi.fn() }));
+    const remapped = servicePluginTesting.withLanguageIdRemap(
+      {
+        name: 'test-remap-no-diag',
+        create: createOnly,
+      } as never,
+      'templjs-yaml',
+      'yaml'
+    );
+
+    const instance = remapped.create({} as never);
+    expect(instance.provideDiagnostics).toBeUndefined();
+    expect(typeof instance.provideHover).toBe('function');
+  });
+
   it('creates markdown host adapter with diagnostics capability', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
 
@@ -720,5 +762,30 @@ describe('language-service service-plugins coverage branches', () => {
     } finally {
       rmSync(workspace, { recursive: true, force: true });
     }
+  });
+
+  it('supports core service plugin registry lifecycle operations', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+    const key = 'core:test-plugin' as const;
+    const factory = vi.fn(() => ({
+      name: 'test-core-plugin',
+      capabilities: {},
+      create: () => ({}),
+    }));
+
+    expect(servicePluginTesting.listCoreServicePluginKeys()).not.toContain(key);
+    servicePluginTesting.registerCoreServicePlugin(key, factory);
+
+    try {
+      expect(servicePluginTesting.listCoreServicePluginKeys()).toContain(key);
+      const pluginNames = servicePluginTesting
+        .listCoreServicePluginFactories()
+        .map((entry) => entry({} as never).name);
+      expect(pluginNames).toContain('test-core-plugin');
+    } finally {
+      expect(servicePluginTesting.unregisterCoreServicePlugin(key)).toBe(true);
+    }
+
+    expect(servicePluginTesting.listCoreServicePluginKeys()).not.toContain(key);
   });
 });

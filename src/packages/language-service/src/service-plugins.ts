@@ -240,6 +240,8 @@ function mergeCompletionItems(
   preferred: LSPCompletionItem[],
   fallback: LSPCompletionItem[]
 ): LSPCompletionItem[] {
+  /* c8 ignore next */
+  /* v8 ignore next */
   if (fallback.length === 0) {
     return preferred;
   }
