@@ -112,5 +112,4 @@ Treat host crash RCA as first-class blocking reliability work. Complete RCA and 
 
 - [docs/adr/003-vscode-architecture.md](docs/adr/003-vscode-architecture.md)
 - [docs/adr/007-syntax-extensibility.md](docs/adr/007-syntax-extensibility.md)
-- [docs/adr/010-semantic-layer-formalization.md](docs/adr/010-semantic-layer-formalization.md)
 - [backlog/active/work-item-105-tokenizer-error-tolerance-and-regex-fallback-elimination.md](backlog/active/work-item-105-tokenizer-error-tolerance-and-regex-fallback-elimination.md)
