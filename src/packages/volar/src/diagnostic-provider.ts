@@ -497,28 +497,37 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
       const iterableExpression = matchingScope?.iterableExpression;
       const validator = getValidatorForOffset(block.start);
       if (iterableExpression && validator) {
-        // Derive iterableStart from the alias boundary when available so the offset
-        // remains correct even when the iterable expression text also appears earlier
-        // in the header (e.g. `for users in users`).
-        let iterableStart: number;
-        if (matchingScope?.aliasEnd !== undefined) {
-          const relAliasEnd = matchingScope.aliasEnd - contentStartOffset;
-          let cur = relAliasEnd;
+        // Scan statementContent past exactly 3 tokens ('for', alias, 'in') to find
+        // where the iterable expression starts. Using a direct character walk avoids
+        // indexOf ambiguity when the alias name equals the iterable root
+        // (e.g. `for users in users`). Single-character comparisons only — no
+        // multi-token regex over unbounded content.
+        let cur = 0;
+        let tokensSkipped = 0;
+        while (tokensSkipped < 3 && cur < statementContent.length) {
+          // skip inter-token whitespace and standalone '-' whitespace-control markers
           while (
             cur < statementContent.length &&
-            (statementContent[cur] === ' ' || statementContent[cur] === '\t')
+            (statementContent[cur] === ' ' ||
+              statementContent[cur] === '\t' ||
+              statementContent[cur] === '-')
           )
             cur++;
-          if (statementContent.slice(cur, cur + 2) === 'in') cur += 2;
+          // skip one non-whitespace token
           while (
             cur < statementContent.length &&
-            (statementContent[cur] === ' ' || statementContent[cur] === '\t')
+            statementContent[cur] !== ' ' &&
+            statementContent[cur] !== '\t'
           )
             cur++;
-          iterableStart = cur;
-        } else {
-          iterableStart = statementContent.indexOf(iterableExpression);
+          tokensSkipped++;
         }
+        while (
+          cur < statementContent.length &&
+          (statementContent[cur] === ' ' || statementContent[cur] === '\t')
+        )
+          cur++;
+        const iterableStart = cur;
         const filterRefs = extractFilters(iterableExpression);
         for (const ref of extractVariableReferences(iterableExpression)) {
           const overlapsFilter = filterRefs.some(
