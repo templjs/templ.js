@@ -50,6 +50,22 @@ describe('expression-references', () => {
     ]);
   });
 
+  it('tracks quoted string-index references that include colons', () => {
+    const expression = 'user["a:b"] && user["a:b"]';
+    const refs = extractExpressionVariableReferences(expression);
+
+    const token = 'user["a:b"]';
+    const secondStart = token.length + ' && '.length;
+    expect(refs).toEqual([
+      { path: 'user[a:b]', start: 0, end: token.length },
+      {
+        path: 'user[a:b]',
+        start: secondStart,
+        end: secondStart + token.length,
+      },
+    ]);
+  });
+
   it('does not match variable-like paths inside string literals', () => {
     const refs = extractExpressionVariableReferences('"user.name" == user.name');
 
@@ -65,5 +81,39 @@ describe('expression-references', () => {
   it('returns empty references when the expression cannot be parsed', () => {
     expect(extractExpressionVariableReferences('user.')).toEqual([]);
     expect(extractExpressionFilterReferences('user.name |')).toEqual([]);
+  });
+
+  it('matches numeric bracket index references', () => {
+    const refs = extractExpressionVariableReferences('users[0].id');
+
+    expect(refs).toEqual([
+      {
+        path: 'users[0].id',
+        start: 0,
+        end: 'users[0].id'.length,
+      },
+    ]);
+  });
+
+  it('ignores filters and variables inside escaped and single-quoted string literals', () => {
+    const expression = String.raw`"\"user.name\" | lower" == 'user.name | lower' || user.name | lower`;
+
+    const varRefs = extractExpressionVariableReferences(expression);
+    const filterRefs = extractExpressionFilterReferences(expression);
+
+    expect(varRefs).toEqual([
+      {
+        path: 'user.name',
+        start: expression.lastIndexOf('user.name'),
+        end: expression.lastIndexOf('user.name') + 'user.name'.length,
+      },
+    ]);
+    expect(filterRefs).toEqual([
+      {
+        name: 'lower',
+        start: expression.lastIndexOf('lower'),
+        end: expression.lastIndexOf('lower') + 'lower'.length,
+      },
+    ]);
   });
 });
