@@ -788,4 +788,28 @@ describe('language-service service-plugins coverage branches', () => {
 
     expect(servicePluginTesting.listCoreServicePluginKeys()).not.toContain(key);
   });
+
+  it('skips hover resolution for non-root virtual codes in templjs additional plugin', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+    const plugin = servicePluginTesting.createTempljsAdditionalPlugin({} as never);
+    const instance = plugin.create({
+      decodeEmbeddedDocumentUri: () => [URI.parse('file:///source.templ'), 'embedded'],
+      language: {
+        scripts: {
+          get: () => undefined,
+        },
+      },
+    } as never);
+
+    const hover = instance.provideHover?.(
+      servicePluginTesting.createTextDocumentLike(
+        'file:///source.templ',
+        'templjs-markdown',
+        '{{ value }}'
+      ),
+      { line: 0, character: 3 }
+    );
+
+    expect(hover).toBeUndefined();
+  });
 });
