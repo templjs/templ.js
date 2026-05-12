@@ -131,5 +131,6 @@ Public APIs in `@templjs/context-graph` must follow these rules:
 
 - [docs/adr/003-vscode-architecture.md](docs/adr/003-vscode-architecture.md)
 - [docs/adr/006-testing.md](docs/adr/006-testing.md)
+- [docs/adr/010-semantic-layer-formalization.md](docs/adr/010-semantic-layer-formalization.md)
 - [migration-plan.md](../../migration-plan.md)
 - [backlog/047_template_extraction.md](backlog/047_template_extraction.md)
