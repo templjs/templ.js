@@ -1253,15 +1253,15 @@ describe('IntellisenseProvider', () => {
       const schema = {
         type: 'object',
         properties: {
-          items: {
+          users: {
             type: 'array',
-            items: { type: 'object', properties: { value: { type: 'number' } } },
+            items: { type: 'object', properties: { name: { type: 'string' } } },
           },
-          filters: { type: 'object', properties: { active: { type: 'boolean' } } },
+          activeIndex: { type: 'number' },
         },
       };
-      const text = '{% for item in items %}{{ item| }}{% endfor %}';
-      const cursor = text.indexOf('item|') + 4;
+      const text = '{% for user in users[activeIndex] %}{{ user| }}{% endfor %}';
+      const cursor = text.indexOf('user|') + 4;
 
       const hover = provider.getHover(text, cursor, { schema: schema as object });
       // Should successfully resolve the alias to its array-item schema
