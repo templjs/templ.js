@@ -754,10 +754,10 @@ function getExpressionCompletionsAtOffset(
  */
 interface ForHeaderParsed {
   aliasName: string;
-  aliasStart: number; // byte offset inside statementContent
+  aliasStart: number; // character offset (JS string index) inside statementContent
   aliasEnd: number;
   iterableExpression: string;
-  iterableStart: number; // byte offset inside statementContent
+  iterableStart: number; // character offset (JS string index) inside statementContent
 }
 
 function parseForHeader(statementContent: string): ForHeaderParsed | null {
@@ -765,10 +765,11 @@ function parseForHeader(statementContent: string): ForHeaderParsed | null {
   const content = statementContent.replace(/^\s*-\s*/, '').trimStart();
   const tokens = content.split(/\s+/).filter((t) => t.length > 0 && t !== '-');
 
-  // Structural check: [for, alias, in, ...expression] — minimum 4 tokens.
+  // Structural check: minimum 3 tokens [for, alias, in]; expression may be empty
+  // (partial header like `for item in` still drives root-level completions).
   // Single-token identifier regex is explicitly allowed by project guidelines.
   if (
-    tokens.length < 4 ||
+    tokens.length < 3 ||
     tokens[0] !== 'for' ||
     !/^[A-Za-z_]\w*$/.test(tokens[1] ?? '') ||
     tokens[2] !== 'in'
@@ -776,7 +777,7 @@ function parseForHeader(statementContent: string): ForHeaderParsed | null {
     return null;
   }
 
-  const aliasName = tokens[1];
+  const aliasName = tokens[1]!;
 
   // Walk the ORIGINAL statementContent (not `content`) so returned offsets are
   // relative to the caller's view of the string.
@@ -786,52 +787,32 @@ function parseForHeader(statementContent: string): ForHeaderParsed | null {
   const wsCtrlMatch = statementContent.match(/^\s*-\s*/);
   if (wsCtrlMatch) cursor = wsCtrlMatch[0].length;
 
-  // Skip leading whitespace.
-  while (cursor < statementContent.length && statementContent[cursor] === ' ') cursor++;
+  // Skip leading whitespace (\s-aware to handle \n/\r in multiline headers).
+  while (cursor < statementContent.length && /\s/.test(statementContent[cursor]!)) cursor++;
 
   // Skip "for" keyword.
-  while (
-    cursor < statementContent.length &&
-    statementContent[cursor] !== ' ' &&
-    statementContent[cursor] !== '\t'
-  )
-    cursor++;
+  while (cursor < statementContent.length && !/\s/.test(statementContent[cursor]!)) cursor++;
   // Skip whitespace.
-  while (
-    cursor < statementContent.length &&
-    (statementContent[cursor] === ' ' || statementContent[cursor] === '\t')
-  )
-    cursor++;
+  while (cursor < statementContent.length && /\s/.test(statementContent[cursor]!)) cursor++;
 
   // Alias starts here.
   const aliasStart = cursor;
-  while (cursor < statementContent.length && /\w/.test(statementContent[cursor])) cursor++;
+  while (cursor < statementContent.length && /\w/.test(statementContent[cursor]!)) cursor++;
   const aliasEnd = cursor;
 
   // Skip whitespace before "in".
-  while (
-    cursor < statementContent.length &&
-    (statementContent[cursor] === ' ' || statementContent[cursor] === '\t')
-  )
-    cursor++;
+  while (cursor < statementContent.length && /\s/.test(statementContent[cursor]!)) cursor++;
 
   // Skip "in" keyword.
-  while (
-    cursor < statementContent.length &&
-    statementContent[cursor] !== ' ' &&
-    statementContent[cursor] !== '\t'
-  )
-    cursor++;
+  while (cursor < statementContent.length && !/\s/.test(statementContent[cursor]!)) cursor++;
 
   // Skip whitespace before expression.
-  while (
-    cursor < statementContent.length &&
-    (statementContent[cursor] === ' ' || statementContent[cursor] === '\t')
-  )
-    cursor++;
+  while (cursor < statementContent.length && /\s/.test(statementContent[cursor]!)) cursor++;
 
   const iterableStart = cursor;
-  const iterableExpression = statementContent.slice(iterableStart);
+  // Trim any trailing whitespace-control marker (-) from the expression
+  // (e.g. `{%- for item in users -%}` leaves a trailing ` -` in statementContent).
+  const iterableExpression = statementContent.slice(iterableStart).replace(/\s*-\s*$/, '');
 
   return { aliasName, aliasStart, aliasEnd, iterableExpression, iterableStart };
 }

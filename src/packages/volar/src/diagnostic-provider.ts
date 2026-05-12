@@ -505,28 +505,17 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
         let cur = 0;
         let tokensSkipped = 0;
         while (tokensSkipped < 3 && cur < statementContent.length) {
-          // skip inter-token whitespace and standalone '-' whitespace-control markers
+          // skip inter-token whitespace (including \n/\r) and standalone '-' markers
           while (
             cur < statementContent.length &&
-            (statementContent[cur] === ' ' ||
-              statementContent[cur] === '\t' ||
-              statementContent[cur] === '-')
+            (/\s/.test(statementContent[cur]!) || statementContent[cur] === '-')
           )
             cur++;
           // skip one non-whitespace token
-          while (
-            cur < statementContent.length &&
-            statementContent[cur] !== ' ' &&
-            statementContent[cur] !== '\t'
-          )
-            cur++;
+          while (cur < statementContent.length && !/\s/.test(statementContent[cur]!)) cur++;
           tokensSkipped++;
         }
-        while (
-          cur < statementContent.length &&
-          (statementContent[cur] === ' ' || statementContent[cur] === '\t')
-        )
-          cur++;
+        while (cur < statementContent.length && /\s/.test(statementContent[cur]!)) cur++;
         const iterableStart = cur;
         const filterRefs = extractFilters(iterableExpression);
         for (const ref of extractVariableReferences(iterableExpression)) {
