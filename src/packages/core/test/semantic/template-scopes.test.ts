@@ -276,7 +276,7 @@ describe('template-scopes helpers', () => {
     expect(module.extractTemplateBindings('{% for item in users %}{% endfor %}')).toEqual([]);
   });
 
-  it('skips recovered fallback loops when the iterable expression is blank or not path-like', async () => {
+  it('retains recovered fallback loops with source expressions even when path normalization fails', async () => {
     vi.resetModules();
     vi.doMock('../../src/lexer/lexer.js', () => ({
       tokenize: (value: string) => value,
@@ -286,8 +286,20 @@ describe('template-scopes helpers', () => {
     }));
 
     const module = await import('../../src/semantic/template-scopes.js');
-    expect(module.extractTemplateBindings('{% for item in   | reverse %}{% endfor %}')).toEqual([]);
-    expect(module.extractTemplateBindings('{% for item in +1 %}{% endfor %}')).toEqual([]);
+    expect(module.extractTemplateBindings('{% for item in   | reverse %}{% endfor %}')).toEqual([
+      expect.objectContaining({
+        name: 'item',
+        sourcePath: undefined,
+        sourceExpression: '| reverse',
+      }),
+    ]);
+    expect(module.extractTemplateBindings('{% for item in +1 %}{% endfor %}')).toEqual([
+      expect.objectContaining({
+        name: 'item',
+        sourcePath: undefined,
+        sourceExpression: '+1',
+      }),
+    ]);
   });
 
   it('handles declaration extraction fallback when opening tags cannot be matched', async () => {
@@ -465,8 +477,8 @@ describe('template-scopes helpers', () => {
     }
 
     expect(bindings).toHaveLength(1);
-    expect(bindings[0].declarationStartOffset).toBeUndefined();
-    expect(bindings[0].declarationEndOffset).toBeUndefined();
+    expect(bindings[0].declarationStartOffset).toBe(7);
+    expect(bindings[0].declarationEndOffset).toBe(11);
   });
 
   it('gracefully handles malformed offset and declaration metadata from parsed loops', async () => {
@@ -572,7 +584,7 @@ describe('template-scopes helpers', () => {
         name: 'item',
         sourcePath: 'users',
         scopeStartOffset: 23,
-        scopeEndOffset: 23,
+        scopeEndOffset: template.length,
       }),
     ]);
   });
@@ -616,7 +628,7 @@ describe('template-scopes helpers', () => {
       expect.objectContaining({
         name: 'item',
         sourcePath: 'users',
-        declarationStartOffset: 6,
+        declarationStartOffset: 7,
       }),
     ]);
   });
@@ -685,6 +697,94 @@ describe('template-scopes helpers', () => {
         sourceExpression: 'users',
         declarationStartOffset: undefined,
         declarationEndOffset: undefined,
+      }),
+    ]);
+  });
+
+  it('falls back to undefined declaration offsets when set statement syntax cannot be parsed', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({
+        ast: {
+          type: 'template',
+          start: { line: 1, column: 0 },
+          end: { line: 1, column: 20 },
+          children: [
+            {
+              type: 'set',
+              name: 'local',
+              value: {
+                type: 'variable',
+                name: 'users',
+                path: [],
+                start: { line: 1, column: 0 },
+                end: { line: 1, column: 5 },
+              },
+              start: { line: 1, column: 0 },
+              end: { line: 1, column: 15 },
+            },
+          ],
+        },
+        errors: [],
+      }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    const bindings = module.extractTemplateBindings('{% set local users %}');
+
+    expect(bindings).toEqual([
+      expect.objectContaining({
+        kind: 'set-variable',
+        name: 'local',
+        declarationStartOffset: undefined,
+        declarationEndOffset: undefined,
+      }),
+    ]);
+  });
+
+  it('falls back to undefined set source expression when opening tags cannot be located', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({
+        ast: {
+          type: 'template',
+          start: { line: 1, column: 0 },
+          end: { line: 1, column: 1 },
+          children: [
+            {
+              type: 'set',
+              name: 'local',
+              value: {
+                type: 'literal',
+                valueType: 'number',
+                value: 1,
+                start: { line: 10, column: 0 },
+                end: { line: 10, column: 1 },
+              },
+              start: { line: 10, column: 0 },
+              end: { line: 10, column: 10 },
+            },
+          ],
+        },
+        errors: [],
+      }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    const bindings = module.extractTemplateBindings('x');
+
+    expect(bindings).toEqual([
+      expect.objectContaining({
+        kind: 'set-variable',
+        name: 'local',
+        sourcePath: undefined,
+        sourceExpression: undefined,
       }),
     ]);
   });
@@ -773,7 +873,7 @@ describe('template-scopes helpers', () => {
     expect(bindings).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: 'key', declarationStartOffset: expect.any(Number) }),
-        expect.objectContaining({ name: 'value', declarationStartOffset: undefined }),
+        expect.objectContaining({ name: 'value', declarationStartOffset: expect.any(Number) }),
       ])
     );
   });
@@ -810,7 +910,7 @@ describe('template-scopes helpers', () => {
       expect(bindings).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ name: 'key', declarationStartOffset: expect.any(Number) }),
-          expect.objectContaining({ name: 'value', declarationStartOffset: undefined }),
+          expect.objectContaining({ name: 'value', declarationStartOffset: expect.any(Number) }),
         ])
       );
     } finally {

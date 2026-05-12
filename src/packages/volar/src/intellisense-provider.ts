@@ -14,7 +14,11 @@ import {
   extractExpressionFilterReferences,
   extractExpressionVariableReferences,
 } from './expression-analysis.js';
-import { buildForScopesInText, resolveScopedPath } from './scope-resolution.js';
+import {
+  buildForScopesInText,
+  getInScopeTemplateBindings,
+  resolveScopedPath,
+} from './scope-resolution.js';
 import {
   createContextGraphSemanticReadAdapter,
   type ContextGraphSemanticReadAdapter,
@@ -171,15 +175,16 @@ function createScopedPathResolver(
   offset: number,
   delimiters: IntellisenseDelimiters
 ): (basePath: string) => string {
+  const scopeOffset = Math.max(0, offset - 1);
   const forScopes = buildForScopesInText(text, delimiters);
 
   return (basePath: string): string => {
-    const graphResolved = semanticReadAdapter.resolveScopedPath(text, basePath, offset);
+    const graphResolved = semanticReadAdapter.resolveScopedPath(text, basePath, scopeOffset);
     if (graphResolved !== basePath) {
       return graphResolved;
     }
 
-    return resolveScopedPath(basePath, offset, forScopes);
+    return resolveScopedPath(basePath, scopeOffset, forScopes);
   };
 }
 
@@ -312,22 +317,34 @@ function mergeUniqueCompletions(
   return merged;
 }
 
+function dedupeCompletionItems(items: CompletionItem[]): CompletionItem[] {
+  if (items.length <= 1) {
+    return items;
+  }
+
+  const seen = new Set<string>();
+  const deduped: CompletionItem[] = [];
+  for (const item of items) {
+    const key = `${item.label.toLowerCase()}::${item.kind}::${item.detail ?? ''}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(item);
+  }
+
+  return deduped;
+}
+
 function getInScopeAliasCompletions(
   text: string,
   offset: number,
   delimiters: IntellisenseDelimiters
 ): CompletionItem[] {
-  const scopes = buildForScopesInText(text, delimiters);
-  const aliases = scopes
-    .filter((scope) => offset >= scope.bodyStart && offset < scope.bodyEnd)
-    .sort((left, right) => right.bodyStart - left.bodyStart)
-    .map((scope) => scope.alias)
-    .filter((alias, index, all) => all.indexOf(alias) === index);
-
-  return aliases.map((alias) => ({
-    label: alias,
+  return getInScopeTemplateBindings(text, offset, delimiters).map((binding) => ({
+    label: binding.name,
     kind: 'variable',
-    detail: 'local loop alias',
+    detail: binding.kind === 'set-variable' ? 'local template variable' : 'local loop alias',
   }));
 }
 
@@ -691,7 +708,8 @@ function getExpressionCompletionsAtOffset(
         resolvedBase,
         semanticOptions
       );
-      return filterAndSortCompletions(graphItems, propertyPrefix);
+      const filtered = filterAndSortCompletions(graphItems, propertyPrefix);
+      return filtered.length > 0 ? filtered : graphItems;
     }
 
     const graphItems = semanticReadAdapter.getChildCompletions(
@@ -712,7 +730,8 @@ function getExpressionCompletionsAtOffset(
       resolvedBase,
       semanticOptions
     );
-    return filterAndSortCompletions(graphItems, propertyPrefix);
+    const filtered = filterAndSortCompletions(graphItems, propertyPrefix);
+    return filtered.length > 0 ? filtered : graphItems;
   }
 
   const graphItems = semanticReadAdapter.getChildCompletions(semanticContext, '', semanticOptions);
@@ -723,7 +742,8 @@ function getExpressionCompletionsAtOffset(
 function getStatementExpressionFragment(
   statementPrefix: string
 ): { expression: string; offsetInExpression: number } | null {
-  const trimmed = statementPrefix.trim();
+  const withoutLeadingTrimMarker = statementPrefix.replace(/^\s*-\s*/, '');
+  const trimmed = withoutLeadingTrimMarker.trim();
   if (!trimmed) {
     return null;
   }
@@ -820,7 +840,7 @@ export class IntellisenseProvider {
     };
     const filters = [...getDefaultFilters(), ...(options?.customFilters ?? [])];
     const keywords = [...DEFAULT_KEYWORDS, ...(options?.customKeywords ?? [])];
-    const localAliasItems = getInScopeAliasCompletions(text, offset, delimiters);
+    const localAliasItems = getInScopeAliasCompletions(text, Math.max(0, offset - 1), delimiters);
 
     const scopeResolver = createScopedPathResolver(
       this.semanticReadAdapter,
@@ -853,14 +873,16 @@ export class IntellisenseProvider {
         options?.debugLog
       );
 
-      logCompletionSummary(options, 'expression', expressionCompletions);
-      return expressionCompletions;
+      const dedupedExpressionCompletions = dedupeCompletionItems(expressionCompletions);
+      logCompletionSummary(options, 'expression', dedupedExpressionCompletions);
+      return dedupedExpressionCompletions;
     }
 
     if (statement) {
       const startOffset = statement.start + delimiters.statementStart.length;
       const statementPrefix = text.slice(startOffset, offset);
-      const trimmed = statementPrefix.trim();
+      const normalizedStatementPrefix = statementPrefix.replace(/^\s*-\s*/, '');
+      const trimmed = normalizedStatementPrefix.trim();
 
       const keywordMatch = trimmed.match(/^([A-Za-z_][\w]*)\b/);
       if (!keywordMatch || !trimmed.includes(' ')) {
@@ -872,7 +894,7 @@ export class IntellisenseProvider {
         return statementKeywords;
       }
 
-      const expressionFragment = getStatementExpressionFragment(statementPrefix);
+      const expressionFragment = getStatementExpressionFragment(normalizedStatementPrefix);
       if (!expressionFragment) {
         const fallbackKeywords = filterAndSortCompletions(getKeywordCompletions(keywords), trimmed);
         logCompletionSummary(options, 'statement-keyword-fallback', fallbackKeywords);
@@ -891,8 +913,11 @@ export class IntellisenseProvider {
         options?.debugLog
       );
 
-      logCompletionSummary(options, 'statement-expression', statementExpressionCompletions);
-      return statementExpressionCompletions;
+      const dedupedStatementExpressionCompletions = dedupeCompletionItems(
+        statementExpressionCompletions
+      );
+      logCompletionSummary(options, 'statement-expression', dedupedStatementExpressionCompletions);
+      return dedupedStatementExpressionCompletions;
     }
 
     if (contextBlock === 'frontmatter') {
@@ -909,8 +934,9 @@ export class IntellisenseProvider {
           const enumItems = graphEnumValues.filter((value) =>
             value.label.toLowerCase().startsWith(normalizedPrefix)
           );
-          logCompletionSummary(options, 'frontmatter-enum-graph', enumItems);
-          return enumItems;
+          const dedupedEnumItems = dedupeCompletionItems(enumItems);
+          logCompletionSummary(options, 'frontmatter-enum-graph', dedupedEnumItems);
+          return dedupedEnumItems;
         }
       }
 
@@ -920,8 +946,9 @@ export class IntellisenseProvider {
         semanticOptions
       );
       const sortedFrontmatter = filterAndSortCompletions(graphItems, context.keyPrefix);
-      logCompletionSummary(options, 'frontmatter-graph-children', sortedFrontmatter);
-      return sortedFrontmatter;
+      const dedupedFrontmatter = dedupeCompletionItems(sortedFrontmatter);
+      logCompletionSummary(options, 'frontmatter-graph-children', dedupedFrontmatter);
+      return dedupedFrontmatter;
     }
 
     options?.debugLog?.('[intellisense] completion branch=none count=0', 'verbose');
@@ -1055,6 +1082,19 @@ export class IntellisenseProvider {
             Math.max(0, cursorInIterable)
           );
           if (iterablePath) {
+            const localAlias = resolveLocalAliasReference(
+              this.semanticReadAdapter,
+              text,
+              iterablePath,
+              offset
+            );
+            if (localAlias?.isAliasTokenOnly) {
+              options?.debugLog?.(
+                `[intellisense] hover alias=${localAlias.alias} source=statement-iterable-local result=present`
+              );
+              return { contents: `${localAlias.alias}: local template variable` };
+            }
+
             return getHoverDetailsForPath(iterablePath);
           }
         }
@@ -1368,6 +1408,27 @@ export class IntellisenseProvider {
           Math.max(0, cursorInIterable)
         );
         if (iterablePath) {
+          const cursorPrefix = iterableExpression.slice(0, Math.max(0, cursorInIterable + 1));
+          const cursorIsAliasToken = !/[.[]/.test(cursorPrefix);
+          const localAlias = resolveLocalAliasReference(
+            this.semanticReadAdapter,
+            text,
+            iterablePath,
+            offset
+          );
+          if (localAlias && cursorIsAliasToken && options?.documentUri) {
+            options?.debugLog?.(
+              `[intellisense] definition source=statement-local-alias variable=${iterablePath} uri=${options.documentUri}`
+            );
+            return {
+              uri: options.documentUri,
+              range: {
+                start: getPositionForOffset(text, localAlias.declaration.start),
+                end: getPositionForOffset(text, localAlias.declaration.end),
+              },
+            };
+          }
+
           const canonicalPath = resolveDefinitionPath(iterablePath);
           options?.debugLog?.(
             `[intellisense] definition source=statement-for-iterable variable=${iterablePath} canonical=${canonicalPath}`

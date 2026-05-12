@@ -2,6 +2,7 @@ import { resolveDelimiters, type DelimiterConfig } from './template-delimiters.j
 import { extractExpressionVariableReferences } from './expression-analysis.js';
 import { extractTemplateBindings } from '@templjs/core';
 import type { LexerOptions } from '@templjs/core';
+import type { TemplateBinding, TemplateBindingKind } from '@templjs/core';
 
 export interface ForScope {
   alias: string;
@@ -10,6 +11,11 @@ export interface ForScope {
   aliasEnd?: number;
   bodyStart: number;
   bodyEnd: number;
+}
+
+export interface InScopeTemplateBinding {
+  name: string;
+  kind: TemplateBindingKind;
 }
 
 function volarDelimitersToLexerOptions(
@@ -29,12 +35,46 @@ function volarDelimitersToLexerOptions(
   };
 }
 
+function getTemplateBindingsForScopeResolution(
+  text: string,
+  lexerOptions?: LexerOptions,
+  delimiters?: Partial<DelimiterConfig>
+): TemplateBinding[] {
+  const bindings = extractTemplateBindings(text, lexerOptions);
+  if (bindings.length > 0) {
+    return bindings;
+  }
+
+  const resolvedDelimiters = resolveDelimiters(delimiters);
+  const lastExpressionStart = text.lastIndexOf(resolvedDelimiters.expressionStart);
+  if (lastExpressionStart === -1) {
+    return bindings;
+  }
+
+  const lastExpressionEnd = text.lastIndexOf(resolvedDelimiters.expressionEnd);
+  if (lastExpressionStart <= lastExpressionEnd) {
+    return bindings;
+  }
+
+  const repairedText = `${text}${resolvedDelimiters.expressionEnd}`;
+  const repairedBindings = extractTemplateBindings(repairedText, lexerOptions);
+  if (repairedBindings.length === 0) {
+    return bindings;
+  }
+
+  const originalLength = text.length;
+  return repairedBindings.map((binding) => ({
+    ...binding,
+    scopeEndOffset: Math.min(binding.scopeEndOffset, originalLength),
+  }));
+}
+
 export function buildForScopesInText(
   text: string,
   delimiters?: Partial<DelimiterConfig>
 ): ForScope[] {
   const lexerOptions = volarDelimitersToLexerOptions(delimiters);
-  return extractTemplateBindings(text, lexerOptions)
+  return getTemplateBindingsForScopeResolution(text, lexerOptions, delimiters)
     .filter((binding) => binding.kind === 'for-alias' || binding.kind === 'for-value-alias')
     .filter((binding) => Boolean(binding.sourcePath))
     .map((binding) => ({
@@ -45,6 +85,39 @@ export function buildForScopesInText(
       bodyStart: binding.scopeStartOffset,
       bodyEnd: binding.scopeEndOffset,
     }));
+}
+
+export function getInScopeTemplateBindings(
+  text: string,
+  offset: number,
+  delimiters?: Partial<DelimiterConfig>
+): InScopeTemplateBinding[] {
+  const lexerOptions = volarDelimitersToLexerOptions(delimiters);
+  const bindings = getTemplateBindingsForScopeResolution(text, lexerOptions, delimiters)
+    .filter((binding) => offset >= binding.scopeStartOffset && offset < binding.scopeEndOffset)
+    .sort((left, right) => right.scopeStartOffset - left.scopeStartOffset);
+
+  const unique = new Map<string, InScopeTemplateBinding>();
+  for (const binding of bindings) {
+    if (
+      binding.kind !== 'for-alias' &&
+      binding.kind !== 'for-value-alias' &&
+      binding.kind !== 'set-variable'
+    ) {
+      continue;
+    }
+
+    if (unique.has(binding.name)) {
+      continue;
+    }
+
+    unique.set(binding.name, {
+      name: binding.name,
+      kind: binding.kind,
+    });
+  }
+
+  return [...unique.values()];
 }
 
 function getMatchingScopesAtOffset(offset: number, scopes: ForScope[]): ForScope[] {

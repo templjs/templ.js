@@ -149,6 +149,39 @@ describe('IntellisenseProvider branch coverage', () => {
     expect(definition).toBeNull();
   });
 
+  it('returns local alias definition when cursor is on for-iterable source variable', () => {
+    const adapter: SemanticReadAdapter = {
+      ...emptyAdapter,
+      resolveLocalAliasDefinition: (text, variablePath) => {
+        if (variablePath !== 'collection') {
+          return null;
+        }
+
+        const start = text.indexOf('collection =');
+        if (start < 0) {
+          return null;
+        }
+
+        return {
+          start,
+          end: start + 'collection'.length,
+        };
+      },
+    };
+
+    const provider = new IntellisenseProvider(adapter);
+    const text = '{% set collection = users %}{% for item in collection %}{{ item }}{% endfor %}';
+    const offset = text.indexOf('in collection') + 'in '.length + 2;
+
+    const definition = provider.getDefinition(text, offset, {
+      debugLog: () => {},
+      documentUri: 'file:///doc.md.tmpl',
+    });
+
+    expect(definition?.uri).toBe('file:///doc.md.tmpl');
+    expect(definition?.range).toBeDefined();
+  });
+
   it('returns null definition when statement expression is empty', () => {
     const provider = new IntellisenseProvider(emptyAdapter);
     const definition = provider.getDefinition('{% if %}', 5, {
@@ -757,6 +790,11 @@ describe('intellisense helper branch coverage', () => {
 
   it('extracts for-loop statement expressions when iterable segments are present', () => {
     const fragment = intellisenseTesting.getStatementExpressionFragment('for item in users');
+    expect(fragment?.expression).toBe('users');
+  });
+
+  it('extracts for-loop iterable expressions when a leading trim marker is present', () => {
+    const fragment = intellisenseTesting.getStatementExpressionFragment('- for item in users');
     expect(fragment?.expression).toBe('users');
   });
 

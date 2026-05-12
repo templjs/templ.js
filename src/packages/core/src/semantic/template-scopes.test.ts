@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { extractTemplateBindings } from '../index.js';
+import { getTemplateBindingsAtOffset } from '../index.js';
 import { pathSegmentToString } from './template-scopes.js';
 
 describe('extractTemplateBindings', () => {
@@ -53,6 +54,45 @@ describe('extractTemplateBindings', () => {
     expect(bindings).toHaveLength(1);
     expect(bindings[0]).toMatchObject({ name: 'x', sourcePath: 'collection' });
     expect(bindings[0].scopeEndOffset).toBeGreaterThanOrEqual(bindings[0].scopeStartOffset);
+  });
+
+  it('recovers for-alias bindings with trim markers when template contains parse errors', () => {
+    const template = [
+      '---',
+      'invalid: bar: [{% if %}foo {% endif %}]',
+      '---',
+      '{% set collection = ["a", "b"] %}',
+      '{% for x in collection -%}',
+      '{{ x }}',
+    ].join('\n');
+
+    const bindings = extractTemplateBindings(template);
+
+    expect(bindings.some((binding) => binding.kind === 'for-alias' && binding.name === 'x')).toBe(
+      true
+    );
+    expect(
+      bindings.some((binding) => binding.kind === 'set-variable' && binding.name === 'collection')
+    ).toBe(true);
+  });
+
+  it('recovers for-alias bindings with leading trim markers in malformed templates', () => {
+    const template = [
+      '---',
+      'invalid: bar: [{% if %}foo {% endif %}]',
+      '---',
+      '{%- for item in items %}',
+      '{{ item.name }}',
+    ].join('\n');
+
+    const bindings = extractTemplateBindings(template);
+    const aliasBinding = bindings.find(
+      (binding) => binding.kind === 'for-alias' && binding.name === 'item'
+    );
+
+    expect(aliasBinding).toBeDefined();
+    expect(aliasBinding?.sourcePath).toBe('items');
+    expect(aliasBinding?.scopeEndOffset).toBe(template.length);
   });
 
   it('recovers scope bindings when unrelated statement syntax is malformed', () => {
@@ -219,5 +259,64 @@ describe('extractTemplateBindings', () => {
     expect(template.slice(binding.declarationStartOffset!, binding.declarationEndOffset!)).toBe(
       'item'
     );
+  });
+
+  it('filters and sorts active bindings at an offset by innermost scope first', () => {
+    const template = [
+      '{% for item in items %}',
+      '  {% for child in item.children %}',
+      '    {{ child.name }}',
+      '  {% endfor %}',
+      '{% endfor %}',
+    ].join('\n');
+
+    const bindings = extractTemplateBindings(template);
+    const active = getTemplateBindingsAtOffset(bindings, template.indexOf('child.name'));
+
+    expect(active).toHaveLength(2);
+    expect(active[0].name).toBe('child');
+    expect(active[1].name).toBe('item');
+  });
+
+  it('treats scope end offsets as exclusive in active-binding lookups', () => {
+    const template = '{% for item in items %}{{ item.name }}{% endfor %}';
+    const bindings = extractTemplateBindings(template);
+    const binding = bindings[0];
+
+    expect(getTemplateBindingsAtOffset(bindings, binding.scopeEndOffset)).toEqual([]);
+  });
+
+  it('does not surface malformed for-loop aliases from fallback statement shapes', () => {
+    const template = [
+      '{% for 1item in users %}{% endfor %}',
+      '{% for key, in users %}{% endfor %}',
+      '{% for item users %}{% endfor %}',
+      '{% for item in   %}{% endfor %}',
+      '{% set = users %}',
+      '{% set local users %}',
+      '{% set local =   %}',
+    ].join('\n');
+
+    const bindings = extractTemplateBindings(template);
+    expect(
+      bindings.filter(
+        (binding) => binding.kind === 'for-alias' || binding.kind === 'for-value-alias'
+      )
+    ).toEqual([]);
+  });
+
+  it('deduplicates recovered fallback bindings when parser recovery emits overlapping scopes', () => {
+    const template = [
+      '{% for item in items %}',
+      '{% if %}',
+      '{{ item.name }}',
+      '{% endfor %}',
+    ].join('\n');
+
+    const bindings = extractTemplateBindings(template);
+    const itemBindings = bindings.filter((binding) => binding.name === 'item');
+
+    expect(itemBindings).toHaveLength(1);
+    expect(itemBindings[0].sourcePath).toBe('items');
   });
 });
