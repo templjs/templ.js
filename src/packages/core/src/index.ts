@@ -20,6 +20,7 @@ export type * from './schema/types.js';
 export type * from './query-engine/types.js';
 export type * from './semantic/template-scopes.js';
 export type * from './semantic/semantic-context.js';
+export type * from './semantic/expression-references.js';
 // Explicitly re-export FilterFunction to resolve ambiguity
 export type { FilterFunction } from './query-engine/types.js';
 export type * from './renderer/types.js';
@@ -43,6 +44,10 @@ export {
   extractTemplateBindings,
   getTemplateBindingsAtOffset,
 } from './semantic/template-scopes.js';
+export {
+  extractExpressionFilterReferences,
+  extractExpressionVariableReferences,
+} from './semantic/expression-references.js';
 export {
   detectFrontmatterRange,
   getSemanticProfileId,
@@ -83,6 +88,7 @@ import { tokenize } from './lexer/lexer.js';
 import { parse } from './parser/parser.js';
 import { render } from './renderer/renderer.js';
 import { extractTemplateBindings } from './semantic/template-scopes.js';
+import { extractExpressionVariableReferences } from './semantic/expression-references.js';
 import type { RenderOptions } from './renderer/types.js';
 
 /**
@@ -256,6 +262,7 @@ export default {
   createRenderer,
   createQueryEngine,
   extractTemplateBindings,
+  extractExpressionVariableReferences,
   renderTemplate,
   validateTemplate,
 };
