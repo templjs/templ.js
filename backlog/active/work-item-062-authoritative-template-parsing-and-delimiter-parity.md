@@ -5,12 +5,12 @@ title: '062: Centralize authoritative template parsing and custom delimiter pari
 summary: Centralize authoritative template parsing and custom delimiter parity
 type: work-item
 subtype: epic
-lifecycle: draft
-status: proposed
-status_reason: awaiting-approval
+lifecycle: active
+status: in-progress
+status_reason: implementation
 priority: high
 estimated: 20
-actual: 0
+actual: 4
 ---
 
 ## Goal
@@ -49,11 +49,11 @@ This work item tracks the full refactor needed to make core authoritative, make 
 
 ## Tasks
 
-- [ ] Define the authoritative core API for delimiter-aware template scope and statement metadata.
-- [ ] Extend core syntax helpers so consumer-facing semantic APIs accept custom delimiters and retain declaration-offset data needed by Volar.
-- [ ] Replace `src/packages/volar/src/scope-resolution.ts` with a thin adapter over the core authority instead of raw-text regex parsing.
-- [ ] Remove duplicated statement parsing heuristics from `src/packages/volar/src/diagnostic-provider.ts`.
-- [ ] Remove duplicated statement parsing heuristics from `src/packages/volar/src/intellisense-provider.ts`.
+- [x] Define the authoritative core API for delimiter-aware template scope and statement metadata.
+- [x] Extend core syntax helpers so consumer-facing semantic APIs accept custom delimiters and retain declaration-offset data needed by Volar.
+- [x] Replace `src/packages/volar/src/scope-resolution.ts` with a thin adapter over the core authority instead of raw-text regex parsing.
+- [x] Remove duplicated statement parsing heuristics from `src/packages/volar/src/diagnostic-provider.ts`.
+- [x] Remove duplicated statement parsing heuristics from `src/packages/volar/src/intellisense-provider.ts`.
 - [ ] Audit `src/extensions/vscode/src/server.ts` and keep it limited to configuration, transport, caching, and LSP payload mapping only.
 - [ ] Document the allowed raw-text exceptions for non-semantic scanning such as TextMate grammar, delimiter validation, and virtual-code masking/range preservation.
 - [ ] Add comprehensive regression tests in core, Volar, and VS Code layers that demonstrate prior drift cases and prove parity for custom delimiters.

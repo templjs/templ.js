@@ -739,6 +739,103 @@ function getExpressionCompletionsAtOffset(
   return filterAndSortCompletions(mergeUniqueCompletions(localAliasItems, graphItems), prefix);
 }
 
+/**
+ * Deterministic, token-based parser for a complete `for ALIAS in EXPR`
+ * statement content (the text between the statement delimiters, trimmed).
+ *
+ * Per project guidelines, multi-token regex spanning unbounded content strings
+ * must not be used for statement-semantic decisions. This helper:
+ *  1. Tokenises once with split(/\s+/) and validates the structural shape.
+ *  2. Walks character-by-character only to locate byte offsets — never to
+ *     match semantic content.
+ *  3. Uses regex only for the single-token identifier character-class check.
+ *
+ * Returns null if the content is not a well-formed for-header.
+ */
+interface ForHeaderParsed {
+  aliasName: string;
+  aliasStart: number; // byte offset inside statementContent
+  aliasEnd: number;
+  iterableExpression: string;
+  iterableStart: number; // byte offset inside statementContent
+}
+
+function parseForHeader(statementContent: string): ForHeaderParsed | null {
+  // Strip optional leading whitespace-control marker (-) before tokenising.
+  const content = statementContent.replace(/^\s*-\s*/, '').trimStart();
+  const tokens = content.split(/\s+/).filter((t) => t.length > 0 && t !== '-');
+
+  // Structural check: [for, alias, in, ...expression] — minimum 4 tokens.
+  // Single-token identifier regex is explicitly allowed by project guidelines.
+  if (
+    tokens.length < 4 ||
+    tokens[0] !== 'for' ||
+    !/^[A-Za-z_]\w*$/.test(tokens[1] ?? '') ||
+    tokens[2] !== 'in'
+  ) {
+    return null;
+  }
+
+  const aliasName = tokens[1];
+
+  // Walk the ORIGINAL statementContent (not `content`) so returned offsets are
+  // relative to the caller's view of the string.
+  let cursor = 0;
+
+  // Skip optional leading whitespace-control marker in original.
+  const wsCtrlMatch = statementContent.match(/^\s*-\s*/);
+  if (wsCtrlMatch) cursor = wsCtrlMatch[0].length;
+
+  // Skip leading whitespace.
+  while (cursor < statementContent.length && statementContent[cursor] === ' ') cursor++;
+
+  // Skip "for" keyword.
+  while (
+    cursor < statementContent.length &&
+    statementContent[cursor] !== ' ' &&
+    statementContent[cursor] !== '\t'
+  )
+    cursor++;
+  // Skip whitespace.
+  while (
+    cursor < statementContent.length &&
+    (statementContent[cursor] === ' ' || statementContent[cursor] === '\t')
+  )
+    cursor++;
+
+  // Alias starts here.
+  const aliasStart = cursor;
+  while (cursor < statementContent.length && /\w/.test(statementContent[cursor])) cursor++;
+  const aliasEnd = cursor;
+
+  // Skip whitespace before "in".
+  while (
+    cursor < statementContent.length &&
+    (statementContent[cursor] === ' ' || statementContent[cursor] === '\t')
+  )
+    cursor++;
+
+  // Skip "in" keyword.
+  while (
+    cursor < statementContent.length &&
+    statementContent[cursor] !== ' ' &&
+    statementContent[cursor] !== '\t'
+  )
+    cursor++;
+
+  // Skip whitespace before expression.
+  while (
+    cursor < statementContent.length &&
+    (statementContent[cursor] === ' ' || statementContent[cursor] === '\t')
+  )
+    cursor++;
+
+  const iterableStart = cursor;
+  const iterableExpression = statementContent.slice(iterableStart);
+
+  return { aliasName, aliasStart, aliasEnd, iterableExpression, iterableStart };
+}
+
 function getStatementExpressionFragment(
   statementPrefix: string
 ): { expression: string; offsetInExpression: number } | null {
@@ -762,12 +859,13 @@ function getStatementExpressionFragment(
   let expression: string;
 
   if (keyword === 'for') {
-    // Match: "for IDENT in EXPR" where EXPR can be empty at the end
-    const forMatch = trimmed.match(/^for\s+([A-Za-z_][\w]*)\s+in\s*(.*)$/);
-    if (!forMatch) {
+    // Deterministic token-based extraction — no multi-token regex spanning
+    // unbounded content (per project guidelines).
+    const parsed = parseForHeader(trimmed);
+    if (!parsed) {
       return null;
     }
-    expression = forMatch[2];
+    expression = parsed.iterableExpression;
   } else {
     // For if, elif, set, block, include - everything after keyword is the expression
     expression = trimmed.replace(/^[A-Za-z_][\w]*\s+/, '');
@@ -800,6 +898,7 @@ export const intellisenseTesting = {
   getCompletionPrefix,
   getStatementExpressionFragment,
   getFrontmatterContext,
+  parseForHeader,
 };
 
 export class IntellisenseProvider {
@@ -1060,12 +1159,10 @@ export class IntellisenseProvider {
         (rawInner.indexOf(statementContent) >= 0 ? rawInner.indexOf(statementContent) : 0);
       const cursorInStatement = offset - statementOffset;
 
-      const forHeaderMatch = statementContent.match(/^for\s+([A-Za-z_][\w]*)\s+in\s*(.*)$/);
+      const forHeaderMatch = parseForHeader(statementContent);
       if (forHeaderMatch) {
-        const aliasName = forHeaderMatch[1];
-        const headerPrefix = statementContent.match(/^for\s+([A-Za-z_][\w]*)\s+in\s*/)?.[0] ?? '';
-        const aliasStart = headerPrefix.indexOf(aliasName);
-        const aliasEnd = aliasStart + aliasName.length;
+        const { aliasName, aliasStart, aliasEnd, iterableExpression, iterableStart } =
+          forHeaderMatch;
 
         if (cursorInStatement >= aliasStart && cursorInStatement <= aliasEnd) {
           options?.debugLog?.(
@@ -1074,8 +1171,7 @@ export class IntellisenseProvider {
           return { contents: `${aliasName}: local loop alias` };
         }
 
-        const iterableExpression = statementContent.slice(headerPrefix.length);
-        const cursorInIterable = cursorInStatement - headerPrefix.length;
+        const cursorInIterable = cursorInStatement - iterableStart;
         if (cursorInIterable >= 0) {
           const iterablePath = getVariablePathPrefixAtOffset(
             iterableExpression,
@@ -1367,14 +1463,10 @@ export class IntellisenseProvider {
       (rawInner.indexOf(statementContent) >= 0 ? rawInner.indexOf(statementContent) : 0);
     const cursorInStatement = offset - statementOffset;
 
-    const forHeaderMatch = statementContent.match(/^for\s+([A-Za-z_][\w]*)\s+in\s*/);
+    const forHeaderMatch = parseForHeader(statementContent);
     if (forHeaderMatch) {
-      const aliasName = forHeaderMatch[1];
-      const header = forHeaderMatch[0];
-      const aliasStart = header.indexOf(aliasName);
-      const aliasEnd = aliasStart + aliasName.length;
-      const iterableExpression = statementContent.slice(header.length);
-      const cursorInIterable = cursorInStatement - header.length;
+      const { aliasName, aliasStart, aliasEnd, iterableExpression, iterableStart } = forHeaderMatch;
+      const cursorInIterable = cursorInStatement - iterableStart;
 
       if (cursorInStatement >= aliasStart && cursorInStatement <= aliasEnd) {
         if (options?.documentUri) {

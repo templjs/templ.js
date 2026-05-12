@@ -487,10 +487,16 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
 
     if (tag === 'for') {
       const { statementContent, contentStartOffset } = parseStatementContent(block, delimiters);
-      const match = statementContent.match(/^for\s+[A-Za-z_][\w]*\s+in\s+([\s\S]+)$/);
+      // Use the core-backed ForScope data to avoid multi-token regex re-parsing.
+      // ForScope.iterableExpression is the authoritative expression extracted by
+      // parseFallbackForStatement in @templjs/core — handles complex iterables such
+      // as users[activeIndex + 1] and users["full name"] correctly.
+      const matchingScope = forScopes.find(
+        (s) => s.bodyStart >= block.start && s.bodyStart <= block.end + 1
+      );
+      const iterableExpression = matchingScope?.iterableExpression;
       const validator = getValidatorForOffset(block.start);
-      if (match && validator) {
-        const iterableExpression = match[1].trim();
+      if (iterableExpression && validator) {
         const iterableStart = statementContent.indexOf(iterableExpression);
         const filterRefs = extractFilters(iterableExpression);
         for (const ref of extractVariableReferences(iterableExpression)) {
