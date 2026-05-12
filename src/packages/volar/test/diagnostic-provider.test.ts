@@ -923,7 +923,7 @@ describe('DiagnosticProvider', () => {
         const diagnostics = collectDiagnostics(text, { schema: schema as object });
         // No offset-misalignment errors on the loop alias
         const aliasErrors = diagnostics.filter(
-          (d) => d.code === 'templjs.undefinedVariable' && d.message.includes('item')
+          (d) => d.code === 'templjs.undefinedVariable' && d.message.includes('Variable "item"')
         );
         expect(aliasErrors.length).toBe(0);
       });
@@ -973,7 +973,7 @@ describe('DiagnosticProvider', () => {
       const diagnostics = collectDiagnostics(text, { schema: schema as object });
       // Multiline headers should not cause offset misalignment diagnostics
       const offsetErrors = diagnostics.filter(
-        (d) => d.code === 'templjs.undefinedVariable' && d.message.includes('user')
+        (d) => d.code === 'templjs.undefinedVariable' && d.message.includes('Variable "user"')
       );
       expect(offsetErrors.length).toBe(0);
     });
