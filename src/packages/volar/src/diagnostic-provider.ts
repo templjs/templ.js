@@ -497,7 +497,28 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
       const iterableExpression = matchingScope?.iterableExpression;
       const validator = getValidatorForOffset(block.start);
       if (iterableExpression && validator) {
-        const iterableStart = statementContent.indexOf(iterableExpression);
+        // Derive iterableStart from the alias boundary when available so the offset
+        // remains correct even when the iterable expression text also appears earlier
+        // in the header (e.g. `for users in users`).
+        let iterableStart: number;
+        if (matchingScope?.aliasEnd !== undefined) {
+          const relAliasEnd = matchingScope.aliasEnd - contentStartOffset;
+          let cur = relAliasEnd;
+          while (
+            cur < statementContent.length &&
+            (statementContent[cur] === ' ' || statementContent[cur] === '\t')
+          )
+            cur++;
+          if (statementContent.slice(cur, cur + 2) === 'in') cur += 2;
+          while (
+            cur < statementContent.length &&
+            (statementContent[cur] === ' ' || statementContent[cur] === '\t')
+          )
+            cur++;
+          iterableStart = cur;
+        } else {
+          iterableStart = statementContent.indexOf(iterableExpression);
+        }
         const filterRefs = extractFilters(iterableExpression);
         for (const ref of extractVariableReferences(iterableExpression)) {
           const overlapsFilter = filterRefs.some(
