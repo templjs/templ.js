@@ -26,6 +26,7 @@ const configurationValues: Record<string, unknown> = {
 const registerCommand = vi.fn((_name: string, _handler: () => void) => ({
   dispose: vi.fn(),
 }));
+const executeCommand = vi.fn(() => Promise.resolve(undefined));
 const showInformationMessage = vi.fn();
 const showErrorMessage = vi.fn();
 const outputChannel = {
@@ -141,6 +142,7 @@ const getExtension = vi.fn((_id: string) => undefined);
 vi.mock('vscode', () => ({
   commands: {
     registerCommand,
+    executeCommand,
   },
   window: {
     showInformationMessage,
@@ -318,14 +320,23 @@ describe('extension-activation', () => {
     expect(clientOptions.documentSelector).toEqual(
       expect.arrayContaining([
         { scheme: 'file', language: 'templjs-yaml' },
+        { scheme: 'vscode-remote', language: 'templjs-yaml' },
         { scheme: 'file', language: 'templjs-json' },
+        { scheme: 'vscode-remote', language: 'templjs-json' },
         { scheme: 'file', language: 'templjs-markdown' },
+        { scheme: 'vscode-remote', language: 'templjs-markdown' },
         { scheme: 'file', language: 'templjs-html' },
+        { scheme: 'vscode-remote', language: 'templjs-html' },
         { scheme: 'file', pattern: '**/*.tmpl' },
+        { scheme: 'vscode-remote', pattern: '**/*.tmpl' },
         { scheme: 'file', pattern: '**/*.tpl' },
+        { scheme: 'vscode-remote', pattern: '**/*.tpl' },
         { scheme: 'file', pattern: '**/*.md.templ' },
+        { scheme: 'vscode-remote', pattern: '**/*.md.templ' },
         { scheme: 'file', pattern: '**/*.md.tmpl' },
+        { scheme: 'vscode-remote', pattern: '**/*.md.tmpl' },
         { scheme: 'file', pattern: '**/*.md.tpl' },
+        { scheme: 'vscode-remote', pattern: '**/*.md.tpl' },
       ])
     );
     expect(clientOptions.middleware?.provideCompletionItem).toBeTypeOf('function');
@@ -965,7 +976,58 @@ describe('extension-activation', () => {
         uri: { scheme: 'untitled', fsPath: '/workspace/page.md.templ' },
         languageId: 'templjs-markdown',
       } as never)
+    ).toBe(true);
+    expect(
+      helpers.isTempljsDocument({
+        uri: { scheme: 'vscode-remote', fsPath: '/workspace/page.md.tmpl' },
+        languageId: 'plaintext',
+      } as never)
+    ).toBe(true);
+    expect(helpers.isInsideUnclosedTemplateRegion('{{ item.n', 9, '{{', '}}')).toBe(true);
+    expect(helpers.isInsideUnclosedTemplateRegion('{{ item.n }}', 12, '{{', '}}')).toBe(false);
+    expect(
+      helpers.shouldAutoTriggerSuggestOnChange(
+        {
+          uri: { scheme: 'file', fsPath: '/workspace/page.md.templ' },
+          languageId: 'templjs-markdown',
+          getText: () => '{% for item in items %}\n{{ item.n',
+        } as never,
+        [{ rangeOffset: 31, rangeLength: 0, text: 'n' }] as never
+      )
+    ).toBe(true);
+    expect(
+      helpers.shouldAutoTriggerSuggestOnChange(
+        {
+          uri: { scheme: 'file', fsPath: '/workspace/page.md.templ' },
+          languageId: 'templjs-markdown',
+          getText: () => '# prose paragraph',
+        } as never,
+        [{ rangeOffset: 5, rangeLength: 0, text: 'a' }] as never
+      )
     ).toBe(false);
+    expect(
+      helpers.shouldAutoTriggerSuggestOnChange(
+        {
+          uri: { scheme: 'file', fsPath: '/workspace/page.md.templ' },
+          languageId: 'templjs-markdown',
+          getText: () => '{% for item in items %}\n{{ item.name }}',
+        } as never,
+        [{ rangeOffset: 29, rangeLength: 1, text: 'n' }] as never
+      )
+    ).toBe(true);
+    expect(
+      helpers.shouldAutoTriggerSuggestOnChange(
+        {
+          uri: { scheme: 'file', fsPath: '/workspace/page.md.templ' },
+          languageId: 'templjs-markdown',
+          getText: () => '{% for item in items %}\n{{ item.name }}',
+        } as never,
+        [
+          { rangeOffset: 10, rangeLength: 0, text: 'x' },
+          { rangeOffset: 29, rangeLength: 1, text: 'n' },
+        ] as never
+      )
+    ).toBe(true);
     expect(helpers.getActiveDocumentContext()).toEqual({
       uri: 'file:///workspace/test.yaml.templ',
       content: 'content',

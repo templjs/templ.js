@@ -173,6 +173,40 @@
           }
         }
       }
+    },
+    "configurationDefaults": {
+      "[templjs-yaml]": {
+        "editor.quickSuggestions": {
+          "other": true,
+          "comments": true,
+          "strings": true
+        },
+        "editor.suggestOnTriggerCharacters": true
+      },
+      "[templjs-json]": {
+        "editor.quickSuggestions": {
+          "other": true,
+          "comments": true,
+          "strings": true
+        },
+        "editor.suggestOnTriggerCharacters": true
+      },
+      "[templjs-markdown]": {
+        "editor.quickSuggestions": {
+          "other": true,
+          "comments": true,
+          "strings": true
+        },
+        "editor.suggestOnTriggerCharacters": true
+      },
+      "[templjs-html]": {
+        "editor.quickSuggestions": {
+          "other": true,
+          "comments": true,
+          "strings": true
+        },
+        "editor.suggestOnTriggerCharacters": true
+      }
     }
   },
   "scripts": {
@@ -182,11 +216,13 @@
     "package": "node -e \"require('node:fs').mkdirSync('../../../out',{recursive:true})\" && vsce package --no-dependencies --out ../../../out/templjs-verify.vsix",
     "test": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts",
     "test:host": "pnpm run build && node ./test/extension-host/runTests.js",
+    "test:host:features": "pnpm run build && node ./test/extension-host/runFeatureTests.js",
     "test:coverage": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts --coverage",
     "test:watch": "vitest --config vitest.config.ts",
     "test:smoke": "pnpm run build && playwright test -c playwright.smoke.config.ts",
     "vscode:prepublish": "pnpm run build",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "test:integration": "pnpm run test -- test/volar-labs.probes.test.ts test/service-plugins.test.ts test/grammar-smoke.test.ts && pnpm run test:host:features"
   },
   "dependencies": {
     "@templjs/core": "workspace:*",
@@ -211,6 +247,7 @@
     "@vscode/vsce": "^3.9.0",
     "esbuild": "0.27.7",
     "mocha": "^11.7.5",
+    "playwright": "^1.59.1",
     "vscode-oniguruma": "^2.0.1",
     "vscode-textmate": "^9.3.2"
   },

@@ -692,6 +692,243 @@ describe('createServicePlugins', () => {
     }
   });
 
+  it('provides completions for non-root virtual documents using source snapshots', () => {
+    const plugins = createServicePlugins({
+      getIntellisenseOptions: () => ({}),
+      getDiagnosticOptions: () => ({}),
+    });
+    const intellisensePlugin = plugins.find((plugin) => plugin.name === 'templjs-intellisense');
+
+    expect(intellisensePlugin).toBeDefined();
+
+    const sourceText = '{% for item in users %}{{ it }}{% endfor %}';
+    const cursorCharacter = sourceText.lastIndexOf('it') + 'it'.length;
+
+    const pluginInstance = intellisensePlugin!.create(
+      withVolar24Context({
+        documents: {
+          getVirtualCodeByUri: vi.fn(() => [
+            { id: 'template-expr' },
+            {
+              id: 'file:///workspace/test.md.templ',
+              languageId: 'templjs-markdown',
+              snapshot: {
+                getText: () => sourceText,
+                getLength: () => sourceText.length,
+              },
+            },
+          ]),
+        },
+        language: { files: { get: vi.fn(() => undefined) } },
+      } as never)
+    );
+
+    const completions = pluginInstance.provideCompletionItems?.(
+      {
+        uri: 'file:///workspace/test.md.templ?virtualCodeId=template-expr',
+        languageId: 'markdown',
+        getText: () => sourceText,
+        offsetAt: (pos: { line: number; character: number }) => pos.character,
+      } as never,
+      { line: 0, character: cursorCharacter } as never,
+      undefined as never,
+      undefined as never
+    );
+
+    expect(completions && 'items' in completions).toBe(true);
+    if (completions && 'items' in completions) {
+      expect(completions.items.some((item) => item.label === 'item')).toBe(true);
+    }
+  });
+
+  it('uses virtual-doc cursor prefix for non-root completions while keeping schema options', () => {
+    const plugins = createServicePlugins({
+      getIntellisenseOptions: () => ({
+        schema: {
+          type: 'object',
+          properties: {
+            collection: { type: 'array', items: { type: 'string' } },
+            items: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      }),
+      getDiagnosticOptions: () => ({}),
+    });
+    const intellisensePlugin = plugins.find((plugin) => plugin.name === 'templjs-intellisense');
+
+    expect(intellisensePlugin).toBeDefined();
+
+    const sourceText = ['# Heading', '{% set collection = ["a"] %}', '{% for x in i %}'].join('\n');
+    const virtualText = '{% for x in i %}';
+    const cursorCharacter = virtualText.lastIndexOf('i') + 1;
+
+    const pluginInstance = intellisensePlugin!.create(
+      withVolar24Context({
+        documents: {
+          getVirtualCodeByUri: vi.fn(() => [
+            { id: 'template-expr' },
+            {
+              id: 'file:///workspace/test.md.templ',
+              languageId: 'templjs-markdown',
+              snapshot: {
+                getText: () => sourceText,
+                getLength: () => sourceText.length,
+              },
+            },
+          ]),
+        },
+        language: { files: { get: vi.fn(() => undefined) } },
+      } as never)
+    );
+
+    const completions = pluginInstance.provideCompletionItems?.(
+      {
+        uri: 'file:///workspace/test.md.templ?virtualCodeId=template-expr',
+        languageId: 'markdown',
+        getText: () => virtualText,
+        offsetAt: (pos: { line: number; character: number }) => pos.character,
+      } as never,
+      { line: 0, character: cursorCharacter } as never,
+      undefined as never,
+      undefined as never
+    );
+
+    expect(completions && 'items' in completions).toBe(true);
+    if (completions && 'items' in completions) {
+      const labels = completions.items.map((item) => item.label);
+      expect(labels).toContain('items');
+      expect(labels).toContain('collection');
+    }
+  });
+
+  it('surfaces schema property completions in non-root virtual expression docs', () => {
+    const plugins = createServicePlugins({
+      getIntellisenseOptions: () => ({
+        schema: {
+          type: 'object',
+          properties: {
+            title: { type: 'string' },
+            description: { type: 'string' },
+          },
+        },
+      }),
+      getDiagnosticOptions: () => ({}),
+    });
+    const intellisensePlugin = plugins.find((plugin) => plugin.name === 'templjs-intellisense');
+
+    expect(intellisensePlugin).toBeDefined();
+
+    const sourceText = ['# Heading', '{{ ti }}'].join('\n');
+    const virtualText = '{{ ti }}';
+    const cursorCharacter = virtualText.indexOf('ti') + 2;
+
+    const pluginInstance = intellisensePlugin!.create(
+      withVolar24Context({
+        documents: {
+          getVirtualCodeByUri: vi.fn(() => [
+            { id: 'template-expr' },
+            {
+              id: 'file:///workspace/test.md.templ',
+              languageId: 'templjs-markdown',
+              snapshot: {
+                getText: () => sourceText,
+                getLength: () => sourceText.length,
+              },
+            },
+          ]),
+        },
+        language: { files: { get: vi.fn(() => undefined) } },
+      } as never)
+    );
+
+    const completions = pluginInstance.provideCompletionItems?.(
+      {
+        uri: 'file:///workspace/test.md.templ?virtualCodeId=template-expr',
+        languageId: 'markdown',
+        getText: () => virtualText,
+        offsetAt: (pos: { line: number; character: number }) => pos.character,
+      } as never,
+      { line: 0, character: cursorCharacter } as never,
+      undefined as never,
+      undefined as never
+    );
+
+    expect(completions && 'items' in completions).toBe(true);
+    if (completions && 'items' in completions) {
+      expect(completions.items.some((item) => item.label === 'title')).toBe(true);
+    }
+  });
+
+  it('merges non-root virtual and source completions for loop-alias property access', () => {
+    const plugins = createServicePlugins({
+      getIntellisenseOptions: () => ({
+        schema: {
+          type: 'object',
+          properties: {
+            items: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      }),
+      getDiagnosticOptions: () => ({}),
+    });
+    const intellisensePlugin = plugins.find((plugin) => plugin.name === 'templjs-intellisense');
+
+    expect(intellisensePlugin).toBeDefined();
+
+    const sourceText = [
+      '# Heading',
+      '{% for item in items %}',
+      '{{ item.n }}',
+      '{% endfor %}',
+    ].join('\n');
+    const virtualText = '{{ item.n }}';
+    const cursorCharacter = virtualText.indexOf('item.n') + 'item.n'.length;
+
+    const pluginInstance = intellisensePlugin!.create(
+      withVolar24Context({
+        documents: {
+          getVirtualCodeByUri: vi.fn(() => [
+            { id: 'template-expr' },
+            {
+              id: 'file:///workspace/test.md.templ',
+              languageId: 'templjs-markdown',
+              snapshot: {
+                getText: () => sourceText,
+                getLength: () => sourceText.length,
+              },
+            },
+          ]),
+        },
+        language: { files: { get: vi.fn(() => undefined) } },
+      } as never)
+    );
+
+    const completions = pluginInstance.provideCompletionItems?.(
+      {
+        uri: 'file:///workspace/test.md.templ?virtualCodeId=template-expr',
+        languageId: 'markdown',
+        getText: () => virtualText,
+        offsetAt: (pos: { line: number; character: number }) => pos.character,
+      } as never,
+      { line: 0, character: cursorCharacter } as never,
+      undefined as never,
+      undefined as never
+    );
+
+    expect(completions && 'items' in completions).toBe(true);
+    if (completions && 'items' in completions) {
+      expect(completions.items.some((item) => item.label === 'name')).toBe(true);
+    }
+  });
+
   it('skips templjs authoring features when cursor is inside markdown fenced code block', () => {
     const plugins = createServicePlugins({
       getIntellisenseOptions: () => ({}),

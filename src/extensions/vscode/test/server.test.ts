@@ -195,7 +195,14 @@ describe('language-server-bootstrap', () => {
     ) => Promise<{ capabilities: Record<string, unknown> }>;
     const result = await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
 
-    expect(result.capabilities.completionProvider).toEqual({ triggerCharacters: ['.', '|'] });
+    expect(result.capabilities.completionProvider).toEqual({
+      triggerCharacters: [
+        '.',
+        '|',
+        ...'abcdefghijklmnopqrstuvwxyz',
+        ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+      ],
+    });
     expect(result.capabilities.hoverProvider).toBe(true);
     expect(result.capabilities.definitionProvider).toBe(true);
     expect(result.capabilities.documentFormattingProvider).toBe(true);

@@ -677,6 +677,20 @@ describe('language-service service-plugins coverage branches', () => {
         languageId: 'yaml',
       })
     ).toBe(true);
+
+    expect(
+      servicePluginTesting.isTempljsDocument({} as never, {
+        uri: 'file:///workspace/doc.templ',
+        languageId: 'plaintext',
+      })
+    ).toBe(true);
+
+    expect(
+      servicePluginTesting.isTempljsDocument({} as never, {
+        uri: 'file:///workspace/doc.md.tpl',
+        languageId: 'plaintext',
+      })
+    ).toBe(true);
   });
 
   it('resolves both schema and content schema from initialization options', async () => {

@@ -1,16 +1,12 @@
 ---
-invalid: bar: [{% if true %}foo{% endif %}]
+"$schema": "./example.schema.json",
+invalid: bar: [{% if %}foo ]
 ---
-Content
 # Title
-Content
+{{ ti}}
+[broken ref][missing-ref]
 
 ## Subtitle
-{% set collection = ["a", "b", "c"] %}
-
-{{ collection[0] }}
-
-```yaml
-key: value
-```
-End
+{%- for  item in items %}
+{{ item.n }}
+{% endfo

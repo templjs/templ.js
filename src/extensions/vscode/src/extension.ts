@@ -247,17 +247,67 @@ function shouldRefreshFormatterSelection(event: vscode.ConfigurationChangeEvent)
 }
 
 function isTempljsDocument(document: vscode.TextDocument): boolean {
-  if (document.uri.scheme !== 'file') {
-    return false;
-  }
-
   if (document.languageId.startsWith('templjs-')) {
     return true;
   }
 
+  if (document.uri.scheme !== 'file' && document.uri.scheme !== 'vscode-remote') {
+    return false;
+  }
+
+  const path = document.uri.fsPath || document.uri.path || '';
+
   return (
-    /\.(md|markdown|json|ya?ml|html|htm)\.(templ|tmpl|tpl)$/i.test(document.uri.fsPath) ||
-    /\.(templ|tmpl|tpl)$/i.test(document.uri.fsPath)
+    /\.(md|markdown|json|ya?ml|html|htm)\.(templ|tmpl|tpl)$/i.test(path) ||
+    /\.(templ|tmpl|tpl)$/i.test(path)
+  );
+}
+
+function isInsideUnclosedTemplateRegion(
+  text: string,
+  offset: number,
+  startDelimiter: string,
+  endDelimiter: string
+): boolean {
+  const prefix = text.slice(0, Math.max(0, offset));
+  const lastStart = prefix.lastIndexOf(startDelimiter);
+  if (lastStart === -1) {
+    return false;
+  }
+
+  const lastEnd = prefix.lastIndexOf(endDelimiter);
+  return lastStart > lastEnd;
+}
+
+function shouldAutoTriggerSuggestOnChange(
+  document: Pick<vscode.TextDocument, 'uri' | 'languageId' | 'getText'>,
+  changes: ReadonlyArray<
+    Pick<vscode.TextDocumentContentChangeEvent, 'rangeOffset' | 'rangeLength' | 'text'>
+  >
+): boolean {
+  if (!isTempljsDocument(document as vscode.TextDocument)) {
+    return false;
+  }
+
+  if (changes.length === 0) {
+    return false;
+  }
+
+  const change = changes[changes.length - 1];
+  if (change.text.length !== 1 || change.rangeLength > 1) {
+    return false;
+  }
+
+  if (!/[A-Za-z_.|]/.test(change.text)) {
+    return false;
+  }
+
+  const offset = change.rangeOffset + change.text.length;
+  const text = document.getText();
+
+  return (
+    isInsideUnclosedTemplateRegion(text, offset, '{{', '}}') ||
+    isInsideUnclosedTemplateRegion(text, offset, '{%', '%}')
   );
 }
 
@@ -451,28 +501,30 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
       },
     },
     documentSelector: [
-      { scheme: 'file', language: 'templjs-yaml' },
-      { scheme: 'file', language: 'templjs-json' },
-      { scheme: 'file', language: 'templjs-markdown' },
-      { scheme: 'file', language: 'templjs-html' },
-      { scheme: 'file', pattern: '**/*.templ' },
-      { scheme: 'file', pattern: '**/*.tmpl' },
-      { scheme: 'file', pattern: '**/*.tpl' },
-      { scheme: 'file', pattern: '**/*.md.templ' },
-      { scheme: 'file', pattern: '**/*.md.tmpl' },
-      { scheme: 'file', pattern: '**/*.md.tpl' },
-      { scheme: 'file', pattern: '**/*.json.templ' },
-      { scheme: 'file', pattern: '**/*.json.tmpl' },
-      { scheme: 'file', pattern: '**/*.json.tpl' },
-      { scheme: 'file', pattern: '**/*.yaml.templ' },
-      { scheme: 'file', pattern: '**/*.yaml.tmpl' },
-      { scheme: 'file', pattern: '**/*.yaml.tpl' },
-      { scheme: 'file', pattern: '**/*.yml.templ' },
-      { scheme: 'file', pattern: '**/*.yml.tmpl' },
-      { scheme: 'file', pattern: '**/*.yml.tpl' },
-      { scheme: 'file', pattern: '**/*.html.templ' },
-      { scheme: 'file', pattern: '**/*.html.tmpl' },
-      { scheme: 'file', pattern: '**/*.html.tpl' },
+      ...(['file', 'vscode-remote'] as const).flatMap((scheme) => [
+        { scheme, language: 'templjs-yaml' as const },
+        { scheme, language: 'templjs-json' as const },
+        { scheme, language: 'templjs-markdown' as const },
+        { scheme, language: 'templjs-html' as const },
+        { scheme, pattern: '**/*.templ' },
+        { scheme, pattern: '**/*.tmpl' },
+        { scheme, pattern: '**/*.tpl' },
+        { scheme, pattern: '**/*.md.templ' },
+        { scheme, pattern: '**/*.md.tmpl' },
+        { scheme, pattern: '**/*.md.tpl' },
+        { scheme, pattern: '**/*.json.templ' },
+        { scheme, pattern: '**/*.json.tmpl' },
+        { scheme, pattern: '**/*.json.tpl' },
+        { scheme, pattern: '**/*.yaml.templ' },
+        { scheme, pattern: '**/*.yaml.tmpl' },
+        { scheme, pattern: '**/*.yaml.tpl' },
+        { scheme, pattern: '**/*.yml.templ' },
+        { scheme, pattern: '**/*.yml.tmpl' },
+        { scheme, pattern: '**/*.yml.tpl' },
+        { scheme, pattern: '**/*.html.templ' },
+        { scheme, pattern: '**/*.html.tmpl' },
+        { scheme, pattern: '**/*.html.tpl' },
+      ]),
     ],
     synchronize: {
       fileEvents: [
@@ -563,6 +615,17 @@ function initializeHostLanguageDelegation(context: vscode.ExtensionContext): voi
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument((e) => {
       syncDocument(e.document);
+
+      const activeEditor = vscode.window.activeTextEditor;
+      if (!activeEditor || activeEditor.document !== e.document) {
+        return;
+      }
+
+      if (!shouldAutoTriggerSuggestOnChange(e.document, e.contentChanges)) {
+        return;
+      }
+
+      void vscode.commands.executeCommand('editor.action.triggerSuggest');
     })
   );
 
@@ -693,6 +756,8 @@ export const extensionTesting = {
   resolveAdapterRuntimes,
   shouldRefreshFormatterSelection,
   isTempljsDocument,
+  isInsideUnclosedTemplateRegion,
+  shouldAutoTriggerSuggestOnChange,
   getActiveDocumentContext,
   getContentSchemaPathFromSettings,
   getSchemaPatternsFromSettings,

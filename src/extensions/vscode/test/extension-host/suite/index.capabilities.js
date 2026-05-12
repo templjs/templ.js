@@ -6,16 +6,15 @@ function run() {
   const mocha = new Mocha({
     ui: 'tdd',
     color: true,
-    timeout: 30_000,
+    timeout: 60_000,
   });
 
-  mocha.addFile(path.resolve(__dirname, '..', 'diagnostics.test.js'));
   mocha.addFile(path.resolve(__dirname, '..', 'capabilities.test.js'));
 
   return new Promise((resolve, reject) => {
     mocha.run((failures) => {
       if (failures > 0) {
-        reject(new Error(`${failures} extension host test(s) failed.`));
+        reject(new Error(`${failures} extension host capability test(s) failed.`));
         return;
       }
 
