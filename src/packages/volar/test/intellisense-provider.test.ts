@@ -1183,4 +1183,94 @@ describe('IntellisenseProvider', () => {
     expect(frontmatterHover?.contents).toContain('frontData.title');
     expect(contentHover?.contents).toContain('contentData.heading');
   });
+
+  describe('regression: intellisense on complex iterable expressions (WI-062 drift prevention)', () => {
+    it('provides completions for loop alias on computed bracket expressions', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          users: {
+            type: 'array',
+            items: { type: 'object', properties: { name: { type: 'string' } } },
+          },
+          activeIndex: { type: 'number' },
+        },
+      };
+      const text = '{% for user in users[activeIndex + 1] %}{{ user. }}{% endfor %}';
+      const cursor = text.indexOf('user.') + 'user.'.length;
+
+      const completions = provider.getCompletions(text, cursor, { schema: schema as object });
+      expect(completions?.some((item) => item.label === 'name')).toBe(true);
+    });
+
+    it('provides hover info for loop alias on spaced for-in header', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          users: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: { email: { type: 'string' } },
+            },
+          },
+        },
+      };
+      const text = '{% for   user   in   users   %}{{ user }}{% endfor %}';
+      const cursor = text.indexOf('user }}') + 2;
+
+      const hover = provider.getHover(text, cursor, { schema: schema as object });
+      expect(hover?.contents).toBe('user: local loop alias');
+    });
+
+    it('provides definition for loop alias used in nested scope with complex outer iterable', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          groups: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                members: {
+                  type: 'array',
+                  items: { type: 'object', properties: { id: { type: 'string' } } },
+                },
+              },
+            },
+          },
+          activeIndex: { type: 'number' },
+        },
+      };
+      const text =
+        '{% for group in groups[activeIndex] %}{% for member in group.members %}{{ member.id }}{% endfor %}{% endfor %}';
+      const cursor = text.indexOf('member.id') + 2;
+
+      const definition = provider.getDefinition(text, cursor, {
+        schema: schema as object,
+        schemaUri: 'file:///schema.json',
+        documentUri: 'file:///workspace/project.md.tpl',
+      });
+      expect(definition?.uri).toBe('file:///workspace/project.md.tpl');
+      expect(definition?.range).toBeTruthy();
+    });
+
+    it('returns hover info for loop alias even when iterable offset is complex', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          users: {
+            type: 'array',
+            items: { type: 'object', properties: { name: { type: 'string' } } },
+          },
+          activeIndex: { type: 'number' },
+        },
+      };
+      const text = '{% for user in users[activeIndex] %}{{ user }}{% endfor %}';
+      const cursor = text.indexOf('user }}') + 2;
+
+      const hover = provider.getHover(text, cursor, { schema: schema as object });
+      expect(hover?.contents).toBe('user: local loop alias');
+    });
+  });
 });

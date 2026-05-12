@@ -879,4 +879,103 @@ describe('DiagnosticProvider', () => {
     // `users` is defined in the schema so no undefinedVariable diagnostic expected
     expect(diagnostics.some((diag) => diag.code === 'templjs.undefinedVariable')).toBe(false);
   });
+
+  describe('regression: complex iterable expressions (WI-062 drift prevention)', () => {
+    it('does not truncate computed bracket expressions like users[activeIndex + 1]', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          users: {
+            type: 'array',
+            items: { type: 'object', properties: { name: { type: 'string' } } },
+          },
+          activeIndex: { type: 'number' },
+        },
+      };
+      const text = '{% for user in users[activeIndex + 1] %}{{ user.name }}{% endfor %}';
+
+      const diagnostics = collectDiagnostics(text, { schema: schema as object });
+      // Should not flag `activeIndex + 1` as undefined; the iterable should be parsed fully
+      const truncationIssues = diagnostics.filter(
+        (d) => d.code === 'templjs.undefinedVariable' && d.message.includes('activeIndex')
+      );
+      expect(truncationIssues.length).toBe(0);
+    });
+
+    it('derives correct iterableStart offset for for-in headers regardless of spacing', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          items: {
+            type: 'array',
+            items: { type: 'object', properties: { id: { type: 'string' } } },
+          },
+        },
+      };
+      // Multiple whitespace variants should all correctly identify iterableStart
+      const variants = [
+        '{% for item in items %}{{ item.id }}{% endfor %}',
+        '{%  for  item  in  items  %}{{ item.id }}{% endfor %}',
+        '{% for item   in   items %}{{ item.id }}{% endfor %}',
+      ];
+
+      variants.forEach((text) => {
+        const diagnostics = collectDiagnostics(text, { schema: schema as object });
+        // No offset-misalignment errors on the loop alias
+        const aliasErrors = diagnostics.filter(
+          (d) => d.code === 'templjs.undefinedVariable' && d.message.includes('Variable "item"')
+        );
+        expect(aliasErrors.length).toBe(0);
+      });
+    });
+
+    it('preserves alias scope across nested loops using outer-loop aliases in inner iterable', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          groups: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                members: {
+                  type: 'array',
+                  items: { type: 'object', properties: { id: { type: 'string' } } },
+                },
+              },
+            },
+          },
+        },
+      };
+      const text =
+        '{% for group in groups %}{% for member in group.members %}{{ member.id }}{% endfor %}{% endfor %}';
+
+      const diagnostics = collectDiagnostics(text, { schema: schema as object });
+      // Should not flag `group` as undefined when used in inner loop
+      const undefinedGroup = diagnostics.filter(
+        (d) => d.code === 'templjs.undefinedVariable' && d.message.includes('group')
+      );
+      expect(undefinedGroup.length).toBe(0);
+    });
+
+    it('handles multiline for-in headers without offset shift', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          users: {
+            type: 'array',
+            items: { type: 'object', properties: { name: { type: 'string' } } },
+          },
+        },
+      };
+      const text = '{% for\nuser\nin\nusers %}{{ user.name }}{% endfor %}';
+
+      const diagnostics = collectDiagnostics(text, { schema: schema as object });
+      // Multiline headers should not cause offset misalignment diagnostics
+      const offsetErrors = diagnostics.filter(
+        (d) => d.code === 'templjs.undefinedVariable' && d.message.includes('Variable "user"')
+      );
+      expect(offsetErrors.length).toBe(0);
+    });
+  });
 });
