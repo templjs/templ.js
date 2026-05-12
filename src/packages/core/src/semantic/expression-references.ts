@@ -37,11 +37,7 @@ function pathSegmentToString(segment: PathSegment): string {
   return `[${segmentType}:${serializedValue}]`;
 }
 
-function variableNodeToPath(node: ExpressionNode): string | null {
-  if (node.type !== 'variable') {
-    return null;
-  }
-
+function variableNodeToPath(node: Extract<ExpressionNode, { type: 'variable' }>): string {
   return `${node.name}${node.path.map((segment: PathSegment) => pathSegmentToString(segment)).join('')}`;
 }
 
@@ -53,9 +49,7 @@ function collectExpressionReferences(
   switch (node.type) {
     case 'variable': {
       const path = variableNodeToPath(node);
-      if (path) {
-        variables.push(path);
-      }
+      variables.push(path);
       return;
     }
     case 'filter': {
@@ -189,14 +183,12 @@ function getPathSearchCandidates(path: string): string[] {
   const segments: Array<{ start: number; end: number; candidates: string[] }> = [];
 
   for (const match of path.matchAll(bracketRegex)) {
-    if (typeof match.index !== 'number') {
-      continue;
-    }
+    const matchIndex = match.index as number;
     const fullMatch = match[0];
     const segmentValue = match[1];
     segments.push({
-      start: match.index,
-      end: match.index + fullMatch.length,
+      start: matchIndex,
+      end: matchIndex + fullMatch.length,
       candidates: buildBracketSegmentCandidates(segmentValue),
     });
   }
@@ -309,8 +301,8 @@ function assignVariableReferences(
 
   const refs: ExpressionVariableReference[] = [];
   for (const path of pathsInOrder) {
-    const occurrences = pathOccurrences.get(path) ?? [];
-    const cursor = pathCursor.get(path) ?? 0;
+    const occurrences = pathOccurrences.get(path)!;
+    const cursor = pathCursor.get(path)!;
     if (occurrences.length === 0) {
       continue;
     }
@@ -354,8 +346,8 @@ function assignFilterReferences(
 
   const refs: ExpressionFilterReference[] = [];
   for (const name of namesInOrder) {
-    const occurrences = nameOccurrences.get(name) ?? [];
-    const cursor = nameCursor.get(name) ?? 0;
+    const occurrences = nameOccurrences.get(name)!;
+    const cursor = nameCursor.get(name)!;
     if (occurrences.length === 0) {
       continue;
     }
