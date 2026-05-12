@@ -871,3 +871,13 @@ describe('DiagnosticProvider', () => {
     ).toBeGreaterThan(0);
   });
 });
+
+it('validates for-in variables when alias name matches iterable root', () => {
+  // `for users in users` — alias and iterable share the same name; the iterable
+  // start offset must be derived from the alias boundary, not from indexOf(expression).
+  const diagnostics = collectDiagnostics('{% for users in users %}', {
+    schema: sampleSchema,
+  });
+  // `users` is defined in the schema so no undefinedVariable diagnostic expected
+  expect(diagnostics.some((diag) => diag.code === 'templjs.undefinedVariable')).toBe(false);
+});
