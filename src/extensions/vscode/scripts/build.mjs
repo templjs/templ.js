@@ -5,6 +5,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import esbuild from 'esbuild';
 
+const SERVER_FORMAT_ENV = 'TEMPLJS_SERVER_FORMAT';
+
 const require = createRequire(import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
 const extensionRoot = path.resolve(here, '..');
@@ -87,16 +89,43 @@ const createRequireCompatPlugin = {
   },
 };
 
+function getServerFormat() {
+  const configured = process.env[SERVER_FORMAT_ENV]?.trim().toLowerCase();
+  if (!configured || configured === 'cjs') {
+    return 'cjs';
+  }
+
+  if (configured === 'esm') {
+    return 'esm';
+  }
+
+  throw new Error(
+    `${SERVER_FORMAT_ENV} must be either "cjs" or "esm" (received: ${JSON.stringify(configured)})`
+  );
+}
+
+const serverFormat = getServerFormat();
+const serverIsEsm = serverFormat === 'esm';
+
 const sharedOptions = {
   absWorkingDir: extensionRoot,
   alias,
+  bundle: true,
+  mainFields: ['module', 'main'],
+  platform: 'node',
+  target: 'node18',
+  minify: false,
+  sourcemap: true,
+  logLevel: 'info',
+};
+
+const cjsCompatOptions = {
   // Declare a CJS-safe global at the top of each bundle that esbuild's define option
   // can reference. esbuild's define only accepts identifiers or JSON literals, so
   // we cannot inline require('url').pathToFileURL(...) directly.
   banner: {
     js: "var __esm_import_meta_url = require('url').pathToFileURL(__filename).href;",
   },
-  bundle: true,
   // Replace import.meta.url with the CJS-safe global declared above.
   // esbuild compiles ESM→CJS by substituting import.meta with an empty object
   // `import_meta = {}` and never populates `.url`, so any code that calls
@@ -105,25 +134,36 @@ const sharedOptions = {
     'import.meta.url': '__esm_import_meta_url',
   },
   format: 'cjs',
-  mainFields: ['module', 'main'],
-  platform: 'node',
-  target: 'node18',
-  minify: false,
   plugins: [forceJsonLanguageServiceEsmPlugin, createRequireCompatPlugin],
-  sourcemap: true,
-  logLevel: 'info',
 };
+
+const serverBuildOptions = serverIsEsm
+  ? {
+      format: 'esm',
+      plugins: [forceJsonLanguageServiceEsmPlugin],
+      // Some bundled dependencies still execute CJS-style dynamic require() at runtime.
+      // In ESM output we provide a local require via createRequire(import.meta.url).
+      banner: {
+        js: "import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);",
+      },
+      outfile: 'dist/server.mjs',
+    }
+  : {
+      ...cjsCompatOptions,
+      outfile: 'dist/server.js',
+    };
 
 await Promise.all([
   esbuild.build({
     ...sharedOptions,
+    ...cjsCompatOptions,
     entryPoints: ['src/extension.ts'],
     outfile: 'dist/extension.js',
     external: ['vscode'],
   }),
   esbuild.build({
     ...sharedOptions,
+    ...serverBuildOptions,
     entryPoints: ['src/server-main.ts'],
-    outfile: 'dist/server.js',
   }),
 ]);

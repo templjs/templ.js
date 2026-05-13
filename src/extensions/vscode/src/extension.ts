@@ -31,6 +31,7 @@ let isRestartingLanguageClient = false;
 let activeEditorTraceSubscription: vscode.Disposable | undefined;
 
 type TraceMode = 'off' | 'messages' | 'verbose';
+type ServerModuleFormat = 'cjs' | 'esm';
 
 const FORMATTING_EXTENSION_IDS = new Set(getFormattingExtensionIds().map((id) => id.toLowerCase()));
 const FORMATTING_LANGUAGE_CONFIGURATION_KEYS = getFormattingLanguageConfigurationKeys();
@@ -47,6 +48,14 @@ function getTraceMode(): TraceMode {
   }
 
   return 'off';
+}
+
+function getServerModuleFormat(): ServerModuleFormat {
+  const configured = vscode.workspace
+    .getConfiguration('templjs')
+    .get<string>('serverModuleFormat', 'cjs');
+
+  return configured === 'esm' ? 'esm' : 'cjs';
 }
 
 // 'verbose' enables all logging, while 'messages' enables only message-level logging.
@@ -409,8 +418,12 @@ async function restartLanguageClient(context: vscode.ExtensionContext): Promise<
  * Initialize the Volar language server
  */
 function initializeLanguageServer(context: vscode.ExtensionContext): void {
-  const serverModule = context.asAbsolutePath(path.join('dist', 'server.js'));
-  outputChannel?.appendLine(`[templjs] Server module path: ${serverModule}`);
+  const serverModuleFormat = getServerModuleFormat();
+  const serverModuleFile = serverModuleFormat === 'esm' ? 'server.mjs' : 'server.js';
+  const serverModule = context.asAbsolutePath(path.join('dist', serverModuleFile));
+  outputChannel?.appendLine(
+    `[templjs] Server module path: ${serverModule} (format=${serverModuleFormat})`
+  );
   const traceMode = getTraceMode();
   const trace = (message: string, level: 'messages' | 'verbose' = 'messages') => {
     if (shouldTrace(traceMode, level)) {
@@ -761,6 +774,7 @@ export function deactivate(): Thenable<void> | undefined {
 
 export const extensionTesting = {
   getTraceMode,
+  getServerModuleFormat,
   shouldTrace,
   getResultCount,
   extractLabels,
