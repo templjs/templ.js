@@ -9,7 +9,6 @@
  */
 
 import * as path from 'path';
-import { spawnSync } from 'node:child_process';
 import * as vscode from 'vscode';
 import {
   getFormattingExtensionIds,
@@ -189,34 +188,6 @@ function getFormattingHostLanguagesFromSettings(): string[] {
   return selected;
 }
 
-/* c8 ignore start */
-/* v8 ignore start */
-function discoverBinaryPath(binaryName: string): string | undefined {
-  const command = process.platform === 'win32' ? 'where' : 'command';
-  const args = process.platform === 'win32' ? [binaryName] : ['-v', binaryName];
-
-  try {
-    const result = spawnSync(command, args, {
-      encoding: 'utf8',
-      windowsHide: true,
-      shell: process.platform !== 'win32',
-    });
-
-    if (result.status !== 0) {
-      return undefined;
-    }
-
-    const firstLine = String(result.stdout ?? '')
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .find((line) => line.length > 0);
-
-    return firstLine;
-  } catch {
-    return undefined;
-  }
-}
-
 function resolveAdapterRuntimes(formattingHostLanguages: string[]) {
   const runtimes = resolveAdapterRuntimeMapFromRegistry({
     formattingHostLanguages,
@@ -226,20 +197,11 @@ function resolveAdapterRuntimes(formattingHostLanguages: string[]) {
 
   const markdownlintRuntime = runtimes['templjs-markdownlint-host'];
   if (markdownlintRuntime) {
-    const markdownlintBinaryPath = discoverBinaryPath('markdownlint');
-    if (markdownlintBinaryPath) {
-      markdownlintRuntime.state = 'enabled';
-      markdownlintRuntime.reason = 'resolved-binary-markdownlint';
-      markdownlintRuntime.provider = {
-        kind: 'binary',
-        id: 'markdownlint',
-      };
-      markdownlintRuntime.binaryPath = markdownlintBinaryPath;
-    } else {
-      markdownlintRuntime.state = 'unavailable';
-      markdownlintRuntime.reason = 'unavailable-binary-markdownlint';
-      delete markdownlintRuntime.binaryPath;
-    }
+    // WI-106: extension-host diagnostics remain delegation-only.
+    markdownlintRuntime.state = 'disabled';
+    markdownlintRuntime.reason = 'disabled-delegation-only-wi106';
+    delete markdownlintRuntime.provider;
+    delete markdownlintRuntime.binaryPath;
   }
 
   return runtimes;
@@ -782,7 +744,6 @@ export const extensionTesting = {
   getFirstTargetUri,
   isFormatterSelection,
   getFormattingHostLanguagesFromSettings,
-  discoverBinaryPath,
   resolveAdapterRuntimes,
   shouldRefreshFormatterSelection,
   isTempljsDocument,
