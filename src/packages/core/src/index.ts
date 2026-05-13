@@ -41,8 +41,11 @@ export { SchemaValidator } from './schema/SchemaValidator.js';
 export { extractPaths, isValidPath } from './schema/queryPathValidator.js';
 export { inferSchemaFromValue, mergeSchemas } from './schema/schemaInference.js';
 export {
+  analyzeForStatementHeader,
+  analyzeSetStatementHeader,
   extractTemplateBindings,
   getTemplateBindingsAtOffset,
+  isCursorOnStatementKeyword,
 } from './semantic/template-scopes.js';
 export {
   extractExpressionFilterReferences,

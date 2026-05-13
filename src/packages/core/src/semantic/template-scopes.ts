@@ -24,6 +24,20 @@ export interface TemplateBinding {
   sourceExpression?: string;
 }
 
+export interface ForStatementHeaderAnalysis {
+  aliasName: string;
+  aliasStart: number;
+  aliasEnd: number;
+  iterableExpression: string;
+  iterableStart: number;
+}
+
+export interface SetStatementHeaderAnalysis {
+  variableName: string;
+  variableStart: number;
+  variableEnd: number;
+}
+
 interface NormalizedTemplate {
   text: string;
   toOriginalOffset: (normalizedOffset: number | undefined) => number | undefined;
@@ -471,6 +485,61 @@ function parseFallbackForStatement(rawContent: string): {
   };
 }
 
+export function analyzeForStatementHeader(
+  statementContent: string
+): ForStatementHeaderAnalysis | null {
+  const parsed = parseFallbackForStatement(statementContent);
+  if (!parsed) {
+    return null;
+  }
+
+  const alias = parsed.names.find((nameInfo) => nameInfo.kind === 'for-alias');
+  if (!alias) {
+    return null;
+  }
+
+  const normalized = stripLeadingStatementTrimMarker(statementContent);
+  const content = normalized.content;
+  const forKeyword = isKeywordAt(content, 'for', 0);
+  if (!forKeyword) {
+    return null;
+  }
+
+  let cursor = skipWhitespace(content, forKeyword.end);
+  while (cursor < content.length && !isWhitespaceChar(content[cursor])) {
+    cursor += 1;
+  }
+  cursor = skipWhitespace(content, cursor);
+
+  if (content[cursor] === ',') {
+    cursor += 1;
+    cursor = skipWhitespace(content, cursor);
+    while (cursor < content.length && !isWhitespaceChar(content[cursor])) {
+      cursor += 1;
+    }
+    cursor = skipWhitespace(content, cursor);
+  }
+
+  const inKeyword = isKeywordAt(content, 'in', cursor);
+  if (!inKeyword) {
+    return null;
+  }
+
+  const iterableStart = skipWhitespace(content, inKeyword.end);
+  const iterableExpression = trimStatementTrimMarker(content.slice(iterableStart));
+  if (!iterableExpression) {
+    return null;
+  }
+
+  return {
+    aliasName: alias.name,
+    aliasStart: alias.declarationStart,
+    aliasEnd: alias.declarationEnd,
+    iterableExpression,
+    iterableStart: iterableStart + normalized.offsetDelta,
+  };
+}
+
 function parseFallbackSetStatement(rawContent: string): {
   name: string;
   declarationStart: number;
@@ -508,6 +577,59 @@ function parseFallbackSetStatement(rawContent: string): {
     declarationEnd: name.end + normalized.offsetDelta,
     sourceExpression,
   };
+}
+
+export function analyzeSetStatementHeader(
+  statementContent: string
+): SetStatementHeaderAnalysis | null {
+  const parsed = parseFallbackSetStatement(statementContent);
+  if (!parsed) {
+    return null;
+  }
+
+  return {
+    variableName: parsed.name,
+    variableStart: parsed.declarationStart,
+    variableEnd: parsed.declarationEnd,
+  };
+}
+
+export function isCursorOnStatementKeyword(
+  statementContent: string,
+  cursorInStatement: number,
+  keywords: ReadonlySet<string>
+): boolean {
+  if (cursorInStatement < 0 || cursorInStatement > statementContent.length) {
+    return false;
+  }
+
+  const normalized = stripLeadingStatementTrimMarker(statementContent);
+  const content = normalized.content;
+  const normalizedCursor = Math.max(0, cursorInStatement - normalized.offsetDelta);
+
+  let cursor = 0;
+  while (cursor < content.length) {
+    while (cursor < content.length && isWhitespaceChar(content[cursor])) {
+      cursor += 1;
+    }
+
+    if (cursor >= content.length) {
+      break;
+    }
+
+    const tokenStart = cursor;
+    while (cursor < content.length && !isWhitespaceChar(content[cursor])) {
+      cursor += 1;
+    }
+    const tokenEnd = cursor;
+    const token = content.slice(tokenStart, tokenEnd);
+
+    if (keywords.has(token) && normalizedCursor >= tokenStart && normalizedCursor <= tokenEnd) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function isFallbackEndForStatement(rawContent: string): boolean {

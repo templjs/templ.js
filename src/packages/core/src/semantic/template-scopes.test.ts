@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { analyzeForStatementHeader } from '../index.js';
+import { analyzeSetStatementHeader } from '../index.js';
 import { extractTemplateBindings } from '../index.js';
 import { getTemplateBindingsAtOffset } from '../index.js';
+import { isCursorOnStatementKeyword } from '../index.js';
 import { pathSegmentToString } from './template-scopes.js';
 
 describe('extractTemplateBindings', () => {
@@ -318,5 +321,39 @@ describe('extractTemplateBindings', () => {
 
     expect(itemBindings).toHaveLength(1);
     expect(itemBindings[0].sourcePath).toBe('items');
+  });
+
+  it('analyzes for statement headers with trim markers', () => {
+    const parsed = analyzeForStatementHeader('- for item in item.name -');
+
+    expect(parsed).toMatchObject({
+      aliasName: 'item',
+      iterableExpression: 'item.name',
+    });
+    expect(parsed?.aliasStart).toBeGreaterThanOrEqual(0);
+    expect(parsed?.iterableStart).toBeGreaterThan(parsed?.aliasEnd ?? 0);
+  });
+
+  it('analyzes set statement headers with trim markers', () => {
+    const parsed = analyzeSetStatementHeader('- set collection = ["a", "b"] -');
+
+    expect(parsed).toMatchObject({
+      variableName: 'collection',
+    });
+    expect(parsed?.variableStart).toBeGreaterThanOrEqual(0);
+    expect(parsed?.variableEnd).toBeGreaterThan(parsed?.variableStart ?? 0);
+  });
+
+  it('detects cursor locations on statement keywords', () => {
+    const statement = '- for item in items -';
+    const keywords = new Set(['for', 'in']);
+
+    const onFor = isCursorOnStatementKeyword(statement, statement.indexOf('for') + 1, keywords);
+    const onIn = isCursorOnStatementKeyword(statement, statement.indexOf(' in ') + 2, keywords);
+    const onAlias = isCursorOnStatementKeyword(statement, statement.indexOf('item') + 1, keywords);
+
+    expect(onFor).toBe(true);
+    expect(onIn).toBe(true);
+    expect(onAlias).toBe(false);
   });
 });
