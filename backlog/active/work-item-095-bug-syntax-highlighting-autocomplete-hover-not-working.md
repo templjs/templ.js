@@ -6,10 +6,13 @@ summary: Syntax highlighting, autocomplete, and hover are absent for host-langua
 type: work-item
 subtype: bug
 lifecycle: active
-status: ready
+status: ready-for-review
 priority: high
 estimated: 5
 actual: 5
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/124
 ---
 
 ## Goal
