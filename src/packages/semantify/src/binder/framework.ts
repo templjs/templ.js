@@ -52,6 +52,68 @@ function toCoreDelimiters(input?: DelimiterConfigInput): DelimiterConfig | undef
   };
 }
 
+function countOccurrences(text: string, token: string): number {
+  if (!token) {
+    return 0;
+  }
+
+  let count = 0;
+  let cursor = 0;
+  while (cursor <= text.length - token.length) {
+    const next = text.indexOf(token, cursor);
+    if (next < 0) {
+      break;
+    }
+    count += 1;
+    cursor = next + token.length;
+  }
+
+  return count;
+}
+
+function getExpressionDelimiters(input?: DelimiterConfigInput): { start: string; end: string } {
+  return {
+    start: input?.expressionStart ?? DEFAULT_DELIMITERS.expression_start,
+    end: input?.expressionEnd ?? DEFAULT_DELIMITERS.expression_end,
+  };
+}
+
+function repairDanglingExpressionDelimiters(
+  text: string,
+  delimiters?: DelimiterConfigInput
+): string | undefined {
+  const expressionDelimiters = getExpressionDelimiters(delimiters);
+  const openCount = countOccurrences(text, expressionDelimiters.start);
+  const closeCount = countOccurrences(text, expressionDelimiters.end);
+  const missingClosers = openCount - closeCount;
+
+  if (missingClosers <= 0) {
+    return undefined;
+  }
+
+  return `${text}${expressionDelimiters.end.repeat(missingClosers)}`;
+}
+
+function extractBindingsWithRecovery(input: SemanticContextResolverInput) {
+  const delimiters = toCoreDelimiters(input.delimiters);
+  const bindings = extractTemplateBindings(input.text, {
+    delimiters,
+  });
+
+  if (bindings.length > 0) {
+    return bindings;
+  }
+
+  const repairedText = repairDanglingExpressionDelimiters(input.text, input.delimiters);
+  if (!repairedText) {
+    return bindings;
+  }
+
+  return extractTemplateBindings(repairedText, {
+    delimiters,
+  });
+}
+
 function mapBinding(binding: import('@templjs/core').TemplateBinding): ScopeBinding {
   const scopeRange = normalizeRange(binding.scopeStartOffset, binding.scopeEndOffset);
   const declarationStartOffset = binding.declarationStartOffset ?? binding.scopeStartOffset;
@@ -104,9 +166,7 @@ function applyPrefix(items: CandidateItem[], prefix?: string): CandidateItem[] {
 
 class CoreBackedSemantifyServices implements SemantifyServices {
   resolveContext(input: SemanticContextResolverInput): SemanticContext {
-    const allBindings = extractTemplateBindings(input.text, {
-      delimiters: toCoreDelimiters(input.delimiters),
-    });
+    const allBindings = extractBindingsWithRecovery(input);
     const inScope = getTemplateBindingsAtOffset(allBindings, input.offset).map(mapBinding);
     const region = getRegion(input);
 
@@ -135,8 +195,6 @@ class CoreBackedSemantifyServices implements SemantifyServices {
   }
 
   planCandidates(intent: QueryIntent, input: SemanticContextResolverInput): CandidateItem[] {
-    const context = this.resolveContext(input);
-
     if (intent.type === 'filterCandidates') {
       const filterItems = getBuiltinFilterNames().map((name) => ({
         label: name,
@@ -144,6 +202,12 @@ class CoreBackedSemantifyServices implements SemantifyServices {
       }));
       return applyPrefix(filterItems, intent.typedPrefix);
     }
+
+    if (intent.type !== 'symbolCandidates') {
+      return [];
+    }
+
+    const context = this.resolveContext(input);
 
     const symbolItems = context.bindings.map((binding) => {
       // Semantify produces bindingKind for all mapped bindings.

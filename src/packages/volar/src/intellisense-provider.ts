@@ -352,17 +352,54 @@ function getInScopeAliasCompletions(
     commentEnd: delimiters.commentEnd,
   };
 
-  return semantifyServices
-    .resolveContext({ text, offset, delimiters: semantifyDelimiters })
-    .bindings.map((binding) => {
-      const bindingKind =
-        typeof binding.metadata?.bindingKind === 'string' ? binding.metadata.bindingKind : '';
-      return {
-        label: binding.name,
-        kind: 'variable' as const,
-        detail: bindingKind === 'set-variable' ? 'local template variable' : 'local loop alias',
-      };
-    });
+  const bindings = semantifyServices.resolveContext({
+    text,
+    offset,
+    delimiters: semantifyDelimiters,
+  }).bindings;
+  const deduped = dedupeBindingsByNameKeepNearest(bindings);
+
+  return deduped.map((binding) => ({
+    label: binding.name,
+    kind: 'variable' as const,
+    detail: getAliasDetail(binding),
+  }));
+}
+
+function dedupeBindingsByNameKeepNearest(
+  bindings: Array<{ name: string; kind: string; metadata?: Record<string, unknown> }>
+): Array<{ name: string; kind: string; metadata?: Record<string, unknown> }> {
+  const seen = new Set<string>();
+  const deduped: Array<{ name: string; kind: string; metadata?: Record<string, unknown> }> = [];
+
+  for (let index = bindings.length - 1; index >= 0; index -= 1) {
+    const binding = bindings[index];
+    const key = binding.name.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.unshift(binding);
+  }
+
+  return deduped;
+}
+
+function getAliasDetail(binding: { kind: string; metadata?: Record<string, unknown> }): string {
+  if (binding.kind === 'custom') {
+    return 'custom binding';
+  }
+
+  const bindingKind =
+    typeof binding.metadata?.bindingKind === 'string' ? binding.metadata.bindingKind : undefined;
+  if (bindingKind === 'set-variable') {
+    return 'local template variable';
+  }
+  if (bindingKind === 'for-alias') {
+    return 'local loop alias';
+  }
+
+  return 'local binding';
 }
 
 function summarizeDuplicateLabels(items: CompletionItem[]): string[] {

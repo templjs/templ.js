@@ -140,6 +140,19 @@ describe('IntellisenseProvider', () => {
             declarationRange: { startOffset: 0, endOffset: 13 },
             metadata: { bindingKind: 'for-alias' },
           },
+          {
+            kind: 'local',
+            name: 'semantifyAlias',
+            scopeRange: { startOffset: 5, endOffset: Number.MAX_SAFE_INTEGER },
+            declarationRange: { startOffset: 5, endOffset: 13 },
+            metadata: { bindingKind: 'set-variable' },
+          },
+          {
+            kind: 'custom',
+            name: 'pluginAlias',
+            scopeRange: { startOffset: 0, endOffset: Number.MAX_SAFE_INTEGER },
+            declarationRange: { startOffset: 0, endOffset: 11 },
+          },
         ],
       }),
       resolveReferences: () => [],
@@ -147,9 +160,12 @@ describe('IntellisenseProvider', () => {
     };
 
     const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
-    const items = providerWithSemantify.getCompletions('{{ sem }}', 7, { schema: sampleSchema });
+    const items = providerWithSemantify.getCompletions('{{  }}', 3, { schema: sampleSchema });
 
-    expect(items.some((item) => item.label === 'semantifyAlias')).toBe(true);
+    const semantifyAliases = items.filter((item) => item.label === 'semantifyAlias');
+    expect(semantifyAliases).toHaveLength(1);
+    expect(semantifyAliases[0]?.detail).toBe('local template variable');
+    expect(items.find((item) => item.label === 'pluginAlias')?.detail).toBe('custom binding');
   });
 
   it('provides property completions after dot', () => {

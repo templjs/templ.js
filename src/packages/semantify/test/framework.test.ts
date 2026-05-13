@@ -31,6 +31,15 @@ describe('createSemantifyServices', () => {
     expect(context.bindings.some((binding) => binding.name === 'row')).toBe(true);
   });
 
+  it('recovers bindings from dangling expression delimiters', () => {
+    const text = '{% for item in users %}{{ item.name';
+    const offset = text.indexOf('item.name') + 'item'.length;
+
+    const context = services.resolveContext({ text, offset });
+
+    expect(context.bindings.some((binding) => binding.name === 'item')).toBe(true);
+  });
+
   it('maps frontmatter offsets to metadata regions', () => {
     const text = ['---', 'title: hello', '---', '{{ title }}'].join('\n');
     const offset = text.indexOf('title:') + 1;
@@ -130,6 +139,20 @@ describe('createSemantifyServices', () => {
     );
 
     expect(symbolCandidates.find((item) => item.label === 'item')?.detail).toBe('local loop alias');
+  });
+
+  it('returns empty candidates for unsupported intent types', () => {
+    const text = '{% for item in users %}{{ item.name }}{% endfor %}';
+    const offset = text.indexOf('item.name') + 'item'.length;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'propertyCandidates',
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toEqual([]);
   });
 
   it('exposes stable utility helpers for range and delimiter normalization', () => {
