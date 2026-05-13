@@ -6,8 +6,8 @@ summary: Bootstrap a tracked semantify package and wire one production provider 
 type: work-item
 subtype: task
 lifecycle: active
-status: in-progress
-status_reason: implementation
+status: ready-for-review
+status_reason: awaiting-review
 priority: high
 estimated: 6
 actual: 6
