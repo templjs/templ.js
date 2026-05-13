@@ -14,16 +14,17 @@ import {
   extractExpressionFilterReferences,
   extractExpressionVariableReferences,
 } from './expression-analysis.js';
-import {
-  buildForScopesInText,
-  getInScopeTemplateBindings,
-  resolveScopedPath,
-} from './scope-resolution.js';
+import { buildForScopesInText, resolveScopedPath } from './scope-resolution.js';
 import {
   createContextGraphSemanticReadAdapter,
   type ContextGraphSemanticReadAdapter,
   type SemanticQueryContext,
 } from './context-graph-adapter.js';
+import {
+  createSemantifyServices,
+  type DelimiterConfigInput as SemantifyDelimiterConfigInput,
+  type SemantifyServices,
+} from '@templjs/semantify';
 
 export interface CompletionItem {
   label: string;
@@ -337,15 +338,31 @@ function dedupeCompletionItems(items: CompletionItem[]): CompletionItem[] {
 }
 
 function getInScopeAliasCompletions(
+  semantifyServices: SemantifyServices,
   text: string,
   offset: number,
   delimiters: IntellisenseDelimiters
 ): CompletionItem[] {
-  return getInScopeTemplateBindings(text, offset, delimiters).map((binding) => ({
-    label: binding.name,
-    kind: 'variable',
-    detail: binding.kind === 'set-variable' ? 'local template variable' : 'local loop alias',
-  }));
+  const semantifyDelimiters: SemantifyDelimiterConfigInput = {
+    statementStart: delimiters.statementStart,
+    statementEnd: delimiters.statementEnd,
+    expressionStart: delimiters.expressionStart,
+    expressionEnd: delimiters.expressionEnd,
+    commentStart: delimiters.commentStart,
+    commentEnd: delimiters.commentEnd,
+  };
+
+  return semantifyServices
+    .resolveContext({ text, offset, delimiters: semantifyDelimiters })
+    .bindings.map((binding) => {
+      const bindingKind =
+        typeof binding.metadata?.bindingKind === 'string' ? binding.metadata.bindingKind : '';
+      return {
+        label: binding.name,
+        kind: 'variable' as const,
+        detail: bindingKind === 'set-variable' ? 'local template variable' : 'local loop alias',
+      };
+    });
 }
 
 function summarizeDuplicateLabels(items: CompletionItem[]): string[] {
@@ -884,7 +901,8 @@ export const intellisenseTesting = {
 
 export class IntellisenseProvider {
   constructor(
-    private readonly semanticReadAdapter: SemanticReadAdapter = createContextGraphSemanticReadAdapter()
+    private readonly semanticReadAdapter: SemanticReadAdapter = createContextGraphSemanticReadAdapter(),
+    private readonly semantifyServices: SemantifyServices = createSemantifyServices()
   ) {}
 
   getCompletions(text: string, offset: number, options?: IntellisenseOptions): CompletionItem[] {
@@ -920,7 +938,12 @@ export class IntellisenseProvider {
     };
     const filters = [...getDefaultFilters(), ...(options?.customFilters ?? [])];
     const keywords = [...DEFAULT_KEYWORDS, ...(options?.customKeywords ?? [])];
-    const localAliasItems = getInScopeAliasCompletions(text, Math.max(0, offset - 1), delimiters);
+    const localAliasItems = getInScopeAliasCompletions(
+      this.semantifyServices,
+      text,
+      Math.max(0, offset - 1),
+      delimiters
+    );
 
     const scopeResolver = createScopedPathResolver(
       this.semanticReadAdapter,

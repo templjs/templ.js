@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { IntellisenseProvider, type SemanticReadAdapter } from '../src/intellisense-provider.js';
+import type { SemantifyServices } from '@templjs/semantify';
 
 const sampleSchema = {
   type: 'object',
@@ -116,6 +117,38 @@ describe('IntellisenseProvider', () => {
     const items = isolatedProvider.getCompletions('{{ inj }}', 7, { schema: sampleSchema });
 
     expect(items.map((item) => item.label)).toEqual(['injected']);
+  });
+
+  it('uses semantify-backed bindings for local alias completions', () => {
+    const mockAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => null,
+    };
+    const mockSemantify: SemantifyServices = {
+      resolveContext: () => ({
+        regions: [],
+        bindings: [
+          {
+            kind: 'local',
+            name: 'semantifyAlias',
+            scopeRange: { startOffset: 0, endOffset: Number.MAX_SAFE_INTEGER },
+            metadata: { bindingKind: 'for-alias' },
+          },
+        ],
+      }),
+      resolveReferences: () => [],
+      planCandidates: () => [],
+    };
+
+    const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
+    const items = providerWithSemantify.getCompletions('{{ sem }}', 7, { schema: sampleSchema });
+
+    expect(items.some((item) => item.label === 'semantifyAlias')).toBe(true);
   });
 
   it('provides property completions after dot', () => {

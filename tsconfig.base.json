@@ -22,6 +22,7 @@
       "@templjs/cli": ["src/packages/cli/src/index.ts"],
       "@templjs/volar": ["src/packages/volar/src/index.ts"],
       "@templjs/context-graph": ["src/packages/context-graph/src/index.ts"],
+      "@templjs/semantify": ["src/packages/semantify/src/index.ts"],
       "@templjs/language-core": ["src/packages/language-core/src/index.ts"],
       "@templjs/language-service": ["src/packages/language-service/src/index.ts"],
       "@templjs/language-server": ["src/packages/language-server/src/index.ts"]

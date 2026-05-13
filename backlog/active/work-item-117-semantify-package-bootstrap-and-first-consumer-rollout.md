@@ -2,15 +2,15 @@
 $schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:117-semantify-package-bootstrap-and-first-consumer-rollout
 title: '117: Semantify Package Bootstrap and First Consumer Rollout'
-summary: Bootstrap a tracked semantify package and wire one production language-service path through canonical semantify APIs.
+summary: Bootstrap a tracked semantify package and wire one production provider path through canonical semantify APIs.
 type: work-item
 subtype: task
-lifecycle: draft
-status: proposed
-status_reason: awaiting-approval
+lifecycle: active
+status: in-progress
+status_reason: implementation
 priority: high
 estimated: 6
-actual: 0
+actual: 6
 ---
 
 ## Goal
@@ -31,13 +31,13 @@ M2 (WI-067) and M3 (WI-062) are complete, but the repository currently has no tr
 
 ## Tasks
 
-- [ ] Create tracked semantify package scaffold (`package.json`, `src/`, `tsconfig`, build/test scripts).
-- [ ] Add workspace and TypeScript alias wiring for `@templjs/semantify`.
-- [ ] Ensure semantify public APIs are source-backed (not dist-only artifacts).
-- [ ] Select and implement first production consumer path (diagnostics, completion, hover, or definition).
-- [ ] Keep adapter boundaries thin and avoid local semantic re-derivation.
-- [ ] Add targeted tests for consumer path behavior and fallback handling.
-- [ ] Run frontmatter, package tests, and affected build validation.
+- [x] Create tracked semantify package scaffold (`package.json`, `src/`, `tsconfig`, build/test scripts).
+- [x] Add workspace and TypeScript alias wiring for `@templjs/semantify`.
+- [x] Ensure semantify public APIs are source-backed (not dist-only artifacts).
+- [x] Select and implement first production consumer path (diagnostics, completion, hover, or definition).
+- [x] Keep adapter boundaries thin and avoid local semantic re-derivation.
+- [x] Add targeted tests for consumer path behavior and fallback handling.
+- [x] Run frontmatter, package tests, and affected build validation.
 
 ## Deliverables
 
@@ -48,11 +48,18 @@ M2 (WI-067) and M3 (WI-062) are complete, but the repository currently has no tr
 
 ## Acceptance Criteria
 
-- [ ] `@templjs/semantify` exists as a tracked source package in git and participates in workspace build/test.
-- [ ] At least one production provider path is semantify-backed end-to-end.
-- [ ] Canonical semantify APIs are used by the consumer path (`resolveContext`, `resolveReferences`, `planCandidates`) without compatibility aliases.
-- [ ] No new local semantic derivation is introduced in server/provider adapter layers.
-- [ ] Focused integration tests pass for the new semantify-backed path.
+- [x] `@templjs/semantify` exists as a tracked source package in git and participates in workspace build/test.
+- [x] At least one production provider path is semantify-backed end-to-end.
+- [x] Canonical semantify APIs are used by the consumer path (`resolveContext`, `resolveReferences`, `planCandidates`) without compatibility aliases.
+- [x] No new local semantic derivation is introduced in server/provider adapter layers.
+- [x] Focused integration tests pass for the new semantify-backed path.
+
+## Verification Evidence
+
+- `rtk pnpm --filter @templjs/semantify test`
+- `rtk pnpm --filter @templjs/volar test -- test/intellisense-provider.test.ts`
+- `rtk pnpm --filter @templjs/semantify build`
+- `rtk pnpm --filter @templjs/volar build`
 
 ## Relationships
 
