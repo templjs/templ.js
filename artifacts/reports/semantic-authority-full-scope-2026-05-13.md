@@ -15,9 +15,9 @@ This summary captures the full combined scope of the five recently landed commit
   - keyword cursor detection
   - delimiter-aware behavior
 
-## Volar Intellisense and Hover
+## Volar IntelliSense and Hover
 
-- Reworked Volar intellisense provider to consume core-authoritative statement helpers instead of local ad hoc statement parsing logic.
+- Reworked Volar IntelliSense provider to consume core-authoritative statement helpers instead of local ad hoc statement parsing logic.
 - Preserved and validated behavior for:
   - nested shadowed aliases
   - completion at dot and post-dot offsets

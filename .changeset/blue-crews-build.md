@@ -1,10 +1,10 @@
 ---
-'@templjs/core': patch
-'@templjs/volar': patch
-'@templjs/semantify': patch
-'@templjs/language-service': patch
+'@templjs/core': minor
+'@templjs/volar': minor
+'@templjs/semantify': minor
+'@templjs/language-service': minor
 ---
 
-# Summary
+<!-- markdownlint-disable MD041 MD012 -->
 
 Migrate semantic authority statement analysis into core and update Volar and language-service integrations to consume the shared contracts.
