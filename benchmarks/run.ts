@@ -3,6 +3,8 @@ import os from 'node:os';
 import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
 import {
+  extractExpressionVariableReferences,
+  extractTemplateBindings,
   parse,
   QueryEngine,
   render,
@@ -72,6 +74,28 @@ const cases: Array<BenchmarkCase<unknown>> = [
     },
   },
   {
+    id: 'core.semantic.template-bindings',
+    group: 'core',
+    name: 'Core semantic template bindings',
+    description: 'Extracts parser-backed template bindings for nested loop/set statements.',
+    setup: () => ({
+      text: [
+        '{% for project in projects %}',
+        '  {% set owner = project.owner %}',
+        '  {% for task in project.tasks %}',
+        '    {{ owner.name }} {{ task.id }}',
+        '  {% endfor %}',
+        '{% endfor %}',
+      ].join('\n'),
+    }),
+    run: ({ text }: { text: string }) => {
+      const bindings = extractTemplateBindings(text);
+      if (!bindings.some((binding) => binding.name === 'project')) {
+        throw new Error('Expected semantic template-binding benchmark to extract loop aliases');
+      }
+    },
+  },
+  {
     id: 'core.renderer.render',
     group: 'core',
     name: 'Core renderer render',
@@ -125,6 +149,21 @@ const cases: Array<BenchmarkCase<unknown>> = [
       validator.validateQueryPath('projects[0].tasks[0].assignee.name');
       validator.validateQueryPath('projects[0].tasks[0].status');
       validator.validateQueryPath('summary.totalPoints');
+    },
+  },
+  {
+    id: 'core.semantic.expression-references',
+    group: 'core',
+    name: 'Core semantic expression references',
+    description: 'Extracts expression variable references from a representative filter chain.',
+    setup: () => ({
+      expression: 'task.assignee.name == owner.name ? task.notes | upper : fallback.notes',
+    }),
+    run: ({ expression }: { expression: string }) => {
+      const refs = extractExpressionVariableReferences(expression);
+      if (refs.length < 3) {
+        throw new Error('Expected expression-reference benchmark to resolve multiple paths');
+      }
     },
   },
   {

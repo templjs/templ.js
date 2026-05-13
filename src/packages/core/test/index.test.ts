@@ -3,6 +3,8 @@ import { version as packageVersion } from '../package.json';
 import core, {
   createLexer,
   createParser,
+  extractExpressionFilterReferences,
+  extractExpressionVariableReferences,
   extractTemplateBindings,
   createRenderer,
   createQueryEngine,
@@ -116,6 +118,8 @@ describe('core entrypoint', () => {
     expect(core.createRenderer).toBe(createRenderer);
     expect(core.createQueryEngine).toBe(createQueryEngine);
     expect(core.extractTemplateBindings).toBe(extractTemplateBindings);
+    expect(core.extractExpressionFilterReferences).toBe(extractExpressionFilterReferences);
+    expect(core.extractExpressionVariableReferences).toBe(extractExpressionVariableReferences);
     expect(core.renderTemplate).toBe(renderTemplate);
     expect(core.validateTemplate).toBe(validateTemplate);
   });
