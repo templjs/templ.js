@@ -342,6 +342,35 @@ function isLocalTemplateBinding(
   return bindings.some((b) => b.name === root);
 }
 
+type LocalBindingEvidence = {
+  kind: string;
+  resolvedPath: string;
+};
+
+function getLocalBindingEvidence(
+  text: string,
+  referencePath: string,
+  offset: number,
+  forScopes: ReturnType<typeof buildForScopesInText>,
+  delimiters?: Partial<TemplateDelimiters>
+): LocalBindingEvidence | null {
+  // Proof-based gate: only plain symbol references can map directly to a local binding.
+  if (!/^[A-Za-z_]\w*$/.test(referencePath)) {
+    return null;
+  }
+
+  const inScopeBindings = getInScopeTemplateBindings(text, offset, delimiters);
+  const matchedBinding = inScopeBindings.find((binding) => binding.name === referencePath);
+  if (!matchedBinding) {
+    return null;
+  }
+
+  return {
+    kind: matchedBinding.kind,
+    resolvedPath: resolveScopedPath(referencePath, offset, forScopes),
+  };
+}
+
 /**
  * Resolve a variable path through any active for-loop scopes in the given template text.
  * Useful in server-side handlers (e.g. go-to-definition) that need the canonical schema
@@ -517,6 +546,7 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
         }
         while (cur < statementContent.length && /\s/.test(statementContent[cur]!)) cur++;
         const iterableStart = cur;
+        const offsetBase = contentStartOffset + (iterableStart >= 0 ? iterableStart : 0);
         const filterRefs = extractFilters(iterableExpression);
         for (const ref of extractVariableReferences(iterableExpression)) {
           const overlapsFilter = filterRefs.some(
@@ -526,16 +556,27 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
             continue;
           }
 
-          const scopedPath = resolveScopedPath(ref.path, block.start, forScopes);
+          const refOffset = offsetBase + ref.start;
+          const scopeOffset = Math.min(text.length, refOffset + 1);
+          const localBindingEvidence = getLocalBindingEvidence(
+            text,
+            ref.path,
+            scopeOffset,
+            forScopes,
+            options?.delimiters
+          );
+          const scopedPath = resolveScopedPath(ref.path, scopeOffset, forScopes);
           const result = validator.validateQueryPath(scopedPath);
           if (!result.valid) {
-            if (isLocalTemplateBinding(text, scopedPath, block.start, options?.delimiters)) {
+            if (localBindingEvidence) {
               continue;
             }
-            const offsetBase = contentStartOffset + (iterableStart >= 0 ? iterableStart : 0);
+            if (isLocalTemplateBinding(text, scopedPath, scopeOffset, options?.delimiters)) {
+              continue;
+            }
             diagnostics.push({
               message: `Variable "${ref.path}" not found in schema`,
-              range: createRangeFromOffsets(mapper, offsetBase + ref.start, offsetBase + ref.end),
+              range: createRangeFromOffsets(mapper, refOffset, offsetBase + ref.end),
               severity: DiagnosticSeverity.Error,
               code: 'templjs.undefinedVariable',
               suggestion: result.errors[0]?.suggestion,
@@ -551,9 +592,21 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
         const expressionPart = statementContent.replace(/^[A-Za-z_][\w]*\b\s*/, '');
         const expressionPartStart = statementContent.length - expressionPart.length;
         for (const ref of extractVariableReferences(expressionPart)) {
-          const scopedPath = resolveScopedPath(ref.path, block.start, forScopes);
+          const refStartOffset = contentStartOffset + expressionPartStart + ref.start;
+          const scopeOffset = Math.min(text.length, refStartOffset + 1);
+          const localBindingEvidence = getLocalBindingEvidence(
+            text,
+            ref.path,
+            scopeOffset,
+            forScopes,
+            options?.delimiters
+          );
+          const scopedPath = resolveScopedPath(ref.path, scopeOffset, forScopes);
           if (!isPathValidInContext(scopedPath, validator)) {
-            if (isLocalTemplateBinding(text, scopedPath, block.start, options?.delimiters)) {
+            if (localBindingEvidence) {
+              continue;
+            }
+            if (isLocalTemplateBinding(text, scopedPath, scopeOffset, options?.delimiters)) {
               continue;
             }
             const result = validator.validateQueryPath(scopedPath);
@@ -561,7 +614,7 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
               message: `Variable "${ref.path}" not found in schema`,
               range: createRangeFromOffsets(
                 mapper,
-                contentStartOffset + expressionPartStart + ref.start,
+                refStartOffset,
                 contentStartOffset + expressionPartStart + ref.end
               ),
               severity: DiagnosticSeverity.Error,
@@ -659,19 +712,27 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
     const validator = getValidatorForOffset(block.start);
     if (validator) {
       for (const ref of extractVariableReferences(content)) {
-        const scopedPath = resolveScopedPath(ref.path, block.start, forScopes);
+        const refStartOffset = contentStartOffset + ref.start;
+        const scopeOffset = Math.min(text.length, refStartOffset + 1);
+        const localBindingEvidence = getLocalBindingEvidence(
+          text,
+          ref.path,
+          scopeOffset,
+          forScopes,
+          options?.delimiters
+        );
+        const scopedPath = resolveScopedPath(ref.path, scopeOffset, forScopes);
         if (!isPathValidInContext(scopedPath, validator)) {
-          if (isLocalTemplateBinding(text, scopedPath, block.start, options?.delimiters)) {
+          if (localBindingEvidence) {
+            continue;
+          }
+          if (isLocalTemplateBinding(text, scopedPath, scopeOffset, options?.delimiters)) {
             continue;
           }
           const result = validator.validateQueryPath(scopedPath);
           diagnostics.push({
             message: `Variable "${ref.path}" not found in schema`,
-            range: createRangeFromOffsets(
-              mapper,
-              contentStartOffset + ref.start,
-              contentStartOffset + ref.end
-            ),
+            range: createRangeFromOffsets(mapper, refStartOffset, contentStartOffset + ref.end),
             severity: DiagnosticSeverity.Error,
             code: 'templjs.undefinedVariable',
             suggestion: result.errors[0]?.suggestion,

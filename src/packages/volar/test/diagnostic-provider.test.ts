@@ -53,6 +53,21 @@ const contentSchema = {
   },
 };
 
+const nestedAliasSchema = {
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+        },
+      },
+    },
+  },
+};
+
 describe('DiagnosticProvider', () => {
   it('reports missing closing end tag', () => {
     const diagnostics = collectDiagnostics('{% if user.name %}\nHello', {
@@ -793,6 +808,27 @@ describe('DiagnosticProvider', () => {
     const resolved = resolveScopedPathInText(text, 'relationship.target', offset);
 
     expect(resolved).toBe('relationships[0].target');
+  });
+
+  it('does not report undefined-variable diagnostics for nested shadowed loop aliases', () => {
+    const text = [
+      '{%- for item in items %}',
+      '{% for item in item.name -%}',
+      '{{ item }}',
+      '{% endfor %}',
+      '{% endfor -%}',
+    ].join('\n');
+
+    const diagnostics = collectDiagnostics(text, { schema: nestedAliasSchema });
+    const innerAliasOffset = text.indexOf('{{ item }}') + '{{ '.length + 1;
+    const resolved = resolveScopedPathInText(text, 'item', innerAliasOffset);
+    const itemUndefined = diagnostics.find(
+      (diag) =>
+        diag.code === 'templjs.undefinedVariable' && diag.message.includes('Variable "item"')
+    );
+
+    expect(resolved).toBe('items[0].name[0]');
+    expect(itemUndefined).toBeUndefined();
   });
 
   it('returns an empty array when remapping no base diagnostics', () => {
