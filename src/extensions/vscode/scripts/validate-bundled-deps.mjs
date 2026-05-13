@@ -29,15 +29,39 @@ const extensionRoot = path.resolve(here, '..');
 const workspaceRoot = path.resolve(extensionRoot, '../../..');
 const packageJsonPath = path.join(extensionRoot, 'package.json');
 const rootPackageJsonPath = path.join(workspaceRoot, 'package.json');
-const serverBundlePath = path.join(extensionRoot, 'dist', 'server.js');
+
+function resolveServerBundlePath() {
+  const preferredFormat = process.env.TEMPLJS_SERVER_FORMAT?.trim().toLowerCase();
+  if (preferredFormat === 'esm') {
+    return path.join(extensionRoot, 'dist', 'server.mjs');
+  }
+
+  if (preferredFormat === 'cjs') {
+    return path.join(extensionRoot, 'dist', 'server.js');
+  }
+
+  const cjsPath = path.join(extensionRoot, 'dist', 'server.js');
+  const esmPath = path.join(extensionRoot, 'dist', 'server.mjs');
+  if (fs.existsSync(cjsPath)) {
+    return cjsPath;
+  }
+  if (fs.existsSync(esmPath)) {
+    return esmPath;
+  }
+
+  return cjsPath;
+}
+
+const serverBundlePath = resolveServerBundlePath();
 
 if (!fs.existsSync(serverBundlePath)) {
-  console.error('❌ dist/server.js not found. Run build first.');
+  console.error(`❌ ${path.relative(extensionRoot, serverBundlePath)} not found. Run build first.`);
   process.exit(1);
 }
 
 const _packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 const serverBundle = fs.readFileSync(serverBundlePath, 'utf8');
+const serverBundleLabel = path.basename(serverBundlePath);
 // Use root workspace package.json for createRequire to access pnpm hoisted modules
 const localRequire = createRequire(rootPackageJsonPath);
 
@@ -50,6 +74,8 @@ const bundledPrefixes = new Set(['@templjs', 'templjs']);
 // Regex patterns for require() calls
 // Matches: require("module"), require('module')
 const requirePattern = /require\s*\(\s*["']([^"']+)["']\s*\)/g;
+const staticImportPattern = /(?:^|\n)\s*import\s+(?:[^'"\n]+\s+from\s+)?["']([^"']+)["']/g;
+const dynamicImportPattern = /import\s*\(\s*["']([^"']+)["']\s*\)/g;
 
 // Find all try/catch blocks to identify optional requires
 // Simple heuristic: look for _require inside try blocks followed by catch
@@ -69,39 +95,46 @@ const optionalRequires = new Set(optionalRequireMatches);
 
 // Extract all module names from the bundled server.js
 const requiredModules = new Set();
-let match;
-while ((match = requirePattern.exec(serverBundle)) !== null) {
-  const moduleName = match[1];
+for (const pattern of [requirePattern, staticImportPattern, dynamicImportPattern]) {
+  let match;
+  while ((match = pattern.exec(serverBundle)) !== null) {
+    const moduleName = match[1];
 
-  // Skip relative imports
-  if (moduleName.startsWith('.')) {
-    continue;
+    // Skip relative imports
+    if (moduleName.startsWith('.')) {
+      continue;
+    }
+
+    // Skip node: protocol
+    if (moduleName.startsWith('node:')) {
+      continue;
+    }
+
+    // Skip formatter placeholders (for example "{0}") captured from string literals.
+    if (/^\{\d+\}$/.test(moduleName)) {
+      continue;
+    }
+
+    // Extract base package name (before /subpath)
+    const baseName = moduleName.split('/')[0];
+
+    // Skip Node.js built-in modules
+    if (builtins.has(baseName)) {
+      continue;
+    }
+
+    // Skip workspace/bundled packages
+    if (bundledPrefixes.has(baseName)) {
+      continue;
+    }
+
+    // Skip optional requires (in try/catch blocks)
+    if (optionalRequires.has(moduleName)) {
+      continue;
+    }
+
+    requiredModules.add(moduleName);
   }
-
-  // Skip node: protocol
-  if (moduleName.startsWith('node:')) {
-    continue;
-  }
-
-  // Extract base package name (before /subpath)
-  const baseName = moduleName.split('/')[0];
-
-  // Skip Node.js built-in modules
-  if (builtins.has(baseName)) {
-    continue;
-  }
-
-  // Skip workspace/bundled packages
-  if (bundledPrefixes.has(baseName)) {
-    continue;
-  }
-
-  // Skip optional requires (in try/catch blocks)
-  if (optionalRequires.has(moduleName)) {
-    continue;
-  }
-
-  requiredModules.add(moduleName);
 }
 
 // Check that all required external modules can be resolved from node_modules
@@ -119,7 +152,7 @@ for (const module of requiredModules) {
 
 if (hasErrors) {
   console.error(
-    '❌ Bundled server.js requires packages that cannot be resolved from node_modules:'
+    `❌ Bundled ${serverBundleLabel} requires packages that cannot be resolved from node_modules:`
   );
   unresolvable.forEach((mod) => {
     console.error(`   - ${mod}`);

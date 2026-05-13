@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const spawnSync = vi.fn(() => ({ status: 1, stdout: '' }));
+const toPosixPath = (value: string): string => value.replaceAll('\\', '/');
 
 const configurationValues: Record<string, unknown> = {
   schemaPath: '.templjs/schema.json',
@@ -20,6 +21,7 @@ const configurationValues: Record<string, unknown> = {
   '[yaml]': {},
   '[html]': {},
   defaultFormatter: undefined,
+  serverModuleFormat: undefined,
   'trace.server': undefined,
 };
 
@@ -221,6 +223,7 @@ describe('extension-activation', () => {
     configurationValues['[yaml]'] = {};
     configurationValues['[html]'] = {};
     configurationValues.defaultFormatter = undefined;
+    configurationValues.serverModuleFormat = undefined;
     configurationValues['trace.server'] = undefined;
     getConfiguration.mockImplementation(() => ({
       get: vi.fn(
@@ -298,6 +301,46 @@ describe('extension-activation', () => {
       expect.any(Object),
       expect.any(Object)
     );
+  });
+
+  it('uses CJS server module by default', async () => {
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const serverOptions = languageClientConstructor.mock.calls[0][2] as {
+      run: { module: string };
+      debug: { module: string; options?: { execArgv?: string[] } };
+    };
+
+    expect(toPosixPath(serverOptions.run.module)).toBe('/tmp/dist/server.js');
+    expect(toPosixPath(serverOptions.debug.module)).toBe('/tmp/dist/server.js');
+    expect(serverOptions.debug.options?.execArgv).toEqual(['--nolazy', '--inspect=6009']);
+  });
+
+  it('uses ESM server module when configured', async () => {
+    configurationValues.serverModuleFormat = 'esm';
+
+    const context = {
+      subscriptions: [] as Array<{ dispose: () => void }>,
+      asAbsolutePath: (value: string) => `/tmp/${value}`,
+    };
+
+    const module = await import('../src/extension');
+    module.activate(context as never);
+
+    const serverOptions = languageClientConstructor.mock.calls[0][2] as {
+      run: { module: string };
+      debug: { module: string; options?: { execArgv?: string[] } };
+    };
+
+    expect(toPosixPath(serverOptions.run.module)).toBe('/tmp/dist/server.mjs');
+    expect(toPosixPath(serverOptions.debug.module)).toBe('/tmp/dist/server.mjs');
+    expect(serverOptions.debug.options?.execArgv).toEqual(['--nolazy', '--inspect=6009']);
   });
 
   it('registers all templjs document selectors', async () => {

@@ -137,6 +137,16 @@
           "default": "off",
           "description": "Traces the communication between VS Code and the language server."
         },
+        "templjs.serverModuleFormat": {
+          "scope": "window",
+          "type": "string",
+          "enum": [
+            "cjs",
+            "esm"
+          ],
+          "default": "cjs",
+          "description": "Selects the server bundle module format to launch. Keep as cjs for release safety; use esm for WI-107 prototype validation."
+        },
         "templjs.schemaPath": {
           "scope": "resource",
           "type": "string",

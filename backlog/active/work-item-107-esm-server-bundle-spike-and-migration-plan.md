@@ -6,10 +6,16 @@ summary: Capture the completed VS Code extension server ESM bundling spike, docu
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
+status: ready-for-review
+status_reason: awaiting-review
 priority: medium
 estimated: 4
-actual: 0
+actual: 3
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/122
+  evidence:
+    - https://github.com/templjs/templ.js/blob/staging/backlog/records/record-107-esm-server-bundle-spike-evidence-1.md
 ---
 
 ## Goal
@@ -45,14 +51,14 @@ This means ESM is feasible, but only as a coordinated migration.
 
 ## Tasks
 
-- [ ] Add an architecture note (or backlog-linked decision record) describing why current CJS compatibility rewriting breaks ESM runtime loading.
-- [ ] Audit and replace CJS-only `createRequire(__filename)` compatibility rewrites in the server dependency path with ESM-safe alternatives.
-- [ ] Prototype server-only ESM output while keeping extension entry behavior stable; verify startup in extension tests.
-- [ ] Decide and document target launch mechanism for ESM server under `vscode-languageclient/node` (module path, exec options, and debug path parity).
-- [ ] Add a focused regression test that proves server bundle startup works in the selected module format.
-- [ ] Keep bundled dependency validation (`scripts/validate-bundled-deps.mjs`) compatible with the chosen output format.
-- [ ] Run extension validation matrix: `build`, `test`, and extension-host smoke/startup checks.
-- [ ] Create changeset(s) for `vscode-templjs` and any impacted packages once migration work lands.
+- [x] Add an architecture note (or backlog-linked decision record) describing why current CJS compatibility rewriting breaks ESM runtime loading.
+- [x] Audit and replace CJS-only `createRequire(__filename)` compatibility rewrites in the server dependency path with ESM-safe alternatives.
+- [x] Prototype server-only ESM output while keeping extension entry behavior stable; verify startup in extension tests.
+- [x] Decide and document target launch mechanism for ESM server under `vscode-languageclient/node` (module path, exec options, and debug path parity).
+- [x] Add a focused regression test that proves server bundle startup works in the selected module format.
+- [x] Keep bundled dependency validation (`scripts/validate-bundled-deps.mjs`) compatible with the chosen output format.
+- [x] Run extension validation matrix: `build`, `test`, and extension-host smoke/startup checks.
+- [x] Create changeset(s) for `vscode-templjs` and any impacted packages once migration work lands.
 
 ## Deliverables
 
@@ -60,14 +66,37 @@ This means ESM is feasible, but only as a coordinated migration.
 - Approved phased migration plan for CJS-to-ESM server transition.
 - Implementation-ready checklist with explicit validation gates.
 
+## Phased Migration Plan
+
+### Phase 1 (completed in this work item)
+
+- Add opt-in server ESM output path in `scripts/build.mjs` while retaining CJS default output for release safety.
+- Add extension-side module format selection (`templjs.serverModuleFormat`) so launch path can target either `dist/server.js` or `dist/server.mjs`.
+- Add ESM startup regression coverage and keep dependency validation format-aware.
+
+### Phase 2 (next hardening slice)
+
+- Validate debug/run parity across extension-host startup scenarios when server module format is ESM.
+- Expand startup smoke coverage to include extension-host test path assertions for ESM module launch behavior.
+
+### Phase 3 (promotion gate)
+
+- Promote ESM server bundle to default only after startup, test matrix, and packaging validation remain stable across CI and local release paths.
+- Keep a rollback-safe checkpoint by retaining CJS build path until ESM default promotion is explicitly approved.
+
 ## Acceptance Criteria
 
-- [ ] The spike evidence is documented with reproducible observations and failure mode.
-- [ ] A phased migration plan exists with no ambiguous ownership of CJS-compat removal, server launch strategy, and validation.
-- [ ] Migration plan includes at least one rollback-safe checkpoint where CJS remains releasable.
-- [ ] Post-migration target criteria are explicit: server startup succeeds, tests pass, and packaging remains functional.
-- [ ] Frontmatter and work-item schema validation pass.
+- [x] The spike evidence is documented with reproducible observations and failure mode.
+- [x] A phased migration plan exists with no ambiguous ownership of CJS-compat removal, server launch strategy, and validation.
+- [x] Migration plan includes at least one rollback-safe checkpoint where CJS remains releasable.
+- [x] Post-migration target criteria are explicit: server startup succeeds, tests pass, and packaging remains functional.
+- [x] Frontmatter and work-item schema validation pass.
 
 ## Relationships
 
 - `depends_on`: [[work-item-096-bug-ci-local-build-drift-for-vscode-extension]]
+
+## Verification Evidence
+
+- 2026-05-13: `rtk pnpm --dir src/extensions/vscode run test -- test/bundle-sanity.test.ts test/extension.test.ts test/server-main.test.ts` passed (130 tests).
+- 2026-05-13: `rtk pnpm --dir src/extensions/vscode run build` passed (`tsc -b --force`, `scripts/build.mjs`, and `scripts/validate-bundled-deps.mjs`).
