@@ -6,11 +6,14 @@ summary: Remove Remaining Volar Statement-Semantic Duplication
 type: work-item
 subtype: task
 lifecycle: active
-status: in-progress
-status_reason: implementation
+status: ready-for-review
+status_reason: awaiting-review
 priority: medium
 estimated: 4
 actual: 4
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/125
 ---
 
 ## Goal
