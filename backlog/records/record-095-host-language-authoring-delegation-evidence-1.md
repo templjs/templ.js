@@ -48,6 +48,6 @@ passed
 
 ## Artifact References
 
-- [TextMate host scope harness test](../..//src/extensions/vscode/test/textmate-harness.test.ts)
-- [Extension host capabilities suite](../..//src/extensions/vscode/test/extension-host/capabilities.test.js)
-- [Host diagnostics suite](../..//src/extensions/vscode/test/extension-host/diagnostics.test.js)
+- [TextMate host scope harness test](../../src/extensions/vscode/test/textmate-harness.test.ts)
+- [Extension host capabilities suite](../../src/extensions/vscode/test/extension-host/capabilities.test.js)
+- [Host diagnostics suite](../../src/extensions/vscode/test/extension-host/diagnostics.test.js)
