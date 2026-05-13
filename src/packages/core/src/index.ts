@@ -88,6 +88,7 @@ import { tokenize } from './lexer/lexer.js';
 import { parse } from './parser/parser.js';
 import { render } from './renderer/renderer.js';
 import { extractTemplateBindings } from './semantic/template-scopes.js';
+import { extractExpressionFilterReferences } from './semantic/expression-references.js';
 import { extractExpressionVariableReferences } from './semantic/expression-references.js';
 import type { RenderOptions } from './renderer/types.js';
 
