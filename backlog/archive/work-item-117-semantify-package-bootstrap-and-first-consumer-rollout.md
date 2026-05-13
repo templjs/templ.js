@@ -5,15 +5,18 @@ title: '117: Semantify Package Bootstrap and First Consumer Rollout'
 summary: Bootstrap a tracked semantify package and wire one production provider path through canonical semantify APIs.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: awaiting-review
+lifecycle: inactive
+status: closed
+status_reason: completed
+completed_date: '2026-05-13'
 priority: high
 estimated: 6
 actual: 6
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/118
+  evidence:
+    - '[[record:wi-117-merge-evidence-2026-05-13]]'
 ---
 
 ## Goal

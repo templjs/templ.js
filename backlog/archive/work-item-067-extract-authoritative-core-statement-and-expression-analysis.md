@@ -5,15 +5,18 @@ title: '067: Extract Authoritative Core Statement and Expression Analysis'
 summary: Extract Authoritative Core Statement and Expression Analysis
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: implemented
+lifecycle: inactive
+status: closed
+status_reason: completed
+completed_date: '2026-05-13'
 priority: medium
 estimated: 5
 actual: 3
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/116
+  evidence:
+    - '[[record:wi-067-merge-evidence-2026-05-13]]'
 ---
 
 ## Goal

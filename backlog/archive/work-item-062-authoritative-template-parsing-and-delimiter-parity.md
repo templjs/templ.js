@@ -5,15 +5,18 @@ title: '062: Centralize authoritative template parsing and custom delimiter pari
 summary: Centralize authoritative template parsing and custom delimiter parity
 type: work-item
 subtype: epic
-lifecycle: active
-status: ready-for-review
-status_reason: implemented
+lifecycle: inactive
+status: closed
+status_reason: completed
+completed_date: '2026-05-13'
 priority: high
 estimated: 20
 actual: 4
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/117
+  evidence:
+    - '[[record:wi-062-merge-evidence-2026-05-13]]'
 ---
 
 ## Goal
@@ -74,28 +77,28 @@ This work item tracks the full refactor needed to make core authoritative, make 
 
 ### Core
 
-- [ ] Add coverage in `src/packages/core/test/semantic/template-scopes.test.ts` for:
+- [x] Add coverage in `src/packages/core/test/semantic/template-scopes.test.ts` for:
   - complex iterable expressions such as `users[activeIndex + 1]`
   - quoted bracket segments such as `users["full name"]`
   - filtered/parened iterable expressions where supported normalization is expected
   - custom delimiter variants for statements, expressions, and comments
-- [ ] Add parser/lexer tests if new delimiter-aware metadata APIs require new token or AST guarantees.
+- [x] Add parser/lexer tests if new delimiter-aware metadata APIs require new token or AST guarantees.
 
 ### Volar
 
-- [ ] Add coverage in `src/packages/volar/test/diagnostic-provider.test.ts` showing that complex `for ... in ...` headers no longer produce truncated iterable paths or false undefined-variable diagnostics.
-- [ ] Add coverage in `src/packages/volar/test/intellisense-provider.test.ts` for statement hover, definition, and completion when the cursor is:
+- [x] Add coverage in `src/packages/volar/test/diagnostic-provider.test.ts` showing that complex `for ... in ...` headers no longer produce truncated iterable paths or false undefined-variable diagnostics.
+- [x] Add coverage in `src/packages/volar/test/intellisense-provider.test.ts` for statement hover, definition, and completion when the cursor is:
   - on the loop alias
   - inside a complex iterable expression
   - inside nested loops using outer aliases
   - inside custom-delimiter statements
-- [ ] Add parity coverage in `src/packages/volar/test/context-graph-adapter.test.ts` so graph-backed scope resolution and Volar fallback resolution agree on the same bindings.
-- [ ] Extend `src/packages/volar/test/custom-delimiters.e2e.test.ts` with at least one nested-loop case and one complex iterable case.
+- [x] Add parity coverage in `src/packages/volar/test/context-graph-adapter.test.ts` so graph-backed scope resolution and Volar fallback resolution agree on the same bindings.
+- [x] Extend `src/packages/volar/test/custom-delimiters.e2e.test.ts` with at least one nested-loop case and one complex iterable case.
 
 ### VS Code
 
-- [ ] Add or extend integration coverage in `src/extensions/vscode/test/server-inprocess.integration.test.ts` proving that the server forwards requests cleanly while authoritative scope/statement behavior comes from shared providers.
-- [ ] Add one end-to-end definition or hover regression that would have failed under the prior regex drift behavior.
+- [x] Add or extend integration coverage in `src/extensions/vscode/test/server-inprocess.integration.test.ts` proving that the server forwards requests cleanly while authoritative scope/statement behavior comes from shared providers.
+- [x] Add one end-to-end definition or hover regression that would have failed under the prior regex drift behavior.
 
 ## Acceptance Criteria
 
