@@ -112,6 +112,10 @@ export function parseTemplateForHeader(statementContent: string): TemplateForHea
   const iterableStart = cursor;
   const iterableExpression = content.slice(iterableStart).replace(/\s*-\s*$/, '');
 
+  if (iterableExpression.trim().length === 0) {
+    return null;
+  }
+
   return {
     aliasName,
     aliasStart: contentOffset + aliasStart,
@@ -135,7 +139,7 @@ export function extractTemplateStatementExpression(
 
   const tokens = tokenizeStatementContent(content);
   const keyword = tokens[0];
-  if (!keyword || !isIdentifier(keyword) || content === keyword || !content.includes(' ')) {
+  if (!keyword || !isIdentifier(keyword) || content === keyword || !/\s/.test(content)) {
     return null;
   }
 
@@ -181,7 +185,12 @@ export function validateTemplateStatementSyntax(
 
   switch (tag) {
     case 'for':
-      if (tokens.length < 4 || !isIdentifier(tokens[1]) || tokens[2] !== 'in') {
+      if (
+        tokens.length < 4 ||
+        tokens[0] !== 'for' ||
+        !isIdentifier(tokens[1]) ||
+        tokens[2] !== 'in'
+      ) {
         return {
           valid: false,
           message: 'Invalid for statement: expected "for <name> in <expression>"',

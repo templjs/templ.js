@@ -18,6 +18,14 @@ describe('validateTemplateStatementSyntax', () => {
     });
   });
 
+  it('rejects for statements with a mismatched leading keyword', () => {
+    expect(validateTemplateStatementSyntax('for', 'if item in items')).toEqual({
+      valid: false,
+      message: 'Invalid for statement: expected "for <name> in <expression>"',
+      suggestion: 'Use `{% for item in items %}`',
+    });
+  });
+
   it('accepts valid set statements', () => {
     expect(validateTemplateStatementSyntax('set', 'set title = page.title')).toEqual({
       valid: true,
@@ -137,9 +145,24 @@ describe('validateTemplateStatementSyntax', () => {
     });
   });
 
+  it('parses for-headers with right-trim markers', () => {
+    expect(parseTemplateForHeader('for item in users -')).toEqual({
+      aliasName: 'item',
+      aliasStart: 4,
+      aliasEnd: 8,
+      iterableExpression: 'users',
+      iterableStart: 12,
+    });
+  });
+
   it('extracts generic statement expressions with start offsets', () => {
     expect(extractTemplateStatementExpression('if user.name | upper')).toEqual({
       expression: 'user.name | upper',
+      startOffset: 3,
+    });
+
+    expect(extractTemplateStatementExpression('if\tuser.name')).toEqual({
+      expression: 'user.name',
       startOffset: 3,
     });
   });
@@ -155,6 +178,7 @@ describe('validateTemplateStatementSyntax', () => {
     expect(extractTemplateStatementExpression('')).toBeNull();
     expect(extractTemplateStatementExpression('include')).toBeNull();
     expect(extractTemplateStatementExpression('for item %')).toBeNull();
+    expect(extractTemplateStatementExpression('for item in -')).toBeNull();
     expect(extractTemplateStatementExpression('9if user')).toBeNull();
   });
 });
