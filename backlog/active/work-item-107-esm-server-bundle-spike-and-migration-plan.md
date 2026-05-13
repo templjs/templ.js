@@ -6,11 +6,14 @@ summary: Capture the completed VS Code extension server ESM bundling spike, docu
 type: work-item
 subtype: task
 lifecycle: active
-status: in-progress
+status: ready-for-review
+status_reason: awaiting-review
 priority: medium
 estimated: 4
 actual: 3
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/122
   evidence:
     - https://github.com/templjs/templ.js/blob/staging/backlog/records/record-107-esm-server-bundle-spike-evidence-1.md
 ---
