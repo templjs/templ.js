@@ -27,7 +27,7 @@ export interface ScopeBinding {
   kind: ScopeBindingKind;
   name: string;
   scopeRange: OffsetRange;
-  declarationRange?: OffsetRange;
+  declarationRange: OffsetRange;
   sourcePath?: string;
   metadata?: Record<string, unknown>;
 }

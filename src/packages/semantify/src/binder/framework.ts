@@ -54,10 +54,9 @@ function toCoreDelimiters(input?: DelimiterConfigInput): DelimiterConfig | undef
 
 function mapBinding(binding: import('@templjs/core').TemplateBinding): ScopeBinding {
   const scopeRange = normalizeRange(binding.scopeStartOffset, binding.scopeEndOffset);
-  const declarationRange =
-    binding.declarationStartOffset !== undefined && binding.declarationEndOffset !== undefined
-      ? normalizeRange(binding.declarationStartOffset, binding.declarationEndOffset)
-      : undefined;
+  const declarationStartOffset = binding.declarationStartOffset ?? binding.scopeStartOffset;
+  const declarationEndOffset = binding.declarationEndOffset ?? binding.scopeEndOffset;
+  const declarationRange = normalizeRange(declarationStartOffset, declarationEndOffset);
 
   return {
     kind: 'local',
@@ -89,9 +88,8 @@ function getRegion(input: SemanticContextResolverInput): SemanticRegion {
 }
 
 function byStartOffset(left: CandidateItem, right: CandidateItem): number {
-  const leftOffset = (left.metadata?.startOffset as number | undefined) ?? Number.MAX_SAFE_INTEGER;
-  const rightOffset =
-    (right.metadata?.startOffset as number | undefined) ?? Number.MAX_SAFE_INTEGER;
+  const leftOffset = (left.metadata as { startOffset: number }).startOffset;
+  const rightOffset = (right.metadata as { startOffset: number }).startOffset;
   return leftOffset - rightOffset;
 }
 
@@ -130,7 +128,7 @@ class CoreBackedSemantifyServices implements SemantifyServices {
         rawPath: binding.name,
         resolvedPath: binding.sourcePath,
         rootIdentifier: binding.name,
-        range: binding.declarationRange ?? binding.scopeRange,
+        range: binding.declarationRange,
         metadata: binding.metadata,
       }))
       .sort((left, right) => left.range.startOffset - right.range.startOffset);
@@ -147,17 +145,19 @@ class CoreBackedSemantifyServices implements SemantifyServices {
       return applyPrefix(filterItems, intent.typedPrefix);
     }
 
-    const symbolItems = context.bindings.map((binding) => ({
-      label: binding.name,
-      kind: 'variable',
-      detail:
-        binding.metadata?.bindingKind === 'set-variable'
-          ? 'local template variable'
-          : 'local loop alias',
-      metadata: {
-        startOffset: binding.scopeRange.startOffset,
-      },
-    }));
+    const symbolItems = context.bindings.map((binding) => {
+      // Semantify produces bindingKind for all mapped bindings.
+      // Use a direct read so candidate shaping does not carry unreachable fallback branches.
+      const bindingKind = (binding.metadata as { bindingKind: string }).bindingKind;
+      return {
+        label: binding.name,
+        kind: 'variable',
+        detail: bindingKind === 'set-variable' ? 'local template variable' : 'local loop alias',
+        metadata: {
+          startOffset: binding.scopeRange.startOffset,
+        },
+      };
+    });
 
     return applyPrefix(symbolItems, intent.typedPrefix).sort(byStartOffset);
   }
@@ -168,6 +168,7 @@ export function createSemantifyServices(): SemantifyServices {
 }
 
 export const semantifyTesting = {
+  mapBinding,
   normalizeRange,
   toCoreDelimiters,
 };

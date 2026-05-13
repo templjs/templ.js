@@ -57,6 +57,20 @@ describe('createSemantifyServices', () => {
     expect(refs.some((ref) => ref.kind === 'localBinding' && ref.rawPath === 'title')).toBe(true);
   });
 
+  it('returns references sorted by declaration/scope offset', () => {
+    const text = [
+      '{% set title = page.title %}',
+      '{% for item in users %}',
+      '{{ item.name }}{{ title }}',
+      '{% endfor %}',
+    ].join('\n');
+    const offset = text.indexOf('item.name') + 'item'.length;
+
+    const refs = services.resolveReferences({ text, offset });
+
+    expect(refs.map((ref) => ref.rawPath)).toEqual(['title', 'item']);
+  });
+
   it('plans symbol and filter candidates from canonical semantify APIs', () => {
     const text = '{% for item in users %}{{ it }}{% endfor %}';
     const offset = text.lastIndexOf('it') + 'it'.length;
@@ -134,6 +148,10 @@ describe('createSemantifyServices', () => {
     expect(delimiters?.expression_start).toBe('{{');
     expect(delimiters?.comment_end).toBe('#}');
     expect(semantifyTesting.toCoreDelimiters(undefined)).toBeUndefined();
+
+    const defaults = semantifyTesting.toCoreDelimiters({});
+    expect(defaults?.statement_start).toBe('{%');
+    expect(defaults?.statement_end).toBe('%}');
   });
 
   it('honors fully custom delimiters across all delimiter families', () => {
@@ -156,6 +174,22 @@ describe('createSemantifyServices', () => {
       comment_start: '<#',
       comment_end: '#>',
       comment: ['<#', '#>'],
+    });
+  });
+
+  it('falls back declarationRange to scopeRange when declaration offsets are absent', () => {
+    const mapped = semantifyTesting.mapBinding({
+      kind: 'for-alias',
+      name: 'item',
+      scopeStartOffset: 12,
+      scopeEndOffset: 28,
+      sourcePath: 'users[0]',
+      sourceExpression: 'users',
+    });
+
+    expect(mapped.declarationRange).toEqual({
+      startOffset: 12,
+      endOffset: 28,
     });
   });
 });

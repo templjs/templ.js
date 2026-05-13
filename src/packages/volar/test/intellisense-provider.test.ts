@@ -137,6 +137,7 @@ describe('IntellisenseProvider', () => {
             kind: 'local',
             name: 'semantifyAlias',
             scopeRange: { startOffset: 0, endOffset: Number.MAX_SAFE_INTEGER },
+            declarationRange: { startOffset: 0, endOffset: 13 },
             metadata: { bindingKind: 'for-alias' },
           },
         ],
