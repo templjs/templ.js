@@ -6,11 +6,14 @@ summary: Centralize authoritative template parsing and custom delimiter parity
 type: work-item
 subtype: epic
 lifecycle: active
-status: in-progress
-status_reason: implementation
+status: ready-for-review
+status_reason: implemented
 priority: high
 estimated: 20
 actual: 4
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/117
 ---
 
 ## Goal
@@ -54,10 +57,10 @@ This work item tracks the full refactor needed to make core authoritative, make 
 - [x] Replace `src/packages/volar/src/scope-resolution.ts` with a thin adapter over the core authority instead of raw-text regex parsing.
 - [x] Remove duplicated statement parsing heuristics from `src/packages/volar/src/diagnostic-provider.ts`.
 - [x] Remove duplicated statement parsing heuristics from `src/packages/volar/src/intellisense-provider.ts`.
-- [ ] Audit `src/extensions/vscode/src/server.ts` and keep it limited to configuration, transport, caching, and LSP payload mapping only.
-- [ ] Document the allowed raw-text exceptions for non-semantic scanning such as TextMate grammar, delimiter validation, and virtual-code masking/range preservation.
-- [ ] Add comprehensive regression tests in core, Volar, and VS Code layers that demonstrate prior drift cases and prove parity for custom delimiters.
-- [ ] Keep the new `AGENTS.md` guardrails up to date with the final authoritative API names and test commands.
+- [x] Audit `src/extensions/vscode/src/server.ts` and keep it limited to configuration, transport, caching, and LSP payload mapping only.
+- [x] Document the allowed raw-text exceptions for non-semantic scanning such as TextMate grammar, delimiter validation, and virtual-code masking/range preservation.
+- [x] Add comprehensive regression tests in core, Volar, and VS Code layers that demonstrate prior drift cases and prove parity for custom delimiters.
+- [x] Keep the new `AGENTS.md` guardrails up to date with the final authoritative API names and test commands.
 
 ## Deliverables
 
@@ -96,12 +99,12 @@ This work item tracks the full refactor needed to make core authoritative, make 
 
 ## Acceptance Criteria
 
-- [ ] One delimiter-aware core API is the sole source of truth for template scope bindings and statement metadata used by Volar semantic reads.
-- [ ] No Volar or VS Code source module uses free-form regex parsing over raw template text to answer scope, alias, or statement-semantic questions.
-- [ ] Allowed exceptions for regex/raw-text scanning are explicitly documented and limited to non-semantic responsibilities.
-- [ ] Default-delimiter and custom-delimiter behavior are covered by regression tests at core and Volar layers.
-- [ ] Drift cases for spaced bracket expressions, computed indices, nested alias expansion, and custom delimiters are captured by tests and remain green.
-- [ ] VS Code integration tests confirm the server stays a forwarding layer for semantic authoring behavior rather than a second parser implementation.
+- [x] One delimiter-aware core API is the sole source of truth for template scope bindings and statement metadata used by Volar semantic reads.
+- [x] No Volar or VS Code source module uses free-form regex parsing over raw template text to answer scope, alias, or statement-semantic questions.
+- [x] Allowed exceptions for regex/raw-text scanning are explicitly documented and limited to non-semantic responsibilities.
+- [x] Default-delimiter and custom-delimiter behavior are covered by regression tests at core and Volar layers.
+- [x] Drift cases for spaced bracket expressions, computed indices, nested alias expansion, and custom delimiters are captured by tests and remain green.
+- [x] VS Code integration tests confirm the server stays a forwarding layer for semantic authoring behavior rather than a second parser implementation.
 
 ## Implementation Notes
 
@@ -114,3 +117,11 @@ This work item tracks the full refactor needed to make core authoritative, make 
 
 - The planning guardrails added in nearby `AGENTS.md` files are intentionally narrow: they forbid new non-authoritative syntax parsing logic while still allowing raw-text utilities for masking, mapping, and TextMate grammar responsibilities.
 - If this epic is accepted, it can be split into smaller implementation items, but every actionable slice should continue to roll up to this backlog entry.
+
+## Verification Evidence
+
+- 2026-05-12: `rtk pnpm --filter @templjs/core test -- test/semantic/template-scopes.test.ts` passed (36 tests).
+- 2026-05-12: `rtk pnpm --filter @templjs/volar test -- test/custom-delimiters.e2e.test.ts test/context-graph-adapter.test.ts test/diagnostic-provider.test.ts test/intellisense-provider.test.ts` passed (196 tests).
+- 2026-05-12: `rtk pnpm --dir src/extensions/vscode test -- test/server-inprocess.integration.test.ts` passed (3 tests).
+- 2026-05-12: source audit confirmed Volar scope and alias semantics flow through core-backed APIs (`extractTemplateBindings` / `getTemplateBindingsAtOffset`) in `src/packages/volar/src/scope-resolution.ts` and `src/packages/volar/src/context-graph-adapter.ts`.
+- 2026-05-12: source audit confirmed `src/extensions/vscode/src/server.ts` is transport-only re-export wiring to `@templjs/language-server` with no local template semantic parsing.
