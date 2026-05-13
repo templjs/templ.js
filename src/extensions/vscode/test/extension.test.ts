@@ -1091,9 +1091,6 @@ describe('extension-activation', () => {
       'html',
     ]);
 
-    spawnSync.mockReturnValueOnce({ status: 0, stdout: '/usr/local/bin/markdownlint\n' } as never);
-    expect(helpers.discoverBinaryPath('markdownlint')).toBe('/usr/local/bin/markdownlint');
-
     activeTextEditor.document.uri.scheme = 'untitled';
     expect(helpers.getActiveDocumentContext()).toBeUndefined();
     activeTextEditor.document.uri.scheme = 'file';

@@ -14,7 +14,7 @@ spec:
         - containerPort: {{ port }}
         {% endfor %}
         env:
-        {% for key, value in environment_vars %}
-        - name: {{ key }}
-          value: {{ value }}
+        {% for entry in environment_vars %}
+        - name: {{ entry.key }}
+          value: {{ entry.value }}
         {% endfor %}

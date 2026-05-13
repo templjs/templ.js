@@ -9,7 +9,7 @@ lifecycle: active
 status: ready
 priority: high
 estimated: 6
-actual: 0
+actual: 6
 ---
 
 ## Goal
@@ -55,16 +55,16 @@ Any linter that ships as an LSP server (rather than a VS Code extension using `D
 
 ## Tasks
 
-- [ ] Audit `TempljsVirtualCode` to confirm the full cleaned content is emitted as a single virtual document with the correct base-format language ID and a complete source-map; fix if not.
-- [ ] Remove `computeFrontmatterYamlDiagnostics`, `createYamlService`, `toYamlValidationContent`, `extractMarkdownFrontmatter` (diagnostic path), `mapFrontmatterDiagnosticToSource`, and `sourceToFrontmatterDiagnostics` from `extension.ts`.
-- [ ] Remove `computeMarkdownDiagnostics`, `toMarkdownlintContent`, `sourceToMarkdownDiagnostics`, and the `markdownlint` import from `extension.ts`.
-- [ ] Remove the shadow-file writing and `.markdownlint.json` suppressor logic from `extension.ts`.
-- [ ] Simplify or remove `publishDiagnosticsForSource`; confirm diagnostics flow correctly from the Volar virtual document to the source file's Problems panel entry.
-- [ ] Remove `yaml-language-service` and `markdownlint` from the extension's `package.json` and rebuild.
-- [ ] Confirm extension bundle size decreases.
-- [ ] Update host-test assertions to reflect delegated language server diagnostics (or remove assertions that only tested in-process behaviour).
-- [ ] Run `pnpm --filter @templjs/volar test` and `pnpm --dir src/extensions/vscode run test:host`.
-- [ ] Create a changeset entry for `@templjs/volar` and `vscode-templjs`.
+- [x] Audit `TempljsVirtualCode` to confirm the full cleaned content is emitted as a single virtual document with the correct base-format language ID and a complete source-map; fix if not.
+- [x] Remove `computeFrontmatterYamlDiagnostics`, `createYamlService`, `toYamlValidationContent`, `extractMarkdownFrontmatter` (diagnostic path), `mapFrontmatterDiagnosticToSource`, and `sourceToFrontmatterDiagnostics` from `extension.ts`.
+- [x] Remove `computeMarkdownDiagnostics`, `toMarkdownlintContent`, `sourceToMarkdownDiagnostics`, and the `markdownlint` import from `extension.ts`.
+- [x] Remove the shadow-file writing and `.markdownlint.json` suppressor logic from `extension.ts`.
+- [x] Simplify or remove `publishDiagnosticsForSource`; confirm diagnostics flow correctly from the Volar virtual document to the source file's Problems panel entry.
+- [x] Remove `yaml-language-service` and `markdownlint` from the extension's `package.json` and rebuild.
+- [x] Confirm extension bundle size decreases.
+- [x] Update host-test assertions to reflect delegated language server diagnostics (or remove assertions that only tested in-process behaviour).
+- [x] Run `pnpm --filter @templjs/volar test` and `pnpm --dir src/extensions/vscode run test:host`.
+- [x] Create a changeset entry for `@templjs/volar` and `vscode-templjs`.
 
 ## Deliverables
 
@@ -76,17 +76,17 @@ Any linter that ships as an LSP server (rather than a VS Code extension using `D
 
 ## Acceptance Criteria
 
-- [ ] No `yaml-language-service` or `markdownlint` import remains in `src/extensions/vscode/`.
-- [ ] No `computeFrontmatterYamlDiagnostics`, `computeMarkdownDiagnostics`, or shadow-file logic remains in `extension.ts`.
-- [ ] Diagnostics for `.tmpl` files in the Problems panel originate exclusively from Volar-delegated LSP language servers; no in-process service contributes diagnostics.
-- [ ] No markdownlint or YAML diagnostics are emitted for `.tmpl` files unless the user has an LSP-based provider registered for the base-format language ID.
-- [ ] Diagnostic positions in the Problems panel map correctly to source lines in the `.tmpl` file for LSP-sourced diagnostics.
-- [ ] An LSP-based linter that registers for `markdown` (e.g., a hypothetical `markdownlint-lsp`) works automatically on `.tmpl` files with no extension code changes required.
-- [ ] Extension bundle size is reduced (yaml-language-service and markdownlint removed).
-- [ ] All `@templjs/volar` tests pass.
-- [ ] Host diagnostics tests pass (in-process diagnostic assertions removed or replaced with LSP-delegation assertions).
-- [ ] Adding a new base-format (e.g., `.html.tmpl`) requires zero changes to `extension.ts` (OCP satisfied).
-- [ ] Lint and frontmatter validation pass.
+- [x] No `yaml-language-service` or `markdownlint` import remains in `src/extensions/vscode/`.
+- [x] No `computeFrontmatterYamlDiagnostics`, `computeMarkdownDiagnostics`, or shadow-file logic remains in `extension.ts`.
+- [x] Diagnostics for `.tmpl` files in the Problems panel originate exclusively from Volar-delegated LSP language servers; no in-process service contributes diagnostics.
+- [x] No markdownlint or YAML diagnostics are emitted for `.tmpl` files unless the user has an LSP-based provider registered for the base-format language ID.
+- [x] Diagnostic positions in the Problems panel map correctly to source lines in the `.tmpl` file for LSP-sourced diagnostics.
+- [x] An LSP-based linter that registers for `markdown` (e.g., a hypothetical `markdownlint-lsp`) works automatically on `.tmpl` files with no extension code changes required.
+- [x] Extension bundle size is reduced (yaml-language-service and markdownlint removed).
+- [x] All `@templjs/volar` tests pass.
+- [x] Host diagnostics tests pass (in-process diagnostic assertions removed or replaced with LSP-delegation assertions).
+- [x] Adding a new base-format (e.g., `.html.tmpl`) requires zero changes to `extension.ts` (OCP satisfied).
+- [x] Lint and frontmatter validation pass.
 
 ## Relationships
 
