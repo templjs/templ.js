@@ -5,15 +5,18 @@ title: '062: Centralize authoritative template parsing and custom delimiter pari
 summary: Centralize authoritative template parsing and custom delimiter parity
 type: work-item
 subtype: epic
-lifecycle: active
-status: ready-for-review
-status_reason: implemented
+lifecycle: inactive
+status: closed
+status_reason: completed
+completed_date: '2026-05-13'
 priority: high
 estimated: 20
 actual: 4
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/117
+  evidence:
+    - '[[record:wi-062-merge-evidence-2026-05-13]]'
 ---
 
 ## Goal
