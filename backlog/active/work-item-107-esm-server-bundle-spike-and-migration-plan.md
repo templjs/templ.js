@@ -94,7 +94,7 @@ This means ESM is feasible, but only as a coordinated migration.
 
 ## Relationships
 
-- `depends_on`: work-item-096-bug-ci-local-build-drift-for-vscode-extension
+- `depends_on`: [[work-item-096-bug-ci-local-build-drift-for-vscode-extension]]
 
 ## Verification Evidence
 
