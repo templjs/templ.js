@@ -5,15 +5,18 @@ title: '112: Markdown service-plugin adapter with runtime planning'
 summary: Implement markdown adapter with runtime planning logic (e.g., if markdownlint isn't registered with .md, don't engage markdownlint plugin for diagnostics/language features). Move non-trivial plugin logic to separate files per contract.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: implemented
+lifecycle: inactive
+status: closed
+status_reason: completed
+completed_date: '2026-05-08'
 priority: high
 estimated: 4
 actual: 1
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/96
+  evidence:
+    - '[[record:wi-112-merge-evidence-2026-05-08]]'
 ---
 
 ## Goal

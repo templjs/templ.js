@@ -5,15 +5,18 @@ title: '113: YAML service-plugin adapter with runtime planning'
 summary: Implement YAML adapter with runtime planning logic and capability publishing. Move non-trivial plugin logic to separate files per contract.
 type: work-item
 subtype: task
-lifecycle: active
-status: in-progress
-status_reason: implementation
+lifecycle: inactive
+status: closed
+status_reason: completed
+completed_date: '2026-05-08'
 priority: medium
 estimated: 2
-actual: 0
+actual: 2
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/97
+  evidence:
+    - '[[record:wi-113-merge-evidence-2026-05-08]]'
 ---
 
 ## Goal
@@ -32,12 +35,12 @@ Current `createYamlDiagnosticsPlugin` performs YAML validation. Adapter must pub
 
 ## Tasks
 
-- [ ] Define YAML adapter capabilities (file patterns, supported servers, feature list).
-- [ ] Implement runtime planning logic for YAML language server availability.
-- [ ] Audit `createYamlDiagnosticsPlugin` implementation for non-trivial logic.
-- [ ] Move non-trivial logic (>20 lines) into separate files; keep trivial logic in service-plugins.ts.
-- [ ] Add capability-aware gating for YAML features.
-- [ ] Add tests for adapter initialization and capability publishing.
+- [x] Define YAML adapter capabilities (file patterns, supported servers, feature list).
+- [x] Implement runtime planning logic for YAML language server availability.
+- [x] Audit `createYamlDiagnosticsPlugin` implementation for non-trivial logic.
+- [x] Move non-trivial logic (>20 lines) into separate files; keep trivial logic in service-plugins.ts.
+- [x] Add capability-aware gating for YAML features.
+- [x] Add tests for adapter initialization and capability publishing.
 
 ## Deliverables
 
@@ -47,10 +50,10 @@ Current `createYamlDiagnosticsPlugin` performs YAML validation. Adapter must pub
 
 ## Acceptance Criteria
 
-- [ ] YAML adapter publishes correct capabilities.
-- [ ] Plugin code organization follows contract guidance.
-- [ ] All tests pass; interface is contract-compliant.
-- [ ] Build/test and frontmatter validation pass.
+- [x] YAML adapter publishes correct capabilities.
+- [x] Plugin code organization follows contract guidance.
+- [x] All tests pass; interface is contract-compliant.
+- [x] Build/test and frontmatter validation pass.
 
 ## Relationships
 

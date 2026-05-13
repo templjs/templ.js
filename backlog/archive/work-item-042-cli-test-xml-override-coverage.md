@@ -5,15 +5,18 @@ title: '42: Add Test Coverage for Explicit XML Input Format Override'
 summary: Add Test Coverage for Explicit XML Input Format Override
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: implemented
+lifecycle: inactive
+status: closed
+status_reason: completed
+completed_date: '2026-05-07'
 priority: low
 estimated: 1
 actual: 1
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/94
+  evidence:
+    - '[[record:wi-042-merge-evidence-2026-05-07]]'
 ---
 
 ## Goal

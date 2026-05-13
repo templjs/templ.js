@@ -5,15 +5,18 @@ title: '114: HTML service-plugin adapter with runtime planning'
 summary: Implement HTML adapter with runtime planning logic and capability publishing. Move non-trivial plugin logic to separate files per contract.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: implemented
+lifecycle: inactive
+status: closed
+status_reason: completed
+completed_date: '2026-05-09'
 priority: medium
 estimated: 2
 actual: 2
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/98
+  evidence:
+    - '[[record:wi-114-merge-evidence-2026-05-09]]'
 ---
 
 ## Goal
