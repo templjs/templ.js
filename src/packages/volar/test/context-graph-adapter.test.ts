@@ -44,6 +44,21 @@ const contentSchema = {
   },
 };
 
+const arrayContentSchema = {
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+        },
+      },
+    },
+  },
+};
+
 describe('ContextGraphSemanticReadAdapter', () => {
   it('memoizes snapshots across repeated queries for identical schemas', () => {
     const adapter = createContextGraphSemanticReadAdapter();
@@ -101,6 +116,23 @@ describe('ContextGraphSemanticReadAdapter', () => {
 
     expect(frontmatter.map((item) => item.label)).toEqual(['frontData']);
     expect(content.map((item) => item.label)).toEqual(['contentData']);
+  });
+
+  it('returns child completions for indexed parent paths', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+
+    const children = adapter.getChildCompletions(
+      {
+        operation: 'completion',
+        contextBlock: 'content',
+      },
+      'items[0]',
+      {
+        schema: arrayContentSchema,
+      }
+    );
+
+    expect(children.some((item) => item.label === 'name')).toBe(true);
   });
 
   it('filters query results by operation from location context', () => {

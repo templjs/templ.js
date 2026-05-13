@@ -1,10 +1,15 @@
 import {
+  analyzeForStatementHeader,
+  analyzeSetStatementHeader,
   getBuiltinFilterNames,
   getBuiltinFilterSignatures,
+  isCursorOnStatementKeyword as isCursorOnStatementKeywordCore,
   resolveSemanticHostLanguage,
   resolveSemanticZoneByHostLanguage,
   resolveSemanticZone,
+  type ForStatementHeaderAnalysis,
   type FunctionSignature,
+  type SetStatementHeaderAnalysis,
 } from '@templjs/core';
 import {
   resolveDelimiters,
@@ -23,6 +28,7 @@ import {
 import {
   createSemantifyServices,
   type DelimiterConfigInput as SemantifyDelimiterConfigInput,
+  type BindingTypeLookupInput,
   type SemantifyServices,
 } from '@templjs/semantify';
 
@@ -341,7 +347,8 @@ function getInScopeAliasCompletions(
   semantifyServices: SemantifyServices,
   text: string,
   offset: number,
-  delimiters: IntellisenseDelimiters
+  delimiters: IntellisenseDelimiters,
+  typeLookup: (input: BindingTypeLookupInput) => string | undefined
 ): CompletionItem[] {
   const semantifyDelimiters: SemantifyDelimiterConfigInput = {
     statementStart: delimiters.statementStart,
@@ -356,6 +363,7 @@ function getInScopeAliasCompletions(
     text,
     offset,
     delimiters: semantifyDelimiters,
+    typeLookup,
   }).bindings;
   const deduped = dedupeBindingsByNameKeepNearest(bindings);
 
@@ -384,21 +392,85 @@ function dedupeBindingsByNameKeepNearest(
   return deduped;
 }
 
-function getAliasDetail(binding: { kind: string; metadata?: Record<string, unknown> }): string {
+function getAliasDetail(binding: {
+  kind: string;
+  typeLabel?: string;
+  metadata?: Record<string, unknown>;
+}): string {
   if (binding.kind === 'custom') {
     return 'custom binding';
   }
 
-  const bindingKind =
-    typeof binding.metadata?.bindingKind === 'string' ? binding.metadata.bindingKind : undefined;
-  if (bindingKind === 'set-variable') {
-    return 'local template variable';
+  return typeof binding.typeLabel === 'string' ? binding.typeLabel : 'unknown';
+}
+
+function createTypeLookup(
+  semanticReadAdapter: SemanticReadAdapter,
+  semanticContext: SemanticQueryContext,
+  semanticOptions: {
+    schema?: object;
+    contentSchema?: object;
+    schemaUri?: string;
+    contentSchemaUri?: string;
   }
-  if (bindingKind?.startsWith('for-')) {
-    return 'local loop alias';
+): (input: BindingTypeLookupInput) => string | undefined {
+  return ({ expression, context }) => {
+    const lookupPosition = getPositionForOffset(context.text, context.offset);
+    const lookupZone = resolveSemanticQueryZone(context.text, context.offset, context.documentUri);
+    const lookupContext: SemanticQueryContext = {
+      ...semanticContext,
+      contextBlock: lookupZone.legacyContextBlock,
+      semanticZone: lookupZone,
+      documentUri: context.documentUri ?? semanticContext.documentUri,
+      offset: context.offset,
+      line: lookupPosition.line,
+      character: lookupPosition.character,
+    };
+
+    const details = semanticReadAdapter.getPathDetails(lookupContext, expression, semanticOptions);
+    if (!details?.type) {
+      return undefined;
+    }
+
+    if (details.type === 'array') {
+      const itemDetails = semanticReadAdapter.getPathDetails(
+        lookupContext,
+        `${expression}[0]`,
+        semanticOptions
+      );
+      return itemDetails?.type ? `array<${itemDetails.type}>` : details.type;
+    }
+
+    return details.type;
+  };
+}
+
+function findBindingTypeLabel(
+  bindings: Array<{ name: string; typeLabel?: string }>,
+  name: string
+): string | undefined {
+  return bindings.find((binding) => binding.name === name)?.typeLabel;
+}
+
+function getIterableElementType(typeLabel: string | undefined): string | undefined {
+  if (!typeLabel) {
+    return undefined;
   }
 
-  return 'local binding';
+  if (typeLabel === 'string') {
+    return 'char';
+  }
+
+  if (typeLabel.endsWith('[]')) {
+    return typeLabel.slice(0, -2).trim();
+  }
+
+  const genericMatch = typeLabel.match(/^array<(.+)>$/i);
+  if (genericMatch) {
+    return genericMatch[1]?.trim();
+  }
+
+  return undefined;
 }
 
 function summarizeDuplicateLabels(items: CompletionItem[]): string[] {
@@ -723,9 +795,15 @@ function getExpressionCompletionsAtOffset(
   },
   /** Optional resolver to translate for-loop alias paths to their schema equivalents. */
   pathResolver?: (basePath: string) => string,
+  /** Optional fallback to map local binding names to their authoritative source paths. */
+  localBindingPathResolver?: (basePath: string) => string | undefined,
   debugLog?: IntellisenseOptions['debugLog']
 ): CompletionItem[] {
-  const prefix = getCompletionPrefix(content.slice(0, offsetInContent));
+  const effectiveOffset =
+    content[Math.max(0, Math.min(offsetInContent, content.length - 1))] === '.'
+      ? Math.min(content.length, offsetInContent + 1)
+      : offsetInContent;
+  const prefix = getCompletionPrefix(content.slice(0, effectiveOffset));
 
   const lastPipe = prefix.lastIndexOf('|');
   if (lastPipe >= 0) {
@@ -734,7 +812,15 @@ function getExpressionCompletionsAtOffset(
   }
 
   const resolveBase = (basePath: string): string =>
-    pathResolver ? pathResolver(basePath) : basePath;
+    (() => {
+      const pathResolved = pathResolver ? pathResolver(basePath) : basePath;
+      if (pathResolved !== basePath) {
+        return pathResolved;
+      }
+
+      const bindingResolved = localBindingPathResolver?.(basePath);
+      return bindingResolved ?? pathResolved;
+    })();
 
   const logRawDuplicateLabels = (items: CompletionItem[]): void => {
     const duplicates = summarizeDuplicateLabels(items);
@@ -748,10 +834,10 @@ function getExpressionCompletionsAtOffset(
 
   const variableRefs = extractExpressionVariableReferences(content);
   const activeRef = variableRefs.find(
-    (ref) => offsetInContent >= ref.start && offsetInContent <= ref.end + 1
+    (ref) => effectiveOffset >= ref.start && effectiveOffset <= ref.end + 1
   );
   if (activeRef) {
-    const typedPath = content.slice(activeRef.start, offsetInContent).trim();
+    const typedPath = content.slice(activeRef.start, effectiveOffset).trim();
     const lastDot = typedPath.lastIndexOf('.');
     if (lastDot >= 0) {
       const resolvedBase = resolveBase(typedPath.slice(0, lastDot));
@@ -792,82 +878,15 @@ function getExpressionCompletionsAtOffset(
   return filterAndSortCompletions(mergeUniqueCompletions(localAliasItems, graphItems), prefix);
 }
 
-/**
- * Deterministic, token-based parser for a complete `for ALIAS in EXPR`
- * statement content (the text between the statement delimiters, trimmed).
- *
- * Per project guidelines, multi-token regex spanning unbounded content strings
- * must not be used for statement-semantic decisions. This helper:
- *  1. Tokenises once with split(/\s+/) and validates the structural shape.
- *  2. Walks character-by-character only to locate byte offsets — never to
- *     match semantic content.
- *  3. Uses regex only for the single-token identifier character-class check.
- *
- * Returns null if the content is not a well-formed for-header.
- */
-interface ForHeaderParsed {
-  aliasName: string;
-  aliasStart: number; // character offset (JS string index) inside statementContent
-  aliasEnd: number;
-  iterableExpression: string;
-  iterableStart: number; // character offset (JS string index) inside statementContent
-}
+type ForHeaderParsed = ForStatementHeaderAnalysis;
+type SetHeaderParsed = SetStatementHeaderAnalysis;
 
 function parseForHeader(statementContent: string): ForHeaderParsed | null {
-  // Strip optional leading whitespace-control marker (-) before tokenising.
-  const content = statementContent.replace(/^\s*-\s*/, '').trimStart();
-  const tokens = content.split(/\s+/).filter((t) => t.length > 0 && t !== '-');
+  return analyzeForStatementHeader(statementContent);
+}
 
-  // Structural check: minimum 3 tokens [for, alias, in]; expression may be empty
-  // (partial header like `for item in` still drives root-level completions).
-  // Single-token identifier regex is explicitly allowed by project guidelines.
-  if (
-    tokens.length < 3 ||
-    tokens[0] !== 'for' ||
-    !/^[A-Za-z_]\w*$/.test(tokens[1] ?? '') ||
-    tokens[2] !== 'in'
-  ) {
-    return null;
-  }
-
-  const aliasName = tokens[1]!;
-
-  // Walk the ORIGINAL statementContent (not `content`) so returned offsets are
-  // relative to the caller's view of the string.
-  let cursor = 0;
-
-  // Skip optional leading whitespace-control marker in original.
-  const wsCtrlMatch = statementContent.match(/^\s*-\s*/);
-  if (wsCtrlMatch) cursor = wsCtrlMatch[0].length;
-
-  // Skip leading whitespace (\s-aware to handle \n/\r in multiline headers).
-  while (cursor < statementContent.length && /\s/.test(statementContent[cursor]!)) cursor++;
-
-  // Skip "for" keyword.
-  while (cursor < statementContent.length && !/\s/.test(statementContent[cursor]!)) cursor++;
-  // Skip whitespace.
-  while (cursor < statementContent.length && /\s/.test(statementContent[cursor]!)) cursor++;
-
-  // Alias starts here.
-  const aliasStart = cursor;
-  while (cursor < statementContent.length && /\w/.test(statementContent[cursor]!)) cursor++;
-  const aliasEnd = cursor;
-
-  // Skip whitespace before "in".
-  while (cursor < statementContent.length && /\s/.test(statementContent[cursor]!)) cursor++;
-
-  // Skip "in" keyword.
-  while (cursor < statementContent.length && !/\s/.test(statementContent[cursor]!)) cursor++;
-
-  // Skip whitespace before expression.
-  while (cursor < statementContent.length && /\s/.test(statementContent[cursor]!)) cursor++;
-
-  const iterableStart = cursor;
-  // Trim any trailing whitespace-control marker (-) from the expression
-  // (e.g. `{%- for item in users -%}` leaves a trailing ` -` in statementContent).
-  const iterableExpression = statementContent.slice(iterableStart).replace(/\s*-\s*$/, '');
-
-  return { aliasName, aliasStart, aliasEnd, iterableExpression, iterableStart };
+function parseSetHeader(statementContent: string): SetHeaderParsed | null {
+  return analyzeSetStatementHeader(statementContent);
 }
 
 function getStatementExpressionFragment(
@@ -916,6 +935,14 @@ function getStatementExpressionFragment(
   };
 }
 
+function isCursorOnStatementKeyword(
+  statementContent: string,
+  cursorInStatement: number,
+  keywords: ReadonlySet<string>
+): boolean {
+  return isCursorOnStatementKeywordCore(statementContent, cursorInStatement, keywords);
+}
+
 /**
  * @internal
  * Exported solely for white-box unit testing. Not part of the stable public API.
@@ -933,6 +960,8 @@ export const intellisenseTesting = {
   getStatementExpressionFragment,
   getFrontmatterContext,
   parseForHeader,
+  parseSetHeader,
+  isCursorOnStatementKeyword,
 };
 
 export class IntellisenseProvider {
@@ -942,26 +971,30 @@ export class IntellisenseProvider {
   ) {}
 
   getCompletions(text: string, offset: number, options?: IntellisenseOptions): CompletionItem[] {
+    const completionOffset =
+      text[Math.max(0, Math.min(offset, text.length - 1))] === '.'
+        ? Math.min(text.length, offset + 1)
+        : offset;
     const delimiters = getDelimiters(options);
     const expression = findEnclosingRangeNearOffset(
       text,
-      offset,
+      completionOffset,
       delimiters.expressionStart,
       delimiters.expressionEnd,
       true
     );
     const statement = findEnclosingRangeNearOffset(
       text,
-      offset,
+      completionOffset,
       delimiters.statementStart,
       delimiters.statementEnd,
       true
     );
-    const semanticZone = resolveSemanticQueryZone(text, offset, options?.documentUri);
+    const semanticZone = resolveSemanticQueryZone(text, completionOffset, options?.documentUri);
     const contextBlock = semanticZone.legacyContextBlock;
     const completionContext = buildSemanticQueryContext(
       text,
-      offset,
+      completionOffset,
       'completion',
       semanticZone,
       options?.documentUri
@@ -974,17 +1007,53 @@ export class IntellisenseProvider {
     };
     const filters = [...getDefaultFilters(), ...(options?.customFilters ?? [])];
     const keywords = [...DEFAULT_KEYWORDS, ...(options?.customKeywords ?? [])];
+    const typeLookup = createTypeLookup(
+      this.semanticReadAdapter,
+      completionContext,
+      semanticOptions
+    );
+    const completionBindings = this.semantifyServices.resolveContext({
+      text,
+      offset: Math.max(0, completionOffset - 1),
+      delimiters: {
+        statementStart: delimiters.statementStart,
+        statementEnd: delimiters.statementEnd,
+        expressionStart: delimiters.expressionStart,
+        expressionEnd: delimiters.expressionEnd,
+        commentStart: delimiters.commentStart,
+        commentEnd: delimiters.commentEnd,
+      },
+      typeLookup,
+    }).bindings;
     const localAliasItems = getInScopeAliasCompletions(
       this.semantifyServices,
       text,
-      Math.max(0, offset - 1),
-      delimiters
+      Math.max(0, completionOffset - 1),
+      delimiters,
+      typeLookup
     );
+    const localBindingPathResolver = (basePath: string): string | undefined => {
+      const bindingName = basePath.split(/[.[]/, 1)[0] ?? basePath;
+      const binding = completionBindings.find((candidate) => candidate.name === bindingName);
+      if (!binding?.sourcePath) {
+        return undefined;
+      }
+
+      const bindingKind =
+        typeof binding.metadata?.bindingKind === 'string'
+          ? binding.metadata.bindingKind
+          : undefined;
+      const bindingBase =
+        bindingKind === 'for-alias' || bindingKind === 'for-value-alias'
+          ? `${binding.sourcePath}[0]`
+          : binding.sourcePath;
+      return `${bindingBase}${basePath.slice(bindingName.length)}`;
+    };
 
     const scopeResolver = createScopedPathResolver(
       this.semanticReadAdapter,
       text,
-      offset,
+      completionOffset,
       delimiters
     );
 
@@ -998,7 +1067,7 @@ export class IntellisenseProvider {
         content = content.slice(0, -delimiters.expressionEnd.length);
       }
 
-      const contentOffset = offset - expression.start - delimiters.expressionStart.length;
+      const contentOffset = completionOffset - expression.start - delimiters.expressionStart.length;
 
       const expressionCompletions = getExpressionCompletionsAtOffset(
         this.semanticReadAdapter,
@@ -1009,6 +1078,7 @@ export class IntellisenseProvider {
         completionContext,
         semanticOptions,
         scopeResolver,
+        localBindingPathResolver,
         options?.debugLog
       );
 
@@ -1019,7 +1089,7 @@ export class IntellisenseProvider {
 
     if (statement) {
       const startOffset = statement.start + delimiters.statementStart.length;
-      const statementPrefix = text.slice(startOffset, offset);
+      const statementPrefix = text.slice(startOffset, completionOffset);
       const normalizedStatementPrefix = statementPrefix.replace(/^\s*-\s*/, '');
       const trimmed = normalizedStatementPrefix.trim();
 
@@ -1049,6 +1119,7 @@ export class IntellisenseProvider {
         completionContext,
         semanticOptions,
         scopeResolver,
+        localBindingPathResolver,
         options?.debugLog
       );
 
@@ -1060,7 +1131,7 @@ export class IntellisenseProvider {
     }
 
     if (contextBlock === 'frontmatter') {
-      const context = getFrontmatterContext(text, offset);
+      const context = getFrontmatterContext(text, completionOffset);
 
       if (context.inValue && context.path) {
         const graphEnumValues = this.semanticReadAdapter.getEnumValueCompletions(
@@ -1127,6 +1198,21 @@ export class IntellisenseProvider {
       schemaUri: options?.schemaUri,
       contentSchemaUri: options?.contentSchemaUri,
     };
+    const keywords = new Set([...DEFAULT_KEYWORDS, ...(options?.customKeywords ?? [])]);
+    const typeLookup = createTypeLookup(this.semanticReadAdapter, hoverContext, semanticOptions);
+    const semantifyBindings = this.semantifyServices.resolveContext({
+      text,
+      offset,
+      delimiters: {
+        statementStart: delimiters.statementStart,
+        statementEnd: delimiters.statementEnd,
+        expressionStart: delimiters.expressionStart,
+        expressionEnd: delimiters.expressionEnd,
+        commentStart: delimiters.commentStart,
+        commentEnd: delimiters.commentEnd,
+      },
+      typeLookup,
+    }).bindings;
     const resolveHoverPath = createScopedPathResolver(
       this.semanticReadAdapter,
       text,
@@ -1199,16 +1285,95 @@ export class IntellisenseProvider {
         (rawInner.indexOf(statementContent) >= 0 ? rawInner.indexOf(statementContent) : 0);
       const cursorInStatement = offset - statementOffset;
 
+      if (isCursorOnStatementKeyword(statementContent, cursorInStatement, keywords)) {
+        return null;
+      }
+
+      const setHeaderMatch = parseSetHeader(statementContent);
+      if (
+        setHeaderMatch &&
+        cursorInStatement >= setHeaderMatch.variableStart &&
+        cursorInStatement <= setHeaderMatch.variableEnd
+      ) {
+        const setInScopeBindings = this.semantifyServices.resolveContext({
+          text,
+          offset: Math.min(text.length, statement.end + 1),
+          delimiters: {
+            statementStart: delimiters.statementStart,
+            statementEnd: delimiters.statementEnd,
+            expressionStart: delimiters.expressionStart,
+            expressionEnd: delimiters.expressionEnd,
+            commentStart: delimiters.commentStart,
+            commentEnd: delimiters.commentEnd,
+          },
+          typeLookup,
+        }).bindings;
+        const typeLabel =
+          findBindingTypeLabel(setInScopeBindings, setHeaderMatch.variableName) ??
+          findBindingTypeLabel(semantifyBindings, setHeaderMatch.variableName) ??
+          'unknown';
+        return { contents: `${setHeaderMatch.variableName}: ${typeLabel}` };
+      }
+
       const forHeaderMatch = parseForHeader(statementContent);
       if (forHeaderMatch) {
         const { aliasName, aliasStart, aliasEnd, iterableExpression, iterableStart } =
           forHeaderMatch;
 
         if (cursorInStatement >= aliasStart && cursorInStatement <= aliasEnd) {
+          const iterableOffset =
+            statementOffset + iterableStart + Math.min(1, iterableExpression.length);
+          const resolveIterablePath = createScopedPathResolver(
+            this.semanticReadAdapter,
+            text,
+            iterableOffset,
+            delimiters
+          );
+          const resolvedIterablePath = resolveIterablePath(iterableExpression);
+          const iterableType = typeLookup({
+            expression: resolvedIterablePath,
+            binding: {
+              kind: 'custom',
+              name: aliasName,
+              scopeRange: { startOffset: offset, endOffset: offset },
+              declarationRange: { startOffset: offset, endOffset: offset },
+            },
+            context: {
+              text,
+              offset: iterableOffset,
+              delimiters: {
+                statementStart: delimiters.statementStart,
+                statementEnd: delimiters.statementEnd,
+                expressionStart: delimiters.expressionStart,
+                expressionEnd: delimiters.expressionEnd,
+                commentStart: delimiters.commentStart,
+                commentEnd: delimiters.commentEnd,
+              },
+              documentUri: options?.documentUri,
+            },
+          });
+          const aliasInScopeBindings = this.semantifyServices.resolveContext({
+            text,
+            offset: Math.min(text.length, statement.end + 1),
+            delimiters: {
+              statementStart: delimiters.statementStart,
+              statementEnd: delimiters.statementEnd,
+              expressionStart: delimiters.expressionStart,
+              expressionEnd: delimiters.expressionEnd,
+              commentStart: delimiters.commentStart,
+              commentEnd: delimiters.commentEnd,
+            },
+            typeLookup,
+          }).bindings;
+          const typeLabel =
+            getIterableElementType(iterableType) ??
+            findBindingTypeLabel(aliasInScopeBindings, aliasName) ??
+            findBindingTypeLabel(semantifyBindings, aliasName) ??
+            'unknown';
           options?.debugLog?.(
             `[intellisense] hover alias=${aliasName} source=statement-local result=present`
           );
-          return { contents: `${aliasName}: local loop alias` };
+          return { contents: `${aliasName}: ${typeLabel}` };
         }
 
         const cursorInIterable = cursorInStatement - iterableStart;
@@ -1225,10 +1390,12 @@ export class IntellisenseProvider {
               offset
             );
             if (localAlias?.isAliasTokenOnly) {
+              const typeLabel =
+                findBindingTypeLabel(semantifyBindings, localAlias.alias) ?? 'unknown';
               options?.debugLog?.(
                 `[intellisense] hover alias=${localAlias.alias} source=statement-iterable-local result=present`
               );
-              return { contents: `${localAlias.alias}: local template variable` };
+              return { contents: `${localAlias.alias}: ${typeLabel}` };
             }
 
             return getHoverDetailsForPath(iterablePath);
@@ -1262,10 +1429,12 @@ export class IntellisenseProvider {
           offset
         );
         if (localAlias?.isAliasTokenOnly) {
+          const aliasName = variablePath.split(/[.[]/, 1)[0] ?? variablePath;
+          const typeLabel = findBindingTypeLabel(semantifyBindings, aliasName) ?? 'unknown';
           options?.debugLog?.(
             `[intellisense] hover alias=${localAlias.alias} source=statement-expression-local result=present`
           );
-          return { contents: `${localAlias.alias}: local loop alias` };
+          return { contents: `${localAlias.alias}: ${typeLabel}` };
         }
 
         return getHoverDetailsForPath(variablePath);
@@ -1302,7 +1471,22 @@ export class IntellisenseProvider {
         offset
       );
       if (localAlias?.isAliasTokenOnly) {
-        return { contents: `${localAlias.alias}: local loop alias` };
+        const semantifyBindings = this.semantifyServices.resolveContext({
+          text,
+          offset,
+          delimiters: {
+            statementStart: delimiters.statementStart,
+            statementEnd: delimiters.statementEnd,
+            expressionStart: delimiters.expressionStart,
+            expressionEnd: delimiters.expressionEnd,
+            commentStart: delimiters.commentStart,
+            commentEnd: delimiters.commentEnd,
+          },
+          typeLookup: createTypeLookup(this.semanticReadAdapter, hoverContext, semanticOptions),
+        }).bindings;
+        const aliasName = variablePath.split(/[.[]/, 1)[0] ?? variablePath;
+        const typeLabel = findBindingTypeLabel(semantifyBindings, aliasName) ?? 'unknown';
+        return { contents: `${localAlias.alias}: ${typeLabel}` };
       }
 
       return getHoverDetailsForPath(variablePath);

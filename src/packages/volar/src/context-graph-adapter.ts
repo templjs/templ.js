@@ -1107,6 +1107,25 @@ function getLabel(path: string): string {
   return label.replace(/\[[^\]]+\]/g, '');
 }
 
+function getParentPathFallbacks(parentPath: string): string[] {
+  if (!parentPath.includes('[')) {
+    return [];
+  }
+
+  const candidates = new Set<string>();
+  const wildcard = parentPath.replace(/\[(\d+|"[^"]+"|'[^']+')\]/g, '[]');
+  const withoutIndexes = parentPath.replace(/\[(\d+|"[^"]+"|'[^']+')\]/g, '');
+
+  if (wildcard && wildcard !== parentPath) {
+    candidates.add(wildcard);
+  }
+  if (withoutIndexes && withoutIndexes !== parentPath) {
+    candidates.add(withoutIndexes);
+  }
+
+  return [...candidates];
+}
+
 function resolveProfileId(context: SemanticQueryContext): string {
   return (
     context.semanticZone?.profileId ??
@@ -1512,38 +1531,51 @@ export class ContextGraphSemanticReadAdapter {
     options: SemanticSchemaReadOptions
   ): SemanticCompletionCandidate[] {
     const contextProfileId = resolveProfileId(context);
-    const attributes: QueryAttributes = parentPath
-      ? {
-          parentPath,
-          operation: context.operation,
-          ...(context.documentUri ? { documentUri: context.documentUri } : {}),
-          ...(typeof context.offset === 'number' ? { offset: context.offset } : {}),
-          ...(typeof context.line === 'number' ? { line: context.line } : {}),
-          ...(typeof context.character === 'number' ? { character: context.character } : {}),
-        }
-      : {
-          parentPath: '',
-          operation: context.operation,
-          ...(context.documentUri ? { documentUri: context.documentUri } : {}),
-          ...(typeof context.offset === 'number' ? { offset: context.offset } : {}),
-          ...(typeof context.line === 'number' ? { line: context.line } : {}),
-          ...(typeof context.character === 'number' ? { character: context.character } : {}),
-          isDirectProperty: true,
-        };
-    const response = this.query(
-      options,
-      {
-        version: 'v1',
-        nodes: {
-          profileIds: [contextProfileId],
-          kind: 'schema-path',
-          attributeEquals: attributes,
-        },
-      },
-      context
-    );
+    const makeAttributes = (currentParentPath: string): QueryAttributes =>
+      currentParentPath
+        ? {
+            parentPath: currentParentPath,
+            operation: context.operation,
+            ...(context.documentUri ? { documentUri: context.documentUri } : {}),
+            ...(typeof context.offset === 'number' ? { offset: context.offset } : {}),
+            ...(typeof context.line === 'number' ? { line: context.line } : {}),
+            ...(typeof context.character === 'number' ? { character: context.character } : {}),
+          }
+        : {
+            parentPath: '',
+            operation: context.operation,
+            ...(context.documentUri ? { documentUri: context.documentUri } : {}),
+            ...(typeof context.offset === 'number' ? { offset: context.offset } : {}),
+            ...(typeof context.line === 'number' ? { line: context.line } : {}),
+            ...(typeof context.character === 'number' ? { character: context.character } : {}),
+            isDirectProperty: true,
+          };
 
-    return response.nodes.map((node: ContextNode) => ({
+    const queryByParentPath = (currentParentPath: string): ContextNode[] =>
+      this.query(
+        options,
+        {
+          version: 'v1',
+          nodes: {
+            profileIds: [contextProfileId],
+            kind: 'schema-path',
+            attributeEquals: makeAttributes(currentParentPath),
+          },
+        },
+        context
+      ).nodes;
+
+    let nodes = queryByParentPath(parentPath);
+    if (nodes.length === 0) {
+      for (const fallbackPath of getParentPathFallbacks(parentPath)) {
+        nodes = queryByParentPath(fallbackPath);
+        if (nodes.length > 0) {
+          break;
+        }
+      }
+    }
+
+    return nodes.map((node: ContextNode) => ({
       label: String(node.attributes?.label ?? ''),
       kind: parentPath ? 'property' : 'variable',
       detail: asString(node.attributes?.type),

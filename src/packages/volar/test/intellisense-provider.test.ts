@@ -138,6 +138,7 @@ describe('IntellisenseProvider', () => {
             name: 'shadowedAlias',
             scopeRange: { startOffset: 5, endOffset: Number.MAX_SAFE_INTEGER },
             declarationRange: { startOffset: 5, endOffset: 13 },
+            typeLabel: 'string',
             metadata: { bindingKind: 'set-variable' },
           },
           {
@@ -145,6 +146,7 @@ describe('IntellisenseProvider', () => {
             name: 'shadowedAlias',
             scopeRange: { startOffset: 0, endOffset: Number.MAX_SAFE_INTEGER },
             declarationRange: { startOffset: 0, endOffset: 13 },
+            typeLabel: 'object',
             metadata: { bindingKind: 'for-alias' },
           },
           {
@@ -164,7 +166,7 @@ describe('IntellisenseProvider', () => {
 
     const semantifyAliases = items.filter((item) => item.label === 'shadowedAlias');
     expect(semantifyAliases).toHaveLength(1);
-    expect(semantifyAliases[0]?.detail).toBe('local template variable');
+    expect(semantifyAliases[0]?.detail).toBe('string');
     expect(items.find((item) => item.label === 'pluginAlias')?.detail).toBe('custom binding');
   });
 
@@ -187,6 +189,7 @@ describe('IntellisenseProvider', () => {
             name: 'loopValue',
             scopeRange: { startOffset: 0, endOffset: Number.MAX_SAFE_INTEGER },
             declarationRange: { startOffset: 0, endOffset: 9 },
+            typeLabel: 'string',
             metadata: { bindingKind: 'for-value-alias' },
           },
         ],
@@ -198,7 +201,7 @@ describe('IntellisenseProvider', () => {
     const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
     const items = providerWithSemantify.getCompletions('{{  }}', 3, { schema: sampleSchema });
 
-    expect(items.find((item) => item.label === 'loopValue')?.detail).toBe('local loop alias');
+    expect(items.find((item) => item.label === 'loopValue')?.detail).toBe('string');
   });
 
   it('provides property completions after dot', () => {
@@ -543,7 +546,7 @@ describe('IntellisenseProvider', () => {
       schema: sampleSchema,
     });
 
-    expect(hover?.contents).toBe('item: local loop alias');
+    expect(hover?.contents).toBe('item: object');
   });
 
   it('returns local alias hover info inside statement expressions', () => {
@@ -554,7 +557,7 @@ describe('IntellisenseProvider', () => {
       schema: sampleSchema,
     });
 
-    expect(hover?.contents).toBe('item: local loop alias');
+    expect(hover?.contents).toBe('item: object');
   });
 
   it('returns local variable hover info for statement iterable aliases', () => {
@@ -565,7 +568,18 @@ describe('IntellisenseProvider', () => {
       schema: sampleSchema,
     });
 
-    expect(hover?.contents).toBe('collection: local template variable');
+    expect(hover?.contents).toBe('collection: array<object>');
+  });
+
+  it('returns local variable hover info on set declaration variable token', () => {
+    const text = '{% set collection = ["a", "b", "c"] %}{{ collection }}';
+    const offset = text.indexOf('set collection') + 'set '.length + 2;
+
+    const hover = provider.getHover(text, offset, {
+      schema: sampleSchema,
+    });
+
+    expect(hover?.contents).toBe('collection: array<string>');
   });
 
   it('returns signature help for custom filters', () => {
@@ -676,35 +690,53 @@ describe('IntellisenseProvider', () => {
   });
 
   it('deduplicates completion items that share the same label, kind, and detail', () => {
-    const dedupeProvider = new IntellisenseProvider({
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [
-        { label: 'x', kind: 'variable', detail: 'local loop alias' },
-        { label: 'x', kind: 'variable', detail: 'local loop alias' },
-        { label: 'y', kind: 'variable', detail: 'string' },
-      ],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: (text, alias, offset) => {
-        if (alias !== 'x') {
-          return null;
-        }
-        const at = text.indexOf('{{ x }}');
-        if (offset < at || at === -1) {
-          return null;
-        }
+    const dedupeProvider = new IntellisenseProvider(
+      {
+        resolveScopedPath: (_text, basePath) => basePath,
+        getChildCompletions: () => [
+          { label: 'x', kind: 'variable', detail: 'string' },
+          { label: 'x', kind: 'variable', detail: 'string' },
+          { label: 'y', kind: 'variable', detail: 'string' },
+        ],
+        getEnumValueCompletions: () => [],
+        getPathDetails: () => null,
+        resolvePathDefinition: () => null,
+        resolveDocumentDefinition: () => null,
+        resolveLocalAliasDefinition: (text, alias, offset) => {
+          if (alias !== 'x') {
+            return null;
+          }
+          const at = text.indexOf('{{ x }}');
+          if (offset < at || at === -1) {
+            return null;
+          }
 
-        const decl = text.indexOf('for x in');
-        return decl === -1
-          ? null
-          : {
-              start: decl + 'for '.length,
-              end: decl + 'for x'.length,
-            };
+          const decl = text.indexOf('for x in');
+          return decl === -1
+            ? null
+            : {
+                start: decl + 'for '.length,
+                end: decl + 'for x'.length,
+              };
+        },
       },
-    });
+      {
+        resolveContext: () => ({
+          regions: [],
+          bindings: [
+            {
+              kind: 'local',
+              name: 'x',
+              scopeRange: { startOffset: 0, endOffset: Number.MAX_SAFE_INTEGER },
+              declarationRange: { startOffset: 0, endOffset: 5 },
+              typeLabel: 'string',
+            },
+          ],
+        }),
+        resolveReferences: () => [],
+        planCandidates: () => [],
+      }
+    );
 
     const text = '{% for x in users %}{{ x }}{% endfor %}';
     const offset = text.indexOf('{{ x }}') + 3;
@@ -713,7 +745,7 @@ describe('IntellisenseProvider', () => {
     });
 
     const xEntries = completions.filter(
-      (item) => item.label === 'x' && item.kind === 'variable' && item.detail === 'local loop alias'
+      (item) => item.label === 'x' && item.kind === 'variable' && item.detail === 'string'
     );
     expect(xEntries).toHaveLength(1);
   });
@@ -1242,6 +1274,260 @@ describe('IntellisenseProvider', () => {
     expect(outerHover?.contents).toContain('items[0].name');
   });
 
+  it('derives nested shadowed alias types from resolver and supports inner iterable completions', () => {
+    const text = [
+      '{%- for item in items %}',
+      '{% for item in item.name -%}',
+      '{{ item }}',
+      '{% endfor %}',
+      '{% endfor -%}',
+    ].join('\n');
+
+    const itemsOffset = text.indexOf('in items') + 'in '.length + 1;
+    const outerAliasOffset = text.indexOf('{%- for item in items %}') + '{%- for '.length + 2;
+    const innerHeader = '{% for item in item.name -%}';
+    const innerAliasOffset = text.indexOf(innerHeader) + '{% for '.length + 2;
+    const innerBodyOffset = text.indexOf('{{ item }}') + '{{ '.length + 2;
+
+    const itemsHover = provider.getHover(text, itemsOffset, {
+      schema: titleItemsSchema,
+    });
+    const outerAliasHover = provider.getHover(text, outerAliasOffset, {
+      schema: titleItemsSchema,
+    });
+    const innerAliasHover = provider.getHover(text, innerAliasOffset, {
+      schema: titleItemsSchema,
+    });
+    const innerBodyHover = provider.getHover(text, innerBodyOffset, {
+      schema: titleItemsSchema,
+    });
+
+    const completionText = [
+      '{%- for item in items %}',
+      '{% for item in item. %}',
+      '{{ item }}',
+      '{% endfor %}',
+      '{% endfor -%}',
+    ].join('\n');
+    const completionOffset = completionText.indexOf('item. %}') + 'item.'.length;
+    const innerIterableCompletions = provider.getCompletions(completionText, completionOffset, {
+      schema: titleItemsSchema,
+    });
+
+    expect(itemsHover?.contents).toContain('items: array');
+    expect(outerAliasHover?.contents).toBe('item: object');
+    expect(innerAliasHover?.contents).toBe('item: char');
+    expect(innerBodyHover?.contents).toBe('item: char');
+    expect(innerIterableCompletions.some((item) => item.label === 'name')).toBe(true);
+  });
+
+  it('does not show variable hover details when cursor is on for-header keywords', () => {
+    const text = [
+      '{%- for item in items %}',
+      '{% for item in item.name -%}',
+      '{{ item }}',
+      '{% endfor %}',
+      '{% endfor -%}',
+    ].join('\n');
+
+    const innerHeader = '{% for item in item.name -%}';
+    const innerHeaderStart = text.indexOf(innerHeader);
+    const forOffset = innerHeaderStart + '{% '.length + 1;
+    const inOffset = text.indexOf(' in item.name', innerHeaderStart) + ' in'.length - 1;
+
+    const forHover = provider.getHover(text, forOffset, {
+      schema: titleItemsSchema,
+    });
+    const inHover = provider.getHover(text, inOffset, {
+      schema: titleItemsSchema,
+    });
+
+    expect(forHover).toBeNull();
+    expect(inHover).toBeNull();
+  });
+
+  it('does not show variable hover details when cursor is on non-for statement keywords', () => {
+    const text = '{% for item in items %}{% if item %}ok{% endif %}{% endfor %}';
+    const ifOffset = text.indexOf('{% if item %}') + '{% '.length + 1;
+    const itemOffset = text.indexOf('if item') + 4;
+
+    const ifHover = provider.getHover(text, ifOffset, {
+      schema: titleItemsSchema,
+    });
+    const itemHover = provider.getHover(text, itemOffset, {
+      schema: titleItemsSchema,
+    });
+
+    expect(ifHover).toBeNull();
+    expect(itemHover?.contents).toBe('item: object');
+  });
+
+  it('does not show variable hover details when cursor is on custom statement keywords', () => {
+    const text = '{% for item in items %}{% where item %}ok{% endfor %}';
+    const keywordOffset = text.indexOf('{% where item %}') + '{% '.length + 1;
+    const itemOffset = text.indexOf('where item') + 'where '.length + 1;
+
+    const keywordHover = provider.getHover(text, keywordOffset, {
+      schema: titleItemsSchema,
+      customKeywords: ['where'],
+    });
+    const itemHover = provider.getHover(text, itemOffset, {
+      schema: titleItemsSchema,
+      customKeywords: ['where'],
+    });
+
+    expect(keywordHover).toBeNull();
+    expect(itemHover?.contents).toBe('item: object');
+  });
+
+  it('offers inner iterable property completions even with malformed frontmatter/template content earlier in document', () => {
+    const text = [
+      '---',
+      '"$schema": "./example.schema.json",',
+      'invalid: bar: [{% if %}foo ]',
+      '---',
+      '',
+      '# Title',
+      '{{ ti}}',
+      '[broken ref][missing-ref]',
+      '',
+      '## Subtitle',
+      '{%- for item in items %}',
+      '{% for item in item. %}',
+      '{{ item }}',
+      '{% endfor %}',
+      '{% endfor -%}',
+    ].join('\n');
+
+    const completionOffset = text.indexOf('item. %}') + 'item.'.length;
+    const completions = provider.getCompletions(text, completionOffset, {
+      schema: titleItemsSchema,
+      documentUri: 'file:///tests/fixtures/invalid_example.md.tmpl',
+    });
+
+    expect(completions.some((item) => item.label === 'name')).toBe(true);
+  });
+
+  it('offers inner iterable property completions when later statements are malformed', () => {
+    const text = [
+      '{%- for item in items %}',
+      '{% for item in item. %}',
+      '{{ item }}',
+      '{% endfor %}',
+      '{% endfor -%}',
+      '{% set collection = ["a", "b", "c"] -%}',
+      '{% for test in collection -%}',
+      '',
+      '{{ test }}',
+    ].join('\n');
+
+    const completionOffset = text.indexOf('item. %}') + 'item.'.length;
+    const completions = provider.getCompletions(text, completionOffset, {
+      schema: titleItemsSchema,
+    });
+
+    expect(completions.some((item) => item.label === 'name')).toBe(true);
+  });
+
+  it('offers inner iterable property completions in noisy markdown-like docs with trailing malformed blocks', () => {
+    const text = [
+      '---',
+      '"$schema": "./example.schema.json",',
+      'invalid: bar: [{% if %}foo ]',
+      '---',
+      '',
+      '# Title',
+      '{{ ti}}',
+      '[broken ref][missing-ref]',
+      '[local file](./does-not-exist.md)',
+      '[fragment](./does-not-exist.md#section)',
+      '',
+      '## Subtitle',
+      '{%- for item in items %}',
+      '{% for item in item. %}',
+      '{{ item }}',
+      '{% endfor %}',
+      '{% endfor -%}',
+      '{% set collection = ["a", "b", "c"] -%}',
+      '{% for test in collection -%}',
+      '',
+      '{{ test }}',
+      '',
+      '```yaml',
+      'key: value',
+      '```',
+    ].join('\n');
+
+    const completionOffset = text.indexOf('item. %}') + 'item.'.length;
+    const completions = provider.getCompletions(text, completionOffset, {
+      schema: titleItemsSchema,
+      documentUri: 'file:///tests/fixtures/invalid_example.md.tmpl',
+    });
+
+    expect(completions.some((item) => item.label === 'name')).toBe(true);
+  });
+
+  it('offers inner iterable property completions when cursor is on dot token', () => {
+    const text = [
+      '{%- for item in items %}',
+      '{% for item in item. %}',
+      '{{ item }}',
+      '{% endfor %}',
+      '{% endfor -%}',
+    ].join('\n');
+
+    const dotOffset = text.indexOf('item. %}') + 'item'.length;
+    const completions = provider.getCompletions(text, dotOffset, {
+      schema: titleItemsSchema,
+    });
+
+    expect(completions.some((item) => item.label === 'name')).toBe(true);
+  });
+
+  it('offers expression property completions when cursor is on dot token', () => {
+    const text = '{{ user.name }}';
+    const dotOffset = text.indexOf('user.name') + 'user'.length;
+
+    const completions = provider.getCompletions(text, dotOffset, {
+      schema: sampleSchema,
+    });
+
+    expect(completions.some((item) => item.label === 'name')).toBe(true);
+  });
+
+  it('resolves inner iterable completion via fallback scopes when adapter scoped resolver is identity', () => {
+    const fallbackAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: (_context, parentPath) =>
+        parentPath === 'items[0]' ? [{ label: 'name', kind: 'property', detail: 'string' }] : [],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => null,
+    };
+    const fallbackProvider = new IntellisenseProvider(fallbackAdapter);
+
+    const text = [
+      '{%- for item in items %}',
+      '{% for item in item. %}',
+      '{{ item }}',
+      '{% endfor %}',
+      '{% endfor -%}',
+      '{% set collection = ["a", "b", "c"] -%}',
+      '{% for test in collection -%}',
+      '',
+      '{{ test }}',
+    ].join('\n');
+
+    const completionOffset = text.indexOf('item. %}') + 'item.'.length;
+    const completions = fallbackProvider.getCompletions(text, completionOffset, {
+      schema: titleItemsSchema,
+    });
+
+    expect(completions.some((item) => item.label === 'name')).toBe(true);
+  });
+
   it('uses frontmatter and content schema sources for hover in the same document', () => {
     const text = ['---', 'frontData:', '  title: hello', '---', '{{ contentData.heading }}'].join(
       '\n'
@@ -1303,7 +1589,7 @@ describe('IntellisenseProvider', () => {
       const cursor = text.indexOf('user }}') + 2;
 
       const hover = provider.getHover(text, cursor, { schema: schema as object });
-      expect(hover?.contents).toBe('user: local loop alias');
+      expect(hover?.contents).toBe('user: object');
     });
 
     it('provides definition for loop alias used in nested scope with complex outer iterable', () => {
@@ -1353,7 +1639,7 @@ describe('IntellisenseProvider', () => {
       const cursor = text.indexOf('user }}') + 2;
 
       const hover = provider.getHover(text, cursor, { schema: schema as object });
-      expect(hover?.contents).toBe('user: local loop alias');
+      expect(hover?.contents).toBe('user: object');
     });
   });
 });
