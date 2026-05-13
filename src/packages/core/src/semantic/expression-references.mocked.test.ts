@@ -3,16 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const parseMock = vi.fn();
 const tokenizeMock = vi.fn();
 
-vi.mock('../../src/lexer/lexer.js', () => ({
+vi.mock('../lexer/lexer.js', () => ({
   tokenize: tokenizeMock,
 }));
 
-vi.mock('../../src/parser/parser.js', () => ({
+vi.mock('../parser/parser.js', () => ({
   parse: parseMock,
 }));
 
 const { extractExpressionFilterReferences, extractExpressionVariableReferences } =
-  await import('../../src/semantic/expression-references.js');
+  await import('./expression-references.js');
 
 function setExpression(expression: unknown): void {
   tokenizeMock.mockReturnValue([{ type: 'expression' }]);

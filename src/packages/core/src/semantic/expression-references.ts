@@ -136,7 +136,11 @@ function isInsideStringLiteral(content: string, index: number): boolean {
 
   for (let i = 0; i < index && i < content.length; i += 1) {
     const char = content[i];
-    const escaped = i > 0 && content[i - 1] === '\\';
+    let backslashCount = 0;
+    for (let j = i - 1; j >= 0 && content[j] === '\\'; j -= 1) {
+      backslashCount += 1;
+    }
+    const escaped = backslashCount % 2 === 1;
 
     if (escaped) {
       continue;
@@ -164,11 +168,6 @@ function buildBracketSegmentCandidates(segmentValue: string): string[] {
   // Keep canonical bracket form and add quoted variants for string keys so
   // source offset matching works for expressions like obj["full name"].
   const candidates = [`[${segmentValue}]`];
-
-  const looksNumeric = /^-?\d+$/.test(segmentValue);
-  if (looksNumeric) {
-    return candidates;
-  }
 
   const escapedDoubleQuoted = segmentValue.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const escapedSingleQuoted = segmentValue.replace(/\\/g, '\\\\').replace(/'/g, "\\'");

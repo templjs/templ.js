@@ -262,6 +262,7 @@ export default {
   createRenderer,
   createQueryEngine,
   extractTemplateBindings,
+  extractExpressionFilterReferences,
   extractExpressionVariableReferences,
   renderTemplate,
   validateTemplate,
