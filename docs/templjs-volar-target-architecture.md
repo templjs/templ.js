@@ -142,6 +142,25 @@ vscode-templjs
   decisions, or register custom completion/hover/definition handlers outside normal
   language-client plumbing.
 
+### Raw-Text Exception Contract
+
+Authoritative template syntax and statement semantics must come from shared parser-backed
+core and language-service layers. Raw-text scanning is allowed only for non-semantic
+responsibilities.
+
+Allowed raw-text exceptions:
+
+- delimiter token validation and normalization preflight
+- virtual-code masking and range or offset preservation
+- TextMate grammar and syntax-highlighting plumbing
+- transport-level URI/document routing, request mapping, and caching
+
+Disallowed raw-text behavior:
+
+- regex or ad hoc parsing that infers alias scope, statement structure, iterable
+  expressions, or binding semantics from template source text
+- server-side semantic interpretation that duplicates core or Volar semantic authority
+
 ### Target Data Flow
 
 1. VS Code starts the language server and passes workspace/configuration data.
