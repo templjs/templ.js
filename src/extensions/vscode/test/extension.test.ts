@@ -454,8 +454,8 @@ describe('extension-activation', () => {
         reason: 'unavailable-vscode-extension-markdown',
       },
       'templjs-markdownlint-host': {
-        state: 'unavailable',
-        reason: 'unavailable-binary-markdownlint',
+        state: 'disabled',
+        reason: 'disabled-delegation-only-wi106',
       },
       'templjs-yaml': {
         state: 'unavailable',

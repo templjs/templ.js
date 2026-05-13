@@ -198,8 +198,9 @@ function resolveAdapterRuntimes(formattingHostLanguages: string[]) {
   const markdownlintRuntime = runtimes['templjs-markdownlint-host'];
   if (markdownlintRuntime) {
     // WI-106: extension-host diagnostics remain delegation-only.
-    markdownlintRuntime.state = 'unavailable';
-    markdownlintRuntime.reason = 'unavailable-binary-markdownlint';
+    markdownlintRuntime.state = 'disabled';
+    markdownlintRuntime.reason = 'disabled-delegation-only-wi106';
+    delete markdownlintRuntime.provider;
     delete markdownlintRuntime.binaryPath;
   }
 

@@ -28,8 +28,8 @@ passed
 
 ### Host Diagnostics Fixture Correction
 
-- Updated `src/extensions/vscode/test-fixtures/deploy.yaml.tmpl` loop syntax from tuple iteration to supported single-variable iteration.
-- This resolves the failing `test:host` assertion that expected zero templjs diagnostics for a valid fixture.
+- Updated `src/extensions/vscode/test-fixtures/deploy.yaml.tmpl` loop syntax to avoid a VS Code authoring-path statement-shape validation failure in host tests.
+- This resolves the failing `test:host` assertion that expected zero templjs diagnostics for a valid fixture without changing core template-language support claims.
 
 ### Validation Evidence
 
