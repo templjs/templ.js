@@ -90,12 +90,9 @@ function getEmbeddedLanguageMappings(): Record<string, string | undefined> {
       continue;
     }
 
-    const [embeddedScope] = Object.keys(grammar.embeddedLanguages);
-    if (!embeddedScope) {
-      continue;
+    for (const [embeddedScope, languageId] of Object.entries(grammar.embeddedLanguages)) {
+      mappings[embeddedScope] = languageId;
     }
-
-    mappings[embeddedScope] = grammar.embeddedLanguages[embeddedScope];
   }
 
   return mappings;
