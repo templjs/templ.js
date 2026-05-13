@@ -5,12 +5,13 @@ title: '107: ESM server bundle migration spike results and phased path forward'
 summary: Capture the completed VS Code extension server ESM bundling spike, document the runtime blockers found in the current CJS-oriented launch/compat layer, and define a phased migration plan that preserves release safety while moving toward TypeScript ESM-first implementation.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: awaiting-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: medium
 estimated: 4
 actual: 3
+completed_date: '2026-05-13'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/122
