@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const spawnSync = vi.fn(() => ({ status: 1, stdout: '' }));
+const toPosixPath = (value: string): string => value.replaceAll('\\', '/');
 
 const configurationValues: Record<string, unknown> = {
   schemaPath: '.templjs/schema.json',
@@ -316,8 +317,8 @@ describe('extension-activation', () => {
       debug: { module: string; options?: { execArgv?: string[] } };
     };
 
-    expect(serverOptions.run.module).toBe('/tmp/dist/server.js');
-    expect(serverOptions.debug.module).toBe('/tmp/dist/server.js');
+    expect(toPosixPath(serverOptions.run.module)).toBe('/tmp/dist/server.js');
+    expect(toPosixPath(serverOptions.debug.module)).toBe('/tmp/dist/server.js');
     expect(serverOptions.debug.options?.execArgv).toEqual(['--nolazy', '--inspect=6009']);
   });
 
@@ -337,8 +338,8 @@ describe('extension-activation', () => {
       debug: { module: string; options?: { execArgv?: string[] } };
     };
 
-    expect(serverOptions.run.module).toBe('/tmp/dist/server.mjs');
-    expect(serverOptions.debug.module).toBe('/tmp/dist/server.mjs');
+    expect(toPosixPath(serverOptions.run.module)).toBe('/tmp/dist/server.mjs');
+    expect(toPosixPath(serverOptions.debug.module)).toBe('/tmp/dist/server.mjs');
     expect(serverOptions.debug.options?.execArgv).toEqual(['--nolazy', '--inspect=6009']);
   });
 
