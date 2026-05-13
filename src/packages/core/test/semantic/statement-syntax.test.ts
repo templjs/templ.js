@@ -24,6 +24,77 @@ describe('validateTemplateStatementSyntax', () => {
     });
   });
 
+  it('accepts valid if/while/switch/case/default/block statements', () => {
+    expect(validateTemplateStatementSyntax('if', 'if user.isAdmin')).toEqual({ valid: true });
+    expect(validateTemplateStatementSyntax('while', 'while hasMore')).toEqual({ valid: true });
+    expect(validateTemplateStatementSyntax('switch', 'switch status')).toEqual({ valid: true });
+    expect(validateTemplateStatementSyntax('case', 'case "active"')).toEqual({ valid: true });
+    expect(validateTemplateStatementSyntax('default', 'default')).toEqual({ valid: true });
+    expect(validateTemplateStatementSyntax('block', 'block main-content')).toEqual({ valid: true });
+  });
+
+  it('rejects invalid if/while/switch/case statements missing expressions', () => {
+    expect(validateTemplateStatementSyntax('if', 'if')).toEqual({
+      valid: false,
+      message: 'Invalid if statement: expected "if <expression>"',
+      suggestion: 'Use `{% if condition %}`',
+    });
+
+    expect(validateTemplateStatementSyntax('while', 'while')).toEqual({
+      valid: false,
+      message: 'Invalid while statement: expected "while <expression>"',
+      suggestion: 'Use `{% while condition %}`',
+    });
+
+    expect(validateTemplateStatementSyntax('switch', 'switch')).toEqual({
+      valid: false,
+      message: 'Invalid switch statement: expected "switch <expression>"',
+      suggestion: 'Use `{% switch value %}`',
+    });
+
+    expect(validateTemplateStatementSyntax('case', 'case')).toEqual({
+      valid: false,
+      message: 'Invalid case statement: expected "case <value>"',
+      suggestion: 'Use `{% case value %}`',
+    });
+  });
+
+  it('rejects invalid block names', () => {
+    expect(validateTemplateStatementSyntax('block', 'block 123')).toEqual({
+      valid: false,
+      message: 'Invalid block statement: expected "block <name>"',
+      suggestion: 'Use `{% block content %}`',
+    });
+
+    expect(validateTemplateStatementSyntax('block', 'block main content')).toEqual({
+      valid: false,
+      message: 'Invalid block statement: expected "block <name>"',
+      suggestion: 'Use `{% block content %}`',
+    });
+  });
+
+  it('validates set statement assignment shape', () => {
+    expect(validateTemplateStatementSyntax('set', 'set title')).toEqual({ valid: true });
+
+    expect(validateTemplateStatementSyntax('set', 'set')).toEqual({
+      valid: false,
+      message: 'Invalid set statement: expected "set <name>" or "set <name> = <expression>"',
+      suggestion: 'Use `{% set var = value %}` or `{% set var %}`',
+    });
+
+    expect(validateTemplateStatementSyntax('set', 'set title value')).toEqual({
+      valid: false,
+      message: 'Invalid set statement: expected "set <name>" or "set <name> = <expression>"',
+      suggestion: 'Use `{% set var = value %}` or `{% set var %}`',
+    });
+
+    expect(validateTemplateStatementSyntax('set', 'set title =')).toEqual({
+      valid: false,
+      message: 'Invalid set statement: expected "set <name>" or "set <name> = <expression>"',
+      suggestion: 'Use `{% set var = value %}` or `{% set var %}`',
+    });
+  });
+
   it('rejects malformed default statements', () => {
     expect(validateTemplateStatementSyntax('default', 'default extra')).toEqual({
       valid: false,
@@ -52,6 +123,20 @@ describe('validateTemplateStatementSyntax', () => {
     expect(parseTemplateForHeader('for item %')).toBeNull();
   });
 
+  it('returns null for malformed for-headers with invalid alias names', () => {
+    expect(parseTemplateForHeader('for 9item in users')).toBeNull();
+  });
+
+  it('parses for-headers without trim markers', () => {
+    expect(parseTemplateForHeader('for entry in collection.items')).toEqual({
+      aliasName: 'entry',
+      aliasStart: 4,
+      aliasEnd: 9,
+      iterableExpression: 'collection.items',
+      iterableStart: 13,
+    });
+  });
+
   it('extracts generic statement expressions with start offsets', () => {
     expect(extractTemplateStatementExpression('if user.name | upper')).toEqual({
       expression: 'user.name | upper',
@@ -64,5 +149,12 @@ describe('validateTemplateStatementSyntax', () => {
       expression: 'users',
       startOffset: 14,
     });
+  });
+
+  it('returns null for malformed or empty statement expressions', () => {
+    expect(extractTemplateStatementExpression('')).toBeNull();
+    expect(extractTemplateStatementExpression('include')).toBeNull();
+    expect(extractTemplateStatementExpression('for item %')).toBeNull();
+    expect(extractTemplateStatementExpression('9if user')).toBeNull();
   });
 });
