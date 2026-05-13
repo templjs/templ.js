@@ -6,10 +6,13 @@ summary: Delete yaml-language-service, frontmatter extraction, and all per-forma
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
+status: ready-for-review
 priority: high
 estimated: 6
 actual: 6
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/123
 ---
 
 ## Goal
