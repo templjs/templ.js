@@ -104,6 +104,20 @@ describe('createSemantifyServices', () => {
     );
   });
 
+  it('labels for-alias candidates as local loop aliases', () => {
+    const text = '{% for item in users %}{{ item.name }}{% endfor %}';
+    const offset = text.indexOf('item.name') + 'item'.length;
+
+    const symbolCandidates = services.planCandidates(
+      {
+        type: 'symbolCandidates',
+      },
+      { text, offset }
+    );
+
+    expect(symbolCandidates.find((item) => item.label === 'item')?.detail).toBe('local loop alias');
+  });
+
   it('exposes stable utility helpers for range and delimiter normalization', () => {
     expect(semantifyTesting.normalizeRange(10, 3)).toEqual({
       startOffset: 3,
