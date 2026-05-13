@@ -55,7 +55,13 @@ async function createRegistry() {
 
   return {
     registry,
-    scopes: { templjs: templjs.scopeName, md: md.scopeName, yaml: yaml.scopeName },
+    scopes: {
+      templjs: templjs.scopeName,
+      md: md.scopeName,
+      yaml: yaml.scopeName,
+      json: json.scopeName,
+      html: html.scopeName,
+    },
   };
 }
 
@@ -67,7 +73,82 @@ function lineScopes(
   return tokenized.tokens.map((token) => token.scopes.join(' '));
 }
 
+function getEmbeddedLanguageMappings(): Record<string, string | undefined> {
+  const manifestPath = path.join(extensionRoot, 'package.json');
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+    contributes?: {
+      grammars?: Array<{
+        language?: string;
+        embeddedLanguages?: Record<string, string>;
+      }>;
+    };
+  };
+
+  const mappings: Record<string, string | undefined> = {};
+  for (const grammar of manifest.contributes?.grammars ?? []) {
+    if (!grammar.language || !grammar.embeddedLanguages) {
+      continue;
+    }
+
+    for (const [embeddedScope, languageId] of Object.entries(grammar.embeddedLanguages)) {
+      mappings[embeddedScope] = languageId;
+    }
+  }
+
+  return mappings;
+}
+
 describe('textmate-harness', () => {
+  it('keeps host-language embedded block scopes live for markdown/html/json/yaml injections', async () => {
+    const { registry, scopes } = await createRegistry();
+    const embeddedLanguageMappings = getEmbeddedLanguageMappings();
+    const cases: Array<{
+      scopeName: string;
+      line: string;
+      expectedEmbeddedScope: string;
+      expectedLanguageId: string;
+    }> = [
+      {
+        scopeName: scopes.md,
+        line: 'title: {% if show_title %}{{ title }}{% endif %}',
+        expectedEmbeddedScope: 'meta.embedded.block.markdown',
+        expectedLanguageId: 'markdown',
+      },
+      {
+        scopeName: scopes.html,
+        line: '<p>{% if show_title %}{{ title }}{% endif %}</p>',
+        expectedEmbeddedScope: 'meta.embedded.block.html',
+        expectedLanguageId: 'html',
+      },
+      {
+        scopeName: scopes.json,
+        line: '"title": "{% if show_title %}{{ title }}{% endif %}"',
+        expectedEmbeddedScope: 'meta.embedded.block.json',
+        expectedLanguageId: 'json',
+      },
+      {
+        scopeName: scopes.yaml,
+        line: 'title: {% if show_title %}{{ title }}{% endif %}',
+        expectedEmbeddedScope: 'meta.embedded.block.yaml',
+        expectedLanguageId: 'yaml',
+      },
+    ];
+
+    for (const testCase of cases) {
+      const grammar = await registry.loadGrammar(testCase.scopeName);
+      expect(grammar).toBeDefined();
+
+      const scopesForLine = lineScopes(grammar!, testCase.line);
+      expect(
+        scopesForLine.some((scope) => scope.includes(testCase.expectedEmbeddedScope)),
+        `Expected ${testCase.expectedEmbeddedScope} in ${testCase.scopeName}`
+      ).toBe(true);
+      expect(embeddedLanguageMappings[testCase.expectedEmbeddedScope]).toBe(
+        testCase.expectedLanguageId
+      );
+    }
+  });
+
   it('tokenizes templjs statements in yaml host grammar', async () => {
     const { registry, scopes } = await createRegistry();
     const grammar = await registry.loadGrammar(scopes.yaml);
