@@ -11,6 +11,9 @@ status_reason: implementation
 priority: high
 estimated: 6
 actual: 6
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/118
 ---
 
 ## Goal
