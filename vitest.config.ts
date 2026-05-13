@@ -11,6 +11,7 @@ export default defineConfig({
         __dirname,
         'src/packages/language-service/src/index.ts'
       ),
+      '@templjs/semantify': path.resolve(__dirname, 'src/packages/semantify/src/index.ts'),
       '@templjs/language-server': path.resolve(
         __dirname,
         'src/packages/language-server/src/index.ts'

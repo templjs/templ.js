@@ -14,16 +14,17 @@ import {
   extractExpressionFilterReferences,
   extractExpressionVariableReferences,
 } from './expression-analysis.js';
-import {
-  buildForScopesInText,
-  getInScopeTemplateBindings,
-  resolveScopedPath,
-} from './scope-resolution.js';
+import { buildForScopesInText, resolveScopedPath } from './scope-resolution.js';
 import {
   createContextGraphSemanticReadAdapter,
   type ContextGraphSemanticReadAdapter,
   type SemanticQueryContext,
 } from './context-graph-adapter.js';
+import {
+  createSemantifyServices,
+  type DelimiterConfigInput as SemantifyDelimiterConfigInput,
+  type SemantifyServices,
+} from '@templjs/semantify';
 
 export interface CompletionItem {
   label: string;
@@ -337,15 +338,67 @@ function dedupeCompletionItems(items: CompletionItem[]): CompletionItem[] {
 }
 
 function getInScopeAliasCompletions(
+  semantifyServices: SemantifyServices,
   text: string,
   offset: number,
   delimiters: IntellisenseDelimiters
 ): CompletionItem[] {
-  return getInScopeTemplateBindings(text, offset, delimiters).map((binding) => ({
+  const semantifyDelimiters: SemantifyDelimiterConfigInput = {
+    statementStart: delimiters.statementStart,
+    statementEnd: delimiters.statementEnd,
+    expressionStart: delimiters.expressionStart,
+    expressionEnd: delimiters.expressionEnd,
+    commentStart: delimiters.commentStart,
+    commentEnd: delimiters.commentEnd,
+  };
+
+  const bindings = semantifyServices.resolveContext({
+    text,
+    offset,
+    delimiters: semantifyDelimiters,
+  }).bindings;
+  const deduped = dedupeBindingsByNameKeepNearest(bindings);
+
+  return deduped.map((binding) => ({
     label: binding.name,
-    kind: 'variable',
-    detail: binding.kind === 'set-variable' ? 'local template variable' : 'local loop alias',
+    kind: 'variable' as const,
+    detail: getAliasDetail(binding),
   }));
+}
+
+function dedupeBindingsByNameKeepNearest(
+  bindings: Array<{ name: string; kind: string; metadata?: Record<string, unknown> }>
+): Array<{ name: string; kind: string; metadata?: Record<string, unknown> }> {
+  const seen = new Set<string>();
+  const deduped: Array<{ name: string; kind: string; metadata?: Record<string, unknown> }> = [];
+
+  for (const binding of bindings) {
+    const key = binding.name.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(binding);
+  }
+
+  return deduped;
+}
+
+function getAliasDetail(binding: { kind: string; metadata?: Record<string, unknown> }): string {
+  if (binding.kind === 'custom') {
+    return 'custom binding';
+  }
+
+  const bindingKind =
+    typeof binding.metadata?.bindingKind === 'string' ? binding.metadata.bindingKind : undefined;
+  if (bindingKind === 'set-variable') {
+    return 'local template variable';
+  }
+  if (bindingKind?.startsWith('for-')) {
+    return 'local loop alias';
+  }
+
+  return 'local binding';
 }
 
 function summarizeDuplicateLabels(items: CompletionItem[]): string[] {
@@ -884,7 +937,8 @@ export const intellisenseTesting = {
 
 export class IntellisenseProvider {
   constructor(
-    private readonly semanticReadAdapter: SemanticReadAdapter = createContextGraphSemanticReadAdapter()
+    private readonly semanticReadAdapter: SemanticReadAdapter = createContextGraphSemanticReadAdapter(),
+    private readonly semantifyServices: SemantifyServices = createSemantifyServices()
   ) {}
 
   getCompletions(text: string, offset: number, options?: IntellisenseOptions): CompletionItem[] {
@@ -920,7 +974,12 @@ export class IntellisenseProvider {
     };
     const filters = [...getDefaultFilters(), ...(options?.customFilters ?? [])];
     const keywords = [...DEFAULT_KEYWORDS, ...(options?.customKeywords ?? [])];
-    const localAliasItems = getInScopeAliasCompletions(text, Math.max(0, offset - 1), delimiters);
+    const localAliasItems = getInScopeAliasCompletions(
+      this.semantifyServices,
+      text,
+      Math.max(0, offset - 1),
+      delimiters
+    );
 
     const scopeResolver = createScopedPathResolver(
       this.semanticReadAdapter,

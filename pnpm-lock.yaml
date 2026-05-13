@@ -282,6 +282,12 @@ importers:
         specifier: ^3.0.8
         version: 3.1.0
 
+  src/packages/semantify:
+    dependencies:
+      '@templjs/core':
+        specifier: workspace:*
+        version: link:../core
+
   src/packages/volar:
     dependencies:
       '@templjs/context-graph':
@@ -290,6 +296,9 @@ importers:
       '@templjs/core':
         specifier: workspace:*
         version: link:../core
+      '@templjs/semantify':
+        specifier: workspace:*
+        version: link:../semantify
       '@volar/language-core':
         specifier: ~2.4.0
         version: 2.4.28

@@ -1,7 +1,7 @@
 {
-  "name": "@templjs/volar",
+  "name": "@templjs/semantify",
   "version": "0.1.0",
-  "description": "Volar language server plugin for templjs templates",
+  "description": "TemplJS semantify services for semantic context, references, and candidate planning",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "type": "module",
@@ -21,27 +21,15 @@
     "test": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "test:coverage": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts --coverage",
-    "lint": "echo 'No linting configured yet'",
-    "clean": "rm -rf dist tsconfig.tsbuildinfo"
+    "clean": "node --input-type=module -e \"import { rmSync } from 'node:fs'; rmSync('dist', { recursive: true, force: true }); rmSync('tsconfig.tsbuildinfo', { force: true });\""
   },
-  "keywords": [
-    "volar",
-    "language-server",
-    "vscode",
-    "templjs",
-    "lsp"
-  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/templjs/templ.js.git",
-    "directory": "src/packages/volar"
+    "directory": "src/packages/semantify"
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "@templjs/core": "workspace:*",
-    "@templjs/context-graph": "workspace:*",
-    "@templjs/semantify": "workspace:*",
-    "@volar/language-core": "~2.4.0",
-    "vscode-uri": "^3.0.8"
+    "@templjs/core": "workspace:*"
   }
 }
