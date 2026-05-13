@@ -6,11 +6,14 @@ summary: Centralize authoritative template parsing and custom delimiter parity
 type: work-item
 subtype: epic
 lifecycle: active
-status: in-progress
-status_reason: implementation
+status: ready-for-review
+status_reason: implemented
 priority: high
 estimated: 20
 actual: 4
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/117
 ---
 
 ## Goal
