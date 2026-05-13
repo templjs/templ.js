@@ -31,6 +31,23 @@ describe('createSemantifyServices', () => {
     expect(context.bindings.some((binding) => binding.name === 'row')).toBe(true);
   });
 
+  it('maps frontmatter offsets to metadata regions', () => {
+    const text = ['---', 'title: hello', '---', '{{ title }}'].join('\n');
+    const offset = text.indexOf('title:') + 1;
+
+    const context = services.resolveContext({ text, offset });
+
+    expect(context.activeRegion?.kind).toBe('metadata');
+    expect(context.activeRegion?.metadata?.legacyContextBlock).toBe('frontmatter');
+  });
+
+  it('omits active region when queried offset is outside document bounds', () => {
+    const text = '{{ value }}';
+    const context = services.resolveContext({ text, offset: text.length + 20 });
+
+    expect(context.activeRegion).toBeUndefined();
+  });
+
   it('returns local-binding references based on in-scope symbols', () => {
     const text = '{% set title = page.title %}{{ title }}';
     const offset = text.lastIndexOf('title') + 'title'.length;
@@ -103,5 +120,28 @@ describe('createSemantifyServices', () => {
     expect(delimiters?.expression_start).toBe('{{');
     expect(delimiters?.comment_end).toBe('#}');
     expect(semantifyTesting.toCoreDelimiters(undefined)).toBeUndefined();
+  });
+
+  it('honors fully custom delimiters across all delimiter families', () => {
+    const custom = semantifyTesting.toCoreDelimiters({
+      statementStart: '{%',
+      statementEnd: '%}',
+      expressionStart: '<<',
+      expressionEnd: '>>',
+      commentStart: '<#',
+      commentEnd: '#>',
+    });
+
+    expect(custom).toEqual({
+      statement_start: '{%',
+      statement_end: '%}',
+      statement: ['{%', '%}'],
+      expression_start: '<<',
+      expression_end: '>>',
+      expression: ['<<', '>>'],
+      comment_start: '<#',
+      comment_end: '#>',
+      comment: ['<#', '#>'],
+    });
   });
 });
