@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createSemantifyServices } from '../src/index.js';
+import { createSemantifyServices, semantifyTesting } from '../src/index.js';
 
 describe('createSemantifyServices', () => {
   const services = createSemantifyServices();
@@ -63,5 +63,45 @@ describe('createSemantifyServices', () => {
     );
 
     expect(filterCandidates.some((item) => item.label === 'upper')).toBe(true);
+  });
+
+  it('returns sorted symbol candidates with set-variable detail when no prefix is provided', () => {
+    const text = [
+      '{% set title = page.title %}',
+      '{% for item in users %}',
+      '{{ item.name }}{{ title }}',
+      '{% endfor %}',
+    ].join('\n');
+    const offset = text.indexOf('item.name') + 'item'.length;
+
+    const symbolCandidates = services.planCandidates(
+      {
+        type: 'symbolCandidates',
+      },
+      { text, offset }
+    );
+
+    expect(symbolCandidates.map((item) => item.label)).toEqual(['title', 'item']);
+    expect(symbolCandidates.find((item) => item.label === 'title')?.detail).toBe(
+      'local template variable'
+    );
+  });
+
+  it('exposes stable utility helpers for range and delimiter normalization', () => {
+    expect(semantifyTesting.normalizeRange(10, 3)).toEqual({
+      startOffset: 3,
+      endOffset: 10,
+    });
+
+    const delimiters = semantifyTesting.toCoreDelimiters({
+      statementStart: '<%',
+      statementEnd: '%>',
+    });
+
+    expect(delimiters?.statement_start).toBe('<%');
+    expect(delimiters?.statement_end).toBe('%>');
+    expect(delimiters?.expression_start).toBe('{{');
+    expect(delimiters?.comment_end).toBe('#}');
+    expect(semantifyTesting.toCoreDelimiters(undefined)).toBeUndefined();
   });
 });
