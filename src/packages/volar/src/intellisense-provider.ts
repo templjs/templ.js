@@ -372,14 +372,13 @@ function dedupeBindingsByNameKeepNearest(
   const seen = new Set<string>();
   const deduped: Array<{ name: string; kind: string; metadata?: Record<string, unknown> }> = [];
 
-  for (let index = bindings.length - 1; index >= 0; index -= 1) {
-    const binding = bindings[index];
+  for (const binding of bindings) {
     const key = binding.name.toLowerCase();
     if (seen.has(key)) {
       continue;
     }
     seen.add(key);
-    deduped.unshift(binding);
+    deduped.push(binding);
   }
 
   return deduped;
@@ -395,7 +394,7 @@ function getAliasDetail(binding: { kind: string; metadata?: Record<string, unkno
   if (bindingKind === 'set-variable') {
     return 'local template variable';
   }
-  if (bindingKind === 'for-alias') {
+  if (bindingKind?.startsWith('for-')) {
     return 'local loop alias';
   }
 

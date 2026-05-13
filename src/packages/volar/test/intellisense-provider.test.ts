@@ -135,17 +135,17 @@ describe('IntellisenseProvider', () => {
         bindings: [
           {
             kind: 'local',
-            name: 'semantifyAlias',
-            scopeRange: { startOffset: 0, endOffset: Number.MAX_SAFE_INTEGER },
-            declarationRange: { startOffset: 0, endOffset: 13 },
-            metadata: { bindingKind: 'for-alias' },
-          },
-          {
-            kind: 'local',
-            name: 'semantifyAlias',
+            name: 'shadowedAlias',
             scopeRange: { startOffset: 5, endOffset: Number.MAX_SAFE_INTEGER },
             declarationRange: { startOffset: 5, endOffset: 13 },
             metadata: { bindingKind: 'set-variable' },
+          },
+          {
+            kind: 'local',
+            name: 'shadowedAlias',
+            scopeRange: { startOffset: 0, endOffset: Number.MAX_SAFE_INTEGER },
+            declarationRange: { startOffset: 0, endOffset: 13 },
+            metadata: { bindingKind: 'for-alias' },
           },
           {
             kind: 'custom',
@@ -162,10 +162,43 @@ describe('IntellisenseProvider', () => {
     const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
     const items = providerWithSemantify.getCompletions('{{  }}', 3, { schema: sampleSchema });
 
-    const semantifyAliases = items.filter((item) => item.label === 'semantifyAlias');
+    const semantifyAliases = items.filter((item) => item.label === 'shadowedAlias');
     expect(semantifyAliases).toHaveLength(1);
     expect(semantifyAliases[0]?.detail).toBe('local template variable');
     expect(items.find((item) => item.label === 'pluginAlias')?.detail).toBe('custom binding');
+  });
+
+  it('labels for-value aliases as loop aliases', () => {
+    const mockAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => null,
+    };
+    const mockSemantify: SemantifyServices = {
+      resolveContext: () => ({
+        regions: [],
+        bindings: [
+          {
+            kind: 'local',
+            name: 'loopValue',
+            scopeRange: { startOffset: 0, endOffset: Number.MAX_SAFE_INTEGER },
+            declarationRange: { startOffset: 0, endOffset: 9 },
+            metadata: { bindingKind: 'for-value-alias' },
+          },
+        ],
+      }),
+      resolveReferences: () => [],
+      planCandidates: () => [],
+    };
+
+    const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
+    const items = providerWithSemantify.getCompletions('{{  }}', 3, { schema: sampleSchema });
+
+    expect(items.find((item) => item.label === 'loopValue')?.detail).toBe('local loop alias');
   });
 
   it('provides property completions after dot', () => {
