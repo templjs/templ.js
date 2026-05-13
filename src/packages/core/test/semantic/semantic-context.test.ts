@@ -207,6 +207,20 @@ describe('semantic-context core helpers', () => {
     expect(getFrontmatterSchemaReferenceAtOffset(text, text.indexOf('title:') + 2)).toBeNull();
   });
 
+  it('extracts quoted schema aliases with trailing commas in JSON-style frontmatter lines', () => {
+    const text = [
+      '---',
+      '"$schema": "./quoted-frontmatter.json",',
+      '"$content-schema": "./quoted-content.json",',
+      '---',
+    ].join('\n');
+
+    expect(getFrontmatterSchemaAliases(text)).toEqual({
+      templSchema: './quoted-frontmatter.json',
+      contentSchema: './quoted-content.json',
+    });
+  });
+
   it('prefers the first matching schema aliases and ignores empty values', () => {
     const text = [
       '---',

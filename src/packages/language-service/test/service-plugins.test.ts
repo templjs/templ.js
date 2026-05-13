@@ -812,4 +812,281 @@ describe('language-service service-plugins coverage branches', () => {
 
     expect(hover).toBeUndefined();
   });
+
+  it('provides inner iterable property completions for markdown-templ docs with malformed frontmatter content', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+    const workspace = mkdtempSync(join(tmpdir(), 'templjs-ls-completion-'));
+    const sourceUri = pathToFileURL(join(workspace, 'invalid_example.md.tmpl')).toString();
+    const schemaPath = join(workspace, 'example.schema.json');
+
+    const sourceText = [
+      '---',
+      '"$schema": "./example.schema.json",',
+      'invalid: bar: [{% if %}foo ]',
+      '---',
+      '',
+      '# Title',
+      '{{ ti}}',
+      '[broken ref][missing-ref]',
+      '',
+      '## Subtitle',
+      '{%- for item in items %}',
+      '{% for item in item. %}',
+      '{{ item }}',
+      '{% endfor %}',
+      '{% endfor -%}',
+    ].join('\n');
+
+    writeFileSync(
+      schemaPath,
+      JSON.stringify(
+        {
+          type: 'object',
+          properties: {
+            items: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        null,
+        2
+      ),
+      'utf8'
+    );
+
+    try {
+      const plugin = servicePluginTesting.createTempljsAdditionalPlugin({
+        workspaceFolder: workspace,
+        initializationOptions: {},
+      } as never);
+      const instance = plugin.create(
+        withVolar24Context({
+          decodeEmbeddedDocumentUri: () => [URI.parse(sourceUri), 'embedded'],
+          language: {
+            scripts: {
+              get: () => ({
+                id: URI.parse(sourceUri),
+                languageId: 'templjs-markdown',
+                snapshot: {
+                  getText: (start: number, end: number) => sourceText.slice(start, end),
+                  getLength: () => sourceText.length,
+                },
+              }),
+            },
+          },
+        }) as never
+      );
+
+      const completionOffset = sourceText.indexOf('item. %}') + 'item.'.length;
+      const sourceDoc = servicePluginTesting.createTextDocumentLike(
+        sourceUri,
+        'templjs-markdown',
+        sourceText
+      );
+      const completionPosition = sourceDoc.positionAt(completionOffset);
+      const embeddedDoc = servicePluginTesting.createTextDocumentLike(
+        'embedded://invalid_example.md.tmpl',
+        'templjs-markdown',
+        sourceText
+      );
+
+      const completionList = instance.provideCompletionItems?.(embeddedDoc, completionPosition);
+
+      expect(completionList?.items.some((item) => item.label === 'name')).toBe(true);
+    } finally {
+      rmSync(workspace, { recursive: true, force: true });
+    }
+  });
+
+  it('provides inner iterable property completions with trailing malformed statements and fenced blocks', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+    const workspace = mkdtempSync(join(tmpdir(), 'templjs-ls-completion-tail-'));
+    const sourceUri = pathToFileURL(join(workspace, 'invalid_example.md.tmpl')).toString();
+    const schemaPath = join(workspace, 'example.schema.json');
+
+    const sourceText = [
+      '---',
+      '"$schema": "./example.schema.json",',
+      'invalid: bar: [{% if %}foo ]',
+      '---',
+      '',
+      '# Title',
+      '{{ ti}}',
+      '[broken ref][missing-ref]',
+      '[local file](./does-not-exist.md)',
+      '[fragment](./does-not-exist.md#section)',
+      '',
+      '## Subtitle',
+      '{%- for item in items %}',
+      '{% for item in item. %}',
+      '{{ item }}',
+      '{% endfor %}',
+      '{% endfor -%}',
+      '{% set collection = ["a", "b", "c"] -%}',
+      '{% for test in collection -%}',
+      '',
+      '{{ test }}',
+      '',
+      '```yaml',
+      'key: value',
+      '```',
+    ].join('\n');
+
+    writeFileSync(
+      schemaPath,
+      JSON.stringify(
+        {
+          type: 'object',
+          properties: {
+            items: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        null,
+        2
+      ),
+      'utf8'
+    );
+
+    try {
+      const plugin = servicePluginTesting.createTempljsAdditionalPlugin({
+        workspaceFolder: workspace,
+        initializationOptions: {},
+      } as never);
+      const instance = plugin.create(
+        withVolar24Context({
+          decodeEmbeddedDocumentUri: () => [URI.parse(sourceUri), 'embedded'],
+          language: {
+            scripts: {
+              get: () => ({
+                id: URI.parse(sourceUri),
+                languageId: 'templjs-markdown',
+                snapshot: {
+                  getText: (start: number, end: number) => sourceText.slice(start, end),
+                  getLength: () => sourceText.length,
+                },
+              }),
+            },
+          },
+        }) as never
+      );
+
+      const completionOffset = sourceText.indexOf('item. %}') + 'item.'.length;
+      const sourceDoc = servicePluginTesting.createTextDocumentLike(
+        sourceUri,
+        'templjs-markdown',
+        sourceText
+      );
+      const completionPosition = sourceDoc.positionAt(completionOffset);
+      const embeddedDoc = servicePluginTesting.createTextDocumentLike(
+        'embedded://invalid_example.md.tmpl',
+        'templjs-markdown',
+        sourceText
+      );
+
+      const completionList = instance.provideCompletionItems?.(embeddedDoc, completionPosition);
+
+      expect(completionList?.items.some((item) => item.label === 'name')).toBe(true);
+    } finally {
+      rmSync(workspace, { recursive: true, force: true });
+    }
+  });
+
+  it('maps completion offsets correctly when embedded document is a sliced virtual snippet', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+    const workspace = mkdtempSync(join(tmpdir(), 'templjs-ls-sliced-completion-'));
+    const sourceUri = pathToFileURL(join(workspace, 'invalid_example.md.tmpl')).toString();
+    const schemaPath = join(workspace, 'example.schema.json');
+
+    const sourceText = [
+      '---',
+      '"$schema": "./example.schema.json",',
+      '---',
+      '{%- for item in items %}',
+      '{% for item in item. %}',
+      '{{ item }}',
+      '{% endfor %}',
+      '{% endfor -%}',
+      '{% set collection = ["a", "b", "c"] -%}',
+      '{% for test in collection -%}',
+      '{{ test }}',
+    ].join('\n');
+
+    writeFileSync(
+      schemaPath,
+      JSON.stringify(
+        {
+          type: 'object',
+          properties: {
+            items: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        null,
+        2
+      ),
+      'utf8'
+    );
+
+    try {
+      const plugin = servicePluginTesting.createTempljsAdditionalPlugin({
+        workspaceFolder: workspace,
+        initializationOptions: {
+          schemaPath: './example.schema.json',
+        },
+      } as never);
+      const instance = plugin.create(
+        withVolar24Context({
+          decodeEmbeddedDocumentUri: () => [URI.parse(sourceUri), 'embedded'],
+          language: {
+            scripts: {
+              get: () => ({
+                id: URI.parse(sourceUri),
+                languageId: 'templjs-markdown',
+                snapshot: {
+                  getText: (start: number, end: number) => sourceText.slice(start, end),
+                  getLength: () => sourceText.length,
+                },
+              }),
+            },
+          },
+        }) as never
+      );
+
+      const virtualSnippet = '{% for item in item. %}';
+      const virtualDoc = servicePluginTesting.createTextDocumentLike(
+        'embedded://invalid_example-snippet.md.tmpl',
+        'templjs-markdown',
+        virtualSnippet
+      );
+      const completionOffset = virtualSnippet.indexOf('item. %}') + 'item.'.length;
+      const completionPosition = { line: 0, character: completionOffset };
+
+      const completionList = instance.provideCompletionItems?.(virtualDoc, completionPosition);
+
+      expect(completionList?.items.some((item) => item.label === 'name')).toBe(true);
+    } finally {
+      rmSync(workspace, { recursive: true, force: true });
+    }
+  });
 });

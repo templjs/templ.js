@@ -227,15 +227,34 @@ function matchFrontmatterSchemaAlias(line: string):
     }
   | undefined {
   const match = line.match(
-    /^(\s*["']?)(\$schema|\$templ-schema|\$content-schema|\$content_schema)(["']?\s*:\s*)(?:"([^"\r\n]+)"|'([^'\r\n]+)'|([^\r\n]+?)(?=\s+#|$))/
+    /^(\s*["']?)(\$schema|\$templ-schema|\$content-schema|\$content_schema)(["']?\s*:\s*)(.*)$/
   );
   if (!match) {
     return undefined;
   }
 
-  const [, prefix, key, separator, doubleQuotedValue, singleQuotedValue, unquotedValue] = match;
-  const rawValue = doubleQuotedValue ?? singleQuotedValue ?? unquotedValue ?? '';
-  const value = rawValue.trim();
+  const [, prefix, key, separator, remainder] = match;
+  const valueSource = remainder.trimStart();
+  if (!valueSource) {
+    return undefined;
+  }
+
+  const leadingQuote = valueSource[0];
+  const isQuoted = leadingQuote === '"' || leadingQuote === "'";
+  let value: string;
+
+  if (isQuoted) {
+    const closingQuoteIndex = valueSource.indexOf(leadingQuote, 1);
+    if (closingQuoteIndex <= 1) {
+      return undefined;
+    }
+    value = valueSource.slice(1, closingQuoteIndex).trim();
+  } else {
+    const commentStart = valueSource.search(/\s+#/);
+    const withoutComment = commentStart >= 0 ? valueSource.slice(0, commentStart) : valueSource;
+    value = withoutComment.trim().replace(/,$/, '').trim();
+  }
+
   if (!value) {
     return undefined;
   }
@@ -245,11 +264,7 @@ function matchFrontmatterSchemaAlias(line: string):
     key,
     separator,
     value,
-    valueOffset:
-      prefix.length +
-      key.length +
-      separator.length +
-      (doubleQuotedValue !== undefined || singleQuotedValue !== undefined ? 1 : 0),
+    valueOffset: prefix.length + key.length + separator.length + (isQuoted ? 1 : 0),
   };
 }
 

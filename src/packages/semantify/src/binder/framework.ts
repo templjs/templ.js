@@ -1,19 +1,27 @@
 import {
   DEFAULT_DELIMITERS,
+  parse,
+  tokenize,
   extractTemplateBindings,
   getTemplateBindingsAtOffset,
   getBuiltinFilterNames,
   resolveSemanticZone,
   type DelimiterConfig,
+  type ASTNode,
+  type ExpressionNode,
+  type ExpressionStatementNode,
+  type VariableNode,
 } from '@templjs/core';
 import type {
   CandidateItem,
+  BindingTypeLookup,
   DelimiterConfigInput,
   QueryIntent,
   ScopeBinding,
   SemanticContext,
   SemanticContextResolverInput,
   SemanticRegion,
+  SemantifyServiceOptions,
   SemantifyServices,
   SymbolRef,
 } from '../model/public-types.js';
@@ -133,6 +141,307 @@ function mapBinding(binding: import('@templjs/core').TemplateBinding): ScopeBind
   };
 }
 
+function isExpressionStatement(node: ASTNode): node is ExpressionStatementNode {
+  return node.type === 'expression_statement';
+}
+
+function createLookupBinding(name: string, offset: number): ScopeBinding {
+  return {
+    kind: 'custom',
+    name,
+    scopeRange: { startOffset: offset, endOffset: offset },
+    declarationRange: { startOffset: offset, endOffset: offset },
+  };
+}
+
+function normalizeTypeLabel(typeLabel: string | undefined): string | undefined {
+  if (!typeLabel) {
+    return undefined;
+  }
+
+  const trimmed = typeLabel.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function getArrayElementType(typeLabel: string | undefined): string | undefined {
+  const normalized = normalizeTypeLabel(typeLabel);
+  if (!normalized) {
+    return undefined;
+  }
+
+  if (normalized.endsWith('[]')) {
+    return normalized.slice(0, -2).trim();
+  }
+
+  const genericMatch = normalized.match(/^array<(.+)>$/i);
+  if (genericMatch) {
+    return genericMatch[1]?.trim();
+  }
+
+  if (normalized === 'string') {
+    return 'char';
+  }
+
+  if (normalized === 'array') {
+    return undefined;
+  }
+
+  return undefined;
+}
+
+function inferExpressionTypeLabel(
+  expression: string,
+  bindings: import('@templjs/core').TemplateBinding[],
+  input: SemanticContextResolverInput,
+  lookupType: BindingTypeLookup | undefined,
+  scopeOffset: number,
+  cache: Map<string, string | undefined>,
+  visiting: Set<string>
+): string | undefined {
+  const parseResult = parse(tokenize(`{{ ${expression} }}`));
+  const expressionStatement = parseResult.ast?.children.find(isExpressionStatement);
+  const node = expressionStatement?.value;
+  if (!node) {
+    return normalizeTypeLabel(
+      lookupType?.({
+        expression,
+        binding: createLookupBinding(expression, scopeOffset),
+        context: input,
+      })
+    );
+  }
+
+  const resolveLocalBinding = (name: string): import('@templjs/core').TemplateBinding | undefined =>
+    getTemplateBindingsAtOffset(bindings, scopeOffset).find((binding) => binding.name === name);
+
+  const serializeVariablePathSuffix = (node: VariableNode): string | undefined => {
+    if (node.path.length === 0) {
+      return '';
+    }
+
+    let suffix = '';
+    for (const segment of node.path) {
+      if (segment.type === 'property') {
+        if (typeof segment.value !== 'string' || segment.value.length === 0) {
+          return undefined;
+        }
+        suffix += `.${segment.value}`;
+        continue;
+      }
+
+      if (segment.type === 'index') {
+        if (typeof segment.value === 'string') {
+          suffix += `[${segment.value}]`;
+          continue;
+        }
+
+        if (segment.value.type === 'literal') {
+          suffix += `[${String(segment.value.value)}]`;
+          continue;
+        }
+
+        return undefined;
+      }
+    }
+
+    return suffix;
+  };
+
+  const inferNode = (currentNode: ExpressionNode): string | undefined => {
+    if (currentNode.type === 'literal') {
+      return currentNode.valueType;
+    }
+
+    if (currentNode.type === 'array') {
+      const elementTypes = currentNode.elements.map((element) => inferNode(element));
+      const commonType = elementTypes.find(
+        (typeLabel) => typeLabel && elementTypes.every((candidate) => candidate === typeLabel)
+      );
+      return `array<${normalizeTypeLabel(commonType) ?? 'unknown'}>`;
+    }
+
+    if (currentNode.type === 'object') {
+      return 'object';
+    }
+
+    if (currentNode.type === 'paren') {
+      return inferNode(currentNode.value);
+    }
+
+    if (currentNode.type === 'ternary') {
+      const trueType = inferNode(currentNode.trueValue);
+      const falseType = inferNode(currentNode.falseValue);
+      return trueType && trueType === falseType ? trueType : undefined;
+    }
+
+    if (currentNode.type === 'unary_op') {
+      return inferNode(currentNode.operand);
+    }
+
+    if (currentNode.type === 'filter') {
+      return inferNode(currentNode.source);
+    }
+
+    if (currentNode.type === 'variable') {
+      const localBinding = resolveLocalBinding(currentNode.name);
+      const rootType =
+        (localBinding
+          ? resolveBindingTypeLabel(localBinding, bindings, input, lookupType, cache, visiting)
+          : undefined) ??
+        normalizeTypeLabel(
+          lookupType?.({
+            expression: currentNode.name,
+            binding: createLookupBinding(currentNode.name, scopeOffset),
+            context: input,
+          })
+        );
+      if (rootType) {
+        if (currentNode.path.length === 0) {
+          return rootType;
+        }
+
+        if (localBinding?.sourcePath) {
+          const suffix = serializeVariablePathSuffix(currentNode);
+          if (suffix !== undefined) {
+            const sourceBase =
+              localBinding.kind === 'for-alias' || localBinding.kind === 'for-value-alias'
+                ? `${localBinding.sourcePath}[0]`
+                : localBinding.sourcePath;
+            const resolvedPathType = normalizeTypeLabel(
+              lookupType?.({
+                expression: `${sourceBase}${suffix}`,
+                binding: mapBinding(localBinding),
+                context: input,
+                resolvedType: rootType,
+              })
+            );
+            if (resolvedPathType) {
+              return resolvedPathType;
+            }
+          }
+        }
+
+        const pathType = normalizeTypeLabel(
+          lookupType?.({
+            expression,
+            binding: createLookupBinding(expression, scopeOffset),
+            context: input,
+            resolvedType: rootType,
+          })
+        );
+        if (pathType) {
+          return pathType;
+        }
+
+        const indexType = currentNode.path.some((segment) => segment.type === 'index')
+          ? getArrayElementType(rootType)
+          : undefined;
+        if (indexType) {
+          return indexType;
+        }
+
+        return undefined;
+      }
+
+      if (currentNode.path.length > 0) {
+        const pathType = normalizeTypeLabel(
+          lookupType?.({
+            expression,
+            binding: createLookupBinding(expression, scopeOffset),
+            context: input,
+          })
+        );
+        if (pathType) {
+          return pathType;
+        }
+      }
+    }
+
+    return normalizeTypeLabel(
+      lookupType?.({
+        expression,
+        binding: createLookupBinding(expression, scopeOffset),
+        context: input,
+      })
+    );
+  };
+
+  return inferNode(node);
+}
+
+function resolveBindingTypeLabel(
+  binding: import('@templjs/core').TemplateBinding,
+  bindings: import('@templjs/core').TemplateBinding[],
+  input: SemanticContextResolverInput,
+  lookupType: BindingTypeLookup | undefined,
+  cache: Map<string, string | undefined>,
+  visiting: Set<string>
+): string | undefined {
+  const bindingKey = `${binding.name}:${binding.declarationStartOffset ?? binding.scopeStartOffset}:${
+    binding.declarationEndOffset ?? binding.scopeEndOffset
+  }`;
+  if (cache.has(bindingKey)) {
+    return cache.get(bindingKey);
+  }
+
+  if (visiting.has(bindingKey)) {
+    return undefined;
+  }
+
+  visiting.add(bindingKey);
+
+  const bindingKind = binding.kind;
+  const sourceExpression = binding.sourceExpression?.trim();
+  const scopeOffset = binding.declarationStartOffset ?? binding.scopeStartOffset;
+
+  let resolvedType = sourceExpression
+    ? inferExpressionTypeLabel(
+        sourceExpression,
+        bindings,
+        input,
+        lookupType,
+        scopeOffset,
+        cache,
+        visiting
+      )
+    : undefined;
+
+  if (bindingKind === 'for-alias' || bindingKind === 'for-value-alias') {
+    const elementType = getArrayElementType(resolvedType);
+    if (elementType) {
+      resolvedType = elementType;
+    } else if (resolvedType === 'string') {
+      resolvedType = 'char';
+    } else {
+      resolvedType =
+        normalizeTypeLabel(
+          lookupType?.({
+            expression: `${sourceExpression ?? binding.sourcePath ?? binding.name}[0]`,
+            binding: mapBinding(binding),
+            context: input,
+            resolvedType,
+          })
+        ) ?? resolvedType;
+    }
+  }
+
+  if (!resolvedType && lookupType) {
+    resolvedType = normalizeTypeLabel(
+      lookupType({
+        expression: sourceExpression ?? binding.sourcePath ?? binding.name,
+        binding: mapBinding(binding),
+        context: input,
+        resolvedType,
+      })
+    );
+  }
+
+  const normalized = normalizeTypeLabel(resolvedType);
+  cache.set(bindingKey, normalized);
+  visiting.delete(bindingKey);
+  return normalized;
+}
+
 function getRegion(input: SemanticContextResolverInput): SemanticRegion {
   const zone = resolveSemanticZone(input.text, input.offset);
   return {
@@ -165,10 +474,30 @@ function applyPrefix(items: CandidateItem[], prefix?: string): CandidateItem[] {
 }
 
 class CoreBackedSemantifyServices implements SemantifyServices {
+  constructor(private readonly options: SemantifyServiceOptions = {}) {}
+
   resolveContext(input: SemanticContextResolverInput): SemanticContext {
     const allBindings = extractBindingsWithRecovery(input);
-    const inScope = getTemplateBindingsAtOffset(allBindings, input.offset).map(mapBinding);
+    const inScope = getTemplateBindingsAtOffset(allBindings, input.offset);
     const region = getRegion(input);
+    const cache = new Map<string, string | undefined>();
+    const visiting = new Set<string>();
+    const lookupType = input.typeLookup ?? this.options.typeLookup;
+
+    const typedBindings = inScope.map((binding) => {
+      const mapped = mapBinding(binding);
+      return {
+        ...mapped,
+        typeLabel: resolveBindingTypeLabel(
+          binding,
+          allBindings,
+          input,
+          lookupType,
+          cache,
+          visiting
+        ),
+      };
+    });
 
     return {
       regions: [region],
@@ -176,7 +505,7 @@ class CoreBackedSemantifyServices implements SemantifyServices {
         input.offset >= region.range.startOffset && input.offset <= region.range.endOffset
           ? region
           : undefined,
-      bindings: inScope,
+      bindings: typedBindings,
     };
   }
 
@@ -210,13 +539,10 @@ class CoreBackedSemantifyServices implements SemantifyServices {
     const context = this.resolveContext(input);
 
     const symbolItems = context.bindings.map((binding) => {
-      // Semantify produces bindingKind for all mapped bindings.
-      // Use a direct read so candidate shaping does not carry unreachable fallback branches.
-      const bindingKind = (binding.metadata as { bindingKind: string }).bindingKind;
       return {
         label: binding.name,
         kind: 'variable',
-        detail: bindingKind === 'set-variable' ? 'local template variable' : 'local loop alias',
+        detail: binding.typeLabel,
         metadata: {
           startOffset: binding.scopeRange.startOffset,
         },
@@ -227,8 +553,8 @@ class CoreBackedSemantifyServices implements SemantifyServices {
   }
 }
 
-export function createSemantifyServices(): SemantifyServices {
-  return new CoreBackedSemantifyServices();
+export function createSemantifyServices(options?: SemantifyServiceOptions): SemantifyServices {
+  return new CoreBackedSemantifyServices(options);
 }
 
 export const semantifyTesting = {

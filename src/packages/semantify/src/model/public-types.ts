@@ -29,8 +29,18 @@ export interface ScopeBinding {
   scopeRange: OffsetRange;
   declarationRange: OffsetRange;
   sourcePath?: string;
+  typeLabel?: string;
   metadata?: Record<string, unknown>;
 }
+
+export interface BindingTypeLookupInput {
+  expression: string;
+  binding: ScopeBinding;
+  context: SemanticContextResolverInput;
+  resolvedType?: string;
+}
+
+export type BindingTypeLookup = (input: BindingTypeLookupInput) => string | undefined;
 
 export type SymbolKind = 'localBinding' | 'schemaPath' | 'filterName' | 'keyword' | 'custom';
 
@@ -80,6 +90,7 @@ export interface SemanticContextResolverInput {
   text: string;
   offset: number;
   delimiters?: DelimiterConfigInput;
+  typeLookup?: BindingTypeLookup;
   metadata?: Record<string, unknown>;
 }
 
@@ -95,4 +106,8 @@ export interface SemantifyServices {
   resolveContext(input: SemanticContextResolverInput): SemanticContext;
   resolveReferences(input: SemanticContextResolverInput): SymbolRef[];
   planCandidates(intent: QueryIntent, input: SemanticContextResolverInput): CandidateItem[];
+}
+
+export interface SemantifyServiceOptions {
+  typeLookup?: BindingTypeLookup;
 }

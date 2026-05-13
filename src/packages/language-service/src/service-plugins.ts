@@ -222,6 +222,22 @@ function getSourceOffsetFromPosition(
     }
   }
 
+  // Some embedded virtual documents are slices (not full-file mirrors).
+  // In that case line/character coordinates are local to the slice, so
+  // anchor using a surrounding snippet and map the cursor within it.
+  if (virtualOffset > 0) {
+    const anchorRadius = 48;
+    const anchorStart = Math.max(0, virtualOffset - anchorRadius);
+    const anchorEnd = Math.min(virtualText.length, virtualOffset + anchorRadius);
+    const anchorSnippet = virtualText.slice(anchorStart, anchorEnd);
+    if (anchorSnippet.length > 0) {
+      const sourceAnchorIndex = sourceText.text.lastIndexOf(anchorSnippet);
+      if (sourceAnchorIndex >= 0) {
+        return sourceAnchorIndex + (virtualOffset - anchorStart);
+      }
+    }
+  }
+
   const sourceDocument = createTextDocumentLike(
     `${document.uri}#source`,
     document.languageId,
@@ -234,33 +250,6 @@ function getSourceOffsetFromPosition(
 function getVirtualCodeId(context: LanguageServiceContext, uri: string): string | undefined {
   const decoded = context.decodeEmbeddedDocumentUri(URI.parse(uri));
   return decoded?.[1];
-}
-
-function mergeCompletionItems(
-  preferred: LSPCompletionItem[],
-  fallback: LSPCompletionItem[]
-): LSPCompletionItem[] {
-  /* c8 ignore next */
-  /* v8 ignore next */
-  if (fallback.length === 0) {
-    return preferred;
-  }
-
-  const seen = new Set(
-    preferred.map((item) => `${item.label.toLowerCase()}::${item.kind ?? ''}::${item.detail ?? ''}`)
-  );
-  const merged = [...preferred];
-
-  for (const item of fallback) {
-    const key = `${item.label.toLowerCase()}::${item.kind ?? ''}::${item.detail ?? ''}`;
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    merged.push(item);
-  }
-
-  return merged;
 }
 
 function shouldSkipTempljsDiagnostics(
@@ -347,7 +336,6 @@ function createTempljsAdditionalPlugin(options: PluginOptions): LanguageServiceP
             return;
           }
 
-          const virtualCodeId = getVirtualCodeId(context, document.uri);
           const sourceUri = getSourceUri(context, document.uri);
           const sourceText = getSourceDocumentText(context, document, sourceUri);
           const sourceOffset = getSourceOffsetFromPosition(document, position, sourceText);
@@ -367,22 +355,24 @@ function createTempljsAdditionalPlugin(options: PluginOptions): LanguageServiceP
             toIntellisenseOptions(options, sourceUri, sourceText.text)
           );
 
-          let items = sourceItems;
-          if (virtualCodeId && virtualCodeId !== 'root') {
-            const virtualText = document.getText();
-            const virtualItems = templjs.getCompletions(
-              virtualText,
-              virtualOffset,
-              toIntellisenseOptions(options, sourceUri, sourceText.text)
-            );
-            items = mergeCompletionItems(virtualItems, sourceItems);
-          }
+          options.log?.(
+            `[templjs-completion] uri=${document.uri} sourceUri=${sourceUri} sourceFromSnapshot=${sourceText.fromSource} virtualOffset=${virtualOffset} sourceOffset=${sourceOffset} items=${sourceItems.length}`
+          );
 
           return {
             isIncomplete: false,
-            items: items.map((item: LSPCompletionItem) => ({
+            items: sourceItems.map((item: LSPCompletionItem) => ({
               ...item,
               kind: item.kind as 3 | 6 | 10 | 14,
+              filterText: item.label,
+              insertText: item.label,
+              textEdit: {
+                range: {
+                  start: position,
+                  end: position,
+                },
+                newText: item.label,
+              },
             })),
           };
         },

@@ -1,6 +1,8 @@
 import { createSemantifyServices } from './binder/framework.js';
 
 export type {
+  BindingTypeLookup,
+  BindingTypeLookupInput,
   CandidateItem,
   DelimiterConfigInput,
   OffsetRange,
@@ -11,6 +13,7 @@ export type {
   ScopeBindingKind,
   SemanticContext,
   SemanticContextResolverInput,
+  SemantifyServiceOptions,
   SemantifyServices,
   SemanticRegion,
   SymbolRef,
