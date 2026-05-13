@@ -5,7 +5,7 @@ title: WI-117 merged PR evidence
 summary: WI-117 merged PR evidence
 type: record
 subtype: test-result
-lifecycle: active
+lifecycle: inactive
 status: closed
 status_reason: completed
 ---
