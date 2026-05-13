@@ -62,6 +62,16 @@ export {
   resolveSemanticZoneByHostLanguage,
   toSemanticZone,
 } from './semantic/semantic-context.js';
+export {
+  extractTemplateStatementExpression,
+  parseTemplateForHeader,
+  validateTemplateStatementSyntax,
+} from './semantic/statement-syntax.js';
+export type {
+  TemplateForHeader,
+  TemplateStatementExpression,
+  TemplateStatementSyntaxValidationResult,
+} from './semantic/statement-syntax.js';
 export type {
   ValidationResult,
   ValidationError,

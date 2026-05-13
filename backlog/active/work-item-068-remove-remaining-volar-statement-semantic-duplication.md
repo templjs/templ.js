@@ -5,12 +5,12 @@ title: '068: Remove Remaining Volar Statement-Semantic Duplication'
 summary: Remove Remaining Volar Statement-Semantic Duplication
 type: work-item
 subtype: task
-lifecycle: draft
-status: proposed
-status_reason: needs-triage
+lifecycle: active
+status: in-progress
+status_reason: implementation
 priority: medium
 estimated: 4
-actual: 0
+actual: 4
 ---
 
 ## Goal
@@ -23,16 +23,16 @@ Scope resolution is already core-backed, but diagnostics, IntelliSense, and rela
 
 ## Tasks
 
-- [ ] Audit remaining statement-semantic logic in Volar providers and helpers.
-- [ ] Replace duplicated semantic derivation with core-backed adapters.
-- [ ] Remove stale local heuristics once parity is proven.
-- [ ] Add targeted regression and benchmark evidence.
+- [x] Audit remaining statement-semantic logic in Volar providers and helpers.
+- [x] Replace duplicated semantic derivation with core-backed adapters.
+- [x] Remove stale local heuristics once parity is proven.
+- [x] Add targeted regression and benchmark evidence.
 
 ## Acceptance Criteria
 
-- [ ] Volar no longer duplicates statement-semantic logic that now exists in core.
-- [ ] Provider behavior remains green with benchmarked before/after comparisons.
-- [ ] Drift cases remain covered by regression tests.
+- [x] Volar no longer duplicates statement-semantic logic that now exists in core.
+- [x] Provider behavior remains green with benchmarked before/after comparisons.
+- [x] Drift cases remain covered by regression tests.
 
 ## Relationships
 
