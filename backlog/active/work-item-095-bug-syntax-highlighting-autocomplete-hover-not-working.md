@@ -9,7 +9,7 @@ lifecycle: active
 status: ready
 priority: high
 estimated: 5
-actual: 0
+actual: 5
 ---
 
 ## Goal
@@ -71,22 +71,22 @@ Concretely:
 
 ## Tasks
 
-- [ ] Audit each `syntaxes/injection-*.json` file: add `meta.embedded.block.<lang>` wrapper scopes so `embeddedLanguages` entries in `package.json` are live
-- [ ] Verify `source.templjs` grammar loads correctly and TemplJS expression scopes appear on top of host-language scopes
-- [ ] Confirm language client `embeddedLanguages` declaration matches emitted scope names
-- [ ] Investigate and wire Volar virtual-code delegation so VS Code routes LSP requests to host language servers for virtual code regions
-- [ ] Smoke-test syntax highlighting, autocomplete, and hover for all four host formats in the Extension Development Host
-- [ ] Add regression tests covering the delegation path end-to-end
+- [x] Audit each `syntaxes/injection-*.json` file: add `meta.embedded.block.<lang>` wrapper scopes so `embeddedLanguages` entries in `package.json` are live
+- [x] Verify `source.templjs` grammar loads correctly and TemplJS expression scopes appear on top of host-language scopes
+- [x] Confirm language client `embeddedLanguages` declaration matches emitted scope names
+- [x] Investigate and wire Volar virtual-code delegation so VS Code routes LSP requests to host language servers for virtual code regions
+- [x] Smoke-test syntax highlighting, autocomplete, and hover for all four host formats in the Extension Development Host
+- [x] Add regression tests covering the delegation path end-to-end
 
 ## Acceptance Criteria
 
-- [ ] YAML content in `.yaml.tmpl` files is highlighted as YAML; TemplJS blocks are highlighted as TemplJS
-- [ ] Markdown content in `.md.tmpl` files is highlighted as Markdown; TemplJS blocks are highlighted as TemplJS
-- [ ] HTML content in `.html.tmpl` files is highlighted as HTML; TemplJS blocks are highlighted as TemplJS
-- [ ] JSON content in `.json.tmpl` files is highlighted as JSON; TemplJS blocks are highlighted as TemplJS
-- [ ] YAML completions and hover appear in `.yaml.tmpl` files (via VS Code's configured YAML language server)
-- [ ] Markdown completions and hover appear in `.md.tmpl` files (via VS Code's configured Markdown language server)
-- [ ] Existing templjs diagnostics and intellisense remain unaffected
+- [x] YAML content in `.yaml.tmpl` files is highlighted as YAML; TemplJS blocks are highlighted as TemplJS
+- [x] Markdown content in `.md.tmpl` files is highlighted as Markdown; TemplJS blocks are highlighted as TemplJS
+- [x] HTML content in `.html.tmpl` files is highlighted as HTML; TemplJS blocks are highlighted as TemplJS
+- [x] JSON content in `.json.tmpl` files is highlighted as JSON; TemplJS blocks are highlighted as TemplJS
+- [x] YAML completions and hover appear in `.yaml.tmpl` files (via VS Code's configured YAML language server)
+- [x] Markdown completions and hover appear in `.md.tmpl` files (via VS Code's configured Markdown language server)
+- [x] Existing templjs diagnostics and intellisense remain unaffected
 
 ## References
 

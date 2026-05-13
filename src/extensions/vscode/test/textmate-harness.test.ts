@@ -55,7 +55,13 @@ async function createRegistry() {
 
   return {
     registry,
-    scopes: { templjs: templjs.scopeName, md: md.scopeName, yaml: yaml.scopeName },
+    scopes: {
+      templjs: templjs.scopeName,
+      md: md.scopeName,
+      yaml: yaml.scopeName,
+      json: json.scopeName,
+      html: html.scopeName,
+    },
   };
 }
 
@@ -68,6 +74,47 @@ function lineScopes(
 }
 
 describe('textmate-harness', () => {
+  it('keeps host-language embedded block scopes live for markdown/html/json/yaml injections', async () => {
+    const { registry, scopes } = await createRegistry();
+    const cases: Array<{
+      scopeName: string;
+      line: string;
+      expectedEmbeddedScope: string;
+    }> = [
+      {
+        scopeName: scopes.md,
+        line: 'title: {% if show_title %}{{ title }}{% endif %}',
+        expectedEmbeddedScope: 'meta.embedded.block.markdown',
+      },
+      {
+        scopeName: scopes.html,
+        line: '<p>{% if show_title %}{{ title }}{% endif %}</p>',
+        expectedEmbeddedScope: 'meta.embedded.block.html',
+      },
+      {
+        scopeName: scopes.json,
+        line: '"title": "{% if show_title %}{{ title }}{% endif %}"',
+        expectedEmbeddedScope: 'meta.embedded.block.json',
+      },
+      {
+        scopeName: scopes.yaml,
+        line: 'title: {% if show_title %}{{ title }}{% endif %}',
+        expectedEmbeddedScope: 'meta.embedded.block.yaml',
+      },
+    ];
+
+    for (const testCase of cases) {
+      const grammar = await registry.loadGrammar(testCase.scopeName);
+      expect(grammar).toBeDefined();
+
+      const scopesForLine = lineScopes(grammar!, testCase.line);
+      expect(
+        scopesForLine.some((scope) => scope.includes(testCase.expectedEmbeddedScope)),
+        `Expected ${testCase.expectedEmbeddedScope} in ${testCase.scopeName}`
+      ).toBe(true);
+    }
+  });
+
   it('tokenizes templjs statements in yaml host grammar', async () => {
     const { registry, scopes } = await createRegistry();
     const grammar = await registry.loadGrammar(scopes.yaml);
