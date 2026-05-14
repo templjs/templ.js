@@ -1079,6 +1079,100 @@ describe('IntellisenseProvider', () => {
     expect(def?.range).toBeTruthy();
   });
 
+  it('resolves local alias definition via semantify references when adapter alias resolution is unavailable', () => {
+    const text = '{% for relationship in relationships %}{{ relationship }}{% endfor %}';
+    const offset = text.indexOf('{{ relationship }}') + 3;
+    const aliasDeclarationStart = text.indexOf('relationship in');
+
+    const mockAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => null,
+    };
+
+    const mockSemantify: SemantifyServices = {
+      resolveContext: () => ({
+        regions: [],
+        bindings: [],
+      }),
+      resolveReferences: () => [
+        {
+          kind: 'localBinding',
+          rawPath: 'relationship',
+          range: {
+            startOffset: aliasDeclarationStart,
+            endOffset: aliasDeclarationStart + 'relationship'.length,
+          },
+        },
+      ],
+      planCandidates: () => [],
+    };
+
+    const providerWithSemantifyRefs = new IntellisenseProvider(mockAdapter, mockSemantify);
+    const def = providerWithSemantifyRefs.getDefinition(text, offset, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(def?.uri).toBe('file:///workspace/project.md.tpl');
+    expect(def?.range).toEqual({
+      start: { line: 0, character: aliasDeclarationStart },
+      end: { line: 0, character: aliasDeclarationStart + 'relationship'.length },
+    });
+  });
+
+  it('resolves local alias definition from semantify when cursor token is an unambiguous prefix', () => {
+    const text = '{% for relationship in relationships %}{{ relati }}{% endfor %}';
+    const offset = text.indexOf('{{ relati }}') + 3;
+    const aliasDeclarationStart = text.indexOf('relationship in');
+
+    const mockAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => null,
+    };
+
+    const mockSemantify: SemantifyServices = {
+      resolveContext: () => ({
+        regions: [],
+        bindings: [],
+      }),
+      resolveReferences: () => [
+        {
+          kind: 'localBinding',
+          rawPath: 'relationship',
+          range: {
+            startOffset: aliasDeclarationStart,
+            endOffset: aliasDeclarationStart + 'relationship'.length,
+          },
+        },
+      ],
+      planCandidates: () => [],
+    };
+
+    const providerWithSemantifyRefs = new IntellisenseProvider(mockAdapter, mockSemantify);
+    const def = providerWithSemantifyRefs.getDefinition(text, offset, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(def?.uri).toBe('file:///workspace/project.md.tpl');
+    expect(def?.range).toEqual({
+      start: { line: 0, character: aliasDeclarationStart },
+      end: { line: 0, character: aliasDeclarationStart + 'relationship'.length },
+    });
+  });
+
   it('resolves statement expression property access through schema navigation', () => {
     const text =
       '{% for relationship in relationships %}{% if relationship.name %}ok{% endif %}{% endfor %}';
