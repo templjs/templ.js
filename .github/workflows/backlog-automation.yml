@@ -95,7 +95,7 @@ jobs:
           (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging')
         )
       )
-    uses: calan-co/doc-vader/.github/workflows/backlog-sweep.yml@60c38ef5e2cd15628b65b62fc75ebad9aa785090 # v1
+    uses: calan-co/doc-vader/.github/workflows/backlog-sweep.yml@2f4edec5b98adb087be6024221bbb50c1be8ed4b # v1
     with:
       dry-run: ${{ inputs.dry_run || false }}
       consumer-config: .doc-vader/backlog-consumer.json
