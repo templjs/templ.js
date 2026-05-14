@@ -5,12 +5,13 @@ title: '056: Context Graph Platform (N-provider semantic foundation)'
 summary: Context Graph Platform (N-provider semantic foundation)
 type: work-item
 subtype: epic
-lifecycle: active
-status: in-progress
-status_reason: implementation
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 30
 actual: 13
+completed_date: '2026-05-14'
 commits:
   ad4e642: 'docs(context-graph): add ADR and update WI status'
   82c8de1: 'feat(context-graph): add package and core semantic scope API'
