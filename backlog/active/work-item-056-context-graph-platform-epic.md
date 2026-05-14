@@ -46,7 +46,7 @@ Establish `@templjs/context-graph` as a reusable semantic foundation for N indep
 
 ## PR Handoff Notes
 
-- No active PR currently tracks this epic.
+- Historical and related PR references are tracked in `links.pull_requests`.
 - Include commits `ad4e642`, `82c8de1`, `91d942c`, and `b49ae91` in the next PR.
 
 ## Scope
