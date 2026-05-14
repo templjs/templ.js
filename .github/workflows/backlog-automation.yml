@@ -44,6 +44,10 @@ jobs:
     name: Ingest Pull Request Event
     if: >
       github.event_name == 'pull_request' &&
+      (
+        github.event.action != 'closed' ||
+        github.event.pull_request.merged != true
+      ) &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       vars.BACKLOG_AUTOMATION_ENABLED == 'true'
     uses: calan-co/doc-vader/.github/workflows/backlog-ingest-pull-request.yml@v1
