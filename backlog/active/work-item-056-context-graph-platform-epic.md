@@ -29,6 +29,11 @@ commits:
   e0ede1a: 'test(context-graph): harden coverage gates'
   c0bb1c5: 'test(volar): add coverage utility suites'
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/27
+    - https://github.com/templjs/templ.js/pull/75
+    - https://github.com/templjs/templ.js/pull/118
+    - https://github.com/templjs/templ.js/pull/128
   evidence:
     - '[[record-056-context-graph-platform-epic-evidence-1]]'
     - '[[record-056-context-graph-platform-epic-evidence-2]]'
@@ -41,7 +46,7 @@ Establish `@templjs/context-graph` as a reusable semantic foundation for N indep
 
 ## PR Handoff Notes
 
-- No active PR currently tracks this epic.
+- Historical and related PR references are tracked in `links.pull_requests`.
 - Include commits `ad4e642`, `82c8de1`, `91d942c`, and `b49ae91` in the next PR.
 
 ## Scope
