@@ -23,7 +23,7 @@ on:
       dry_run:
         description: 'Preview eligible updates without writing changes'
         required: false
-        default: true
+        default: false
         type: boolean
   pull_request:
     types: [opened, edited, reopened, synchronize, closed]
@@ -37,7 +37,7 @@ on:
 permissions:
   contents: write
   packages: read
-  pull-requests: write
+  pull-requests: read
 
 jobs:
   ingest-pull-request:
@@ -98,6 +98,10 @@ jobs:
       backlog-dir: backlog
       doc-vader-version: next
       app-id: ${{ vars.DOC_VADER_APP_ID }}
+    permissions:
+      contents: write
+      pull-requests: write
+      packages: read
     secrets:
       packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
       app-private-key: ${{ secrets.DOC_VADER_PRIVATE_KEY }}
@@ -142,8 +146,8 @@ jobs:
           stale_seconds="$((STALE_HOURS * 3600))"
           warned=0
 
-          shopt -s nullglob
-          for file in backlog/active/work-item-*.md; do
+          shopt -s nullglob globstar
+          for file in backlog/**/*.md; do
             status="$(awk '
               /^---$/ {delims++; next}
               delims == 1 && /^status:[[:space:]]*/ {
