@@ -34,11 +34,8 @@ describe('validateTemplateStatementSyntax', () => {
 
   it('accepts valid if/while/switch/case/default/block statements', () => {
     expect(validateTemplateStatementSyntax('if', 'if user.isAdmin')).toEqual({ valid: true });
-    expect(validateTemplateStatementSyntax('while', 'while hasMore')).toEqual({ valid: true });
-    expect(validateTemplateStatementSyntax('switch', 'switch status')).toEqual({ valid: true });
-    expect(validateTemplateStatementSyntax('case', 'case "active"')).toEqual({ valid: true });
     expect(validateTemplateStatementSyntax('default', 'default')).toEqual({ valid: true });
-    expect(validateTemplateStatementSyntax('block', 'block main-content')).toEqual({ valid: true });
+    expect(validateTemplateStatementSyntax('block', 'block content')).toEqual({ valid: true });
   });
 
   it('rejects invalid if/while/switch/case statements missing expressions', () => {
@@ -47,24 +44,39 @@ describe('validateTemplateStatementSyntax', () => {
       message: 'Invalid if statement: expected "if <expression>"',
       suggestion: 'Use `{% if condition %}`',
     });
+  });
+
+  it('rejects while, switch and case as unsupported statement types', () => {
+    expect(validateTemplateStatementSyntax('while', 'while hasMore')).toEqual({
+      valid: false,
+      message: 'Unsupported statement type: "while" is not a valid templjs statement',
+      suggestion: 'Supported statement types: if, for, set, block',
+    });
 
     expect(validateTemplateStatementSyntax('while', 'while')).toEqual({
       valid: false,
-      message: 'Invalid while statement: expected "while <expression>"',
-      suggestion: 'Use `{% while condition %}`',
+      message: 'Unsupported statement type: "while" is not a valid templjs statement',
+      suggestion: 'Supported statement types: if, for, set, block',
     });
 
-    expect(validateTemplateStatementSyntax('switch', 'switch')).toEqual({
+    expect(validateTemplateStatementSyntax('switch', 'switch status')).toEqual({
       valid: false,
-      message: 'Invalid switch statement: expected "switch <expression>"',
-      suggestion: 'Use `{% switch value %}`',
+      message: 'Unsupported statement type: "switch" is not a valid templjs statement',
+      suggestion: 'Supported statement types: if, for, set, block',
     });
 
-    expect(validateTemplateStatementSyntax('case', 'case')).toEqual({
+    expect(validateTemplateStatementSyntax('case', 'case "active"')).toEqual({
       valid: false,
-      message: 'Invalid case statement: expected "case <value>"',
-      suggestion: 'Use `{% case value %}`',
+      message: 'Unsupported statement type: "case" is not a valid templjs statement',
+      suggestion: 'Supported statement types: if, for, set, block',
     });
+  });
+
+  it('accepts key/value for loop syntax', () => {
+    expect(validateTemplateStatementSyntax('for', 'for key, value in object')).toEqual({
+      valid: true,
+    });
+    expect(validateTemplateStatementSyntax('for', 'for k,v in pairs')).toEqual({ valid: true });
   });
 
   it('rejects invalid block names', () => {
@@ -79,27 +91,37 @@ describe('validateTemplateStatementSyntax', () => {
       message: 'Invalid block statement: expected "block <name>"',
       suggestion: 'Use `{% block content %}`',
     });
+
+    expect(validateTemplateStatementSyntax('block', 'block main-content')).toEqual({
+      valid: false,
+      message: 'Invalid block statement: expected "block <name>"',
+      suggestion: 'Use `{% block content %}`',
+    });
   });
 
   it('validates set statement assignment shape', () => {
-    expect(validateTemplateStatementSyntax('set', 'set title')).toEqual({ valid: true });
+    expect(validateTemplateStatementSyntax('set', 'set title')).toEqual({
+      valid: false,
+      message: 'Invalid set statement: expected "set <name> = <expression>"',
+      suggestion: 'Use `{% set var = value %}`',
+    });
 
     expect(validateTemplateStatementSyntax('set', 'set')).toEqual({
       valid: false,
-      message: 'Invalid set statement: expected "set <name>" or "set <name> = <expression>"',
-      suggestion: 'Use `{% set var = value %}` or `{% set var %}`',
+      message: 'Invalid set statement: expected "set <name> = <expression>"',
+      suggestion: 'Use `{% set var = value %}`',
     });
 
     expect(validateTemplateStatementSyntax('set', 'set title value')).toEqual({
       valid: false,
-      message: 'Invalid set statement: expected "set <name>" or "set <name> = <expression>"',
-      suggestion: 'Use `{% set var = value %}` or `{% set var %}`',
+      message: 'Invalid set statement: expected "set <name> = <expression>"',
+      suggestion: 'Use `{% set var = value %}`',
     });
 
     expect(validateTemplateStatementSyntax('set', 'set title =')).toEqual({
       valid: false,
-      message: 'Invalid set statement: expected "set <name>" or "set <name> = <expression>"',
-      suggestion: 'Use `{% set var = value %}` or `{% set var %}`',
+      message: 'Invalid set statement: expected "set <name> = <expression>"',
+      suggestion: 'Use `{% set var = value %}`',
     });
   });
 
@@ -114,6 +136,17 @@ describe('validateTemplateStatementSyntax', () => {
   it('treats unknown statement tags as valid for syntax-shape purposes', () => {
     expect(validateTemplateStatementSyntax('include', 'include "partial"')).toEqual({
       valid: true,
+    });
+  });
+
+  it('parses key/value for-header with valueAliasName', () => {
+    expect(parseTemplateForHeader('for key, value in items')).toEqual({
+      aliasName: 'key',
+      valueAliasName: 'value',
+      aliasStart: 4,
+      aliasEnd: 7,
+      iterableExpression: 'items',
+      iterableStart: 18,
     });
   });
 
@@ -155,6 +188,34 @@ describe('validateTemplateStatementSyntax', () => {
     });
   });
 
+  it('skips extra whitespace after "in" when parsing for-headers', () => {
+    expect(parseTemplateForHeader('for item in  users')).toEqual({
+      aliasName: 'item',
+      aliasStart: 4,
+      aliasEnd: 8,
+      iterableExpression: 'users',
+      iterableStart: 13,
+    });
+  });
+
+  it('extracts set RHS expressions (after =) with start offsets', () => {
+    expect(extractTemplateStatementExpression('set title = page.title')).toEqual({
+      expression: 'page.title',
+      startOffset: 12,
+    });
+  });
+
+  it('returns empty expression for partial for headers at iterable position', () => {
+    expect(extractTemplateStatementExpression('for item in ')).toEqual({
+      expression: '',
+      startOffset: 11,
+    });
+    expect(extractTemplateStatementExpression('for key, value in ')).toEqual({
+      expression: '',
+      startOffset: 17,
+    });
+  });
+
   it('extracts generic statement expressions with start offsets', () => {
     expect(extractTemplateStatementExpression('if user.name | upper')).toEqual({
       expression: 'user.name | upper',
@@ -180,5 +241,8 @@ describe('validateTemplateStatementSyntax', () => {
     expect(extractTemplateStatementExpression('for item %')).toBeNull();
     expect(extractTemplateStatementExpression('for item in -')).toBeNull();
     expect(extractTemplateStatementExpression('9if user')).toBeNull();
+    expect(extractTemplateStatementExpression('set title')).toBeNull();
+    expect(extractTemplateStatementExpression('set title =')).toBeNull();
+    expect(extractTemplateStatementExpression('set title =   ')).toBeNull();
   });
 });

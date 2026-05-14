@@ -8,6 +8,7 @@ export interface TemplateForHeader {
   aliasName: string;
   aliasStart: number;
   aliasEnd: number;
+  valueAliasName?: string;
   iterableExpression: string;
   iterableStart: number;
 }
@@ -30,7 +31,7 @@ function isIdentifier(token: string | undefined): boolean {
 }
 
 function isBlockName(token: string | undefined): boolean {
-  return token !== undefined && /^[A-Za-z_][\w-]*$/.test(token);
+  return token !== undefined && /^[A-Za-z_]\w*$/.test(token);
 }
 
 function isWhitespace(char: string | undefined): boolean {
@@ -68,56 +69,39 @@ export function parseTemplateForHeader(statementContent: string): TemplateForHea
   const normalized = stripLeadingTrimMarker(statementContent);
   const content = normalized.content.trimStart();
   const contentOffset = normalized.offsetDelta + (normalized.content.length - content.length);
-  const tokens = tokenizeStatementContent(content);
+  // Strip trailing trim-control marker before matching
+  const contentForMatch = content.replace(/\s*-\s*$/, '').trimEnd();
 
-  if (
-    tokens.length < 3 ||
-    tokens[0] !== 'for' ||
-    !isIdentifier(tokens[1] ?? '') ||
-    tokens[2] !== 'in'
-  ) {
+  // Support both "for alias in iterable" and "for key, value in iterable" forms
+  const match = contentForMatch.match(
+    /^for\s+([A-Za-z_]\w*)(?:\s*,\s*([A-Za-z_]\w*))?\s+in\s+([\s\S]+)$/
+  );
+  if (!match) {
     return null;
   }
 
-  const aliasName = tokens[1]!;
-  let cursor = 0;
+  const aliasName = match[1]!;
+  const valueAliasName = match[2];
+  const iterableExpression = match[3]!.trim();
 
-  while (cursor < content.length && isWhitespace(content[cursor])) {
-    cursor += 1;
-  }
-
-  while (cursor < content.length && !isWhitespace(content[cursor])) {
-    cursor += 1;
-  }
-  while (cursor < content.length && isWhitespace(content[cursor])) {
-    cursor += 1;
-  }
-
-  const aliasStart = cursor;
-  while (cursor < content.length && /\w/.test(content[cursor]!)) {
-    cursor += 1;
-  }
-  const aliasEnd = cursor;
-
-  while (cursor < content.length && isWhitespace(content[cursor])) {
-    cursor += 1;
-  }
-  while (cursor < content.length && !isWhitespace(content[cursor])) {
-    cursor += 1;
-  }
-  while (cursor < content.length && isWhitespace(content[cursor])) {
-    cursor += 1;
-  }
-
-  const iterableStart = cursor;
-  const iterableExpression = content.slice(iterableStart).replace(/\s*-\s*$/, '');
-
-  if (iterableExpression.trim().length === 0) {
+  if (!iterableExpression) {
     return null;
+  }
+
+  // Locate alias: it always appears immediately after "for "
+  const aliasStart = contentForMatch.indexOf(aliasName, 4);
+  const aliasEnd = aliasStart + aliasName.length;
+
+  // Locate iterable: find " in " after the alias (and optional value alias)
+  const inPos = contentForMatch.indexOf(' in ', aliasStart + aliasName.length);
+  let iterableStart = inPos + 4;
+  while (iterableStart < content.length && isWhitespace(content[iterableStart])) {
+    iterableStart += 1;
   }
 
   return {
     aliasName,
+    ...(valueAliasName !== undefined && { valueAliasName }),
     aliasStart: contentOffset + aliasStart,
     aliasEnd: contentOffset + aliasEnd,
     iterableExpression,
@@ -146,6 +130,12 @@ export function extractTemplateStatementExpression(
   if (keyword === 'for') {
     const parsed = parseTemplateForHeader(statementContent);
     if (!parsed) {
+      // Partial for header (e.g. "for item in " with empty iterable) –
+      // return an empty expression at the end of the content so completions
+      // are offered at the iterable position while the user is still typing.
+      if (/^for\s+[A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)?\s+in\s*$/.test(content)) {
+        return { expression: '', startOffset: contentOffset + content.length };
+      }
       return null;
     }
 
@@ -155,10 +145,25 @@ export function extractTemplateStatementExpression(
     };
   }
 
-  let cursor = 0;
-  while (cursor < content.length && isWhitespace(content[cursor])) {
-    cursor += 1;
+  if (keyword === 'set') {
+    // For set statements extract only the RHS expression after "set name ="
+    const setMatch = content.match(/^set\s+\w+\s*=\s*([\s\S]+)$/);
+    if (!setMatch) {
+      return null;
+    }
+    const setExpression = setMatch[1]!.trim();
+    if (!setExpression) {
+      return null;
+    }
+    const eqPos = content.indexOf('=');
+    let setCursor = eqPos + 1;
+    while (setCursor < content.length && isWhitespace(content[setCursor])) {
+      setCursor += 1;
+    }
+    return { expression: setExpression, startOffset: contentOffset + setCursor };
   }
+
+  let cursor = 0;
   while (cursor < content.length && !isWhitespace(content[cursor])) {
     cursor += 1;
   }
@@ -184,13 +189,13 @@ export function validateTemplateStatementSyntax(
   const tokens = tokenizeStatementContent(statementContent);
 
   switch (tag) {
-    case 'for':
-      if (
-        tokens.length < 4 ||
-        tokens[0] !== 'for' ||
-        !isIdentifier(tokens[1]) ||
-        tokens[2] !== 'in'
-      ) {
+    case 'for': {
+      // Validate using regex to support both single-alias and key/value forms
+      const normalized = statementContent
+        .replace(/^\s*-\s*/, '')
+        .replace(/\s*-\s*$/, '')
+        .trim();
+      if (!/^for\s+[A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)?\s+in\s+\S/.test(normalized)) {
         return {
           valid: false,
           message: 'Invalid for statement: expected "for <name> in <expression>"',
@@ -198,6 +203,7 @@ export function validateTemplateStatementSyntax(
         };
       }
       return { valid: true };
+    }
 
     case 'if':
       if (tokens.length < 2) {
@@ -210,24 +216,18 @@ export function validateTemplateStatementSyntax(
       return { valid: true };
 
     case 'while':
-      if (tokens.length < 2) {
-        return {
-          valid: false,
-          message: 'Invalid while statement: expected "while <expression>"',
-          suggestion: 'Use `{% while condition %}`',
-        };
-      }
-      return { valid: true };
+      return {
+        valid: false,
+        message: 'Unsupported statement type: "while" is not a valid templjs statement',
+        suggestion: 'Supported statement types: if, for, set, block',
+      };
 
     case 'switch':
-      if (tokens.length < 2) {
-        return {
-          valid: false,
-          message: 'Invalid switch statement: expected "switch <expression>"',
-          suggestion: 'Use `{% switch value %}`',
-        };
-      }
-      return { valid: true };
+      return {
+        valid: false,
+        message: 'Unsupported statement type: "switch" is not a valid templjs statement',
+        suggestion: 'Supported statement types: if, for, set, block',
+      };
 
     case 'block':
       if (tokens.length !== 2 || !isBlockName(tokens[1])) {
@@ -243,29 +243,26 @@ export function validateTemplateStatementSyntax(
       if (!isIdentifier(tokens[1])) {
         return {
           valid: false,
-          message: 'Invalid set statement: expected "set <name>" or "set <name> = <expression>"',
-          suggestion: 'Use `{% set var = value %}` or `{% set var %}`',
+          message: 'Invalid set statement: expected "set <name> = <expression>"',
+          suggestion: 'Use `{% set var = value %}`',
         };
       }
 
-      if (tokens.length > 2 && (tokens[2] !== '=' || tokens.length < 4)) {
+      if (tokens[2] !== '=' || tokens.length < 4) {
         return {
           valid: false,
-          message: 'Invalid set statement: expected "set <name>" or "set <name> = <expression>"',
-          suggestion: 'Use `{% set var = value %}` or `{% set var %}`',
+          message: 'Invalid set statement: expected "set <name> = <expression>"',
+          suggestion: 'Use `{% set var = value %}`',
         };
       }
       return { valid: true };
 
     case 'case':
-      if (tokens.length < 2) {
-        return {
-          valid: false,
-          message: 'Invalid case statement: expected "case <value>"',
-          suggestion: 'Use `{% case value %}`',
-        };
-      }
-      return { valid: true };
+      return {
+        valid: false,
+        message: 'Unsupported statement type: "case" is not a valid templjs statement',
+        suggestion: 'Supported statement types: if, for, set, block',
+      };
 
     case 'default':
       if (tokens.length !== 1) {
