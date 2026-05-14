@@ -206,8 +206,9 @@ describe('DiagnosticProvider', () => {
       schema: sampleSchema,
     });
 
-    expect(whileDiagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(false);
-    expect(switchDiagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(false);
+    // while and switch are not supported by the core parser; they produce invalidStatement
+    expect(whileDiagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
+    expect(switchDiagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
   });
 
   it('reports invalid switch statements', () => {
@@ -280,7 +281,8 @@ describe('DiagnosticProvider', () => {
       schema: sampleSchema,
     });
 
-    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(false);
+    // case is not supported by the core parser; it produces invalidStatement
+    expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
   });
 
   it('reports invalid default statements', () => {

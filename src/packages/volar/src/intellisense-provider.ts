@@ -1,6 +1,8 @@
 import {
+  extractTemplateStatementExpression,
   getBuiltinFilterNames,
   getBuiltinFilterSignatures,
+  parseTemplateForHeader as parseCoreTemplateForHeader,
   resolveSemanticHostLanguage,
   resolveSemanticZoneByHostLanguage,
   resolveSemanticZone,
@@ -814,105 +816,20 @@ interface ForHeaderParsed {
 }
 
 function parseForHeader(statementContent: string): ForHeaderParsed | null {
-  // Strip optional leading whitespace-control marker (-) before tokenising.
-  const content = statementContent.replace(/^\s*-\s*/, '').trimStart();
-  const tokens = content.split(/\s+/).filter((t) => t.length > 0 && t !== '-');
-
-  // Structural check: minimum 3 tokens [for, alias, in]; expression may be empty
-  // (partial header like `for item in` still drives root-level completions).
-  // Single-token identifier regex is explicitly allowed by project guidelines.
-  if (
-    tokens.length < 3 ||
-    tokens[0] !== 'for' ||
-    !/^[A-Za-z_]\w*$/.test(tokens[1] ?? '') ||
-    tokens[2] !== 'in'
-  ) {
-    return null;
-  }
-
-  const aliasName = tokens[1]!;
-
-  // Walk the ORIGINAL statementContent (not `content`) so returned offsets are
-  // relative to the caller's view of the string.
-  let cursor = 0;
-
-  // Skip optional leading whitespace-control marker in original.
-  const wsCtrlMatch = statementContent.match(/^\s*-\s*/);
-  if (wsCtrlMatch) cursor = wsCtrlMatch[0].length;
-
-  // Skip leading whitespace (\s-aware to handle \n/\r in multiline headers).
-  while (cursor < statementContent.length && /\s/.test(statementContent[cursor]!)) cursor++;
-
-  // Skip "for" keyword.
-  while (cursor < statementContent.length && !/\s/.test(statementContent[cursor]!)) cursor++;
-  // Skip whitespace.
-  while (cursor < statementContent.length && /\s/.test(statementContent[cursor]!)) cursor++;
-
-  // Alias starts here.
-  const aliasStart = cursor;
-  while (cursor < statementContent.length && /\w/.test(statementContent[cursor]!)) cursor++;
-  const aliasEnd = cursor;
-
-  // Skip whitespace before "in".
-  while (cursor < statementContent.length && /\s/.test(statementContent[cursor]!)) cursor++;
-
-  // Skip "in" keyword.
-  while (cursor < statementContent.length && !/\s/.test(statementContent[cursor]!)) cursor++;
-
-  // Skip whitespace before expression.
-  while (cursor < statementContent.length && /\s/.test(statementContent[cursor]!)) cursor++;
-
-  const iterableStart = cursor;
-  // Trim any trailing whitespace-control marker (-) from the expression
-  // (e.g. `{%- for item in users -%}` leaves a trailing ` -` in statementContent).
-  const iterableExpression = statementContent.slice(iterableStart).replace(/\s*-\s*$/, '');
-
-  return { aliasName, aliasStart, aliasEnd, iterableExpression, iterableStart };
+  return parseCoreTemplateForHeader(statementContent);
 }
 
 function getStatementExpressionFragment(
   statementPrefix: string
 ): { expression: string; offsetInExpression: number } | null {
-  const withoutLeadingTrimMarker = statementPrefix.replace(/^\s*-\s*/, '');
-  const trimmed = withoutLeadingTrimMarker.trim();
-  if (!trimmed) {
+  const expression = extractTemplateStatementExpression(statementPrefix);
+  if (!expression) {
     return null;
   }
-
-  const keywordMatch = trimmed.match(/^([A-Za-z_][\w]*)\b/);
-  if (!keywordMatch) {
-    return null;
-  }
-
-  const keyword = keywordMatch[1];
-  if (trimmed === keyword || !trimmed.includes(' ')) {
-    return null;
-  }
-
-  // Find the expression and where it starts in the TRIMMED string
-  let expression: string;
-
-  if (keyword === 'for') {
-    // Deterministic token-based extraction — no multi-token regex spanning
-    // unbounded content (per project guidelines).
-    const parsed = parseForHeader(trimmed);
-    if (!parsed) {
-      return null;
-    }
-    expression = parsed.iterableExpression;
-  } else {
-    // For if, elif, set, block, include - everything after keyword is the expression
-    expression = trimmed.replace(/^[A-Za-z_][\w]*\s+/, '');
-  }
-
-  // Expression might be empty if cursor is right after keyword/operator
-  // The cursor is at the end of statementPrefix
-  // Calculate how much of the expression has been typed
-  const offsetInExpression = expression.length;
 
   return {
-    expression,
-    offsetInExpression,
+    expression: expression.expression,
+    offsetInExpression: expression.expression.length,
   };
 }
 
@@ -1236,12 +1153,13 @@ export class IntellisenseProvider {
         }
       }
 
-      const expressionPart = statementContent.replace(/^[A-Za-z_][\w]*\b\s*/, '');
-      if (!expressionPart) {
+      const statementExpression = extractTemplateStatementExpression(statementContent);
+      if (!statementExpression) {
         return null;
       }
 
-      const expressionPartStart = statementContent.length - expressionPart.length;
+      const expressionPart = statementExpression.expression;
+      const expressionPartStart = statementExpression.startOffset;
       const relativeOffset = offset - statementOffset - expressionPartStart;
 
       const filterName = getFilterNameAtOffset(expressionPart, Math.max(0, relativeOffset));
@@ -1570,10 +1488,11 @@ export class IntellisenseProvider {
       }
     }
 
-    const expressionPart = statementContent.replace(/^[A-Za-z_][\w]*\b\s*/, '');
-    if (!expressionPart) return null;
+    const statementExpression = extractTemplateStatementExpression(statementContent);
+    if (!statementExpression) return null;
 
-    const expressionPartStart = statementContent.length - expressionPart.length;
+    const expressionPart = statementExpression.expression;
+    const expressionPartStart = statementExpression.startOffset;
     const relativeOffset = offset - statementOffset - expressionPartStart;
     const [variableSegment] = expressionPart.split('|');
     if (expressionPart.indexOf('|') >= 0 && relativeOffset >= expressionPart.indexOf('|')) {

@@ -1,9 +1,12 @@
 import {
+  extractTemplateStatementExpression,
   getBuiltinFilterNames,
+  parseTemplateForHeader,
   resolveSemanticHostLanguage,
   resolveSemanticZoneByHostLanguage,
   resolveSemanticZone,
   SchemaValidator,
+  validateTemplateStatementSyntax,
   type JSONSchema,
 } from '@templjs/core';
 import type { IntellisenseDelimiters } from './intellisense-provider.js';
@@ -103,12 +106,6 @@ interface ParsedStatementContent {
   contentStartOffset: number;
 }
 
-interface StatementValidationResult {
-  valid: boolean;
-  message?: string;
-  suggestion?: string;
-}
-
 function getDelimiters(options?: DiagnosticOptions): TemplateDelimiters {
   return resolveDelimiters(options?.delimiters);
 }
@@ -150,7 +147,7 @@ function parseStatementTag(content: string, delimiters: TemplateDelimiters): str
   const inner = content
     .slice(delimiters.statementStart.length, content.length - delimiters.statementEnd.length)
     .trim();
-  return tokenize(inner)[0] ?? '';
+  return inner.split(/\s+/).find((token) => token.length > 0 && token !== '-') ?? '';
 }
 
 function parseStatementContent(
@@ -167,130 +164,6 @@ function parseStatementContent(
     block.start + delimiters.statementStart.length + (trimOffset >= 0 ? trimOffset : 0);
 
   return { statementContent, contentStartOffset };
-}
-
-// ---------------------------------------------------------------------------
-// Deterministic token-based statement shape validators
-// ---------------------------------------------------------------------------
-
-/**
- * Tokenise statement content, discarding standalone `-` whitespace-control
- * markers that may appear at the boundaries of the inner text after the
- * enclosing delimiters have been sliced off (e.g. `{%- … %}` or `{% … -%}`).
- */
-function tokenize(s: string): string[] {
-  return s.split(/\s+/).filter((t) => t.length > 0 && t !== '-');
-}
-
-function isIdentifier(token: string | undefined): boolean {
-  return token !== undefined && /^[A-Za-z_]\w*$/.test(token);
-}
-
-function isBlockName(token: string | undefined): boolean {
-  return token !== undefined && /^[A-Za-z_][\w-]*$/.test(token);
-}
-
-function validateStatementSyntax(tag: string, statementContent: string): StatementValidationResult {
-  const tokens = tokenize(statementContent);
-
-  switch (tag) {
-    case 'for':
-      // for <name> in <expression…>  →  minimum 4 tokens
-      if (tokens.length < 4 || !isIdentifier(tokens[1]) || tokens[2] !== 'in') {
-        return {
-          valid: false,
-          message: 'Invalid for statement: expected "for <name> in <expression>"',
-          suggestion: 'Use `{% for item in items %}`',
-        };
-      }
-      return { valid: true };
-
-    case 'if':
-      // if <expression>  →  at least 2 tokens
-      if (tokens.length < 2) {
-        return {
-          valid: false,
-          message: 'Invalid if statement: expected "if <expression>"',
-          suggestion: 'Use `{% if condition %}`',
-        };
-      }
-      return { valid: true };
-
-    case 'while':
-      if (tokens.length < 2) {
-        return {
-          valid: false,
-          message: 'Invalid while statement: expected "while <expression>"',
-          suggestion: 'Use `{% while condition %}`',
-        };
-      }
-      return { valid: true };
-
-    case 'switch':
-      if (tokens.length < 2) {
-        return {
-          valid: false,
-          message: 'Invalid switch statement: expected "switch <expression>"',
-          suggestion: 'Use `{% switch value %}`',
-        };
-      }
-      return { valid: true };
-
-    case 'block':
-      // block <name>  →  exactly 2 tokens, name is a valid identifier (allows hyphens)
-      if (tokens.length !== 2 || !isBlockName(tokens[1])) {
-        return {
-          valid: false,
-          message: 'Invalid block statement: expected "block <name>"',
-          suggestion: 'Use `{% block content %}`',
-        };
-      }
-      return { valid: true };
-
-    case 'set': {
-      // set <name>  or  set <name> = <expression…>
-      if (!isIdentifier(tokens[1])) {
-        return {
-          valid: false,
-          message: 'Invalid set statement: expected "set <name>" or "set <name> = <expression>"',
-          suggestion: 'Use `{% set var = value %}` or `{% set var %}`',
-        };
-      }
-      // If there are tokens beyond the name they must form  = <expr>
-      if (tokens.length > 2 && (tokens[2] !== '=' || tokens.length < 4)) {
-        return {
-          valid: false,
-          message: 'Invalid set statement: expected "set <name>" or "set <name> = <expression>"',
-          suggestion: 'Use `{% set var = value %}` or `{% set var %}`',
-        };
-      }
-      return { valid: true };
-    }
-
-    case 'case':
-      if (tokens.length < 2) {
-        return {
-          valid: false,
-          message: 'Invalid case statement: expected "case <value>"',
-          suggestion: 'Use `{% case value %}`',
-        };
-      }
-      return { valid: true };
-
-    case 'default':
-      // default takes no arguments
-      if (tokens.length !== 1) {
-        return {
-          valid: false,
-          message: 'Invalid default statement: expected "default" with no arguments',
-          suggestion: 'Use `{% default %}`',
-        };
-      }
-      return { valid: true };
-
-    default:
-      return { valid: true };
-  }
 }
 
 function extractVariableReferences(content: string): VariableReference[] {
@@ -448,7 +321,7 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
       const tagRelativeOffset = statementContent.search(/[A-Za-z_]/);
       const tagStartOffset = contentStartOffset + (tagRelativeOffset >= 0 ? tagRelativeOffset : 0);
       const tagEndOffset = tagStartOffset + tag.length;
-      const syntaxValidation = validateStatementSyntax(tag, statementContent);
+      const syntaxValidation = validateTemplateStatementSyntax(tag, statementContent);
       if (!syntaxValidation.valid) {
         diagnostics.push({
           message: syntaxValidation.message ?? `Invalid ${tag} statement`,
@@ -497,26 +370,8 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
       const iterableExpression = matchingScope?.iterableExpression;
       const validator = getValidatorForOffset(block.start);
       if (iterableExpression && validator) {
-        // Scan statementContent past exactly 3 tokens ('for', alias, 'in') to find
-        // where the iterable expression starts. Using a direct character walk avoids
-        // indexOf ambiguity when the alias name equals the iterable root
-        // (e.g. `for users in users`). Single-character comparisons only — no
-        // multi-token regex over unbounded content.
-        let cur = 0;
-        let tokensSkipped = 0;
-        while (tokensSkipped < 3 && cur < statementContent.length) {
-          // skip inter-token whitespace (including \n/\r) and standalone '-' markers
-          while (
-            cur < statementContent.length &&
-            (/\s/.test(statementContent[cur]!) || statementContent[cur] === '-')
-          )
-            cur++;
-          // skip one non-whitespace token
-          while (cur < statementContent.length && !/\s/.test(statementContent[cur]!)) cur++;
-          tokensSkipped++;
-        }
-        while (cur < statementContent.length && /\s/.test(statementContent[cur]!)) cur++;
-        const iterableStart = cur;
+        const parsedForHeader = parseTemplateForHeader(statementContent);
+        const iterableStart = parsedForHeader !== null ? parsedForHeader.iterableStart : 0;
         const filterRefs = extractFilters(iterableExpression);
         for (const ref of extractVariableReferences(iterableExpression)) {
           const overlapsFilter = filterRefs.some(
@@ -548,8 +403,13 @@ export function collectDiagnostics(text: string, options?: DiagnosticOptions): D
 
       const validator = getValidatorForOffset(block.start);
       if (validator && statementContent.length > 0) {
-        const expressionPart = statementContent.replace(/^[A-Za-z_][\w]*\b\s*/, '');
-        const expressionPartStart = statementContent.length - expressionPart.length;
+        const statementExpression = extractTemplateStatementExpression(statementContent);
+        if (!statementExpression) {
+          continue;
+        }
+
+        const expressionPart = statementExpression.expression;
+        const expressionPartStart = statementExpression.startOffset;
         for (const ref of extractVariableReferences(expressionPart)) {
           const scopedPath = resolveScopedPath(ref.path, block.start, forScopes);
           if (!isPathValidInContext(scopedPath, validator)) {
