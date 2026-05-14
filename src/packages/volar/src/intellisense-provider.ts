@@ -269,6 +269,55 @@ function coerceCandidates(items: CandidateItem[]): CompletionItem[] {
   }));
 }
 
+function getCandidateStartOffset(item: CandidateItem): number {
+  const metadata = item.metadata as { startOffset?: unknown } | undefined;
+  const startOffset = metadata?.startOffset;
+  return typeof startOffset === 'number' ? startOffset : Number.NEGATIVE_INFINITY;
+}
+
+function dedupeCandidatesByNearestLabel(items: CandidateItem[]): CandidateItem[] {
+  if (items.length <= 1) {
+    return items;
+  }
+
+  const nearestByLabel = new Map<string, CandidateItem>();
+  for (const item of items) {
+    const key = item.label.toLowerCase();
+    const current = nearestByLabel.get(key);
+    if (!current || getCandidateStartOffset(item) >= getCandidateStartOffset(current)) {
+      nearestByLabel.set(key, item);
+    }
+  }
+
+  return items.filter((item) => nearestByLabel.get(item.label.toLowerCase()) === item);
+}
+
+function applyFilterSignatureMetadata(
+  items: CompletionItem[],
+  filters: FilterSignature[]
+): CompletionItem[] {
+  if (items.length === 0) {
+    return items;
+  }
+
+  return items.map((item) => {
+    if (item.kind !== 'filter') {
+      return item;
+    }
+
+    const signature = resolveFilterSignature(filters, item.label);
+    if (!signature) {
+      return item;
+    }
+
+    return {
+      ...item,
+      detail: signature.returnType,
+      documentation: signature.description,
+    };
+  });
+}
+
 function getKeywordCompletions(keywords: string[]): CompletionItem[] {
   return keywords.map((keyword) => ({
     label: keyword,
@@ -695,7 +744,6 @@ function getExpressionCompletionsAtOffset(
     const candidates = semantifyServices.planCandidates(
       {
         type: 'filterCandidates',
-        typedPrefix: filterPrefix,
       },
       {
         text: fullText,
@@ -709,9 +757,11 @@ function getExpressionCompletionsAtOffset(
       .map((f) => ({
         label: f.name,
         kind: 'filter' as const,
-        detail: f.description,
       }));
-    const allFilters = mergeUniqueCompletions(coerceCandidates(candidates), customFilterItems);
+    const allFilters = applyFilterSignatureMetadata(
+      mergeUniqueCompletions(coerceCandidates(candidates), customFilterItems),
+      filters
+    );
     return filterAndSortCompletions(allFilters, filterPrefix);
   }
 
@@ -760,7 +810,6 @@ function getExpressionCompletionsAtOffset(
     const localBindings = semantifyServices.planCandidates(
       {
         type: 'symbolCandidates',
-        typedPrefix: typedPath,
       },
       {
         text: fullText,
@@ -774,7 +823,10 @@ function getExpressionCompletionsAtOffset(
       '',
       semanticOptions
     );
-    const merged = mergeUniqueCompletions(coerceCandidates(localBindings), schemaRoots);
+    const merged = mergeUniqueCompletions(
+      coerceCandidates(dedupeCandidatesByNearestLabel(localBindings)),
+      schemaRoots
+    );
     logRawDuplicateLabels(merged);
     return filterAndSortCompletions(merged, typedPath);
   }
@@ -805,7 +857,6 @@ function getExpressionCompletionsAtOffset(
   const localBindings = semantifyServices.planCandidates(
     {
       type: 'symbolCandidates',
-      typedPrefix: prefix,
     },
     {
       text: fullText,
@@ -815,7 +866,10 @@ function getExpressionCompletionsAtOffset(
   );
   // Also get schema root properties to provide complete symbol context
   const schemaRoots = semanticReadAdapter.getChildCompletions(semanticContext, '', semanticOptions);
-  const merged = mergeUniqueCompletions(coerceCandidates(localBindings), schemaRoots);
+  const merged = mergeUniqueCompletions(
+    coerceCandidates(dedupeCandidatesByNearestLabel(localBindings)),
+    schemaRoots
+  );
   logRawDuplicateLabels(merged);
   return filterAndSortCompletions(merged, prefix);
 }
