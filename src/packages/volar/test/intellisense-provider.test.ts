@@ -242,6 +242,83 @@ describe('IntellisenseProvider', () => {
     expect((upper?.documentation?.length ?? 0) > 0).toBe(true);
   });
 
+  it('falls back invalid semantify candidate kinds to variable completions', () => {
+    const mockAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => null,
+    };
+    const mockSemantify: SemantifyServices = {
+      resolveContext: () => ({
+        regions: [],
+        bindings: [],
+      }),
+      resolveReferences: () => [],
+      planCandidates: (intent) => {
+        if (intent.type === 'symbolCandidates') {
+          return [
+            {
+              label: 'fallbackKind',
+              kind: 'plugin-kind',
+            },
+          ];
+        }
+        return [];
+      },
+    };
+
+    const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
+    const items = providerWithSemantify.getCompletions('{{ fallback }}', 11, {
+      schema: sampleSchema,
+    });
+
+    expect(items.find((item) => item.label === 'fallbackKind')?.kind).toBe('variable');
+  });
+
+  it('preserves unknown semantify filter candidates without signature metadata', () => {
+    const mockAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => null,
+    };
+    const mockSemantify: SemantifyServices = {
+      resolveContext: () => ({
+        regions: [],
+        bindings: [],
+      }),
+      resolveReferences: () => [],
+      planCandidates: (intent) => {
+        if (intent.type === 'filterCandidates') {
+          return [
+            {
+              label: 'pluginFilter',
+              kind: 'filter',
+              detail: 'plugin detail',
+            },
+          ];
+        }
+        return [];
+      },
+    };
+
+    const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
+    const items = providerWithSemantify.getCompletions('{{ user.name | plugin }}', 23, {
+      schema: sampleSchema,
+    });
+
+    const pluginFilter = items.find((item) => item.label === 'pluginFilter');
+    expect(pluginFilter?.detail).toBe('plugin detail');
+    expect(pluginFilter?.documentation).toBeUndefined();
+  });
+
   it('matches filter completions by substring while typing after pipe', () => {
     const items = provider.getCompletions('{{ user.name | ow }}', 19, {
       schema: sampleSchema,
