@@ -14,6 +14,8 @@ actual: 0
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/32
+  evidence:
+    - '[[record-20260514-223855-086-expression-ast-contract-and-semantic-ir]]'
 ---
 
 ## Goal

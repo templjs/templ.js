@@ -11,6 +11,9 @@ status_reason: needs-triage
 priority: medium
 estimated: 5
 actual: 0
+links:
+  evidence:
+    - '[[record-20260514-223855-073-optimize-context-graph-query-indexes-and-ordering]]'
 ---
 
 ## Goal

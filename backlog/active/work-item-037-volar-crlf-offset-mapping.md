@@ -11,6 +11,9 @@ status_reason: prioritized
 priority: medium
 estimated: 2
 actual: 0
+links:
+  evidence:
+    - '[[record-20260514-223855-037-volar-crlf-offset-mapping]]'
 ---
 
 ## Goal

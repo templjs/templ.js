@@ -11,6 +11,9 @@ status_reason: needs-triage
 priority: medium
 estimated: 6
 actual: 0
+links:
+  evidence:
+    - '[[record-20260514-223855-069-add-shared-schema-analysis-cache-in-core]]'
 ---
 
 ## Goal

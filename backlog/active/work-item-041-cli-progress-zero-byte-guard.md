@@ -11,6 +11,9 @@ status_reason: prioritized
 priority: low
 estimated: 1
 actual: 0
+links:
+  evidence:
+    - '[[record-20260514-223855-041-cli-progress-zero-byte-guard]]'
 ---
 
 ## Goal

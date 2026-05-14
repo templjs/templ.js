@@ -11,6 +11,9 @@ status_reason: needs-triage
 priority: high
 estimated: 24
 actual: 0
+links:
+  evidence:
+    - '[[record-20260514-223855-085-structured-expression-parser-ast-migration-epic]]'
 ---
 
 ## Goal

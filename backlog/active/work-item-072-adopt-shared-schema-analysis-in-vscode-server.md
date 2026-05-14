@@ -11,6 +11,9 @@ status_reason: needs-triage
 priority: medium
 estimated: 4
 actual: 0
+links:
+  evidence:
+    - '[[record-20260514-223855-072-adopt-shared-schema-analysis-in-vscode-server]]'
 ---
 
 ## Goal

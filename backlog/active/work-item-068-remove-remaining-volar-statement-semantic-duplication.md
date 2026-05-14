@@ -14,6 +14,8 @@ actual: 4
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/125
+  evidence:
+    - '[[record-20260514-223855-068-remove-remaining-volar-statement-semantic-duplication]]'
 ---
 
 ## Goal

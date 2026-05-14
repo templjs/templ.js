@@ -11,6 +11,9 @@ status_reason: prioritized
 priority: high
 estimated: 10
 actual: 0
+links:
+  evidence:
+    - '[[record-20260514-223855-090-typedoc-coverage-ratcheting]]'
 ---
 
 ## Goal

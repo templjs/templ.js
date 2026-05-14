@@ -11,6 +11,9 @@ status_reason: needs-triage
 priority: medium
 estimated: 3
 actual: 0
+links:
+  evidence:
+    - '[[record-20260514-223855-083-document-benchmark-workflow-semantic-ownership-schema-cache-and-test-conventions]]'
 ---
 
 ## Goal

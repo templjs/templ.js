@@ -13,6 +13,8 @@ actual: 6
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/123
+  evidence:
+    - '[[record-20260514-223855-106-remove-inprocess-yaml-service-and-delegate-to-volar-virtual-code]]'
 ---
 
 ## Goal
