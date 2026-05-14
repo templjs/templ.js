@@ -1272,12 +1272,14 @@ export class IntellisenseProvider {
             Math.max(0, cursorInIterable)
           );
           if (iterablePath) {
-            const localAlias = resolveLocalAliasReference(
-              this.semanticReadAdapter,
-              text,
-              iterablePath,
-              offset
-            );
+            const localAlias =
+              resolveLocalAliasReferenceFromSemantify(
+                this.semantifyServices,
+                text,
+                iterablePath,
+                offset,
+                delimiters
+              ) ?? resolveLocalAliasReference(this.semanticReadAdapter, text, iterablePath, offset);
             if (localAlias?.isAliasTokenOnly) {
               options?.debugLog?.(
                 `[intellisense] hover alias=${localAlias.alias} source=statement-iterable-local result=present`
@@ -1310,12 +1312,14 @@ export class IntellisenseProvider {
 
       const variablePath = getVariablePathAtOffset(expressionPart, Math.max(0, relativeOffset));
       if (variablePath) {
-        const localAlias = resolveLocalAliasReference(
-          this.semanticReadAdapter,
-          text,
-          variablePath,
-          offset
-        );
+        const localAlias =
+          resolveLocalAliasReferenceFromSemantify(
+            this.semantifyServices,
+            text,
+            variablePath,
+            offset,
+            delimiters
+          ) ?? resolveLocalAliasReference(this.semanticReadAdapter, text, variablePath, offset);
         if (localAlias?.isAliasTokenOnly) {
           options?.debugLog?.(
             `[intellisense] hover alias=${localAlias.alias} source=statement-expression-local result=present`

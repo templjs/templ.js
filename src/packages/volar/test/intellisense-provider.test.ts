@@ -1173,6 +1173,191 @@ describe('IntellisenseProvider', () => {
     });
   });
 
+  it('resolves hover via semantify references for statement-expression alias when adapter returns null', () => {
+    const text =
+      '{% for relationship in relationships %}{% if relationship %}ok{% endif %}{% endfor %}';
+    const offset = text.indexOf('{% if relationship %}') + '{% if '.length + 2;
+    const aliasDeclarationStart = text.indexOf('relationship in');
+
+    const mockAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => null,
+    };
+
+    const mockSemantify: SemantifyServices = {
+      resolveContext: () => ({ regions: [], bindings: [] }),
+      resolveReferences: () => [
+        {
+          kind: 'localBinding',
+          rawPath: 'relationship',
+          range: {
+            startOffset: aliasDeclarationStart,
+            endOffset: aliasDeclarationStart + 'relationship'.length,
+          },
+        },
+      ],
+      planCandidates: () => [],
+    };
+
+    const providerWithSemantifyRefs = new IntellisenseProvider(mockAdapter, mockSemantify);
+    const hover = providerWithSemantifyRefs.getHover(text, offset, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(hover?.contents).toBe('relationship: local loop alias');
+  });
+
+  it('resolves hover via semantify references for statement-expression alias with unambiguous prefix cursor', () => {
+    const text = '{% for relationship in relationships %}{% if relati %}ok{% endif %}{% endfor %}';
+    const offset = text.indexOf('{% if relati %}') + '{% if '.length + 2;
+    const aliasDeclarationStart = text.indexOf('relationship in');
+
+    const mockAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => null,
+    };
+
+    const mockSemantify: SemantifyServices = {
+      resolveContext: () => ({ regions: [], bindings: [] }),
+      resolveReferences: () => [
+        {
+          kind: 'localBinding',
+          rawPath: 'relationship',
+          range: {
+            startOffset: aliasDeclarationStart,
+            endOffset: aliasDeclarationStart + 'relationship'.length,
+          },
+        },
+      ],
+      planCandidates: () => [],
+    };
+
+    const providerWithSemantifyRefs = new IntellisenseProvider(mockAdapter, mockSemantify);
+    const hover = providerWithSemantifyRefs.getHover(text, offset, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(hover?.contents).toBe('relati: local loop alias');
+  });
+
+  it('resolves hover via semantify references for statement-iterable alias when adapter returns null', () => {
+    const text = '{% for item in items %}{% for sub in item %}{{ sub }}{% endfor %}{% endfor %}';
+    const innerForStart = text.indexOf('{% for sub in item %}');
+    const iterableStart = innerForStart + '{% for sub in '.length;
+    const offset = iterableStart + 2;
+    const aliasDeclarationStart = text.indexOf('item in');
+
+    const mockAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => null,
+    };
+
+    const mockSemantify: SemantifyServices = {
+      resolveContext: () => ({ regions: [], bindings: [] }),
+      resolveReferences: () => [
+        {
+          kind: 'localBinding',
+          rawPath: 'item',
+          range: {
+            startOffset: aliasDeclarationStart,
+            endOffset: aliasDeclarationStart + 'item'.length,
+          },
+        },
+      ],
+      planCandidates: () => [],
+    };
+
+    const providerWithSemantifyRefs = new IntellisenseProvider(mockAdapter, mockSemantify);
+    const hover = providerWithSemantifyRefs.getHover(text, offset, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(hover?.contents).toBe('item: local template variable');
+  });
+
+  it('falls back to adapter hover path for statement-iterable alias when semantify returns no references', () => {
+    const text = '{% for item in items %}{% for sub in item %}{{ sub }}{% endfor %}{% endfor %}';
+    const innerForStart = text.indexOf('{% for sub in item %}');
+    const iterableStart = innerForStart + '{% for sub in '.length;
+    const offset = iterableStart + 2;
+
+    const mockAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => null,
+    };
+
+    const mockSemantify: SemantifyServices = {
+      resolveContext: () => ({ regions: [], bindings: [] }),
+      resolveReferences: () => [],
+      planCandidates: () => [],
+    };
+
+    const providerWithEmptySemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
+    const hover = providerWithEmptySemantify.getHover(text, offset, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(hover).toBeNull();
+  });
+
+  it('falls back to adapter hover path for statement-expression alias when semantify returns no references', () => {
+    const text = '{% for item in items %}{% if item %}ok{% endif %}{% endfor %}';
+    const offset = text.indexOf('{% if item %}') + '{% if '.length + 2;
+
+    const mockAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => null,
+    };
+
+    const mockSemantify: SemantifyServices = {
+      resolveContext: () => ({ regions: [], bindings: [] }),
+      resolveReferences: () => [],
+      planCandidates: () => [],
+    };
+
+    const providerWithEmptySemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
+    const hover = providerWithEmptySemantify.getHover(text, offset, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(hover).toBeNull();
+  });
+
   it('resolves statement expression property access through schema navigation', () => {
     const text =
       '{% for relationship in relationships %}{% if relationship.name %}ok{% endif %}{% endfor %}';
@@ -1450,6 +1635,30 @@ describe('IntellisenseProvider', () => {
     });
 
     expect(hover?.contents).toContain('Convert string to uppercase');
+  });
+
+  it('returns null hover for unregistered filter in statement expression', () => {
+    const text = '{% if value | unknownFilterXyz %}body{% endif %}';
+    const offset = text.indexOf('unknownFilterXyz') + 4;
+
+    const hover = provider.getHover(text, offset, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+      documentUri: 'file:///workspace/project.md.tpl',
+      debugLog: () => {},
+    });
+
+    expect(hover).toBeNull();
+  });
+
+  it('returns null hover when cursor is in plain text outside any template tag', () => {
+    const hover = provider.getHover('Hello world {{ name }}', 3, {
+      schema: sampleSchema,
+      schemaUri: 'file:///schema.json',
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(hover).toBeNull();
   });
 
   it('resolves nested frontmatter key paths (scope.type) for hover and definition', () => {
