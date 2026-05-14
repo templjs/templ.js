@@ -219,6 +219,63 @@ function resolveLocalAliasReference(
   };
 }
 
+function toSemantifyDelimiters(delimiters: IntellisenseDelimiters): SemantifyDelimiterConfigInput {
+  return {
+    statementStart: delimiters.statementStart,
+    statementEnd: delimiters.statementEnd,
+    expressionStart: delimiters.expressionStart,
+    expressionEnd: delimiters.expressionEnd,
+    commentStart: delimiters.commentStart,
+    commentEnd: delimiters.commentEnd,
+  };
+}
+
+function resolveLocalAliasReferenceFromSemantify(
+  semantifyServices: SemantifyServices,
+  text: string,
+  variablePath: string,
+  offset: number,
+  delimiters: IntellisenseDelimiters
+): LocalAliasResolution | null {
+  const alias = variablePath.split(/[.[]/, 1)[0] ?? variablePath;
+  if (!alias) {
+    return null;
+  }
+  const isAliasTokenOnly = /^[A-Za-z_][\w]*$/.test(variablePath);
+
+  const references = semantifyServices.resolveReferences({
+    text,
+    offset,
+    delimiters: toSemantifyDelimiters(delimiters),
+  });
+
+  const exactBinding = references.find(
+    (reference) => reference.kind === 'localBinding' && reference.rawPath === alias
+  );
+  const localBinding =
+    exactBinding ??
+    (isAliasTokenOnly
+      ? (() => {
+          const prefixMatches = references.filter(
+            (reference) => reference.kind === 'localBinding' && reference.rawPath.startsWith(alias)
+          );
+          return prefixMatches.length === 1 ? prefixMatches[0] : null;
+        })()
+      : null);
+  if (!localBinding) {
+    return null;
+  }
+
+  return {
+    alias,
+    declaration: {
+      start: localBinding.range.startOffset,
+      end: localBinding.range.endOffset,
+    },
+    isAliasTokenOnly,
+  };
+}
+
 function buildSemanticQueryContext(
   text: string,
   offset: number,
@@ -1215,12 +1272,14 @@ export class IntellisenseProvider {
             Math.max(0, cursorInIterable)
           );
           if (iterablePath) {
-            const localAlias = resolveLocalAliasReference(
-              this.semanticReadAdapter,
-              text,
-              iterablePath,
-              offset
-            );
+            const localAlias =
+              resolveLocalAliasReferenceFromSemantify(
+                this.semantifyServices,
+                text,
+                iterablePath,
+                offset,
+                delimiters
+              ) ?? resolveLocalAliasReference(this.semanticReadAdapter, text, iterablePath, offset);
             if (localAlias?.isAliasTokenOnly) {
               options?.debugLog?.(
                 `[intellisense] hover alias=${localAlias.alias} source=statement-iterable-local result=present`
@@ -1253,12 +1312,14 @@ export class IntellisenseProvider {
 
       const variablePath = getVariablePathAtOffset(expressionPart, Math.max(0, relativeOffset));
       if (variablePath) {
-        const localAlias = resolveLocalAliasReference(
-          this.semanticReadAdapter,
-          text,
-          variablePath,
-          offset
-        );
+        const localAlias =
+          resolveLocalAliasReferenceFromSemantify(
+            this.semantifyServices,
+            text,
+            variablePath,
+            offset,
+            delimiters
+          ) ?? resolveLocalAliasReference(this.semanticReadAdapter, text, variablePath, offset);
         if (localAlias?.isAliasTokenOnly) {
           options?.debugLog?.(
             `[intellisense] hover alias=${localAlias.alias} source=statement-expression-local result=present`
@@ -1293,12 +1354,14 @@ export class IntellisenseProvider {
 
     const variablePath = getVariablePathAtOffset(content, Math.max(0, relativeOffset));
     if (variablePath) {
-      const localAlias = resolveLocalAliasReference(
-        this.semanticReadAdapter,
-        text,
-        variablePath,
-        offset
-      );
+      const localAlias =
+        resolveLocalAliasReferenceFromSemantify(
+          this.semantifyServices,
+          text,
+          variablePath,
+          offset,
+          delimiters
+        ) ?? resolveLocalAliasReference(this.semanticReadAdapter, text, variablePath, offset);
       if (localAlias?.isAliasTokenOnly) {
         return { contents: `${localAlias.alias}: local loop alias` };
       }
@@ -1459,12 +1522,14 @@ export class IntellisenseProvider {
       const cursorPrefix = variableSegment.slice(0, Math.max(0, relativeOffset + 1));
       const cursorIsAliasToken = !/[.[]/.test(cursorPrefix);
 
-      const localAlias = resolveLocalAliasReference(
-        this.semanticReadAdapter,
-        text,
-        variablePath,
-        offset
-      );
+      const localAlias =
+        resolveLocalAliasReferenceFromSemantify(
+          this.semantifyServices,
+          text,
+          variablePath,
+          offset,
+          delimiters
+        ) ?? resolveLocalAliasReference(this.semanticReadAdapter, text, variablePath, offset);
       if (localAlias && cursorIsAliasToken && options?.documentUri) {
         options?.debugLog?.(
           `[intellisense] definition source=local-alias variable=${variablePath} uri=${options.documentUri}`
@@ -1540,12 +1605,14 @@ export class IntellisenseProvider {
         if (iterablePath) {
           const cursorPrefix = iterableExpression.slice(0, Math.max(0, cursorInIterable + 1));
           const cursorIsAliasToken = !/[.[]/.test(cursorPrefix);
-          const localAlias = resolveLocalAliasReference(
-            this.semanticReadAdapter,
-            text,
-            iterablePath,
-            offset
-          );
+          const localAlias =
+            resolveLocalAliasReferenceFromSemantify(
+              this.semantifyServices,
+              text,
+              iterablePath,
+              offset,
+              delimiters
+            ) ?? resolveLocalAliasReference(this.semanticReadAdapter, text, iterablePath, offset);
           if (localAlias && cursorIsAliasToken && options?.documentUri) {
             options?.debugLog?.(
               `[intellisense] definition source=statement-local-alias variable=${iterablePath} uri=${options.documentUri}`
@@ -1583,12 +1650,14 @@ export class IntellisenseProvider {
     const cursorPrefix = variableSegment.slice(0, Math.max(0, relativeOffset + 1));
     const cursorIsAliasToken = !/[.[]/.test(cursorPrefix);
 
-    const localAlias = resolveLocalAliasReference(
-      this.semanticReadAdapter,
-      text,
-      variablePath,
-      offset
-    );
+    const localAlias =
+      resolveLocalAliasReferenceFromSemantify(
+        this.semantifyServices,
+        text,
+        variablePath,
+        offset,
+        delimiters
+      ) ?? resolveLocalAliasReference(this.semanticReadAdapter, text, variablePath, offset);
     if (localAlias && cursorIsAliasToken && options?.documentUri) {
       options?.debugLog?.(
         `[intellisense] definition source=statement-local-alias variable=${variablePath} uri=${options.documentUri}`
