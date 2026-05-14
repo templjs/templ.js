@@ -24,6 +24,7 @@ import {
 } from './context-graph-adapter.js';
 import {
   createSemantifyServices,
+  type CandidateItem,
   type DelimiterConfigInput as SemantifyDelimiterConfigInput,
   type SemantifyServices,
 } from '@templjs/semantify';
@@ -250,12 +251,21 @@ function resolveSemanticQueryZone(
   return resolveSemanticZoneByHostLanguage(text, offset, hostLanguage);
 }
 
-function getFilterCompletions(filters: FilterSignature[]): CompletionItem[] {
-  return filters.map((filter) => ({
-    label: filter.name,
-    kind: 'filter',
-    detail: filter.returnType,
-    documentation: filter.description,
+const VALID_COMPLETION_KINDS = new Set<CompletionItem['kind']>([
+  'variable',
+  'filter',
+  'keyword',
+  'property',
+]);
+
+function coerceCandidates(items: CandidateItem[]): CompletionItem[] {
+  return items.map((item) => ({
+    label: item.label,
+    kind: VALID_COMPLETION_KINDS.has(item.kind as CompletionItem['kind'])
+      ? (item.kind as CompletionItem['kind'])
+      : 'variable',
+    detail: item.detail,
+    documentation: item.documentation,
   }));
 }
 
@@ -306,14 +316,16 @@ function mergeUniqueCompletions(
     return primary;
   }
 
-  const seen = new Set(primary.map((item) => item.label.toLowerCase()));
+  // Combine primary and secondary, keeping duplicates within each source
+  // but avoiding duplicates across sources
+  const seenFromPrimary = new Set(primary.map((item) => item.label.toLowerCase()));
   const merged = [...primary];
+
   for (const item of secondary) {
     const key = item.label.toLowerCase();
-    if (seen.has(key)) {
-      continue;
+    if (seenFromPrimary.has(key)) {
+      continue; // Skip items from secondary that are already in primary
     }
-    seen.add(key);
     merged.push(item);
   }
 
@@ -337,70 +349,6 @@ function dedupeCompletionItems(items: CompletionItem[]): CompletionItem[] {
   }
 
   return deduped;
-}
-
-function getInScopeAliasCompletions(
-  semantifyServices: SemantifyServices,
-  text: string,
-  offset: number,
-  delimiters: IntellisenseDelimiters
-): CompletionItem[] {
-  const semantifyDelimiters: SemantifyDelimiterConfigInput = {
-    statementStart: delimiters.statementStart,
-    statementEnd: delimiters.statementEnd,
-    expressionStart: delimiters.expressionStart,
-    expressionEnd: delimiters.expressionEnd,
-    commentStart: delimiters.commentStart,
-    commentEnd: delimiters.commentEnd,
-  };
-
-  const bindings = semantifyServices.resolveContext({
-    text,
-    offset,
-    delimiters: semantifyDelimiters,
-  }).bindings;
-  const deduped = dedupeBindingsByNameKeepNearest(bindings);
-
-  return deduped.map((binding) => ({
-    label: binding.name,
-    kind: 'variable' as const,
-    detail: getAliasDetail(binding),
-  }));
-}
-
-function dedupeBindingsByNameKeepNearest(
-  bindings: Array<{ name: string; kind: string; metadata?: Record<string, unknown> }>
-): Array<{ name: string; kind: string; metadata?: Record<string, unknown> }> {
-  const seen = new Set<string>();
-  const deduped: Array<{ name: string; kind: string; metadata?: Record<string, unknown> }> = [];
-
-  for (const binding of bindings) {
-    const key = binding.name.toLowerCase();
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    deduped.push(binding);
-  }
-
-  return deduped;
-}
-
-function getAliasDetail(binding: { kind: string; metadata?: Record<string, unknown> }): string {
-  if (binding.kind === 'custom') {
-    return 'custom binding';
-  }
-
-  const bindingKind =
-    typeof binding.metadata?.bindingKind === 'string' ? binding.metadata.bindingKind : undefined;
-  if (bindingKind === 'set-variable') {
-    return 'local template variable';
-  }
-  if (bindingKind?.startsWith('for-')) {
-    return 'local loop alias';
-  }
-
-  return 'local binding';
 }
 
 function summarizeDuplicateLabels(items: CompletionItem[]): string[] {
@@ -712,9 +660,12 @@ function getCompletionPrefix(text: string): string {
 
 function getExpressionCompletionsAtOffset(
   semanticReadAdapter: SemanticReadAdapter,
+  semantifyServices: SemantifyServices,
+  fullText: string,
+  fullOffset: number,
+  delimiters: IntellisenseDelimiters,
   content: string,
   offsetInContent: number,
-  localAliasItems: CompletionItem[],
   filters: FilterSignature[],
   semanticContext: SemanticQueryContext,
   semanticOptions: {
@@ -729,10 +680,39 @@ function getExpressionCompletionsAtOffset(
 ): CompletionItem[] {
   const prefix = getCompletionPrefix(content.slice(0, offsetInContent));
 
+  // Filter completions: use semantify planCandidates for canonical filter candidates
   const lastPipe = prefix.lastIndexOf('|');
   if (lastPipe >= 0) {
     const filterPrefix = prefix.slice(lastPipe + 1).replace(/[^A-Za-z_\d]+$/g, '');
-    return filterAndSortCompletions(getFilterCompletions(filters), filterPrefix);
+    const semantifyDelimiters: SemantifyDelimiterConfigInput = {
+      statementStart: delimiters.statementStart,
+      statementEnd: delimiters.statementEnd,
+      expressionStart: delimiters.expressionStart,
+      expressionEnd: delimiters.expressionEnd,
+      commentStart: delimiters.commentStart,
+      commentEnd: delimiters.commentEnd,
+    };
+    const candidates = semantifyServices.planCandidates(
+      {
+        type: 'filterCandidates',
+        typedPrefix: filterPrefix,
+      },
+      {
+        text: fullText,
+        offset: fullOffset,
+        delimiters: semantifyDelimiters,
+      }
+    );
+    // Semantify returns built-in filters; merge with custom filters from options
+    const customFilterItems: CompletionItem[] = filters
+      .filter((f) => !getBuiltinFilterNames().includes(f.name))
+      .map((f) => ({
+        label: f.name,
+        kind: 'filter' as const,
+        detail: f.description,
+      }));
+    const allFilters = mergeUniqueCompletions(coerceCandidates(candidates), customFilterItems);
+    return filterAndSortCompletions(allFilters, filterPrefix);
   }
 
   const resolveBase = (basePath: string): string =>
@@ -756,6 +736,7 @@ function getExpressionCompletionsAtOffset(
     const typedPath = content.slice(activeRef.start, offsetInContent).trim();
     const lastDot = typedPath.lastIndexOf('.');
     if (lastDot >= 0) {
+      // Property completions: keep using semantic read adapter (schema-driven)
       const resolvedBase = resolveBase(typedPath.slice(0, lastDot));
       const propertyPrefix = typedPath.slice(lastDot + 1);
       const graphItems = semanticReadAdapter.getChildCompletions(
@@ -767,17 +748,40 @@ function getExpressionCompletionsAtOffset(
       return filtered.length > 0 ? filtered : graphItems;
     }
 
-    const graphItems = semanticReadAdapter.getChildCompletions(
+    // Symbol completions: use semantify for local bindings + schema root properties
+    const semantifyDelimiters: SemantifyDelimiterConfigInput = {
+      statementStart: delimiters.statementStart,
+      statementEnd: delimiters.statementEnd,
+      expressionStart: delimiters.expressionStart,
+      expressionEnd: delimiters.expressionEnd,
+      commentStart: delimiters.commentStart,
+      commentEnd: delimiters.commentEnd,
+    };
+    const localBindings = semantifyServices.planCandidates(
+      {
+        type: 'symbolCandidates',
+        typedPrefix: typedPath,
+      },
+      {
+        text: fullText,
+        offset: fullOffset,
+        delimiters: semantifyDelimiters,
+      }
+    );
+    // Also get schema root properties to provide complete symbol context
+    const schemaRoots = semanticReadAdapter.getChildCompletions(
       semanticContext,
       '',
       semanticOptions
     );
-    logRawDuplicateLabels(graphItems);
-    return filterAndSortCompletions(mergeUniqueCompletions(localAliasItems, graphItems), typedPath);
+    const merged = mergeUniqueCompletions(coerceCandidates(localBindings), schemaRoots);
+    logRawDuplicateLabels(merged);
+    return filterAndSortCompletions(merged, typedPath);
   }
 
   const lastDot = prefix.lastIndexOf('.');
   if (lastDot >= 0) {
+    // Property completions: keep using semantic read adapter (schema-driven)
     const resolvedBase = resolveBase(prefix.slice(0, lastDot));
     const propertyPrefix = prefix.slice(lastDot + 1);
     const graphItems = semanticReadAdapter.getChildCompletions(
@@ -789,9 +793,31 @@ function getExpressionCompletionsAtOffset(
     return filtered.length > 0 ? filtered : graphItems;
   }
 
-  const graphItems = semanticReadAdapter.getChildCompletions(semanticContext, '', semanticOptions);
-  logRawDuplicateLabels(graphItems);
-  return filterAndSortCompletions(mergeUniqueCompletions(localAliasItems, graphItems), prefix);
+  // Root symbol completions: use semantify for local bindings + schema root properties
+  const semantifyDelimiters: SemantifyDelimiterConfigInput = {
+    statementStart: delimiters.statementStart,
+    statementEnd: delimiters.statementEnd,
+    expressionStart: delimiters.expressionStart,
+    expressionEnd: delimiters.expressionEnd,
+    commentStart: delimiters.commentStart,
+    commentEnd: delimiters.commentEnd,
+  };
+  const localBindings = semantifyServices.planCandidates(
+    {
+      type: 'symbolCandidates',
+      typedPrefix: prefix,
+    },
+    {
+      text: fullText,
+      offset: fullOffset,
+      delimiters: semantifyDelimiters,
+    }
+  );
+  // Also get schema root properties to provide complete symbol context
+  const schemaRoots = semanticReadAdapter.getChildCompletions(semanticContext, '', semanticOptions);
+  const merged = mergeUniqueCompletions(coerceCandidates(localBindings), schemaRoots);
+  logRawDuplicateLabels(merged);
+  return filterAndSortCompletions(merged, prefix);
 }
 
 /**
@@ -891,12 +917,6 @@ export class IntellisenseProvider {
     };
     const filters = [...getDefaultFilters(), ...(options?.customFilters ?? [])];
     const keywords = [...DEFAULT_KEYWORDS, ...(options?.customKeywords ?? [])];
-    const localAliasItems = getInScopeAliasCompletions(
-      this.semantifyServices,
-      text,
-      Math.max(0, offset - 1),
-      delimiters
-    );
 
     const scopeResolver = createScopedPathResolver(
       this.semanticReadAdapter,
@@ -919,9 +939,12 @@ export class IntellisenseProvider {
 
       const expressionCompletions = getExpressionCompletionsAtOffset(
         this.semanticReadAdapter,
+        this.semantifyServices,
+        text,
+        offset,
+        delimiters,
         content,
         Math.max(0, contentOffset),
-        localAliasItems,
         filters,
         completionContext,
         semanticOptions,
@@ -959,9 +982,12 @@ export class IntellisenseProvider {
 
       const statementExpressionCompletions = getExpressionCompletionsAtOffset(
         this.semanticReadAdapter,
+        this.semantifyServices,
+        text,
+        offset,
+        delimiters,
         expressionFragment.expression,
         expressionFragment.offsetInExpression,
-        localAliasItems,
         filters,
         completionContext,
         semanticOptions,

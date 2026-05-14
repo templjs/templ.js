@@ -156,7 +156,25 @@ describe('IntellisenseProvider', () => {
         ],
       }),
       resolveReferences: () => [],
-      planCandidates: () => [],
+      planCandidates: (intent) => {
+        if (intent.type === 'symbolCandidates') {
+          return [
+            {
+              label: 'shadowedAlias',
+              kind: 'variable',
+              detail: 'local template variable',
+              metadata: { startOffset: 0 },
+            },
+            {
+              label: 'pluginAlias',
+              kind: 'variable',
+              detail: 'custom binding',
+              metadata: { startOffset: 0 },
+            },
+          ];
+        }
+        return [];
+      },
     };
 
     const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
@@ -192,7 +210,19 @@ describe('IntellisenseProvider', () => {
         ],
       }),
       resolveReferences: () => [],
-      planCandidates: () => [],
+      planCandidates: (intent) => {
+        if (intent.type === 'symbolCandidates') {
+          return [
+            {
+              label: 'loopValue',
+              kind: 'variable',
+              detail: 'local loop alias',
+              metadata: { startOffset: 0 },
+            },
+          ];
+        }
+        return [];
+      },
     };
 
     const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
