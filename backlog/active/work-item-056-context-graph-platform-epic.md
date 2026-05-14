@@ -33,6 +33,7 @@ links:
     - https://github.com/templjs/templ.js/pull/27
     - https://github.com/templjs/templ.js/pull/75
     - https://github.com/templjs/templ.js/pull/118
+    - https://github.com/templjs/templ.js/pull/128
   evidence:
     - '[[record-056-context-graph-platform-epic-evidence-1]]'
     - '[[record-056-context-graph-platform-epic-evidence-2]]'
