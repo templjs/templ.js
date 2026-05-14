@@ -23,7 +23,7 @@ on:
       dry_run:
         description: 'Preview eligible updates without writing changes'
         required: false
-        default: false
+        default: true
         type: boolean
   pull_request:
     types: [opened, edited, reopened, synchronize, closed]
@@ -146,8 +146,8 @@ jobs:
           stale_seconds="$((STALE_HOURS * 3600))"
           warned=0
 
-          shopt -s nullglob globstar
-          for file in backlog/**/*.md; do
+          shopt -s nullglob
+          for file in backlog/active/work-item-*.md; do
             status="$(awk '
               /^---$/ {delims++; next}
               delims == 1 && /^status:[[:space:]]*/ {
