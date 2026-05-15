@@ -1776,7 +1776,7 @@ describe('Integration Tests', () => {
       expect(secondStats.size).toBe(initialStats.size);
 
       // Metadata/path analysis should be reusable on the second instance.
-      expect(validatorB.getMetadata()).toHaveProperty('user.firstName');
+      expect(validatorB.getMetadata()).toHaveProperty(['user.firstName']);
       expect(validatorB.getValidPaths().has('user.firstName')).toBe(true);
       expect(validatorB.validate({ user: { firstName: 'Ada' } }).valid).toBe(true);
     });

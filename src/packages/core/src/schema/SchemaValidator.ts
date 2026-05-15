@@ -249,12 +249,11 @@ export class SchemaValidator {
   /**
    * Clear compiled schema cache.
    *
-   * @deprecated This method no longer clears the shared cache. Use
-   * SchemaValidator.clearCache() for explicit process-wide cache clearing.
+   * @deprecated Prefer SchemaValidator.clearCache() to make the process-wide
+   * side effect explicit.
    */
   clearCache(): void {
-    // Intentionally no-op to avoid surprising process-wide side effects from
-    // legacy instance-level calls.
+    SchemaValidator.clearCache();
   }
 
   /**
