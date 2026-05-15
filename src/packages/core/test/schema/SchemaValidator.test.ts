@@ -615,7 +615,8 @@ describe('SchemaValidator', () => {
       const stats = validator.getCacheStats();
       expect(stats.size).toBe(1);
       expect(stats.keys[0]).toContain('no-id::');
-      expect(stats.keys[0]).toMatch(/^no-id::[0-9a-f]{8}$/);
+      // New format: no-id::{byteLength}::{64-bit-hash}
+      expect(stats.keys[0]).toMatch(/^no-id::\d+::[0-9a-f]{16}$/);
     });
   });
 

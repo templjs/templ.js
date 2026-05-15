@@ -22,10 +22,14 @@ function cloneMetadata(metadata: SchemaMetadata): SchemaMetadata {
   const clone: SchemaMetadata = {};
 
   for (const [path, entry] of Object.entries(metadata)) {
-    clone[path] = {
-      ...entry,
-      properties: entry.properties ? [...entry.properties] : undefined,
-    };
+    const clonedEntry = { ...entry };
+    // Deep-clone array-valued fields to prevent mutation leaks.
+    // IMPORTANT: If SchemaMetadata gains new array fields, they must be cloned here
+    // to ensure the shared cache entry does not leak mutable references.
+    if (entry.properties) {
+      clonedEntry.properties = [...entry.properties];
+    }
+    clone[path] = clonedEntry;
   }
 
   return clone;
@@ -56,14 +60,25 @@ function canonicalStringify(value: unknown): string {
 }
 
 function hashString(input: string): string {
-  let hash = 2166136261;
-
+  // FNV-1a 64-bit: use two independent 32-bit FNV passes to reduce collision risk
+  // First pass: standard FNV-1a
+  let hash1 = 2166136261;
   for (let i = 0; i < input.length; i++) {
-    hash ^= input.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
+    hash1 ^= input.charCodeAt(i);
+    hash1 = Math.imul(hash1, 16777619);
   }
 
-  return (hash >>> 0).toString(16).padStart(8, '0');
+  // Second pass: FNV starting from end to decorrelate
+  let hash2 = 2166136261;
+  for (let i = input.length - 1; i >= 0; i--) {
+    hash2 ^= input.charCodeAt(i);
+    hash2 = Math.imul(hash2, 16777619);
+  }
+
+  // Combine both hashes for 64-bit space, reducing collisions from birthday bound ~65k to ~4B
+  const combined =
+    (hash1 >>> 0).toString(16).padStart(8, '0') + (hash2 >>> 0).toString(16).padStart(8, '0');
+  return combined;
 }
 
 /**
@@ -421,6 +436,8 @@ export class SchemaValidator {
   private getCacheKey(schema: JSONSchema, canonicalSchema: string): string {
     const schemaId = schema.$id ?? 'no-id';
     const schemaHash = hashString(canonicalSchema);
-    return `${schemaId}::${schemaHash}`;
+    // Include schema byteLength to further reduce collision risk when $id is shared
+    const byteLength = new Blob([canonicalSchema]).size;
+    return `${schemaId}::${byteLength}::${schemaHash}`;
   }
 }

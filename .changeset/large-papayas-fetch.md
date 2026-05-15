@@ -1,7 +1,10 @@
 ---
-'@templjs/core': patch
+'@templjs/semantify': patch
+'@templjs/volar': patch
 ---
 
 # Summary
 
-Add a shared schema-analysis cache in core so metadata extraction and valid-path analysis can be reused across validator instances.
+Route local-alias hover and definition resolution through
+semantify intent handlers and add regression coverage fo
+r custom-delimiter and alias-resolution branches.
