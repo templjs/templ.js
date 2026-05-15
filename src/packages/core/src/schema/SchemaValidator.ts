@@ -9,6 +9,15 @@ import type { ValidationResult, ValidationError, SchemaMetadata, JSONSchema } fr
 import { extractPaths, fuzzyMatch, isValidPath, normalizePath } from './queryPathValidator.js';
 import { inferSchemaFromValue } from './schemaInference.js';
 
+interface SchemaAnalysisCacheEntry {
+  validateFunction: ValidateFunction | null;
+  compileError: string | null;
+  validPaths: Set<string>;
+  metadata: SchemaMetadata;
+}
+
+const sharedSchemaAnalysisCache = new Map<string, SchemaAnalysisCacheEntry>();
+
 /**
  * Schema validator with query path validation and schema inference
  */
@@ -16,7 +25,7 @@ export class SchemaValidator {
   private ajv: Ajv2020;
   private currentSchema: JSONSchema | null = null;
   private validPaths: Set<string> = new Set();
-  private compiledSchemas: Map<string, ValidateFunction> = new Map();
+  private metadata: SchemaMetadata = {};
   private validateFunction: ValidateFunction | null = null;
   private compileError: string | null = null;
 
@@ -43,31 +52,40 @@ export class SchemaValidator {
    */
   loadSchema(schema: JSONSchema): void {
     this.currentSchema = schema;
-    this.validPaths = extractPaths(schema);
 
     // Generate cache key
     const cacheKey = this.getCacheKey(schema);
 
-    // Check cache - reuse compiled validator if already compiled
-    if (this.compiledSchemas.has(cacheKey)) {
-      this.validateFunction = this.compiledSchemas.get(cacheKey)!;
-      this.compileError = null;
+    // Check shared analysis cache first.
+    const cached = sharedSchemaAnalysisCache.get(cacheKey);
+    if (cached) {
+      this.validateFunction = cached.validateFunction;
+      this.compileError = cached.compileError;
+      this.validPaths = new Set(cached.validPaths);
+      this.metadata = { ...cached.metadata };
       return;
     }
+
+    this.validPaths = extractPaths(schema);
+    this.metadata = this.extractMetadata(schema);
 
     // Compile schema
     try {
       this.validateFunction = this.ajv.compile(schema);
       this.compileError = null;
-      if (this.validateFunction) {
-        this.compiledSchemas.set(cacheKey, this.validateFunction);
-      }
     } catch (error) {
       // Degrade gracefully: unknown meta-schema or unresolvable remote $ref.
       // Validation is skipped; completions and hover still work.
       this.validateFunction = null;
       this.compileError = (error as Error).message;
     }
+
+    sharedSchemaAnalysisCache.set(cacheKey, {
+      validateFunction: this.validateFunction,
+      compileError: this.compileError,
+      validPaths: new Set(this.validPaths),
+      metadata: { ...this.metadata },
+    });
   }
 
   /** Whether the schema compiled successfully. False means validation is skipped. */
@@ -160,7 +178,7 @@ export class SchemaValidator {
       return {};
     }
 
-    return this.extractMetadata(this.currentSchema);
+    return { ...this.metadata };
   }
 
   /**
@@ -175,7 +193,7 @@ export class SchemaValidator {
    * Clear compiled schema cache
    */
   clearCache(): void {
-    this.compiledSchemas.clear();
+    sharedSchemaAnalysisCache.clear();
   }
 
   /**
@@ -184,8 +202,8 @@ export class SchemaValidator {
    */
   getCacheStats(): { size: number; keys: string[] } {
     return {
-      size: this.compiledSchemas.size,
-      keys: Array.from(this.compiledSchemas.keys()),
+      size: sharedSchemaAnalysisCache.size,
+      keys: Array.from(sharedSchemaAnalysisCache.keys()),
     };
   }
 

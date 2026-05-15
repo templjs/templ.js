@@ -541,6 +541,10 @@ describe('SchemaValidator', () => {
   });
 
   describe('Caching', () => {
+    beforeEach(() => {
+      new SchemaValidator().clearCache();
+    });
+
     it('should cache compiled schemas', () => {
       const schema: JSONSchema = {
         $id: 'test-schema',
@@ -1734,6 +1738,35 @@ describe('Integration Tests', () => {
       // Verify validation still works (compiled validator is functional)
       const result = validator.validate({ name: 'test' });
       expect(result.valid).toBe(true);
+    });
+
+    it('reuses shared schema analysis cache across validator instances', () => {
+      const schema: JSONSchema = {
+        $id: 'schema://shared-cache-cross-instance',
+        type: 'object',
+        properties: {
+          user: {
+            type: 'object',
+            properties: {
+              firstName: { type: 'string' },
+            },
+          },
+        },
+      };
+
+      const validatorA = new SchemaValidator(schema);
+      const initialStats = validatorA.getCacheStats();
+
+      const validatorB = new SchemaValidator(schema);
+      const secondStats = validatorB.getCacheStats();
+
+      // Shared cache should avoid duplicate entries for equivalent schema.
+      expect(secondStats.size).toBe(initialStats.size);
+
+      // Metadata/path analysis should be reusable on the second instance.
+      expect(validatorB.getMetadata()).toHaveProperty('user.firstName');
+      expect(validatorB.getValidPaths().has('user.firstName')).toBe(true);
+      expect(validatorB.validate({ user: { firstName: 'Ada' } }).valid).toBe(true);
     });
   });
 

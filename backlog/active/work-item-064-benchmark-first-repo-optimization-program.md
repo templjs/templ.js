@@ -55,10 +55,10 @@ Recent repo-wide analysis shows the main codebase is functionally green, but the
 
 ## Child Tasks
 
-- [ ] [[work-item-065-repo-wide-benchmark-harness-and-deterministic-fixtures]]
-- [ ] [[work-item-066-publish-benchmark-baselines-and-pr-comparisons-in-cicd]]
-- [ ] [[work-item-067-extract-authoritative-core-statement-and-expression-analysis]]
-- [ ] [[work-item-068-remove-remaining-volar-statement-semantic-duplication]]
+- [x] [[work-item-065-repo-wide-benchmark-harness-and-deterministic-fixtures]]
+- [x] [[work-item-066-publish-benchmark-baselines-and-pr-comparisons-in-cicd]]
+- [x] [[work-item-067-extract-authoritative-core-statement-and-expression-analysis]]
+- [x] [[work-item-068-remove-remaining-volar-statement-semantic-duplication]]
 - [ ] [[work-item-069-add-shared-schema-analysis-cache-in-core]]
 - [ ] [[work-item-070-adopt-shared-schema-analysis-in-volar]]
 - [ ] [[work-item-071-adopt-shared-schema-analysis-in-cli]]
