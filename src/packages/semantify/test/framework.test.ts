@@ -105,6 +105,147 @@ describe('createSemantifyServices', () => {
     expect(filterCandidates.some((item) => item.label === 'upper')).toBe(true);
   });
 
+  it('plans definition targets for local bindings with custom delimiters', () => {
+    const text = '<% set row = rows %><< ro >>';
+    const offset = text.lastIndexOf('ro') + 'ro'.length;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'definitionTarget',
+        metadata: {
+          variablePath: 'ro',
+        },
+      },
+      {
+        text,
+        offset,
+        delimiters: {
+          statementStart: '<%',
+          statementEnd: '%>',
+          expressionStart: '<<',
+          expressionEnd: '>>',
+        },
+      }
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.label).toBe('row');
+    expect(candidates[0]?.metadata).toMatchObject({
+      alias: 'ro',
+      isAliasTokenOnly: true,
+    });
+  });
+
+  it('returns no definition target when alias prefix is ambiguous', () => {
+    const text = '{% set item = users %}{% set issue = tickets %}{{ i }}';
+    const offset = text.lastIndexOf('i') + 'i'.length;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'definitionTarget',
+        metadata: {
+          variablePath: 'i',
+        },
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toEqual([]);
+  });
+
+  it('plans hover payload for loop aliases', () => {
+    const text = '{% for item in users %}{{ item }}{% endfor %}';
+    const offset = text.lastIndexOf('item') + 'item'.length;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+        metadata: {
+          variablePath: 'item',
+        },
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.label).toBe('item');
+    expect(candidates[0]?.detail).toBe('local loop alias');
+    expect(candidates[0]?.metadata).toMatchObject({
+      alias: 'item',
+      isAliasTokenOnly: true,
+    });
+  });
+
+  it('falls back to basePath metadata when variablePath is absent', () => {
+    const text = '{% set title = page.title %}{{ title }}';
+    const offset = text.lastIndexOf('title') + 'title'.length;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+        basePath: 'title',
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.label).toBe('title');
+    expect(candidates[0]?.detail).toBe('local template variable');
+  });
+
+  it('falls back to symbol.rawPath metadata when variablePath/basePath are absent', () => {
+    const text = '{% set title = page.title %}{{ title }}';
+    const offset = text.lastIndexOf('title') + 'title'.length;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'definitionTarget',
+        symbol: {
+          rawPath: 'title',
+          sourcePath: 'page.title',
+          kind: 'localBinding',
+        },
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.label).toBe('title');
+  });
+
+  it('returns no local-binding target for non-token variable paths without exact alias match', () => {
+    const text = '{% set issue = ticket %}{{ iss.name }}';
+    const offset = text.lastIndexOf('iss.name') + 'iss.name'.length;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'definitionTarget',
+        metadata: {
+          variablePath: 'iss.name',
+        },
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toEqual([]);
+  });
+
+  it('handles empty custom expression delimiter tokens without throwing', () => {
+    const text = 'plain text only';
+    const offset = text.length;
+
+    const context = services.resolveContext({
+      text,
+      offset,
+      delimiters: {
+        expressionStart: '',
+        expressionEnd: '>>',
+      },
+    });
+
+    expect(context.bindings).toEqual([]);
+  });
+
   it('returns sorted symbol candidates with set-variable detail when no prefix is provided', () => {
     const text = [
       '{% set title = page.title %}',
