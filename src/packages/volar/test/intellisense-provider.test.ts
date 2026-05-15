@@ -80,6 +80,136 @@ describe('IntellisenseProvider', () => {
     expect(items.some((item) => item.label === 'user')).toBe(true);
   });
 
+  it('falls back to adapter alias hover when semantify hover metadata is invalid', () => {
+    const text = '{% for item in users %}{{ item }}{% endfor %}';
+    const offset = text.indexOf('{{ item }}') + 4;
+
+    const mockAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => ({
+        start: text.indexOf('item in'),
+        end: text.indexOf('item in') + 'item'.length,
+      }),
+    };
+
+    const mockSemantify: SemantifyServices = {
+      resolveContext: () => ({ regions: [], bindings: [] }),
+      resolveReferences: () => [],
+      planCandidates: () => [
+        {
+          label: 'item',
+          kind: 'variable',
+          detail: 'local loop alias',
+          metadata: {
+            // Intentionally malformed to force adapter fallback.
+            alias: 'item',
+          },
+        },
+      ],
+    };
+
+    const providerWithFallback = new IntellisenseProvider(mockAdapter, mockSemantify);
+    const hover = providerWithFallback.getHover(text, offset, { schema: sampleSchema });
+
+    expect(hover?.contents).toBe('item: local loop alias');
+  });
+
+  it('falls back to adapter alias definition when semantify definition metadata is invalid', () => {
+    const text = '{% for item in users %}{{ item }}{% endfor %}';
+    const offset = text.indexOf('{{ item }}') + 4;
+    const declarationStartOffset = text.indexOf('item in');
+
+    const mockAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => ({
+        start: declarationStartOffset,
+        end: declarationStartOffset + 'item'.length,
+      }),
+    };
+
+    const mockSemantify: SemantifyServices = {
+      resolveContext: () => ({ regions: [], bindings: [] }),
+      resolveReferences: () => [],
+      planCandidates: () => [
+        {
+          label: 'item',
+          kind: 'variable',
+          metadata: {
+            // Intentionally malformed to force adapter fallback.
+            alias: 'item',
+          },
+        },
+      ],
+    };
+
+    const providerWithFallback = new IntellisenseProvider(mockAdapter, mockSemantify);
+    const definition = providerWithFallback.getDefinition(text, offset, {
+      schema: sampleSchema,
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(definition?.uri).toBe('file:///workspace/project.md.tpl');
+    expect(definition?.range).toEqual({
+      start: { line: 0, character: declarationStartOffset },
+      end: { line: 0, character: declarationStartOffset + 'item'.length },
+    });
+  });
+
+  it('dedupes local symbol candidates by nearest startOffset and coerces unknown kinds', () => {
+    const text = '{{ item }}';
+    const offset = text.indexOf('item') + 2;
+
+    const mockAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => null,
+    };
+
+    const mockSemantify: SemantifyServices = {
+      resolveContext: () => ({ regions: [], bindings: [] }),
+      resolveReferences: () => [],
+      planCandidates: (intent) => {
+        if (intent.type !== 'symbolCandidates') {
+          return [];
+        }
+
+        return [
+          {
+            label: 'item',
+            kind: 'custom-kind',
+            metadata: { startOffset: 2 },
+          },
+          {
+            label: 'item',
+            kind: 'custom-kind',
+            metadata: { startOffset: 12 },
+          },
+        ];
+      },
+    };
+
+    const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
+    const items = providerWithSemantify.getCompletions(text, offset, { schema: sampleSchema });
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.label).toBe('item');
+    expect(items[0]?.kind).toBe('variable');
+  });
+
   it('allows injecting a semantic read adapter for isolation', () => {
     const mockAdapter: SemanticReadAdapter = {
       resolveScopedPath: (_text, basePath) => basePath,
@@ -112,6 +242,67 @@ describe('IntellisenseProvider', () => {
       schema: sampleSchema,
     });
     expect(items.some((item) => item.kind === 'filter')).toBe(true);
+  });
+
+  it('handles empty and non-signature filter candidates without mutating details', () => {
+    const text = '{{ user.name | no }}';
+    const offset = text.indexOf('no') + 2;
+
+    const mockAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => null,
+    };
+
+    let firstCall = true;
+    const mockSemantify: SemantifyServices = {
+      resolveContext: () => ({ regions: [], bindings: [] }),
+      resolveReferences: () => [],
+      planCandidates: (intent) => {
+        if (intent.type !== 'filterCandidates') {
+          return [];
+        }
+
+        if (firstCall) {
+          firstCall = false;
+          return [];
+        }
+
+        return [
+          { label: 'noop', kind: 'variable' },
+          { label: 'nosig', kind: 'filter' },
+        ];
+      },
+    };
+
+    const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
+
+    const emptyItems = providerWithSemantify.getCompletions(text, offset, {
+      schema: sampleSchema,
+      customFilters: [],
+    });
+    expect(emptyItems).toEqual([]);
+
+    const items = providerWithSemantify.getCompletions(text, offset, {
+      schema: sampleSchema,
+      customFilters: [
+        {
+          name: 'known',
+          description: 'Known filter only',
+          returnType: 'string',
+          parameters: [],
+        },
+      ],
+    });
+
+    expect(items.some((item) => item.label === 'noop' && item.kind === 'variable')).toBe(true);
+    const noSig = items.find((item) => item.label === 'nosig');
+    expect(noSig?.kind).toBe('filter');
+    expect(noSig?.detail).toBeUndefined();
   });
 
   it('provides keyword completions in statements', () => {
@@ -833,6 +1024,137 @@ describe('IntellisenseProvider', () => {
 
     expect(hover?.contents).toContain('scopes[0].included');
     expect(hover?.contents).toContain('Included scope relationships');
+  });
+
+  it('returns local loop alias hover for token-only variables in statement expressions', () => {
+    const text = '{% for item in users %}{% if item %}ok{% endif %}{% endfor %}';
+    const offset = text.indexOf('if item') + 'if '.length + 1;
+
+    const hover = provider.getHover(text, offset, {
+      schema: {
+        type: 'object',
+        properties: {
+          users: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(hover?.contents).toBe('item: local loop alias');
+  });
+
+  it('returns path hover for non-token local paths in statement expressions', () => {
+    const text = '{% for item in users %}{% if item.name %}ok{% endif %}{% endfor %}';
+    const offset = text.indexOf('item.name') + 'item.'.length + 1;
+
+    const hover = provider.getHover(text, offset, {
+      schema: {
+        type: 'object',
+        properties: {
+          users: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string', description: 'User name from schema' },
+              },
+            },
+          },
+        },
+      },
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(hover?.contents).toContain('name: string');
+  });
+
+  it('returns local alias hover when for-iterable path resolves to an in-scope alias token', () => {
+    const text = [
+      '{% for scope in scopes %}',
+      '  {% for relationship in scope.included %}ok{% endfor %}',
+      '{% endfor %}',
+    ].join('\n');
+    const offset = text.indexOf('scope.included') + 2;
+
+    const hover = provider.getHover(text, offset, {
+      schema: {
+        type: 'object',
+        properties: {
+          scopes: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                included: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(hover?.contents).toBe('scope: local template variable');
+  });
+
+  it('returns schema hover for set-statement expression paths', () => {
+    const text = '{% set title = user.name %}{{ title }}';
+    const offset = text.indexOf('user.name') + 'user.'.length + 1;
+
+    const hover = provider.getHover(text, offset, {
+      schema: {
+        type: 'object',
+        properties: {
+          user: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', description: 'Author name from schema' },
+            },
+          },
+        },
+      },
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(hover?.contents).toContain('name: string');
+  });
+
+  it('returns schema hover for if-statement expression paths', () => {
+    const text = '{% if user.name %}ok{% endif %}';
+    const offset = text.indexOf('user.name') + 'user.'.length + 1;
+
+    const hover = provider.getHover(text, offset, {
+      schema: {
+        type: 'object',
+        properties: {
+          user: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', description: 'User name from if expression' },
+            },
+          },
+        },
+      },
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(hover?.contents).toContain('name: string');
   });
 
   it('resolves statement iterable definition by token segment for top-level scope paths', () => {

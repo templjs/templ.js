@@ -176,6 +176,76 @@ describe('createSemantifyServices', () => {
     });
   });
 
+  it('falls back to basePath metadata when variablePath is absent', () => {
+    const text = '{% set title = page.title %}{{ title }}';
+    const offset = text.lastIndexOf('title') + 'title'.length;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+        basePath: 'title',
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.label).toBe('title');
+    expect(candidates[0]?.detail).toBe('local template variable');
+  });
+
+  it('falls back to symbol.rawPath metadata when variablePath/basePath are absent', () => {
+    const text = '{% set title = page.title %}{{ title }}';
+    const offset = text.lastIndexOf('title') + 'title'.length;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'definitionTarget',
+        symbol: {
+          rawPath: 'title',
+          sourcePath: 'page.title',
+          kind: 'localBinding',
+        },
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.label).toBe('title');
+  });
+
+  it('returns no local-binding target for non-token variable paths without exact alias match', () => {
+    const text = '{% set issue = ticket %}{{ iss.name }}';
+    const offset = text.lastIndexOf('iss.name') + 'iss.name'.length;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'definitionTarget',
+        metadata: {
+          variablePath: 'iss.name',
+        },
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toEqual([]);
+  });
+
+  it('handles empty custom expression delimiter tokens without throwing', () => {
+    const text = 'plain text only';
+    const offset = text.length;
+
+    const context = services.resolveContext({
+      text,
+      offset,
+      delimiters: {
+        expressionStart: '',
+        expressionEnd: '>>',
+      },
+    });
+
+    expect(context.bindings).toEqual([]);
+  });
+
   it('returns sorted symbol candidates with set-variable detail when no prefix is provided', () => {
     const text = [
       '{% set title = page.title %}',
