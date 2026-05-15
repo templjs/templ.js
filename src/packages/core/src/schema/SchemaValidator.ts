@@ -10,8 +10,6 @@ import { extractPaths, fuzzyMatch, isValidPath, normalizePath } from './queryPat
 import { inferSchemaFromValue } from './schemaInference.js';
 
 interface SchemaAnalysisCacheEntry {
-  validateFunction: ValidateFunction | null;
-  compileError: string | null;
   validPaths: Set<string>;
   metadata: SchemaMetadata;
 }
@@ -56,6 +54,17 @@ function canonicalStringify(value: unknown): string {
   return JSON.stringify(canonicalizeValue(value));
 }
 
+function hashString(input: string): string {
+  let hash = 2166136261;
+
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
 /**
  * Schema validator with query path validation and schema inference
  */
@@ -97,17 +106,27 @@ export class SchemaValidator {
     // Check shared analysis cache first.
     const cached = sharedSchemaAnalysisCache.get(cacheKey);
     if (cached) {
-      this.validateFunction = cached.validateFunction;
-      this.compileError = cached.compileError;
       this.validPaths = new Set(cached.validPaths);
       this.metadata = cloneMetadata(cached.metadata);
-      return;
+    } else {
+      this.validPaths = extractPaths(schema);
+      this.metadata = this.extractMetadata(schema);
+
+      sharedSchemaAnalysisCache.set(cacheKey, {
+        validPaths: new Set(this.validPaths),
+        metadata: cloneMetadata(this.metadata),
+      });
+
+      while (sharedSchemaAnalysisCache.size > DEFAULT_SHARED_SCHEMA_CACHE_LIMIT) {
+        const firstKey = sharedSchemaAnalysisCache.keys().next().value;
+        if (typeof firstKey !== 'string') {
+          break;
+        }
+        sharedSchemaAnalysisCache.delete(firstKey);
+      }
     }
 
-    this.validPaths = extractPaths(schema);
-    this.metadata = this.extractMetadata(schema);
-
-    // Compile schema
+    // Compile schema per instance Ajv to avoid cross-instance Ajv state coupling.
     try {
       this.validateFunction = this.ajv.compile(schema);
       this.compileError = null;
@@ -116,21 +135,6 @@ export class SchemaValidator {
       // Validation is skipped; completions and hover still work.
       this.validateFunction = null;
       this.compileError = (error as Error).message;
-    }
-
-    sharedSchemaAnalysisCache.set(cacheKey, {
-      validateFunction: this.validateFunction,
-      compileError: this.compileError,
-      validPaths: new Set(this.validPaths),
-      metadata: cloneMetadata(this.metadata),
-    });
-
-    while (sharedSchemaAnalysisCache.size > DEFAULT_SHARED_SCHEMA_CACHE_LIMIT) {
-      const firstKey = sharedSchemaAnalysisCache.keys().next().value;
-      if (typeof firstKey !== 'string') {
-        break;
-      }
-      sharedSchemaAnalysisCache.delete(firstKey);
     }
   }
 
@@ -245,11 +249,12 @@ export class SchemaValidator {
   /**
    * Clear compiled schema cache.
    *
-   * @deprecated Prefer SchemaValidator.clearCache() to make the process-wide
-   * side effect explicit.
+   * @deprecated This method no longer clears the shared cache. Use
+   * SchemaValidator.clearCache() for explicit process-wide cache clearing.
    */
   clearCache(): void {
-    SchemaValidator.clearCache();
+    // Intentionally no-op to avoid surprising process-wide side effects from
+    // legacy instance-level calls.
   }
 
   /**
@@ -414,6 +419,7 @@ export class SchemaValidator {
   private getCacheKey(schema: JSONSchema): string {
     const canonicalSchema = canonicalStringify(schema);
     const schemaId = schema.$id ?? 'no-id';
-    return `${schemaId}::${canonicalSchema}`;
+    const schemaHash = hashString(canonicalSchema);
+    return `${schemaId}::${schemaHash}`;
   }
 }

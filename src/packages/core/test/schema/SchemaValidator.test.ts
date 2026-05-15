@@ -542,7 +542,7 @@ describe('SchemaValidator', () => {
 
   describe('Caching', () => {
     beforeEach(() => {
-      new SchemaValidator().clearCache();
+      SchemaValidator.clearCache();
     });
 
     it('should cache compiled schemas', () => {
@@ -569,7 +569,7 @@ describe('SchemaValidator', () => {
       };
 
       const validator = new SchemaValidator(schema);
-      validator.clearCache();
+      SchemaValidator.clearCache();
 
       const stats = validator.getCacheStats();
       expect(stats.size).toBe(0);
@@ -615,6 +615,7 @@ describe('SchemaValidator', () => {
       const stats = validator.getCacheStats();
       expect(stats.size).toBe(1);
       expect(stats.keys[0]).toContain('no-id::');
+      expect(stats.keys[0]).toMatch(/^no-id::[0-9a-f]{8}$/);
     });
   });
 
@@ -1714,7 +1715,7 @@ describe('Integration Tests', () => {
       const initialStats = validator.getCacheStats();
       expect(initialStats.size).toBeGreaterThan(0);
 
-      validator.clearCache();
+      SchemaValidator.clearCache();
       const clearedStats = validator.getCacheStats();
       expect(clearedStats.size).toBe(0);
     });
@@ -1749,6 +1750,8 @@ describe('Integration Tests', () => {
     });
 
     it('reuses shared schema analysis cache across validator instances', () => {
+      SchemaValidator.clearCache();
+
       const schema: JSONSchema = {
         $id: 'schema://shared-cache-cross-instance',
         type: 'object',
@@ -1769,6 +1772,7 @@ describe('Integration Tests', () => {
       const secondStats = validatorB.getCacheStats();
 
       // Shared cache should avoid duplicate entries for equivalent schema.
+      expect(initialStats.size).toBe(1);
       expect(secondStats.size).toBe(initialStats.size);
 
       // Metadata/path analysis should be reusable on the second instance.
