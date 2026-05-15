@@ -541,6 +541,10 @@ describe('SchemaValidator', () => {
   });
 
   describe('Caching', () => {
+    beforeEach(() => {
+      SchemaValidator.clearCache();
+    });
+
     it('should cache compiled schemas', () => {
       const schema: JSONSchema = {
         $id: 'test-schema',
@@ -565,7 +569,7 @@ describe('SchemaValidator', () => {
       };
 
       const validator = new SchemaValidator(schema);
-      validator.clearCache();
+      SchemaValidator.clearCache();
 
       const stats = validator.getCacheStats();
       expect(stats.size).toBe(0);
@@ -589,20 +593,30 @@ describe('SchemaValidator', () => {
       expect(validator2.validate({ value: 'test' }).valid).toBe(true);
     });
 
-    it('uses JSON stringification as a cache key when no $id is present', () => {
-      const schema: JSONSchema = {
+    it('uses a canonical cache key when no $id is present', () => {
+      const schemaA: JSONSchema = {
         type: 'object',
         properties: {
           value: { type: 'string' },
         },
       };
 
+      const schemaB: JSONSchema = {
+        properties: {
+          value: { type: 'string' },
+        },
+        type: 'object',
+      };
+
       const validator = new SchemaValidator();
-      validator.loadSchema(schema);
+      validator.loadSchema(schemaA);
+      validator.loadSchema(schemaB);
 
       const stats = validator.getCacheStats();
       expect(stats.size).toBe(1);
-      expect(stats.keys[0]).toContain('"type":"object"');
+      expect(stats.keys[0]).toContain('no-id::');
+      // New format: no-id::{byteLength}::{64-bit-hash}
+      expect(stats.keys[0]).toMatch(/^no-id::\d+::[0-9a-f]{16}$/);
     });
   });
 
@@ -1702,7 +1716,7 @@ describe('Integration Tests', () => {
       const initialStats = validator.getCacheStats();
       expect(initialStats.size).toBeGreaterThan(0);
 
-      validator.clearCache();
+      SchemaValidator.clearCache();
       const clearedStats = validator.getCacheStats();
       expect(clearedStats.size).toBe(0);
     });
@@ -1734,6 +1748,116 @@ describe('Integration Tests', () => {
       // Verify validation still works (compiled validator is functional)
       const result = validator.validate({ name: 'test' });
       expect(result.valid).toBe(true);
+    });
+
+    it('reuses shared schema analysis cache across validator instances', () => {
+      SchemaValidator.clearCache();
+
+      const schema: JSONSchema = {
+        $id: 'schema://shared-cache-cross-instance',
+        type: 'object',
+        properties: {
+          user: {
+            type: 'object',
+            properties: {
+              firstName: { type: 'string' },
+            },
+          },
+        },
+      };
+
+      const validatorA = new SchemaValidator(schema);
+      const initialStats = validatorA.getCacheStats();
+
+      const validatorB = new SchemaValidator(schema);
+      const secondStats = validatorB.getCacheStats();
+
+      // Shared cache should avoid duplicate entries for equivalent schema.
+      expect(initialStats.size).toBe(1);
+      expect(secondStats.size).toBe(initialStats.size);
+
+      // Metadata/path analysis should be reusable on the second instance.
+      expect(validatorB.getMetadata()).toHaveProperty(['user.firstName']);
+      expect(validatorB.getValidPaths().has('user.firstName')).toBe(true);
+      expect(validatorB.validate({ user: { firstName: 'Ada' } }).valid).toBe(true);
+    });
+
+    it('bounds shared cache growth for schemas without $id', () => {
+      const validator = new SchemaValidator();
+
+      for (let i = 0; i < 140; i++) {
+        validator.loadSchema({
+          type: 'object',
+          properties: {
+            [`field${i}`]: { type: 'string' },
+          },
+        });
+      }
+
+      const stats = validator.getCacheStats();
+      expect(stats.size).toBeLessThanOrEqual(128);
+    });
+
+    it('does not leak metadata mutations from getMetadata()', () => {
+      SchemaValidator.clearCache();
+
+      const schema: JSONSchema = {
+        $id: 'schema://metadata-clone',
+        type: 'object',
+        properties: {
+          user: {
+            type: 'object',
+            properties: {
+              firstName: { type: 'string' },
+            },
+          },
+        },
+      };
+
+      const validator = new SchemaValidator(schema);
+      const metadata = validator.getMetadata();
+
+      metadata.user.properties?.push('injectedProperty');
+
+      const nextMetadata = validator.getMetadata();
+      expect(nextMetadata.user.properties).not.toContain('injectedProperty');
+      expect(nextMetadata.user.properties).toContain('firstName');
+    });
+
+    it('does not collide cache entries when schemas share the same $id', () => {
+      SchemaValidator.clearCache();
+
+      const schemaA: JSONSchema = {
+        $id: 'schema://collision-check',
+        type: 'object',
+        properties: {
+          a: { type: 'string' },
+        },
+        required: ['a'],
+        additionalProperties: false,
+      };
+
+      const schemaB: JSONSchema = {
+        $id: 'schema://collision-check',
+        type: 'object',
+        properties: {
+          b: { type: 'string' },
+        },
+        required: ['b'],
+        additionalProperties: false,
+      };
+
+      const validatorA = new SchemaValidator(schemaA);
+      const validatorB = new SchemaValidator(schemaB);
+
+      expect(validatorA.validate({ a: 'ok' }).valid).toBe(true);
+      expect(validatorB.validate({ b: 'ok' }).valid).toBe(true);
+      expect(validatorB.validate({ a: 'ok' }).valid).toBe(false);
+
+      const stats = validatorB.getCacheStats();
+      expect(stats.keys.filter((key) => key.startsWith('schema://collision-check::'))).toHaveLength(
+        2
+      );
     });
   });
 

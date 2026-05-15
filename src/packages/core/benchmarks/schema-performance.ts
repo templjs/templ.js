@@ -104,6 +104,10 @@ function benchmark(name, fn, iterations = 1000) {
 console.log('Schema Validator Performance Benchmarks');
 console.log('=======================================\n');
 
+const resetSchemaAnalysisCache = () => {
+  SchemaValidator.clearCache();
+};
+
 // Benchmark: Schema compilation
 benchmark(
   'Schema Compilation',
@@ -112,6 +116,27 @@ benchmark(
   },
   100
 );
+
+// Benchmark: full schema-analysis cold path (no shared cache)
+benchmark(
+  'Schema Analysis (Cold)',
+  () => {
+    resetSchemaAnalysisCache();
+    const coldValidator = new SchemaValidator(complexSchema);
+    coldValidator.getMetadata();
+    coldValidator.getValidPaths();
+  },
+  100
+);
+
+// Benchmark: full schema-analysis warm path (shared cache hit)
+resetSchemaAnalysisCache();
+new SchemaValidator(complexSchema);
+benchmark('Schema Analysis (Warm)', () => {
+  const warmValidator = new SchemaValidator(complexSchema);
+  warmValidator.getMetadata();
+  warmValidator.getValidPaths();
+});
 
 // Benchmark: Data validation (with cached schema)
 const validator = new SchemaValidator(complexSchema);

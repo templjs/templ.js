@@ -5,15 +5,17 @@ title: '069: Add Shared Schema Analysis Cache in Core'
 summary: Add Shared Schema Analysis Cache in Core
 type: work-item
 subtype: task
-lifecycle: draft
-status: proposed
-status_reason: needs-triage
+lifecycle: active
+status: in-progress
+status_reason: reverting-for-pr-workflow
 priority: medium
 estimated: 6
 actual: 0
 links:
   evidence:
     - '[[record-20260514-223855-069-add-shared-schema-analysis-cache-in-core]]'
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/134
 ---
 
 ## Goal
@@ -26,10 +28,10 @@ Current repo analysis still shows repeated `SchemaValidator` construction in Vol
 
 ## Tasks
 
-- [ ] Design shared cache ownership and cache keys for schema analysis.
-- [ ] Cache compiled validators, metadata, valid paths, and related analysis together.
-- [ ] Keep `SchemaValidator` as the public facade where compatibility is needed.
-- [ ] Add benchmark coverage for cold and warm schema-analysis paths.
+- [x] Design shared cache ownership and cache keys for schema analysis.
+- [x] Cache compiled validators, metadata, valid paths, and related analysis together.
+- [x] Keep `SchemaValidator` as the public facade where compatibility is needed.
+- [x] Add benchmark coverage for cold and warm schema-analysis paths.
 
 ## Acceptance Criteria
 

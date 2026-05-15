@@ -5,12 +5,13 @@ title: '068: Remove Remaining Volar Statement-Semantic Duplication'
 summary: Remove Remaining Volar Statement-Semantic Duplication
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: awaiting-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: medium
 estimated: 4
 actual: 4
+completed_date: '2026-05-14'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/125

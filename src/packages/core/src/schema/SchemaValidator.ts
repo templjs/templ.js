@@ -9,6 +9,78 @@ import type { ValidationResult, ValidationError, SchemaMetadata, JSONSchema } fr
 import { extractPaths, fuzzyMatch, isValidPath, normalizePath } from './queryPathValidator.js';
 import { inferSchemaFromValue } from './schemaInference.js';
 
+interface SchemaAnalysisCacheEntry {
+  canonicalSchema: string;
+  validPaths: Set<string>;
+  metadata: SchemaMetadata;
+}
+
+const DEFAULT_SHARED_SCHEMA_CACHE_LIMIT = 128;
+const sharedSchemaAnalysisCache = new Map<string, SchemaAnalysisCacheEntry>();
+
+function cloneMetadata(metadata: SchemaMetadata): SchemaMetadata {
+  const clone: SchemaMetadata = {};
+
+  for (const [path, entry] of Object.entries(metadata)) {
+    const clonedEntry = { ...entry };
+    // Deep-clone array-valued fields to prevent mutation leaks.
+    // IMPORTANT: If SchemaMetadata gains new array fields, they must be cloned here
+    // to ensure the shared cache entry does not leak mutable references.
+    if (entry.properties) {
+      clonedEntry.properties = [...entry.properties];
+    }
+    clone[path] = clonedEntry;
+  }
+
+  return clone;
+}
+
+function canonicalizeValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => canonicalizeValue(item));
+  }
+
+  if (value && typeof value === 'object') {
+    const objectValue = value as Record<string, unknown>;
+    const sortedKeys = Object.keys(objectValue).sort();
+    const canonicalObject: Record<string, unknown> = {};
+
+    for (const key of sortedKeys) {
+      canonicalObject[key] = canonicalizeValue(objectValue[key]);
+    }
+
+    return canonicalObject;
+  }
+
+  return value;
+}
+
+function canonicalStringify(value: unknown): string {
+  return JSON.stringify(canonicalizeValue(value));
+}
+
+function hashString(input: string): string {
+  // FNV-1a 64-bit: use two independent 32-bit FNV passes to reduce collision risk
+  // First pass: standard FNV-1a
+  let hash1 = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    hash1 ^= input.charCodeAt(i);
+    hash1 = Math.imul(hash1, 16777619);
+  }
+
+  // Second pass: FNV starting from end to decorrelate
+  let hash2 = 2166136261;
+  for (let i = input.length - 1; i >= 0; i--) {
+    hash2 ^= input.charCodeAt(i);
+    hash2 = Math.imul(hash2, 16777619);
+  }
+
+  // Combine both hashes for 64-bit space, reducing collisions from birthday bound ~65k to ~4B
+  const combined =
+    (hash1 >>> 0).toString(16).padStart(8, '0') + (hash2 >>> 0).toString(16).padStart(8, '0');
+  return combined;
+}
+
 /**
  * Schema validator with query path validation and schema inference
  */
@@ -16,7 +88,7 @@ export class SchemaValidator {
   private ajv: Ajv2020;
   private currentSchema: JSONSchema | null = null;
   private validPaths: Set<string> = new Set();
-  private compiledSchemas: Map<string, ValidateFunction> = new Map();
+  private metadata: SchemaMetadata = {};
   private validateFunction: ValidateFunction | null = null;
   private compileError: string | null = null;
 
@@ -43,25 +115,38 @@ export class SchemaValidator {
    */
   loadSchema(schema: JSONSchema): void {
     this.currentSchema = schema;
-    this.validPaths = extractPaths(schema);
 
-    // Generate cache key
-    const cacheKey = this.getCacheKey(schema);
+    const canonicalSchema = canonicalStringify(schema);
+    const cacheKey = this.getCacheKey(schema, canonicalSchema);
 
-    // Check cache - reuse compiled validator if already compiled
-    if (this.compiledSchemas.has(cacheKey)) {
-      this.validateFunction = this.compiledSchemas.get(cacheKey)!;
-      this.compileError = null;
-      return;
+    // Check shared analysis cache first.
+    const cached = sharedSchemaAnalysisCache.get(cacheKey);
+    if (cached && cached.canonicalSchema === canonicalSchema) {
+      this.validPaths = new Set(cached.validPaths);
+      this.metadata = cloneMetadata(cached.metadata);
+    } else {
+      this.validPaths = extractPaths(schema);
+      this.metadata = this.extractMetadata(schema);
+
+      sharedSchemaAnalysisCache.set(cacheKey, {
+        canonicalSchema,
+        validPaths: new Set(this.validPaths),
+        metadata: cloneMetadata(this.metadata),
+      });
+
+      while (sharedSchemaAnalysisCache.size > DEFAULT_SHARED_SCHEMA_CACHE_LIMIT) {
+        const firstKey = sharedSchemaAnalysisCache.keys().next().value;
+        if (typeof firstKey !== 'string') {
+          break;
+        }
+        sharedSchemaAnalysisCache.delete(firstKey);
+      }
     }
 
-    // Compile schema
+    // Compile schema per instance Ajv to avoid cross-instance Ajv state coupling.
     try {
       this.validateFunction = this.ajv.compile(schema);
       this.compileError = null;
-      if (this.validateFunction) {
-        this.compiledSchemas.set(cacheKey, this.validateFunction);
-      }
     } catch (error) {
       // Degrade gracefully: unknown meta-schema or unresolvable remote $ref.
       // Validation is skipped; completions and hover still work.
@@ -160,7 +245,7 @@ export class SchemaValidator {
       return {};
     }
 
-    return this.extractMetadata(this.currentSchema);
+    return cloneMetadata(this.metadata);
   }
 
   /**
@@ -172,10 +257,20 @@ export class SchemaValidator {
   }
 
   /**
-   * Clear compiled schema cache
+   * Clear the shared process-wide compiled schema cache.
+   */
+  static clearCache(): void {
+    sharedSchemaAnalysisCache.clear();
+  }
+
+  /**
+   * Clear compiled schema cache.
+   *
+   * @deprecated Prefer SchemaValidator.clearCache() to make the process-wide
+   * side effect explicit.
    */
   clearCache(): void {
-    this.compiledSchemas.clear();
+    SchemaValidator.clearCache();
   }
 
   /**
@@ -184,8 +279,8 @@ export class SchemaValidator {
    */
   getCacheStats(): { size: number; keys: string[] } {
     return {
-      size: this.compiledSchemas.size,
-      keys: Array.from(this.compiledSchemas.keys()),
+      size: sharedSchemaAnalysisCache.size,
+      keys: Array.from(sharedSchemaAnalysisCache.keys()),
     };
   }
 
@@ -257,7 +352,7 @@ export class SchemaValidator {
 
     // Handle object properties
     if (isObjectSchema && schema.properties) {
-      const propertyNames = Object.keys(schema.properties);
+      const propertyNames = Object.keys(schema.properties).sort();
 
       if (prefix) {
         metadata[prefix].properties = propertyNames;
@@ -311,7 +406,7 @@ export class SchemaValidator {
           if (incoming.properties) {
             current.properties = Array.from(
               new Set([...(current.properties ?? []), ...incoming.properties])
-            );
+            ).sort();
           }
 
           if (incoming.itemType && !current.itemType) {
@@ -335,10 +430,14 @@ export class SchemaValidator {
   /**
    * Generate cache key for a schema
    * @param schema - JSON Schema
+   * @param canonicalSchema - Canonical schema string
    * @returns Cache key string
    */
-  private getCacheKey(schema: JSONSchema): string {
-    // Use $id if available, otherwise stringify
-    return schema.$id || JSON.stringify(schema);
+  private getCacheKey(schema: JSONSchema, canonicalSchema: string): string {
+    const schemaId = schema.$id ?? 'no-id';
+    const schemaHash = hashString(canonicalSchema);
+    // Include schema byteLength to further reduce collision risk when $id is shared
+    const byteLength = new Blob([canonicalSchema]).size;
+    return `${schemaId}::${byteLength}::${schemaHash}`;
   }
 }
