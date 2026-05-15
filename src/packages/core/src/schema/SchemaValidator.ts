@@ -10,6 +10,7 @@ import { extractPaths, fuzzyMatch, isValidPath, normalizePath } from './queryPat
 import { inferSchemaFromValue } from './schemaInference.js';
 
 interface SchemaAnalysisCacheEntry {
+  canonicalSchema: string;
   validPaths: Set<string>;
   metadata: SchemaMetadata;
 }
@@ -100,12 +101,12 @@ export class SchemaValidator {
   loadSchema(schema: JSONSchema): void {
     this.currentSchema = schema;
 
-    // Generate cache key
-    const cacheKey = this.getCacheKey(schema);
+    const canonicalSchema = canonicalStringify(schema);
+    const cacheKey = this.getCacheKey(schema, canonicalSchema);
 
     // Check shared analysis cache first.
     const cached = sharedSchemaAnalysisCache.get(cacheKey);
-    if (cached) {
+    if (cached && cached.canonicalSchema === canonicalSchema) {
       this.validPaths = new Set(cached.validPaths);
       this.metadata = cloneMetadata(cached.metadata);
     } else {
@@ -113,6 +114,7 @@ export class SchemaValidator {
       this.metadata = this.extractMetadata(schema);
 
       sharedSchemaAnalysisCache.set(cacheKey, {
+        canonicalSchema,
         validPaths: new Set(this.validPaths),
         metadata: cloneMetadata(this.metadata),
       });
@@ -413,10 +415,10 @@ export class SchemaValidator {
   /**
    * Generate cache key for a schema
    * @param schema - JSON Schema
+   * @param canonicalSchema - Canonical schema string
    * @returns Cache key string
    */
-  private getCacheKey(schema: JSONSchema): string {
-    const canonicalSchema = canonicalStringify(schema);
+  private getCacheKey(schema: JSONSchema, canonicalSchema: string): string {
     const schemaId = schema.$id ?? 'no-id';
     const schemaHash = hashString(canonicalSchema);
     return `${schemaId}::${schemaHash}`;
