@@ -10,6 +10,9 @@ status: proposed
 status_reason: needs-triage
 priority: medium
 estimated: 40
+links:
+  evidence:
+    - '[[record-20260514-223855-023-syntax-themes-v1-1]]'
 ---
 
 ## Goal

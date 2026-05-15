@@ -11,6 +11,9 @@ status_reason: needs-triage
 priority: medium
 estimated: 40
 actual: 0
+links:
+  evidence:
+    - '[[record-20260514-223855-047-template-extraction]]'
 ---
 
 ## Goal

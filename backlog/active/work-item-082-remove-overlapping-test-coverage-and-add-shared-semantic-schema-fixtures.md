@@ -11,6 +11,9 @@ status_reason: needs-triage
 priority: medium
 estimated: 3
 actual: 0
+links:
+  evidence:
+    - '[[record-20260514-223855-082-remove-overlapping-test-coverage-and-add-shared-semantic-schema-fixtures]]'
 ---
 
 ## Goal

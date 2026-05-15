@@ -13,6 +13,8 @@ actual: 5
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/124
+  evidence:
+    - '[[record-20260514-223855-095-bug-syntax-highlighting-autocomplete-hover-not-working]]'
 ---
 
 ## Goal

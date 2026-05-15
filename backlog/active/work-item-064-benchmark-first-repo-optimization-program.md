@@ -11,6 +11,9 @@ status_reason: prioritized
 priority: high
 estimated: 24
 actual: 0
+links:
+  evidence:
+    - '[[record-20260514-223855-064-benchmark-first-repo-optimization-program]]'
 ---
 
 ## Goal

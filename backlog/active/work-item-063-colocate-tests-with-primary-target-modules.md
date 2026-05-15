@@ -11,6 +11,9 @@ status_reason: needs-triage
 priority: high
 estimated: 12
 actual: 0
+links:
+  evidence:
+    - '[[record-20260514-223855-063-colocate-tests-with-primary-target-modules]]'
 ---
 
 ## Goal

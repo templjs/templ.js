@@ -11,6 +11,9 @@ status_reason: needs-triage
 priority: medium
 estimated: 8
 actual: 0
+links:
+  evidence:
+    - '[[record-20260514-223855-088-multi-grammar-expression-overlay-support]]'
 ---
 
 ## Goal
