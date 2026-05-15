@@ -19,6 +19,43 @@ interface SchemaAnalysisCacheEntry {
 const DEFAULT_SHARED_SCHEMA_CACHE_LIMIT = 128;
 const sharedSchemaAnalysisCache = new Map<string, SchemaAnalysisCacheEntry>();
 
+function cloneMetadata(metadata: SchemaMetadata): SchemaMetadata {
+  const clone: SchemaMetadata = {};
+
+  for (const [path, entry] of Object.entries(metadata)) {
+    clone[path] = {
+      ...entry,
+      properties: entry.properties ? [...entry.properties] : undefined,
+    };
+  }
+
+  return clone;
+}
+
+function canonicalizeValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => canonicalizeValue(item));
+  }
+
+  if (value && typeof value === 'object') {
+    const objectValue = value as Record<string, unknown>;
+    const sortedKeys = Object.keys(objectValue).sort();
+    const canonicalObject: Record<string, unknown> = {};
+
+    for (const key of sortedKeys) {
+      canonicalObject[key] = canonicalizeValue(objectValue[key]);
+    }
+
+    return canonicalObject;
+  }
+
+  return value;
+}
+
+function canonicalStringify(value: unknown): string {
+  return JSON.stringify(canonicalizeValue(value));
+}
+
 /**
  * Schema validator with query path validation and schema inference
  */
@@ -63,7 +100,7 @@ export class SchemaValidator {
       this.validateFunction = cached.validateFunction;
       this.compileError = cached.compileError;
       this.validPaths = new Set(cached.validPaths);
-      this.metadata = { ...cached.metadata };
+      this.metadata = cloneMetadata(cached.metadata);
       return;
     }
 
@@ -85,7 +122,7 @@ export class SchemaValidator {
       validateFunction: this.validateFunction,
       compileError: this.compileError,
       validPaths: new Set(this.validPaths),
-      metadata: { ...this.metadata },
+      metadata: cloneMetadata(this.metadata),
     });
 
     while (sharedSchemaAnalysisCache.size > DEFAULT_SHARED_SCHEMA_CACHE_LIMIT) {
@@ -187,7 +224,7 @@ export class SchemaValidator {
       return {};
     }
 
-    return { ...this.metadata };
+    return cloneMetadata(this.metadata);
   }
 
   /**
@@ -375,7 +412,8 @@ export class SchemaValidator {
    * @returns Cache key string
    */
   private getCacheKey(schema: JSONSchema): string {
-    // Use $id if available, otherwise stringify
-    return schema.$id || JSON.stringify(schema);
+    const canonicalSchema = canonicalStringify(schema);
+    const schemaId = schema.$id ?? 'no-id';
+    return `${schemaId}::${canonicalSchema}`;
   }
 }
