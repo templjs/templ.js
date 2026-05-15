@@ -105,6 +105,77 @@ describe('createSemantifyServices', () => {
     expect(filterCandidates.some((item) => item.label === 'upper')).toBe(true);
   });
 
+  it('plans definition targets for local bindings with custom delimiters', () => {
+    const text = '<% set row = rows %><< ro >>';
+    const offset = text.lastIndexOf('ro') + 'ro'.length;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'definitionTarget',
+        metadata: {
+          variablePath: 'ro',
+        },
+      },
+      {
+        text,
+        offset,
+        delimiters: {
+          statementStart: '<%',
+          statementEnd: '%>',
+          expressionStart: '<<',
+          expressionEnd: '>>',
+        },
+      }
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.label).toBe('row');
+    expect(candidates[0]?.metadata).toMatchObject({
+      alias: 'ro',
+      isAliasTokenOnly: true,
+    });
+  });
+
+  it('returns no definition target when alias prefix is ambiguous', () => {
+    const text = '{% set item = users %}{% set issue = tickets %}{{ i }}';
+    const offset = text.lastIndexOf('i') + 'i'.length;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'definitionTarget',
+        metadata: {
+          variablePath: 'i',
+        },
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toEqual([]);
+  });
+
+  it('plans hover payload for loop aliases', () => {
+    const text = '{% for item in users %}{{ item }}{% endfor %}';
+    const offset = text.lastIndexOf('item') + 'item'.length;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+        metadata: {
+          variablePath: 'item',
+        },
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.label).toBe('item');
+    expect(candidates[0]?.detail).toBe('local loop alias');
+    expect(candidates[0]?.metadata).toMatchObject({
+      alias: 'item',
+      isAliasTokenOnly: true,
+    });
+  });
+
   it('returns sorted symbol candidates with set-variable detail when no prefix is provided', () => {
     const text = [
       '{% set title = page.title %}',

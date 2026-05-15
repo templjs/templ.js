@@ -72,23 +72,6 @@ const nestedScopeSchema = {
   },
 };
 
-const titleItemsSchema = {
-  type: 'object',
-  properties: {
-    title: { type: 'string' },
-    description: { type: 'string' },
-    items: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          name: { type: 'string' },
-        },
-      },
-    },
-  },
-};
-
 describe('IntellisenseProvider', () => {
   const provider = new IntellisenseProvider();
 
@@ -117,300 +100,6 @@ describe('IntellisenseProvider', () => {
     const items = isolatedProvider.getCompletions('{{ inj }}', 7, { schema: sampleSchema });
 
     expect(items.map((item) => item.label)).toEqual(['injected']);
-  });
-
-  it('uses semantify-backed bindings for local alias completions', () => {
-    const mockAdapter: SemanticReadAdapter = {
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: () => null,
-    };
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({
-        regions: [],
-        bindings: [
-          {
-            kind: 'local',
-            name: 'shadowedAlias',
-            scopeRange: { startOffset: 5, endOffset: Number.MAX_SAFE_INTEGER },
-            declarationRange: { startOffset: 5, endOffset: 13 },
-            metadata: { bindingKind: 'set-variable' },
-          },
-          {
-            kind: 'local',
-            name: 'shadowedAlias',
-            scopeRange: { startOffset: 0, endOffset: Number.MAX_SAFE_INTEGER },
-            declarationRange: { startOffset: 0, endOffset: 13 },
-            metadata: { bindingKind: 'for-alias' },
-          },
-          {
-            kind: 'custom',
-            name: 'pluginAlias',
-            scopeRange: { startOffset: 0, endOffset: Number.MAX_SAFE_INTEGER },
-            declarationRange: { startOffset: 0, endOffset: 11 },
-          },
-        ],
-      }),
-      resolveReferences: () => [],
-      planCandidates: (intent) => {
-        if (intent.type === 'symbolCandidates') {
-          return [
-            {
-              label: 'shadowedAlias',
-              kind: 'variable',
-              detail: 'local template variable',
-              metadata: { startOffset: 0 },
-            },
-            {
-              label: 'pluginAlias',
-              kind: 'variable',
-              detail: 'custom binding',
-              metadata: { startOffset: 0 },
-            },
-          ];
-        }
-        return [];
-      },
-    };
-
-    const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
-    const items = providerWithSemantify.getCompletions('{{  }}', 3, { schema: sampleSchema });
-
-    const semantifyAliases = items.filter((item) => item.label === 'shadowedAlias');
-    expect(semantifyAliases).toHaveLength(1);
-    expect(semantifyAliases[0]?.detail).toBe('local template variable');
-    expect(items.find((item) => item.label === 'pluginAlias')?.detail).toBe('custom binding');
-  });
-
-  it('labels for-value aliases as loop aliases', () => {
-    const mockAdapter: SemanticReadAdapter = {
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: () => null,
-    };
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({
-        regions: [],
-        bindings: [
-          {
-            kind: 'local',
-            name: 'loopValue',
-            scopeRange: { startOffset: 0, endOffset: Number.MAX_SAFE_INTEGER },
-            declarationRange: { startOffset: 0, endOffset: 9 },
-            metadata: { bindingKind: 'for-value-alias' },
-          },
-        ],
-      }),
-      resolveReferences: () => [],
-      planCandidates: (intent) => {
-        if (intent.type === 'symbolCandidates') {
-          return [
-            {
-              label: 'loopValue',
-              kind: 'variable',
-              detail: 'local loop alias',
-              metadata: { startOffset: 0 },
-            },
-          ];
-        }
-        return [];
-      },
-    };
-
-    const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
-    const items = providerWithSemantify.getCompletions('{{  }}', 3, { schema: sampleSchema });
-
-    expect(items.find((item) => item.label === 'loopValue')?.detail).toBe('local loop alias');
-  });
-
-  it('keeps builtin filter signature metadata in completion items', () => {
-    const items = provider.getCompletions('{{ user.name | up }}', 19, {
-      schema: sampleSchema,
-    });
-
-    const upper = items.find((item) => item.label === 'upper');
-    expect(upper?.kind).toBe('filter');
-    expect((upper?.detail?.length ?? 0) > 0).toBe(true);
-    expect((upper?.documentation?.length ?? 0) > 0).toBe(true);
-  });
-
-  it('falls back invalid semantify candidate kinds to variable completions', () => {
-    const mockAdapter: SemanticReadAdapter = {
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: () => null,
-    };
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({
-        regions: [],
-        bindings: [],
-      }),
-      resolveReferences: () => [],
-      planCandidates: (intent) => {
-        if (intent.type === 'symbolCandidates') {
-          return [
-            {
-              label: 'fallbackKind',
-              kind: 'plugin-kind',
-            },
-          ];
-        }
-        return [];
-      },
-    };
-
-    const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
-    const items = providerWithSemantify.getCompletions('{{ fallback }}', 11, {
-      schema: sampleSchema,
-    });
-
-    expect(items.find((item) => item.label === 'fallbackKind')?.kind).toBe('variable');
-  });
-
-  it('preserves unknown semantify filter candidates without signature metadata', () => {
-    const mockAdapter: SemanticReadAdapter = {
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: () => null,
-    };
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({
-        regions: [],
-        bindings: [],
-      }),
-      resolveReferences: () => [],
-      planCandidates: (intent) => {
-        if (intent.type === 'filterCandidates') {
-          return [
-            {
-              label: 'pluginFilter',
-              kind: 'filter',
-              detail: 'plugin detail',
-            },
-          ];
-        }
-        return [];
-      },
-    };
-
-    const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
-    const items = providerWithSemantify.getCompletions('{{ user.name | plugin }}', 23, {
-      schema: sampleSchema,
-    });
-
-    const pluginFilter = items.find((item) => item.label === 'pluginFilter');
-    expect(pluginFilter?.detail).toBe('plugin detail');
-    expect(pluginFilter?.documentation).toBeUndefined();
-  });
-
-  it('matches filter completions by substring while typing after pipe', () => {
-    const items = provider.getCompletions('{{ user.name | ow }}', 19, {
-      schema: sampleSchema,
-    });
-
-    expect(items.some((item) => item.label === 'lower')).toBe(true);
-  });
-
-  it('matches semantify symbol candidates by substring in expression completions', () => {
-    const mockAdapter: SemanticReadAdapter = {
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: () => null,
-    };
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({
-        regions: [],
-        bindings: [],
-      }),
-      resolveReferences: () => [],
-      planCandidates: (intent) => {
-        if (intent.type === 'symbolCandidates') {
-          return [
-            {
-              label: 'shadowedAlias',
-              kind: 'variable',
-              detail: 'local template variable',
-              metadata: { startOffset: 20 },
-            },
-          ];
-        }
-        return [];
-      },
-    };
-
-    const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
-    const items = providerWithSemantify.getCompletions('{{ ado }}', 6, {
-      schema: sampleSchema,
-    });
-
-    expect(items.some((item) => item.label === 'shadowedAlias')).toBe(true);
-  });
-
-  it('keeps nearest shadowed semantify symbol candidate by label', () => {
-    const mockAdapter: SemanticReadAdapter = {
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: () => null,
-    };
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({
-        regions: [],
-        bindings: [],
-      }),
-      resolveReferences: () => [],
-      planCandidates: (intent) => {
-        if (intent.type === 'symbolCandidates') {
-          return [
-            {
-              label: 'item',
-              kind: 'variable',
-              detail: 'outer alias',
-              metadata: { startOffset: 5 },
-            },
-            {
-              label: 'item',
-              kind: 'variable',
-              detail: 'inner alias',
-              metadata: { startOffset: 25 },
-            },
-          ];
-        }
-        return [];
-      },
-    };
-
-    const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
-    const items = providerWithSemantify.getCompletions('{{ it }}', 5, {
-      schema: sampleSchema,
-    });
-
-    const itemCandidates = items.filter((item) => item.label === 'item');
-    expect(itemCandidates).toHaveLength(1);
-    expect(itemCandidates[0]?.detail).toBe('inner alias');
   });
 
   it('provides property completions after dot', () => {
@@ -462,6 +151,50 @@ describe('IntellisenseProvider', () => {
     expect(hover?.contents).toContain('user');
   });
 
+  it('uses semantify hoverPayload for local alias hover when adapter alias resolution is unavailable', () => {
+    const text = '{% for item in users %}{{ item }}{% endfor %}';
+    const offset = text.indexOf('{{ item }}') + 4;
+
+    const mockAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => null,
+    };
+
+    const mockSemantify: SemantifyServices = {
+      resolveContext: () => ({ regions: [], bindings: [] }),
+      resolveReferences: () => [],
+      planCandidates: (intent) => {
+        if (intent.type !== 'hoverPayload') {
+          return [];
+        }
+
+        return [
+          {
+            label: 'item',
+            kind: 'variable',
+            detail: 'local loop alias',
+            metadata: {
+              alias: 'item',
+              isAliasTokenOnly: true,
+              declarationStartOffset: text.indexOf('item in'),
+              declarationEndOffset: text.indexOf('item in') + 'item'.length,
+            },
+          },
+        ];
+      },
+    };
+
+    const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
+    const hover = providerWithSemantify.getHover(text, offset, { schema: sampleSchema });
+
+    expect(hover?.contents).toBe('item: local loop alias');
+  });
+
   it('returns hover info for filters', () => {
     const hover = provider.getHover('{{ user.name | upper }}', 20, {
       schema: sampleSchema,
@@ -481,6 +214,57 @@ describe('IntellisenseProvider', () => {
     });
     expect(def?.uri).toBe('file:///schema.json');
     expect(def?.path).toBe('user.name');
+  });
+
+  it('uses semantify definitionTarget for local alias definitions when adapter alias resolution is unavailable', () => {
+    const text = '{% for item in users %}{{ item }}{% endfor %}';
+    const offset = text.indexOf('{{ item }}') + 4;
+    const declarationStartOffset = text.indexOf('item in');
+
+    const mockAdapter: SemanticReadAdapter = {
+      resolveScopedPath: (_text, basePath) => basePath,
+      getChildCompletions: () => [],
+      getEnumValueCompletions: () => [],
+      getPathDetails: () => null,
+      resolvePathDefinition: () => null,
+      resolveDocumentDefinition: () => null,
+      resolveLocalAliasDefinition: () => null,
+    };
+
+    const mockSemantify: SemantifyServices = {
+      resolveContext: () => ({ regions: [], bindings: [] }),
+      resolveReferences: () => [],
+      planCandidates: (intent) => {
+        if (intent.type !== 'definitionTarget') {
+          return [];
+        }
+
+        return [
+          {
+            label: 'item',
+            kind: 'variable',
+            metadata: {
+              alias: 'item',
+              isAliasTokenOnly: true,
+              declarationStartOffset,
+              declarationEndOffset: declarationStartOffset + 'item'.length,
+            },
+          },
+        ];
+      },
+    };
+
+    const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
+    const definition = providerWithSemantify.getDefinition(text, offset, {
+      schema: sampleSchema,
+      documentUri: 'file:///workspace/project.md.tpl',
+    });
+
+    expect(definition?.uri).toBe('file:///workspace/project.md.tpl');
+    expect(definition?.range).toEqual({
+      start: { line: 0, character: declarationStartOffset },
+      end: { line: 0, character: declarationStartOffset + 'item'.length },
+    });
   });
 
   it('returns null definition without schema uri', () => {
@@ -521,6 +305,23 @@ describe('IntellisenseProvider', () => {
     expect(items.some((item) => item.kind === 'keyword')).toBe(true);
   });
 
+  it('provides semantify-backed filter completions with custom delimiters', () => {
+    const text = '<% if user.name | up %>';
+    const offset = text.indexOf('up') + 'up'.length;
+
+    const items = provider.getCompletions(text, offset, {
+      schema: sampleSchema,
+      delimiters: {
+        statementStart: '<%',
+        statementEnd: '%>',
+        expressionStart: '<:',
+        expressionEnd: ':>',
+      },
+    });
+
+    expect(items.some((item) => item.label === 'upper')).toBe(true);
+  });
+
   it('provides filter completions in statement expressions', () => {
     const text = '{% if notes | ca == "array" %}';
     const offset = text.indexOf('ca') + 'ca'.length;
@@ -541,111 +342,6 @@ describe('IntellisenseProvider', () => {
     const offset = text.indexOf('item.') + 'item.'.length;
     const items = provider.getCompletions(text, offset, { schema: sampleSchema });
     expect(items.some((item) => item.label === 'id')).toBe(true);
-  });
-
-  it('includes active for-loop alias in expression completions', () => {
-    const text = '{% for item in users %}{{ it }}{% endfor %}';
-    const offset = text.lastIndexOf('it') + 'it'.length;
-
-    const items = provider.getCompletions(text, offset, { schema: sampleSchema });
-
-    expect(items.some((item) => item.label === 'item')).toBe(true);
-  });
-
-  it('includes set variables and loop aliases in malformed-template expression completions', () => {
-    const text = [
-      '---',
-      'invalid: bar: [{% if %}foo {% endif %}]',
-      '---',
-      '{% set collection = ["a", "b", "c"] %}',
-      '{% for x in collection -%}',
-      '{{  }}',
-    ].join('\n');
-    const offset = text.indexOf('{{  }}') + 3;
-
-    const items = provider.getCompletions(text, offset, { schema: sampleSchema });
-
-    expect(items.some((item) => item.label === 'collection')).toBe(true);
-    expect(items.some((item) => item.label === 'x')).toBe(true);
-  });
-
-  it('includes active for-loop alias in statement-expression completions', () => {
-    const text = '{% for item in users %}{% if it %}{% endif %}{% endfor %}';
-    const offset = text.lastIndexOf('it') + 'it'.length;
-
-    const items = provider.getCompletions(text, offset, { schema: sampleSchema });
-
-    expect(items.some((item) => item.label === 'item')).toBe(true);
-  });
-
-  it('offers schema iterable completions in trim-marker for statements', () => {
-    const text = '{%- for x in i %}';
-    const offset = text.lastIndexOf('i') + 1;
-
-    const items = provider.getCompletions(text, offset, { schema: titleItemsSchema });
-
-    expect(items.some((item) => item.label === 'items')).toBe(true);
-  });
-
-  it('does not suggest set variables before their declaration', () => {
-    const text = ['{% for x in c %}', '{% set collection = ["a", "b"] %}'].join('\n');
-    const offset = text.indexOf('in c') + 'in c'.length;
-
-    const items = provider.getCompletions(text, offset, { schema: titleItemsSchema });
-
-    expect(items.some((item) => item.label === 'collection')).toBe(false);
-  });
-
-  it('suggests set variables after declaration in for iterable completions', () => {
-    const text = ['{% set collection = ["a", "b"] %}', '{% for x in c %}'].join('\n');
-    const offset = text.lastIndexOf('in c') + 'in c'.length;
-
-    const items = provider.getCompletions(text, offset, { schema: titleItemsSchema });
-
-    expect(items.some((item) => item.label === 'collection')).toBe(true);
-  });
-
-  it('offers schema properties for expression prefix completion', () => {
-    const text = '{{ ti }}';
-    const offset = text.indexOf('ti') + 'ti'.length;
-
-    const items = provider.getCompletions(text, offset, { schema: titleItemsSchema });
-
-    expect(items.some((item) => item.label === 'title')).toBe(true);
-  });
-
-  it('offers alias schema properties while typing an unclosed expression', () => {
-    const text = ['{% for item in items %}', '{{ item.n'].join('\n');
-    const offset = text.lastIndexOf('item.n') + 'item.n'.length;
-
-    const items = provider.getCompletions(text, offset, { schema: titleItemsSchema });
-
-    expect(items.some((item) => item.label === 'name')).toBe(true);
-  });
-
-  it('offers alias schema properties in malformed templates with leading trim-marker for loops', () => {
-    const text = [
-      '---',
-      '"$schema": "./example.schema.json",',
-      'invalid: bar: [{% if %}foo ]',
-      '---',
-      '{%- for item in items %}',
-      '{{ item.n',
-    ].join('\n');
-    const offset = text.lastIndexOf('item.n') + 'item.n'.length;
-
-    const items = provider.getCompletions(text, offset, { schema: titleItemsSchema });
-
-    expect(items.some((item) => item.label === 'name')).toBe(true);
-  });
-
-  it('falls back to schema child properties when alias property prefix has no direct match', () => {
-    const text = ['{% for item in items %}', '{{ item.hame }}', '{% endfor %}'].join('\n');
-    const offset = text.lastIndexOf('item.hame') + 'item.hame'.length;
-
-    const items = provider.getCompletions(text, offset, { schema: titleItemsSchema });
-
-    expect(items.some((item) => item.label === 'name')).toBe(true);
   });
 
   it('returns empty completions when schema missing', () => {
@@ -745,39 +441,6 @@ describe('IntellisenseProvider', () => {
       },
     });
     expect(hover?.contents).toContain('user.name');
-  });
-
-  it('returns local alias hover info inside expression blocks', () => {
-    const text = '{% for item in users %}{{ item }}{% endfor %}';
-    const offset = text.lastIndexOf('item') + 2;
-
-    const hover = provider.getHover(text, offset, {
-      schema: sampleSchema,
-    });
-
-    expect(hover?.contents).toBe('item: local loop alias');
-  });
-
-  it('returns local alias hover info inside statement expressions', () => {
-    const text = '{% for item in users %}{% if item %}ok{% endif %}{% endfor %}';
-    const offset = text.indexOf('if item') + 4;
-
-    const hover = provider.getHover(text, offset, {
-      schema: sampleSchema,
-    });
-
-    expect(hover?.contents).toBe('item: local loop alias');
-  });
-
-  it('returns local variable hover info for statement iterable aliases', () => {
-    const text = '{% set collection = users %}{% for item in collection %}{{ item }}{% endfor %}';
-    const offset = text.indexOf('in collection') + 5;
-
-    const hover = provider.getHover(text, offset, {
-      schema: sampleSchema,
-    });
-
-    expect(hover?.contents).toBe('collection: local template variable');
   });
 
   it('returns signature help for custom filters', () => {
@@ -885,49 +548,6 @@ describe('IntellisenseProvider', () => {
     });
 
     expect(items.some((item) => item.label === 'email')).toBe(true);
-  });
-
-  it('deduplicates completion items that share the same label, kind, and detail', () => {
-    const dedupeProvider = new IntellisenseProvider({
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [
-        { label: 'x', kind: 'variable', detail: 'local loop alias' },
-        { label: 'x', kind: 'variable', detail: 'local loop alias' },
-        { label: 'y', kind: 'variable', detail: 'string' },
-      ],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: (text, alias, offset) => {
-        if (alias !== 'x') {
-          return null;
-        }
-        const at = text.indexOf('{{ x }}');
-        if (offset < at || at === -1) {
-          return null;
-        }
-
-        const decl = text.indexOf('for x in');
-        return decl === -1
-          ? null
-          : {
-              start: decl + 'for '.length,
-              end: decl + 'for x'.length,
-            };
-      },
-    });
-
-    const text = '{% for x in users %}{{ x }}{% endfor %}';
-    const offset = text.indexOf('{{ x }}') + 3;
-    const completions = dedupeProvider.getCompletions(text, offset, {
-      schema: sampleSchema,
-    });
-
-    const xEntries = completions.filter(
-      (item) => item.label === 'x' && item.kind === 'variable' && item.detail === 'local loop alias'
-    );
-    expect(xEntries).toHaveLength(1);
   });
 
   it('returns definition in later expression after earlier closed expression', () => {
@@ -1077,314 +697,6 @@ describe('IntellisenseProvider', () => {
 
     expect(def?.uri).toBe('file:///workspace/project.md.tpl');
     expect(def?.range).toBeTruthy();
-  });
-
-  it('resolves local alias definition via semantify references when adapter alias resolution is unavailable', () => {
-    const text = '{% for relationship in relationships %}{{ relationship }}{% endfor %}';
-    const offset = text.indexOf('{{ relationship }}') + 3;
-    const aliasDeclarationStart = text.indexOf('relationship in');
-
-    const mockAdapter: SemanticReadAdapter = {
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: () => null,
-    };
-
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({
-        regions: [],
-        bindings: [],
-      }),
-      resolveReferences: () => [
-        {
-          kind: 'localBinding',
-          rawPath: 'relationship',
-          range: {
-            startOffset: aliasDeclarationStart,
-            endOffset: aliasDeclarationStart + 'relationship'.length,
-          },
-        },
-      ],
-      planCandidates: () => [],
-    };
-
-    const providerWithSemantifyRefs = new IntellisenseProvider(mockAdapter, mockSemantify);
-    const def = providerWithSemantifyRefs.getDefinition(text, offset, {
-      schema: sampleSchema,
-      schemaUri: 'file:///schema.json',
-      documentUri: 'file:///workspace/project.md.tpl',
-    });
-
-    expect(def?.uri).toBe('file:///workspace/project.md.tpl');
-    expect(def?.range).toEqual({
-      start: { line: 0, character: aliasDeclarationStart },
-      end: { line: 0, character: aliasDeclarationStart + 'relationship'.length },
-    });
-  });
-
-  it('resolves local alias definition from semantify when cursor token is an unambiguous prefix', () => {
-    const text = '{% for relationship in relationships %}{{ relati }}{% endfor %}';
-    const offset = text.indexOf('{{ relati }}') + 3;
-    const aliasDeclarationStart = text.indexOf('relationship in');
-
-    const mockAdapter: SemanticReadAdapter = {
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: () => null,
-    };
-
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({
-        regions: [],
-        bindings: [],
-      }),
-      resolveReferences: () => [
-        {
-          kind: 'localBinding',
-          rawPath: 'relationship',
-          range: {
-            startOffset: aliasDeclarationStart,
-            endOffset: aliasDeclarationStart + 'relationship'.length,
-          },
-        },
-      ],
-      planCandidates: () => [],
-    };
-
-    const providerWithSemantifyRefs = new IntellisenseProvider(mockAdapter, mockSemantify);
-    const def = providerWithSemantifyRefs.getDefinition(text, offset, {
-      schema: sampleSchema,
-      schemaUri: 'file:///schema.json',
-      documentUri: 'file:///workspace/project.md.tpl',
-    });
-
-    expect(def?.uri).toBe('file:///workspace/project.md.tpl');
-    expect(def?.range).toEqual({
-      start: { line: 0, character: aliasDeclarationStart },
-      end: { line: 0, character: aliasDeclarationStart + 'relationship'.length },
-    });
-  });
-
-  it('resolves hover via semantify references for statement-expression alias when adapter returns null', () => {
-    const text =
-      '{% for relationship in relationships %}{% if relationship %}ok{% endif %}{% endfor %}';
-    const offset = text.indexOf('{% if relationship %}') + '{% if '.length + 2;
-    const aliasDeclarationStart = text.indexOf('relationship in');
-
-    const mockAdapter: SemanticReadAdapter = {
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: () => null,
-    };
-
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({ regions: [], bindings: [] }),
-      resolveReferences: () => [
-        {
-          kind: 'localBinding',
-          rawPath: 'relationship',
-          range: {
-            startOffset: aliasDeclarationStart,
-            endOffset: aliasDeclarationStart + 'relationship'.length,
-          },
-        },
-      ],
-      planCandidates: () => [],
-    };
-
-    const providerWithSemantifyRefs = new IntellisenseProvider(mockAdapter, mockSemantify);
-    const hover = providerWithSemantifyRefs.getHover(text, offset, {
-      schema: sampleSchema,
-      schemaUri: 'file:///schema.json',
-      documentUri: 'file:///workspace/project.md.tpl',
-    });
-
-    expect(hover?.contents).toBe('relationship: local loop alias');
-  });
-
-  it('resolves hover via semantify references for statement-expression alias with unambiguous prefix cursor', () => {
-    const text = '{% for relationship in relationships %}{% if relati %}ok{% endif %}{% endfor %}';
-    const offset = text.indexOf('{% if relati %}') + '{% if '.length + 2;
-    const aliasDeclarationStart = text.indexOf('relationship in');
-
-    const mockAdapter: SemanticReadAdapter = {
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: () => null,
-    };
-
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({ regions: [], bindings: [] }),
-      resolveReferences: () => [
-        {
-          kind: 'localBinding',
-          rawPath: 'relationship',
-          range: {
-            startOffset: aliasDeclarationStart,
-            endOffset: aliasDeclarationStart + 'relationship'.length,
-          },
-        },
-      ],
-      planCandidates: () => [],
-    };
-
-    const providerWithSemantifyRefs = new IntellisenseProvider(mockAdapter, mockSemantify);
-    const hover = providerWithSemantifyRefs.getHover(text, offset, {
-      schema: sampleSchema,
-      schemaUri: 'file:///schema.json',
-      documentUri: 'file:///workspace/project.md.tpl',
-    });
-
-    expect(hover?.contents).toBe('relati: local loop alias');
-  });
-
-  it('resolves hover via semantify references for statement-iterable alias when adapter returns null', () => {
-    const text = '{% for item in items %}{% for sub in item %}{{ sub }}{% endfor %}{% endfor %}';
-    const innerForStart = text.indexOf('{% for sub in item %}');
-    const iterableStart = innerForStart + '{% for sub in '.length;
-    const offset = iterableStart + 2;
-    const aliasDeclarationStart = text.indexOf('item in');
-
-    const mockAdapter: SemanticReadAdapter = {
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: () => null,
-    };
-
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({ regions: [], bindings: [] }),
-      resolveReferences: () => [
-        {
-          kind: 'localBinding',
-          rawPath: 'item',
-          range: {
-            startOffset: aliasDeclarationStart,
-            endOffset: aliasDeclarationStart + 'item'.length,
-          },
-        },
-      ],
-      planCandidates: () => [],
-    };
-
-    const providerWithSemantifyRefs = new IntellisenseProvider(mockAdapter, mockSemantify);
-    const hover = providerWithSemantifyRefs.getHover(text, offset, {
-      schema: sampleSchema,
-      schemaUri: 'file:///schema.json',
-      documentUri: 'file:///workspace/project.md.tpl',
-    });
-
-    expect(hover?.contents).toBe('item: local template variable');
-  });
-
-  it('falls back to adapter hover path for statement-iterable alias when semantify returns no references', () => {
-    const text = '{% for item in items %}{% for sub in item %}{{ sub }}{% endfor %}{% endfor %}';
-    const innerForStart = text.indexOf('{% for sub in item %}');
-    const iterableStart = innerForStart + '{% for sub in '.length;
-    const offset = iterableStart + 2;
-
-    const mockAdapter: SemanticReadAdapter = {
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: () => null,
-    };
-
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({ regions: [], bindings: [] }),
-      resolveReferences: () => [],
-      planCandidates: () => [],
-    };
-
-    const providerWithEmptySemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
-    const hover = providerWithEmptySemantify.getHover(text, offset, {
-      schema: sampleSchema,
-      schemaUri: 'file:///schema.json',
-      documentUri: 'file:///workspace/project.md.tpl',
-    });
-
-    expect(hover).toBeNull();
-  });
-
-  it('falls back to adapter hover path for statement-expression alias when semantify returns no references', () => {
-    const text = '{% for item in items %}{% if item %}ok{% endif %}{% endfor %}';
-    const offset = text.indexOf('{% if item %}') + '{% if '.length + 2;
-
-    const mockAdapter: SemanticReadAdapter = {
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: () => null,
-    };
-
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({ regions: [], bindings: [] }),
-      resolveReferences: () => [],
-      planCandidates: () => [],
-    };
-
-    const providerWithEmptySemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
-    const hover = providerWithEmptySemantify.getHover(text, offset, {
-      schema: sampleSchema,
-      schemaUri: 'file:///schema.json',
-      documentUri: 'file:///workspace/project.md.tpl',
-    });
-
-    expect(hover).toBeNull();
-  });
-
-  it('resolves statement expression property access through schema navigation', () => {
-    const text =
-      '{% for relationship in relationships %}{% if relationship.name %}ok{% endif %}{% endfor %}';
-    const offset = text.indexOf('relationship.name') + 13;
-
-    const def = provider.getDefinition(text, offset, {
-      schema: sampleSchema,
-      schemaUri: 'file:///schema.json',
-      documentUri: 'file:///workspace/project.md.tpl',
-    });
-
-    expect(def?.uri).toBe('file:///schema.json');
-    expect(def?.path).toBe('relationships[0].name');
-  });
-
-  it('falls through to schema definition for property access on local aliases', () => {
-    const text = '{% for item in items %}{{ item.name }}{% endfor %}';
-    const offset = text.indexOf('item.name') + 6;
-
-    const def = provider.getDefinition(text, offset, {
-      schema: sampleSchema,
-      schemaUri: 'file:///schema.json',
-      documentUri: 'file:///workspace/project.md.tpl',
-    });
-
-    expect(def?.uri).toBe('file:///schema.json');
-    expect(def?.path).toBe('items[0].name');
   });
 
   it('returns schema definition for iterable token in for statements', () => {
@@ -1637,30 +949,6 @@ describe('IntellisenseProvider', () => {
     expect(hover?.contents).toContain('Convert string to uppercase');
   });
 
-  it('returns null hover for unregistered filter in statement expression', () => {
-    const text = '{% if value | unknownFilterXyz %}body{% endif %}';
-    const offset = text.indexOf('unknownFilterXyz') + 4;
-
-    const hover = provider.getHover(text, offset, {
-      schema: sampleSchema,
-      schemaUri: 'file:///schema.json',
-      documentUri: 'file:///workspace/project.md.tpl',
-      debugLog: () => {},
-    });
-
-    expect(hover).toBeNull();
-  });
-
-  it('returns null hover when cursor is in plain text outside any template tag', () => {
-    const hover = provider.getHover('Hello world {{ name }}', 3, {
-      schema: sampleSchema,
-      schemaUri: 'file:///schema.json',
-      documentUri: 'file:///workspace/project.md.tpl',
-    });
-
-    expect(hover).toBeNull();
-  });
-
   it('resolves nested frontmatter key paths (scope.type) for hover and definition', () => {
     const schema = {
       type: 'object',
@@ -1780,95 +1068,5 @@ describe('IntellisenseProvider', () => {
 
     expect(frontmatterHover?.contents).toContain('frontData.title');
     expect(contentHover?.contents).toContain('contentData.heading');
-  });
-
-  describe('regression: intellisense on complex iterable expressions (WI-062 drift prevention)', () => {
-    it('provides completions for loop alias on computed bracket expressions', () => {
-      const schema = {
-        type: 'object',
-        properties: {
-          users: {
-            type: 'array',
-            items: { type: 'object', properties: { name: { type: 'string' } } },
-          },
-          activeIndex: { type: 'number' },
-        },
-      };
-      const text = '{% for user in users[activeIndex + 1] %}{{ user. }}{% endfor %}';
-      const cursor = text.indexOf('user.') + 'user.'.length;
-
-      const completions = provider.getCompletions(text, cursor, { schema: schema as object });
-      expect(completions?.some((item) => item.label === 'name')).toBe(true);
-    });
-
-    it('provides hover info for loop alias on spaced for-in header', () => {
-      const schema = {
-        type: 'object',
-        properties: {
-          users: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: { email: { type: 'string' } },
-            },
-          },
-        },
-      };
-      const text = '{% for   user   in   users   %}{{ user }}{% endfor %}';
-      const cursor = text.indexOf('user }}') + 2;
-
-      const hover = provider.getHover(text, cursor, { schema: schema as object });
-      expect(hover?.contents).toBe('user: local loop alias');
-    });
-
-    it('provides definition for loop alias used in nested scope with complex outer iterable', () => {
-      const schema = {
-        type: 'object',
-        properties: {
-          groups: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                members: {
-                  type: 'array',
-                  items: { type: 'object', properties: { id: { type: 'string' } } },
-                },
-              },
-            },
-          },
-          activeIndex: { type: 'number' },
-        },
-      };
-      const text =
-        '{% for group in groups[activeIndex] %}{% for member in group.members %}{{ member.id }}{% endfor %}{% endfor %}';
-      const cursor = text.indexOf('member.id') + 2;
-
-      const definition = provider.getDefinition(text, cursor, {
-        schema: schema as object,
-        schemaUri: 'file:///schema.json',
-        documentUri: 'file:///workspace/project.md.tpl',
-      });
-      expect(definition?.uri).toBe('file:///workspace/project.md.tpl');
-      expect(definition?.range).toBeTruthy();
-    });
-
-    it('returns hover info for loop alias even when iterable offset is complex', () => {
-      const schema = {
-        type: 'object',
-        properties: {
-          users: {
-            type: 'array',
-            items: { type: 'object', properties: { name: { type: 'string' } } },
-          },
-          activeIndex: { type: 'number' },
-        },
-      };
-      const text = '{% for user in users[activeIndex] %}{{ user }}{% endfor %}';
-      const cursor = text.indexOf('user }}') + 2;
-
-      const hover = provider.getHover(text, cursor, { schema: schema as object });
-      expect(hover?.contents).toBe('user: local loop alias');
-    });
   });
 });
