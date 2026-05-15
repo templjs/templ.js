@@ -5,11 +5,13 @@ title: '106: Remove all in-process base-format language services and delegate at
 summary: Delete yaml-language-service, frontmatter extraction, and all per-format in-process diagnostic paths from the extension host. The Volar plugin emits the full cleaned base-format content as a single atomic virtual document; VS Code routes it to whichever language server is registered for that extension.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 6
 actual: 6
+completed_date: '2026-05-15'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/123

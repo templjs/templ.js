@@ -5,11 +5,13 @@ title: '095: Syntax highlighting, autocomplete, and hover not working for host l
 summary: Syntax highlighting, autocomplete, and hover are absent for host-language content (YAML, Markdown, HTML, JSON) in tmpl files because the grammar embeddedLanguages mapping references scopes that are never emitted, and VS Code host-language delegation is not wired through Volar's virtual-code system
 type: work-item
 subtype: bug
-lifecycle: active
-status: ready-for-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 5
 actual: 5
+completed_date: '2026-05-15'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/124
