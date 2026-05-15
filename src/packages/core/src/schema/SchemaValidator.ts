@@ -337,7 +337,7 @@ export class SchemaValidator {
 
     // Handle object properties
     if (isObjectSchema && schema.properties) {
-      const propertyNames = Object.keys(schema.properties);
+      const propertyNames = Object.keys(schema.properties).sort();
 
       if (prefix) {
         metadata[prefix].properties = propertyNames;
@@ -391,7 +391,7 @@ export class SchemaValidator {
           if (incoming.properties) {
             current.properties = Array.from(
               new Set([...(current.properties ?? []), ...incoming.properties])
-            );
+            ).sort();
           }
 
           if (incoming.itemType && !current.itemType) {
