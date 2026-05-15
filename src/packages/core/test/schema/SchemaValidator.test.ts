@@ -1768,6 +1768,22 @@ describe('Integration Tests', () => {
       expect(validatorB.getValidPaths().has('user.firstName')).toBe(true);
       expect(validatorB.validate({ user: { firstName: 'Ada' } }).valid).toBe(true);
     });
+
+    it('bounds shared cache growth for schemas without $id', () => {
+      const validator = new SchemaValidator();
+
+      for (let i = 0; i < 140; i++) {
+        validator.loadSchema({
+          type: 'object',
+          properties: {
+            [`field${i}`]: { type: 'string' },
+          },
+        });
+      }
+
+      const stats = validator.getCacheStats();
+      expect(stats.size).toBeLessThanOrEqual(128);
+    });
   });
 
   describe('Error Message Formatting', () => {

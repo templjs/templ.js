@@ -16,6 +16,7 @@ interface SchemaAnalysisCacheEntry {
   metadata: SchemaMetadata;
 }
 
+const DEFAULT_SHARED_SCHEMA_CACHE_LIMIT = 128;
 const sharedSchemaAnalysisCache = new Map<string, SchemaAnalysisCacheEntry>();
 
 /**
@@ -86,6 +87,14 @@ export class SchemaValidator {
       validPaths: new Set(this.validPaths),
       metadata: { ...this.metadata },
     });
+
+    while (sharedSchemaAnalysisCache.size > DEFAULT_SHARED_SCHEMA_CACHE_LIMIT) {
+      const firstKey = sharedSchemaAnalysisCache.keys().next().value;
+      if (typeof firstKey !== 'string') {
+        break;
+      }
+      sharedSchemaAnalysisCache.delete(firstKey);
+    }
   }
 
   /** Whether the schema compiled successfully. False means validation is skipped. */
@@ -190,10 +199,20 @@ export class SchemaValidator {
   }
 
   /**
-   * Clear compiled schema cache
+   * Clear the shared process-wide compiled schema cache.
+   */
+  static clearCache(): void {
+    sharedSchemaAnalysisCache.clear();
+  }
+
+  /**
+   * Clear compiled schema cache.
+   *
+   * @deprecated Prefer SchemaValidator.clearCache() to make the process-wide
+   * side effect explicit.
    */
   clearCache(): void {
-    sharedSchemaAnalysisCache.clear();
+    SchemaValidator.clearCache();
   }
 
   /**

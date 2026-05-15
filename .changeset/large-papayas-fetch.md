@@ -1,8 +1,7 @@
 ---
-'@templjs/semantify': patch
-'@templjs/volar': patch
+'@templjs/core': patch
 ---
 
 # Summary
 
-Route local-alias hover and definition resolution through semantify intent handlers and add regression coverage for custom-delimiter and alias-resolution branches.
+Add a shared schema-analysis cache in core so validator compilation, metadata extraction, and valid-path analysis can be reused across validator instances.

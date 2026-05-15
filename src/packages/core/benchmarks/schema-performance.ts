@@ -105,7 +105,7 @@ console.log('Schema Validator Performance Benchmarks');
 console.log('=======================================\n');
 
 const resetSchemaAnalysisCache = () => {
-  new SchemaValidator().clearCache();
+  SchemaValidator.clearCache();
 };
 
 // Benchmark: Schema compilation
