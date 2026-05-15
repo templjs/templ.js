@@ -26,6 +26,7 @@ import {
   createSemantifyServices,
   type CandidateItem,
   type DelimiterConfigInput as SemantifyDelimiterConfigInput,
+  type QueryIntentType,
   type SemantifyServices,
 } from '@templjs/semantify';
 
@@ -235,45 +236,87 @@ function resolveLocalAliasReferenceFromSemantify(
   text: string,
   variablePath: string,
   offset: number,
-  delimiters: IntellisenseDelimiters
+  delimiters: IntellisenseDelimiters,
+  intentType: Extract<QueryIntentType, 'definitionTarget' | 'hoverPayload'>
 ): LocalAliasResolution | null {
-  const alias = variablePath.split(/[.[]/, 1)[0] ?? variablePath;
-  if (!alias) {
+  const candidates = semantifyServices.planCandidates(
+    {
+      type: intentType,
+      metadata: {
+        variablePath,
+      },
+    },
+    {
+      text,
+      offset,
+      delimiters: toSemantifyDelimiters(delimiters),
+    }
+  );
+  const candidate = candidates[0];
+  if (!candidate) {
     return null;
   }
-  const isAliasTokenOnly = /^[A-Za-z_][\w]*$/.test(variablePath);
 
-  const references = semantifyServices.resolveReferences({
-    text,
-    offset,
-    delimiters: toSemantifyDelimiters(delimiters),
-  });
-
-  const exactBinding = references.find(
-    (reference) => reference.kind === 'localBinding' && reference.rawPath === alias
-  );
-  const localBinding =
-    exactBinding ??
-    (isAliasTokenOnly
-      ? (() => {
-          const prefixMatches = references.filter(
-            (reference) => reference.kind === 'localBinding' && reference.rawPath.startsWith(alias)
-          );
-          return prefixMatches.length === 1 ? prefixMatches[0] : null;
-        })()
-      : null);
-  if (!localBinding) {
+  const metadata = candidate.metadata as
+    | {
+        alias?: unknown;
+        isAliasTokenOnly?: unknown;
+        declarationStartOffset?: unknown;
+        declarationEndOffset?: unknown;
+      }
+    | undefined;
+  if (
+    !metadata ||
+    typeof metadata.alias !== 'string' ||
+    typeof metadata.isAliasTokenOnly !== 'boolean' ||
+    typeof metadata.declarationStartOffset !== 'number' ||
+    typeof metadata.declarationEndOffset !== 'number'
+  ) {
     return null;
   }
 
   return {
-    alias,
+    alias: metadata.alias,
     declaration: {
-      start: localBinding.range.startOffset,
-      end: localBinding.range.endOffset,
+      start: metadata.declarationStartOffset,
+      end: metadata.declarationEndOffset,
     },
-    isAliasTokenOnly,
+    isAliasTokenOnly: metadata.isAliasTokenOnly,
   };
+}
+
+function resolveLocalAliasHoverFromSemantify(
+  semantifyServices: SemantifyServices,
+  text: string,
+  variablePath: string,
+  offset: number,
+  delimiters: IntellisenseDelimiters
+): LocalAliasResolution | null {
+  return resolveLocalAliasReferenceFromSemantify(
+    semantifyServices,
+    text,
+    variablePath,
+    offset,
+    delimiters,
+    'hoverPayload'
+  );
+}
+
+function resolveLocalAliasDefinitionFromSemantify(
+  semantifyServices: SemantifyServices,
+  text: string,
+  variablePath: string,
+  offset: number,
+  delimiters: IntellisenseDelimiters
+): LocalAliasResolution | null {
+  return resolveLocalAliasReferenceFromSemantify(
+    semantifyServices,
+    text,
+    variablePath,
+    offset,
+    delimiters,
+    'definitionTarget'
+  );
 }
 
 function buildSemanticQueryContext(
@@ -1273,7 +1316,7 @@ export class IntellisenseProvider {
           );
           if (iterablePath) {
             const localAlias =
-              resolveLocalAliasReferenceFromSemantify(
+              resolveLocalAliasHoverFromSemantify(
                 this.semantifyServices,
                 text,
                 iterablePath,
@@ -1313,7 +1356,7 @@ export class IntellisenseProvider {
       const variablePath = getVariablePathAtOffset(expressionPart, Math.max(0, relativeOffset));
       if (variablePath) {
         const localAlias =
-          resolveLocalAliasReferenceFromSemantify(
+          resolveLocalAliasHoverFromSemantify(
             this.semantifyServices,
             text,
             variablePath,
@@ -1355,7 +1398,7 @@ export class IntellisenseProvider {
     const variablePath = getVariablePathAtOffset(content, Math.max(0, relativeOffset));
     if (variablePath) {
       const localAlias =
-        resolveLocalAliasReferenceFromSemantify(
+        resolveLocalAliasHoverFromSemantify(
           this.semantifyServices,
           text,
           variablePath,
@@ -1523,7 +1566,7 @@ export class IntellisenseProvider {
       const cursorIsAliasToken = !/[.[]/.test(cursorPrefix);
 
       const localAlias =
-        resolveLocalAliasReferenceFromSemantify(
+        resolveLocalAliasDefinitionFromSemantify(
           this.semantifyServices,
           text,
           variablePath,
@@ -1606,7 +1649,7 @@ export class IntellisenseProvider {
           const cursorPrefix = iterableExpression.slice(0, Math.max(0, cursorInIterable + 1));
           const cursorIsAliasToken = !/[.[]/.test(cursorPrefix);
           const localAlias =
-            resolveLocalAliasReferenceFromSemantify(
+            resolveLocalAliasDefinitionFromSemantify(
               this.semantifyServices,
               text,
               iterablePath,
@@ -1651,7 +1694,7 @@ export class IntellisenseProvider {
     const cursorIsAliasToken = !/[.[]/.test(cursorPrefix);
 
     const localAlias =
-      resolveLocalAliasReferenceFromSemantify(
+      resolveLocalAliasDefinitionFromSemantify(
         this.semantifyServices,
         text,
         variablePath,

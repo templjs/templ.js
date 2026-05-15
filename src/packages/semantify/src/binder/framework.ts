@@ -164,6 +164,56 @@ function applyPrefix(items: CandidateItem[], prefix?: string): CandidateItem[] {
   return items.filter((item) => item.label.toLowerCase().startsWith(normalized));
 }
 
+function getBindingDetail(bindingKind: unknown): string {
+  return bindingKind === 'set-variable' ? 'local template variable' : 'local loop alias';
+}
+
+function extractAlias(variablePath: string): string {
+  return variablePath.split(/[.[]/, 1)[0] ?? variablePath;
+}
+
+function resolveAliasPath(intent: QueryIntent): string {
+  const metadata = intent.metadata as { variablePath?: unknown } | undefined;
+  if (typeof metadata?.variablePath === 'string') {
+    return metadata.variablePath;
+  }
+
+  if (typeof intent.basePath === 'string') {
+    return intent.basePath;
+  }
+
+  if (typeof intent.symbol?.rawPath === 'string') {
+    return intent.symbol.rawPath;
+  }
+
+  return '';
+}
+
+function resolveLocalBindingReference(intent: QueryIntent, refs: SymbolRef[]): SymbolRef | null {
+  const variablePath = resolveAliasPath(intent);
+  const alias = extractAlias(variablePath);
+  if (!alias) {
+    return null;
+  }
+
+  const isAliasTokenOnly = /^[A-Za-z_][\w]*$/.test(variablePath);
+  const exact = refs.find(
+    (reference) => reference.kind === 'localBinding' && reference.rawPath === alias
+  );
+  if (exact) {
+    return exact;
+  }
+
+  if (!isAliasTokenOnly) {
+    return null;
+  }
+
+  const prefixMatches = refs.filter(
+    (reference) => reference.kind === 'localBinding' && reference.rawPath.startsWith(alias)
+  );
+  return prefixMatches.length === 1 ? prefixMatches[0] : null;
+}
+
 class CoreBackedSemantifyServices implements SemantifyServices {
   resolveContext(input: SemanticContextResolverInput): SemanticContext {
     const allBindings = extractBindingsWithRecovery(input);
@@ -203,6 +253,34 @@ class CoreBackedSemantifyServices implements SemantifyServices {
       return applyPrefix(filterItems, intent.typedPrefix);
     }
 
+    if (intent.type === 'definitionTarget' || intent.type === 'hoverPayload') {
+      const refs = this.resolveReferences(input);
+      const localBinding = resolveLocalBindingReference(intent, refs);
+      if (!localBinding) {
+        return [];
+      }
+
+      const variablePath = resolveAliasPath(intent);
+      const alias = extractAlias(variablePath);
+      const isAliasTokenOnly = /^[A-Za-z_][\w]*$/.test(variablePath);
+      const bindingKind = (localBinding.metadata as { bindingKind?: unknown } | undefined)
+        ?.bindingKind;
+
+      return [
+        {
+          label: localBinding.rawPath,
+          kind: 'variable',
+          detail: getBindingDetail(bindingKind),
+          metadata: {
+            alias,
+            isAliasTokenOnly,
+            declarationStartOffset: localBinding.range.startOffset,
+            declarationEndOffset: localBinding.range.endOffset,
+          },
+        },
+      ];
+    }
+
     if (intent.type !== 'symbolCandidates') {
       return [];
     }
@@ -210,13 +288,11 @@ class CoreBackedSemantifyServices implements SemantifyServices {
     const context = this.resolveContext(input);
 
     const symbolItems = context.bindings.map((binding) => {
-      // Semantify produces bindingKind for all mapped bindings.
-      // Use a direct read so candidate shaping does not carry unreachable fallback branches.
-      const bindingKind = (binding.metadata as { bindingKind: string }).bindingKind;
+      const bindingKind = (binding.metadata as { bindingKind?: unknown } | undefined)?.bindingKind;
       return {
         label: binding.name,
         kind: 'variable',
-        detail: bindingKind === 'set-variable' ? 'local template variable' : 'local loop alias',
+        detail: getBindingDetail(bindingKind),
         metadata: {
           startOffset: binding.scopeRange.startOffset,
         },
