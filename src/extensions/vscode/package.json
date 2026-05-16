@@ -1,5 +1,5 @@
 {
-  "name": "templjs",
+  "name": "vscode-templjs",
   "private": true,
   "displayName": "TemplJS Language Support",
   "description": "Language support for templjs meta-templates",
