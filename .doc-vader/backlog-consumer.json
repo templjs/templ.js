@@ -1,14 +1,7 @@
 {
-  "roots": {
-    "backlog": "backlog",
-    "active": "backlog/active",
-    "archive": "backlog/archive",
-    "records": "backlog/records",
-    "audit": "backlog/audit"
-  },
+  "roots": ["."],
   "automation": {
-    "autoCloseOnMerge": true,
-    "autoEvidenceFromWorkflowRuns": true,
-    "preserveCommitMap": true
+    "enabled": true,
+    "schema_paths": ["backlog/records"]
   }
 }
