@@ -1,7 +1,27 @@
 {
-  "roots": ["."],
+  "roots": {
+    "backlog": "backlog",
+    "active": "backlog",
+    "archive": "backlog/archive",
+    "records": "backlog/records",
+    "audit": "backlog/audit"
+  },
   "automation": {
-    "enabled": true,
-    "schema_paths": ["backlog/records"]
+    "autoCloseOnMerge": true,
+    "autoEvidenceFromWorkflowRuns": true,
+    "preserveCommitMap": true,
+    "prePushValidation": {
+      "schemas": {
+        "baseline": "schemas/frontmatter/by-type/work-item/v1.0.0.json",
+        "changed": "schemas/frontmatter/by-type/work-item/latest.json",
+        "archive": "schemas/frontmatter/by-type/work-item/v1.0.0.json"
+      },
+      "severity": {
+        "baseline": "error",
+        "changed": "error",
+        "archive": "warn",
+        "checklist": "error"
+      }
+    }
   }
 }
