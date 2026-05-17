@@ -76,7 +76,24 @@ function cloneRegistry(registry: Map<string, RegistryEntry[]>): Map<string, Regi
   return new Map(
     Array.from(registry.entries(), ([name, entries]) => [
       name,
-      entries.map((entry) => ({ ...entry })),
+      entries.map((entry) => ({
+        handler: entry.handler,
+        signature: {
+          name: entry.signature.name,
+          category: entry.signature.category,
+          description: entry.signature.description,
+          parameters: entry.signature.parameters.map((param) => ({
+            name: param.name,
+            type: param.type,
+            required: param.required,
+            variadic: param.variadic,
+            description: param.description,
+            examples: param.examples ? [...param.examples] : undefined,
+          })),
+          returnType: entry.signature.returnType,
+          examples: [...entry.signature.examples],
+        },
+      })),
     ])
   );
 }
@@ -85,7 +102,24 @@ function cloneFunctionMetadata(
   metadataFunctions: Map<string, FunctionSignature[]>
 ): Map<string, FunctionSignature[]> {
   return new Map(
-    Array.from(metadataFunctions.entries(), ([name, signatures]) => [name, [...signatures]])
+    Array.from(metadataFunctions.entries(), ([name, signatures]) => [
+      name,
+      signatures.map((sig) => ({
+        name: sig.name,
+        category: sig.category,
+        description: sig.description,
+        parameters: sig.parameters.map((param) => ({
+          name: param.name,
+          type: param.type,
+          required: param.required,
+          variadic: param.variadic,
+          description: param.description,
+          examples: param.examples ? [...param.examples] : undefined,
+        })),
+        returnType: sig.returnType,
+        examples: [...sig.examples],
+      })),
+    ])
   );
 }
 
