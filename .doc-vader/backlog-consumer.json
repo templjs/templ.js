@@ -1,7 +1,7 @@
 {
   "roots": {
     "backlog": "backlog",
-    "active": "backlog",
+    "active": "backlog/active",
     "archive": "backlog/archive",
     "records": "backlog/records",
     "audit": "backlog/audit"
