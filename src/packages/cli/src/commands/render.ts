@@ -34,6 +34,10 @@ async function parsePayloadByFormat(
   }
 
   if (inputFormat === 'json' && !validateInput) {
+    if (payload.trim().length === 0) {
+      return '';
+    }
+
     try {
       return JSON.parse(payload) as unknown;
     } catch (error) {
