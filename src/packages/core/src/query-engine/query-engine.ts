@@ -49,12 +49,14 @@ function addRegistryEntry(
   signature: FunctionSignature,
   handler: FilterFunction
 ): void {
+  const registrySignature = cloneFunctionSignature(signature);
+  const metadataSignature = cloneFunctionSignature(signature);
   const registryEntries = registry.get(signature.name) ?? [];
-  registryEntries.push({ signature, handler });
+  registryEntries.push({ signature: registrySignature, handler });
   registry.set(signature.name, registryEntries);
 
   const metadataEntries = metadataFunctions.get(signature.name) ?? [];
-  metadataEntries.push(signature);
+  metadataEntries.push(metadataSignature);
   metadataFunctions.set(signature.name, metadataEntries);
 }
 

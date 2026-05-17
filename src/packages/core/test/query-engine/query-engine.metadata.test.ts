@@ -93,4 +93,35 @@ describe('QueryEngine metadata', () => {
       'replace("hello world", "world", "there") → "hello there"',
     ]);
   });
+
+  it('clones custom function signatures during registration', () => {
+    const engine = new QueryEngine();
+    const signature = {
+      name: '__with_parameter_examples',
+      description: 'custom signature with nested examples',
+      category: 'utility' as const,
+      parameters: [
+        {
+          name: 'fallback',
+          type: 'string',
+          required: false,
+          description: 'Fallback value',
+          examples: ['"Guest"'],
+        },
+      ],
+      returnType: 'string',
+      examples: ['__with_parameter_examples(null, "Guest") → "Guest"'],
+    };
+
+    engine.registerFunction(signature, () => 'value');
+    signature.parameters[0]?.examples?.push('"Mutated"');
+    signature.examples.push('external mutation');
+
+    const registered = engine.getFunction('__with_parameter_examples');
+
+    expect(registered).not.toBe(signature);
+    expect(registered?.parameters[0]).not.toBe(signature.parameters[0]);
+    expect(registered?.parameters[0]?.examples).toEqual(['"Guest"']);
+    expect(registered?.examples).toEqual(['__with_parameter_examples(null, "Guest") → "Guest"']);
+  });
 });
