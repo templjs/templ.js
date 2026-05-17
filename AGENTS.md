@@ -31,6 +31,16 @@ If no specific `AGENTS.md` exists for your working context:
 7. Follow project conventions in `migration-plan.md` and relevant ADRs.
 8. Maintain work item frontmatter alignment with schemas in `schemas/frontmatter/`.
 
+## PR Processing and Work Item Automation
+
+When a plan, PR, or workflow explicitly assigns final evidence collation, work item closure, or archive movement to `backlog-automation`:
+
+1. Do NOT manually close, archive, or move work items during implementation.
+2. Keep implementation-tracking work item updates limited to scope, dependencies, progress notes, and validation signals needed by the execution branch.
+3. Leave final evidence normalization, closure confirmation, and archive moves to `backlog-automation`.
+4. In PR summaries, identify any work items that appear complete but intentionally remain active for automation processing.
+5. If automation fails or is unavailable, report the blocked automation step rather than bypassing the workflow manually.
+
 ## Syntax vs Semantics Rules
 
 Use this decision order for parser and binder changes:
@@ -85,7 +95,7 @@ When adding new implementations:
 
 ### Critical Constraint: Split Versioning
 
-**Core npm packages** (7 total, but 4 maintain synchronized versions):
+**Public npm packages** (8 total, with 4 maintaining synchronized fixed-train versions):
 
 **Synchronized train** (must maintain same version):
 
@@ -94,11 +104,12 @@ When adding new implementations:
 - `@templjs/volar` — Volar language plugin
 - `@templjs/context-graph` — N-provider semantic foundation
 
-**Dependent packages** (follow synchronized train version):
+**Public dependent packages** (published with the package release lane and kept compatible with the synchronized train):
 
 - `@templjs/language-core` — Volar language plugin contracts
 - `@templjs/language-service` — Volar service plugins (adapters, diagnostics routing)
 - `@templjs/language-server` — LSP server entrypoint
+- `@templjs/semantify` — Semantic context, reference, and candidate planning services
 
 **VS Code extension** (versioned independently):
 
