@@ -248,7 +248,7 @@ describe('renderCommand', () => {
       if (value === 'template.templ') {
         return 'Hello {{ data }}';
       }
-      return '""';
+      return '';
     });
     vi.mocked(renderTemplate).mockReturnValue('Hello ');
 
