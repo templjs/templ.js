@@ -52,7 +52,6 @@ jobs:
       app-id: ${{ vars.DOC_VADER_APP_ID }}
     permissions:
       contents: write
-      pull-requests: read
       packages: read
     secrets:
       packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
@@ -72,7 +71,6 @@ jobs:
       app-id: ${{ vars.DOC_VADER_APP_ID }}
     permissions:
       contents: write
-      pull-requests: read
       packages: read
     secrets:
       packages-read-token: ${{ secrets.PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
