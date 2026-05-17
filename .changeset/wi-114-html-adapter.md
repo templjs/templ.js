@@ -1,6 +1,6 @@
 ---
 '@templjs/language-service': patch
-'templjs': patch
+'vscode-templjs': patch
 ---
 
 <!-- markdownlint-disable MD041 -->

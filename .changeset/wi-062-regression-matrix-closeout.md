@@ -1,7 +1,7 @@
 ---
 '@templjs/core': patch
 '@templjs/volar': patch
-'templjs': patch
+'vscode-templjs': patch
 ---
 
 # WI-062 Regression Matrix And Guardrails

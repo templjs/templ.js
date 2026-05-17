@@ -1,5 +1,5 @@
 ---
-'templjs': patch
+'vscode-templjs': patch
 ---
 
 <!-- markdownlint-disable MD041 -->

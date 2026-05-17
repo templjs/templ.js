@@ -1,5 +1,5 @@
 ---
-'templjs': minor
+'vscode-templjs': minor
 ---
 
 <!-- markdownlint-disable MD041 -->

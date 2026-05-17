@@ -1,5 +1,7 @@
 .pnpm-store/**
 coverage/**
+smoke/**
+playwright.smoke.config.ts
 src/**
 scripts/**
 test/**

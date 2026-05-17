@@ -1,6 +1,6 @@
 ---
 '@templjs/context-graph': patch
-'templjs': patch
+'vscode-templjs': patch
 '@templjs/volar': patch
 '@templjs/core': patch
 '@templjs/cli': patch
