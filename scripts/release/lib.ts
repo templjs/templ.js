@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -22,6 +22,12 @@ export type ReleaseEntry = {
   reference: string;
 };
 
+export type PublicPackageManifest = {
+  name: string;
+  version: string;
+  relativePath: string;
+};
+
 export type ReleaseSections = {
   added: ReleaseEntry[];
   fixed: ReleaseEntry[];
@@ -38,12 +44,13 @@ type ConventionalParts = {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
-export const PACKAGE_VERSION_FILES = [
+export const FIXED_PACKAGE_VERSION_FILES = [
   'src/packages/core/package.json',
   'src/packages/cli/package.json',
   'src/packages/volar/package.json',
   'src/packages/context-graph/package.json',
 ] as const;
+export const PACKAGE_VERSION_FILES = FIXED_PACKAGE_VERSION_FILES;
 
 export const VSCODE_PACKAGE_FILE = 'src/extensions/vscode/package.json';
 export const VSCODE_CHANGELOG_FILE = 'src/extensions/vscode/CHANGELOG.md';
@@ -53,6 +60,10 @@ export const VSCODE_SCOPE_PATHS = [
   'src/packages/core',
   'src/packages/volar',
   'src/packages/context-graph',
+  'src/packages/language-core',
+  'src/packages/language-service',
+  'src/packages/language-server',
+  'src/packages/semantify',
 ] as const;
 export const VSCODE_PATHS = VSCODE_SCOPE_PATHS;
 export const VSCODE_CHANGELOG_TEMPLATE = path.join(
@@ -63,6 +74,17 @@ export const RELEASE_NOTES_TEMPLATE = path.join(
   ROOT,
   'scripts/release/templates/github-release-notes.md.tmpl'
 );
+
+const PUBLIC_PACKAGE_ORDER = [
+  '@templjs/core',
+  '@templjs/context-graph',
+  '@templjs/semantify',
+  '@templjs/cli',
+  '@templjs/volar',
+  '@templjs/language-core',
+  '@templjs/language-service',
+  '@templjs/language-server',
+] as const;
 
 function runGit(args: string[]): string {
   try {
@@ -87,6 +109,67 @@ function readJsonFile<T>(relativePath: string): T {
 function writeJsonFile(relativePath: string, value: unknown): void {
   const absolutePath = path.join(ROOT, relativePath);
   writeFileSync(absolutePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+}
+
+export function getPublicPackageManifests(): PublicPackageManifest[] {
+  const packagesRoot = path.join(ROOT, 'src/packages');
+  const byName = new Map<string, PublicPackageManifest>();
+
+  for (const entry of readdirSync(packagesRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    const relativePath = `src/packages/${entry.name}/package.json`;
+    const absolutePath = path.join(ROOT, relativePath);
+    if (!existsSync(absolutePath)) {
+      continue;
+    }
+
+    const packageJson = readJsonFile<{
+      name?: unknown;
+      version?: unknown;
+      private?: unknown;
+    }>(relativePath);
+
+    if (
+      typeof packageJson.name !== 'string' ||
+      typeof packageJson.version !== 'string' ||
+      !packageJson.name.startsWith('@templjs/') ||
+      packageJson.private === true
+    ) {
+      continue;
+    }
+
+    byName.set(packageJson.name, {
+      name: packageJson.name,
+      version: packageJson.version,
+      relativePath,
+    });
+  }
+
+  const orderedPackages = PUBLIC_PACKAGE_ORDER.flatMap((packageName) => {
+    const manifest = byName.get(packageName);
+    if (!manifest) {
+      return [];
+    }
+
+    byName.delete(packageName);
+    return [manifest];
+  });
+
+  return [
+    ...orderedPackages,
+    ...Array.from(byName.values()).sort((left, right) => left.name.localeCompare(right.name)),
+  ];
+}
+
+export function getPublicPackageNames(): string[] {
+  return getPublicPackageManifests().map((manifest) => manifest.name);
+}
+
+export function getPublicPackageVersionFiles(): string[] {
+  return getPublicPackageManifests().map((manifest) => manifest.relativePath);
 }
 
 function parseSemver(version: string): [number, number, number] {
@@ -140,7 +223,7 @@ export function computeStagingVscodeVersion(
 }
 
 export function setPackageVersions(version: string): void {
-  for (const relativePath of PACKAGE_VERSION_FILES) {
+  for (const relativePath of getPublicPackageVersionFiles()) {
     const packageJson = readJsonFile<Record<string, unknown>>(relativePath);
     packageJson.version = version;
     writeJsonFile(relativePath, packageJson);
@@ -179,7 +262,7 @@ export function getWorkspaceVersions(): {
   coreVersion: string;
   volarVersion: string;
 } {
-  const packageVersions = PACKAGE_VERSION_FILES.map((relativePath) => {
+  const packageVersions = FIXED_PACKAGE_VERSION_FILES.map((relativePath) => {
     const packageJson = readJsonFile<{ version: string }>(relativePath);
     return packageJson.version;
   });

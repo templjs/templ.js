@@ -1,6 +1,6 @@
 ---
 '@templjs/language-service': minor
-'templjs': patch
+'vscode-templjs': patch
 ---
 
 # Runtime Foundation

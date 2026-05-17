@@ -1,5 +1,5 @@
 ---
-'templjs': patch
+'vscode-templjs': patch
 '@templjs/volar': patch
 ---
 

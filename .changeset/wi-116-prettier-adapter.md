@@ -4,7 +4,7 @@
 '@templjs/volar': patch
 '@templjs/context-graph': patch
 '@templjs/language-service': patch
-'templjs': patch
+'vscode-templjs': patch
 ---
 
 <!-- markdownlint-disable MD041 -->

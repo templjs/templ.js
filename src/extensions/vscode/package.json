@@ -1,5 +1,5 @@
 {
-  "name": "templjs",
+  "name": "vscode-templjs",
   "private": true,
   "displayName": "TemplJS Language Support",
   "description": "Language support for templjs meta-templates",
@@ -221,8 +221,8 @@
   },
   "scripts": {
     "build": "tsc -b --force && node ./scripts/build.mjs && node ./scripts/validate-bundled-deps.mjs",
-    "clean": "node -e \"const fs=require('node:fs'); fs.rmSync('dist',{recursive:true,force:true}); fs.rmSync('tsconfig.tsbuildinfo',{force:true}); for (const entry of fs.readdirSync('.')) if (/^templjs-.*\\.vsix$/.test(entry)) fs.rmSync(entry,{force:true});\"",
-    "lint": "echo \"No linting configured yet\" && exit 0",
+    "clean": "node -e \"const fs=require('node:fs'); fs.rmSync('dist',{recursive:true,force:true}); fs.rmSync('tsconfig.tsbuildinfo',{force:true}); for (const entry of fs.readdirSync('.')) if (/^(?:templjs|vscode-templjs)-.*\\.vsix$/.test(entry)) fs.rmSync(entry,{force:true});\"",
+    "lint": "node -e \"console.log('No linting configured yet')\" --",
     "package": "node -e \"require('node:fs').mkdirSync('../../../out',{recursive:true})\" && vsce package --no-dependencies --out ../../../out/templjs-verify.vsix",
     "test": "pnpm exec tsx ../../../scripts/ci/run-vitest-watchdog.ts --config vitest.config.ts",
     "test:host": "pnpm run build && node ./test/extension-host/runTests.js",
