@@ -40,34 +40,53 @@ export class ContextGraphError extends Error {
     this.payload = payload;
   }
 }
-function sortByProperties<T>(items: T[], propertyNames: (keyof T)[]): T[] {
-  return [...items].sort((a, b) => {
-    for (const propName of propertyNames) {
-      const aValue = String(a[propName]);
-      const bValue = String(b[propName]);
-      const compareResult = aValue.localeCompare(bValue);
-      if (compareResult !== 0) {
-        return compareResult;
-      }
+function compareByProperties<T>(a: T, b: T, propertyNames: (keyof T)[]): number {
+  for (const propName of propertyNames) {
+    const aValue = String(a[propName]);
+    const bValue = String(b[propName]);
+    const compareResult = aValue.localeCompare(bValue);
+    if (compareResult !== 0) {
+      return compareResult;
     }
-    return 0;
-  });
+  }
+
+  return 0;
 }
 
-function sortNodes(nodes: ContextNode[]): ContextNode[] {
-  return sortByProperties(nodes, ['id', 'profileId', 'kind']);
+function compareNodes(a: ContextNode, b: ContextNode): number {
+  return compareByProperties(a, b, ['id', 'profileId', 'kind']);
 }
 
-function sortEdges(edges: ContextEdge[]): ContextEdge[] {
-  return sortByProperties(edges, ['id', 'profileId', 'from', 'to']);
+function compareEdges(a: ContextEdge, b: ContextEdge): number {
+  return compareByProperties(a, b, ['id', 'profileId', 'from', 'to']);
+}
+
+function insertSorted<T>(items: T[], item: T, compare: (left: T, right: T) => number): void {
+  let low = 0;
+  let high = items.length;
+
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (compare(items[middle]!, item) <= 0) {
+      low = middle + 1;
+    } else {
+      high = middle;
+    }
+  }
+
+  items.splice(low, 0, item);
+}
+
+function removeItem<T>(items: T[], item: T): void {
+  const index = items.indexOf(item);
+  items.splice(index, Number(index >= 0));
 }
 
 function scopedEntityKey(providerId: string, entityId: string): string {
   return `${providerId}\u0000${entityId}`;
 }
 
-function matchesNodeQuery(node: ContextNode, query?: NodeQuery): boolean {
-  if (!query) return true;
+function matchesNodeQuery(node: ContextNode, query: NodeQuery): boolean {
   if (query.kind && node.kind !== query.kind) {
     return false;
   }
@@ -94,8 +113,7 @@ function matchesNodeQuery(node: ContextNode, query?: NodeQuery): boolean {
   return true;
 }
 
-function matchesEdgeQuery(edge: ContextEdge, query?: EdgeQuery): boolean {
-  if (!query) return true;
+function matchesEdgeQuery(edge: ContextEdge, query: EdgeQuery): boolean {
   if (query.kind && edge.kind !== query.kind) {
     return false;
   }
@@ -120,6 +138,8 @@ export class ContextGraphEngine implements ContextGraph {
   private readonly providerStates = new Map<string, ProviderState>();
   private readonly nodes = new Map<string, ContextNode>();
   private readonly edges = new Map<string, ContextEdge>();
+  private readonly orderedNodes: ContextNode[] = [];
+  private readonly orderedEdges: ContextEdge[] = [];
   private revision = 0;
 
   use(provider: ContextProvider): ContextGraph {
@@ -188,13 +208,19 @@ export class ContextGraphEngine implements ContextGraph {
   }
 
   getNodes(query?: NodeQuery): ContextNode[] {
-    const nodes = Array.from(this.nodes.values()).filter((node) => matchesNodeQuery(node, query));
-    return sortNodes(nodes);
+    if (!query) {
+      return [...this.orderedNodes];
+    }
+
+    return this.orderedNodes.filter((node) => matchesNodeQuery(node, query));
   }
 
   getEdges(query?: EdgeQuery): ContextEdge[] {
-    const edges = Array.from(this.edges.values()).filter((edge) => matchesEdgeQuery(edge, query));
-    return sortEdges(edges);
+    if (!query) {
+      return [...this.orderedEdges];
+    }
+
+    return this.orderedEdges.filter((edge) => matchesEdgeQuery(edge, query));
   }
 
   getSnapshot() {
@@ -228,21 +254,39 @@ export class ContextGraphEngine implements ContextGraph {
     return {
       upsertNode: (node) => {
         const key = scopedEntityKey(providerId, node.id);
+        const existing = this.nodes.get(key);
+        if (existing) {
+          removeItem(this.orderedNodes, existing);
+        }
         this.nodes.set(key, node);
+        insertSorted(this.orderedNodes, node, compareNodes);
         state.nodeKeys.add(key);
       },
       upsertEdge: (edge) => {
         const key = scopedEntityKey(providerId, edge.id);
+        const existing = this.edges.get(key);
+        if (existing) {
+          removeItem(this.orderedEdges, existing);
+        }
         this.edges.set(key, edge);
+        insertSorted(this.orderedEdges, edge, compareEdges);
         state.edgeKeys.add(key);
       },
       removeNode: (nodeId) => {
         const key = scopedEntityKey(providerId, nodeId);
+        const existing = this.nodes.get(key);
+        if (existing) {
+          removeItem(this.orderedNodes, existing);
+        }
         this.nodes.delete(key);
         state.nodeKeys.delete(key);
       },
       removeEdge: (edgeId) => {
         const key = scopedEntityKey(providerId, edgeId);
+        const existing = this.edges.get(key);
+        if (existing) {
+          removeItem(this.orderedEdges, existing);
+        }
         this.edges.delete(key);
         state.edgeKeys.delete(key);
       },
@@ -265,11 +309,19 @@ export class ContextGraphEngine implements ContextGraph {
 
   private clearProviderState(state: ProviderState): void {
     for (const edgeKey of state.edgeKeys) {
+      const existing = this.edges.get(edgeKey);
+      if (existing) {
+        removeItem(this.orderedEdges, existing);
+      }
       this.edges.delete(edgeKey);
     }
     state.edgeKeys.clear();
 
     for (const nodeKey of state.nodeKeys) {
+      const existing = this.nodes.get(nodeKey);
+      if (existing) {
+        removeItem(this.orderedNodes, existing);
+      }
       this.nodes.delete(nodeKey);
     }
     state.nodeKeys.clear();

@@ -29,7 +29,7 @@ describe('ContextGraphEngine', () => {
       },
     };
 
-    graph.use(providerA).use(providerB);
+    graph.use(providerA).use(providerA).use(providerB);
     await graph.invalidate('file:///test.md.tpl');
 
     const ids = graph.getNodes().map((node) => node.id);
@@ -182,6 +182,96 @@ describe('ContextGraphEngine', () => {
     expect(graph.query({ version: 'v1' }).edges.map((edge) => edge.id)).toEqual([
       'edge-a',
       'edge-z',
+    ]);
+  });
+
+  it('maintains deterministic ordering when provider-owned entries are replaced', async () => {
+    const graph = createContextGraph();
+    let profileId = 'z-profile';
+
+    graph
+      .use({
+        id: 'provider-a',
+        onInvalidate: (_uri, ctx) => {
+          ctx.upsertNode({ id: 'shared', profileId, kind: 'symbol' });
+        },
+      })
+      .use({
+        id: 'provider-b',
+        onInvalidate: (_uri, ctx) => {
+          ctx.upsertNode({ id: 'shared', profileId: 'm-profile', kind: 'symbol' });
+        },
+      });
+
+    await graph.invalidate('file:///ordered');
+    expect(graph.getNodes().map((node) => node.profileId)).toEqual(['m-profile', 'z-profile']);
+
+    profileId = 'a-profile';
+    await graph.invalidate('file:///ordered');
+    expect(graph.getNodes().map((node) => node.profileId)).toEqual(['a-profile', 'm-profile']);
+  });
+
+  it('updates ordered indexes for same-cycle upserts and explicit removals', async () => {
+    const graph = createContextGraph();
+
+    graph
+      .use({
+        id: 'provider-a',
+        onInvalidate: (_uri, ctx) => {
+          ctx.upsertNode({ id: 'node-replace', profileId: 'z-profile', kind: 'symbol' });
+          ctx.upsertNode({ id: 'node-remove', profileId: 'm-profile', kind: 'symbol' });
+          ctx.upsertNode({ id: 'node-replace', profileId: 'a-profile', kind: 'symbol' });
+          ctx.removeNode('node-remove');
+          ctx.removeNode('node-missing');
+
+          ctx.upsertEdge({
+            id: 'edge-replace',
+            profileId: 'z-profile',
+            from: 'node-replace',
+            to: 'node-replace',
+            kind: 'self',
+          });
+          ctx.upsertEdge({
+            id: 'edge-remove',
+            profileId: 'm-profile',
+            from: 'node-remove',
+            to: 'node-remove',
+            kind: 'self',
+          });
+          ctx.upsertEdge({
+            id: 'edge-replace',
+            profileId: 'a-profile',
+            from: 'node-replace',
+            to: 'node-replace',
+            kind: 'self',
+          });
+          ctx.removeEdge('edge-remove');
+          ctx.removeEdge('edge-missing');
+        },
+      })
+      .use({
+        id: 'provider-b',
+        onInvalidate: (_uri, ctx) => {
+          ctx.upsertNode({ id: 'node-peer', profileId: 'b-profile', kind: 'symbol' });
+          ctx.upsertEdge({
+            id: 'edge-peer',
+            profileId: 'b-profile',
+            from: 'node-peer',
+            to: 'node-peer',
+            kind: 'self',
+          });
+        },
+      });
+
+    await graph.invalidate('file:///same-cycle');
+
+    expect(graph.getNodes().map((node) => `${node.id}:${node.profileId}`)).toEqual([
+      'node-peer:b-profile',
+      'node-replace:a-profile',
+    ]);
+    expect(graph.getEdges().map((edge) => `${edge.id}:${edge.profileId}`)).toEqual([
+      'edge-peer:b-profile',
+      'edge-replace:a-profile',
     ]);
   });
 
