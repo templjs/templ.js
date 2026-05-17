@@ -84,7 +84,18 @@ Stable releases:
 
 ## Versioning Model
 
-Fixed npm train:
+Public npm package set:
+
+- `@templjs/core`
+- `@templjs/cli`
+- `@templjs/volar`
+- `@templjs/context-graph`
+- `@templjs/language-core`
+- `@templjs/language-service`
+- `@templjs/language-server`
+- `@templjs/semantify`
+
+Fixed synchronized train:
 
 - `@templjs/core`
 - `@templjs/cli`

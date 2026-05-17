@@ -128,8 +128,7 @@ jobs:
         run: |
           mkdir -p artifacts/prerelease
           cd src/extensions/vscode
-          npx --yes @vscode/vsce package --no-dependencies --pre-release
-          cp "templjs-$VSCODE_VERSION.vsix" ../../../artifacts/prerelease/
+          npx --yes @vscode/vsce package --no-dependencies --pre-release --out "../../../artifacts/prerelease/templjs-$VSCODE_VERSION.vsix"
           cd ../../..
           shasum -a 256 "artifacts/prerelease/templjs-$VSCODE_VERSION.vsix" > "artifacts/prerelease/templjs-$VSCODE_VERSION.vsix.sha256"
 
@@ -173,16 +172,7 @@ jobs:
           NPM_CONFIG_PROVENANCE: 'true'
           PACKAGE_VERSION: ${{ needs.prepare-staging-prerelease.outputs.package_version }}
         run: |
-          mapfile -t packages < <(node <<'EOF'
-          const { readFileSync } = require('node:fs');
-          const changesetConfig = JSON.parse(readFileSync('.changeset/config.json', 'utf8'));
-          const fixedPackages = (changesetConfig.fixed ?? []).flat();
-          const npmPackages = fixedPackages.filter((pkgName) => pkgName.startsWith('@templjs/'));
-          for (const pkgName of npmPackages) {
-            console.log(pkgName);
-          }
-          EOF
-          )
+          mapfile -t packages < <(pnpm exec tsx scripts/release/list-public-packages.ts)
 
           for pkg in "${packages[@]}"; do
             if npm view "$pkg@$PACKAGE_VERSION" version >/dev/null 2>&1; then
@@ -369,12 +359,14 @@ jobs:
         if: needs.prepare-release.outputs.publish_vscode == 'true'
         env:
           VSCODE_PRERELEASE: ${{ needs.prepare-release.outputs.vscode_prerelease }}
+          VSCODE_VERSION: ${{ needs.prepare-release.outputs.vscode_version }}
         run: |
+          mkdir -p artifacts/release
           cd src/extensions/vscode
           if [ "$VSCODE_PRERELEASE" = 'true' ]; then
-            npx --yes @vscode/vsce package --no-dependencies --pre-release
+            npx --yes @vscode/vsce package --no-dependencies --pre-release --out "../../../artifacts/release/templjs-$VSCODE_VERSION.vsix"
           else
-            npx --yes @vscode/vsce package --no-dependencies
+            npx --yes @vscode/vsce package --no-dependencies --out "../../../artifacts/release/templjs-$VSCODE_VERSION.vsix"
           fi
 
       - name: Collect VS Code release assets
@@ -382,8 +374,6 @@ jobs:
         env:
           VSCODE_VERSION: ${{ needs.prepare-release.outputs.vscode_version }}
         run: |
-          mkdir -p artifacts/release
-          cp "src/extensions/vscode/templjs-$VSCODE_VERSION.vsix" artifacts/release/
           shasum -a 256 "artifacts/release/templjs-$VSCODE_VERSION.vsix" > "artifacts/release/templjs-$VSCODE_VERSION.vsix.sha256"
 
       - name: Upload release assets
@@ -422,24 +412,16 @@ jobs:
         env:
           NPM_CONFIG_PROVENANCE: 'true'
           NPM_DIST_TAG: ${{ needs.prepare-release.outputs.npm_dist_tag }}
-          VERSION: ${{ needs.prepare-release.outputs.package_version }}
         run: |
-          mapfile -t packages < <(node <<'EOF'
-          const { readFileSync } = require('node:fs');
-          const changesetConfig = JSON.parse(readFileSync('.changeset/config.json', 'utf8'));
-          const fixedPackages = (changesetConfig.fixed ?? []).flat();
-          const npmPackages = fixedPackages.filter((pkgName) => pkgName.startsWith('@templjs/'));
-          for (const pkgName of npmPackages) {
-            console.log(pkgName);
-          }
-          EOF
-          )
+          mapfile -t packages < <(pnpm exec tsx scripts/release/list-public-packages.ts --format=name-version)
 
-          for pkg in "${packages[@]}"; do
-            if npm view "$pkg@$VERSION" version >/dev/null 2>&1; then
-              echo "$pkg@$VERSION already published; skipping publish"
+          for package_line in "${packages[@]}"; do
+            pkg="${package_line%% *}"
+            version="${package_line#* }"
+            if npm view "$pkg@$version" version >/dev/null 2>&1; then
+              echo "$pkg@$version already published; skipping publish"
             else
-              echo "Publishing $pkg@$VERSION to dist-tag '$NPM_DIST_TAG'"
+              echo "Publishing $pkg@$version to dist-tag '$NPM_DIST_TAG'"
               pnpm --filter "$pkg" publish --access public --tag "$NPM_DIST_TAG" --no-git-checks
             fi
           done
