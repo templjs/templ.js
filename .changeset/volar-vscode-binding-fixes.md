@@ -1,6 +1,6 @@
 ---
 '@templjs/volar': patch
-'templjs': patch
+'vscode-templjs': patch
 ---
 
 <!-- markdownlint-disable MD041 -->
