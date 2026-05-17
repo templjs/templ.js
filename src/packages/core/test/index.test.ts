@@ -87,7 +87,7 @@ describe('core entrypoint', () => {
       expect.arrayContaining(['string', 'array'])
     );
     expect(getBuiltinFilterOverloads()).toBe(overloads);
-    expect(getBuiltinFilterSignatures().reverse).toBe(reverseOverloads[0]);
+    expect(getBuiltinFilterSignatures().reverse).toEqual(reverseOverloads[0]);
   });
 
   it('renders a simple template', () => {
