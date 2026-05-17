@@ -13,9 +13,19 @@ vi.mock('@templjs/core', () => ({
 
 import { createReadStream, readFileSync, statSync } from 'fs';
 import { renderTemplate } from '@templjs/core';
-import { renderCommand } from '../../src/commands/render.js';
+import { calculateProgressPercent, renderCommand } from '../../src/commands/render.js';
 
 describe('renderCommand', () => {
+  it('calculates finite progress percentages for zero-byte and invalid totals', () => {
+    expect(calculateProgressPercent(0, 0)).toBe(100);
+    expect(calculateProgressPercent(10, 0)).toBe(100);
+    expect(calculateProgressPercent(10, Number.NaN)).toBe(100);
+    expect(calculateProgressPercent(Number.NaN, 10)).toBe(100);
+    expect(calculateProgressPercent(-5, 10)).toBe(0);
+    expect(calculateProgressPercent(15, 10)).toBe(100);
+    expect(calculateProgressPercent(5, 10)).toBe(50);
+  });
+
   it('renders template output from file and JSON data', async () => {
     vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
     vi.mocked(readFileSync).mockImplementation((value) => {
@@ -229,6 +239,33 @@ describe('renderCommand', () => {
 
     expect(output).toBe('Hello ProgressHook');
     expect(progressReporter).toHaveBeenCalled();
+  });
+
+  it('renders zero-byte input files without emitting invalid progress', async () => {
+    const progressReporter = vi.fn();
+    vi.mocked(statSync).mockReturnValue({ size: 0 } as ReturnType<typeof statSync>);
+    vi.mocked(readFileSync).mockImplementation((value) => {
+      if (value === 'template.templ') {
+        return 'Hello {{ data }}';
+      }
+      return '""';
+    });
+    vi.mocked(renderTemplate).mockReturnValue('Hello ');
+
+    const output = await renderCommand('template.templ', 'empty.json', {
+      progressReporter,
+      validateInput: false,
+    });
+
+    expect(output).toBe('Hello ');
+    expect(progressReporter).not.toHaveBeenCalledWith(expect.stringMatching(/NaN|Infinity/));
+    expect(renderTemplate).toHaveBeenCalledWith(
+      'Hello {{ data }}',
+      { data: '' },
+      {
+        throwOnError: true,
+      }
+    );
   });
 
   it('wraps failures with render context', async () => {
