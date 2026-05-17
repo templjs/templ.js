@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 async function loadValidateCommand(options?: {
   readFileSyncImpl?: (path: string) => string;
   validateTemplateImpl?: (template: string) => { errors?: string[] };
-  schemaValidatorFactory?: new () => {
+  schemaValidatorFactory?: new (schema?: unknown) => {
     isCompiled: boolean;
     compilationError?: string;
     validate: (input: unknown) => {
@@ -109,6 +109,35 @@ describe('validateCommand fallback branches', () => {
       valid: false,
       errors: ['Schema validation failed - must satisfy the root schema'],
     });
+  });
+
+  it('reuses schema validators for repeated validation with identical schema content', async () => {
+    let validatorInstances = 0;
+    const validateCommand = await loadValidateCommand({
+      schemaValidatorFactory: class {
+        isCompiled = true;
+        compilationError = undefined;
+
+        constructor() {
+          validatorInstances += 1;
+        }
+
+        validate() {
+          return { valid: true, errors: [] };
+        }
+      },
+    });
+
+    await expect(validateCommand('template.templ', 'schema.json', 'input.json')).resolves.toEqual({
+      valid: true,
+      errors: [],
+    });
+    await expect(validateCommand('template.templ', 'schema.json', 'input.json')).resolves.toEqual({
+      valid: true,
+      errors: [],
+    });
+
+    expect(validatorInstances).toBe(1);
   });
 
   it('stringifies non-Error failures raised during validation', async () => {

@@ -7,6 +7,19 @@ import { readFileSync } from 'fs';
 import { SchemaValidator, validateTemplate, type JSONSchema } from '@templjs/core';
 import { parseDataAsync } from '../formats/index.js';
 
+const schemaValidatorCache = new Map<string, SchemaValidator>();
+
+function getSharedSchemaValidator(cacheKey: string, schema: JSONSchema): SchemaValidator {
+  const cached = schemaValidatorCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const validator = new SchemaValidator(schema);
+  schemaValidatorCache.set(cacheKey, validator);
+  return validator;
+}
+
 export interface ValidateCommandResult {
   valid: boolean;
   errors: string[];
@@ -29,7 +42,8 @@ export async function validateCommand(
     if (schemaPath) {
       const schemaContent = readFileSync(schemaPath, 'utf-8');
       const parsedSchema = await parseDataAsync(schemaContent, schemaPath);
-      const validator = new SchemaValidator(parsedSchema as JSONSchema);
+      const schema = parsedSchema as JSONSchema;
+      const validator = getSharedSchemaValidator(`${schemaPath}::${schemaContent}`, schema);
 
       if (!validator.isCompiled) {
         const compilationDetail =
