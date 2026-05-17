@@ -94,6 +94,7 @@ export {
 } from './renderer/filter-engine.js';
 export { isHighlightablePosition, UNKNOWN_POSITION } from './renderer/evaluators.js';
 import { QueryEngine } from './query-engine/query-engine.js';
+import type { FunctionSignature } from './query-engine/types.js';
 import { tokenize } from './lexer/lexer.js';
 import { parse } from './parser/parser.js';
 import { render } from './renderer/renderer.js';
@@ -145,6 +146,7 @@ export function createQueryEngine() {
 let cachedBuiltinFilterSignatures:
   | Record<string, import('./query-engine/types.js').FunctionSignature>
   | undefined;
+let cachedBuiltinFilterOverloads: Record<string, FunctionSignature[]> | undefined;
 
 /**
  * Get built-in filter signatures registered by the query engine.
@@ -153,8 +155,7 @@ let cachedBuiltinFilterSignatures:
  * this API exposes only the first signature (`signatures[0]`) for that function
  * in `cachedBuiltinFilterSignatures`.
  *
- * Callers that need all overloads should query engine metadata directly via
- * `createQueryEngine().getMetadata().functions`.
+ * Callers that need all overloads should use `getBuiltinFilterOverloads()`.
  */
 export function getBuiltinFilterSignatures(): Record<
   string,
@@ -176,6 +177,32 @@ export function getBuiltinFilterSignatures(): Record<
 
   cachedBuiltinFilterSignatures = result;
   return cachedBuiltinFilterSignatures;
+}
+
+/**
+ * Get all built-in filter signatures registered by the query engine.
+ *
+ * This overload-aware API preserves every signature registered for overloaded
+ * functions such as `reverse`, while `getBuiltinFilterSignatures()` remains the
+ * backward-compatible one-signature-per-filter convenience API.
+ */
+export function getBuiltinFilterOverloads(): Record<string, FunctionSignature[]> {
+  if (cachedBuiltinFilterOverloads) {
+    return cachedBuiltinFilterOverloads;
+  }
+
+  const engine = createQueryEngine();
+  const metadata = engine.getMetadata();
+  const result: Record<string, FunctionSignature[]> = {};
+
+  for (const [name, signatures] of metadata.functions.entries()) {
+    if (signatures.length > 0) {
+      result[name] = [...signatures];
+    }
+  }
+
+  cachedBuiltinFilterOverloads = result;
+  return cachedBuiltinFilterOverloads;
 }
 
 /**

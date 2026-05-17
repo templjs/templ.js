@@ -43,4 +43,27 @@ describe('QueryEngine metadata', () => {
     engine.clearVariableMetadata();
     expect(engine.getMetadata().variables.size).toBe(0);
   });
+
+  it('keeps custom function and variable metadata instance-local', () => {
+    const first = new QueryEngine();
+    const second = new QueryEngine();
+
+    first.registerFunction(
+      {
+        name: '__local_only',
+        description: 'local only',
+        category: 'utility',
+        parameters: [],
+        returnType: 'string',
+        examples: [],
+      },
+      () => 'first'
+    );
+    first.registerVariableType('local', { type: 'string' });
+
+    expect(first.getFunction('__local_only')?.name).toBe('__local_only');
+    expect(first.getVariableType('local')?.type).toBe('string');
+    expect(second.getFunction('__local_only')).toBeUndefined();
+    expect(second.getVariableType('local')).toBeUndefined();
+  });
 });
