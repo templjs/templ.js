@@ -314,7 +314,9 @@ class TempljsVirtualCode implements VirtualCode {
   }
 
   private buildTemplateDslSnapshot(): string {
-    const maskedChars: string[] = [...this.original].map((char) => (char === '\n' ? '\n' : ' '));
+    const maskedChars: string[] = [...this.original].map((char) =>
+      char === '\n' || char === '\r' ? char : ' '
+    );
     const templatePattern = new RegExp(this.templateBlockPattern.source, 'g');
     let match;
 
@@ -563,16 +565,22 @@ class TempljsVirtualCode implements VirtualCode {
 
       // Replace template block with whitespace (preserve line structure)
       const templateBlock = match[0];
-      const placeholder = templateBlock
-        .split('\n')
-        .map((line, idx) => (idx === 0 ? ' '.repeat(line.length) : '\n'))
-        .join('');
-
-      cleaned += placeholder;
+      let placeholder = '';
       const firstNewline = templateBlock.indexOf('\n');
       for (let i = 0; i < templateBlock.length; i++) {
+        const ch = templateBlock[i] ?? '';
+        if (ch === '\n' || ch === '\r') {
+          placeholder += ch;
+        } else if (firstNewline === -1 || i < firstNewline) {
+          placeholder += ' ';
+        }
+      }
+
+      cleaned += placeholder;
+      for (let i = 0; i < templateBlock.length; i++) {
         const ch = templateBlock[i];
-        const advance = firstNewline === -1 || i < firstNewline ? 1 : ch === '\n' ? 1 : 0;
+        const isLineBreak = ch === '\n' || ch === '\r';
+        const advance = firstNewline === -1 || i < firstNewline || isLineBreak ? 1 : 0;
         srcPos++;
         dstPos += advance;
         originalToCleanedOffsets[srcPos] = dstPos;
