@@ -16,6 +16,11 @@ type ProviderState = {
   edgeKeys: Set<string>;
 };
 
+type OrderedRecord<T> = {
+  key: string;
+  entity: T;
+};
+
 const CONTRACT_VERSION = 'v1' as const;
 
 function createOperationError(
@@ -61,6 +66,14 @@ function compareEdges(a: ContextEdge, b: ContextEdge): number {
   return compareByProperties(a, b, ['id', 'profileId', 'from', 'to']);
 }
 
+function compareNodeRecords(a: OrderedRecord<ContextNode>, b: OrderedRecord<ContextNode>): number {
+  return compareNodes(a.entity, b.entity) || a.key.localeCompare(b.key);
+}
+
+function compareEdgeRecords(a: OrderedRecord<ContextEdge>, b: OrderedRecord<ContextEdge>): number {
+  return compareEdges(a.entity, b.entity) || a.key.localeCompare(b.key);
+}
+
 function insertSorted<T>(items: T[], item: T, compare: (left: T, right: T) => number): void {
   let low = 0;
   let high = items.length;
@@ -77,13 +90,17 @@ function insertSorted<T>(items: T[], item: T, compare: (left: T, right: T) => nu
   items.splice(low, 0, item);
 }
 
-function removeItem<T>(items: T[], item: T): void {
-  const index = items.indexOf(item);
+function removeByKey<T>(items: OrderedRecord<T>[], key: string): void {
+  const index = items.findIndex((item) => item.key === key);
   items.splice(index, Number(index >= 0));
 }
 
 function scopedEntityKey(providerId: string, entityId: string): string {
   return `${providerId}\u0000${entityId}`;
+}
+
+function cloneEntity<T extends ContextNode | ContextEdge>(entity: T): T {
+  return JSON.parse(JSON.stringify(entity)) as T;
 }
 
 function matchesNodeQuery(node: ContextNode, query: NodeQuery): boolean {
@@ -138,8 +155,8 @@ export class ContextGraphEngine implements ContextGraph {
   private readonly providerStates = new Map<string, ProviderState>();
   private readonly nodes = new Map<string, ContextNode>();
   private readonly edges = new Map<string, ContextEdge>();
-  private readonly orderedNodes: ContextNode[] = [];
-  private readonly orderedEdges: ContextEdge[] = [];
+  private readonly orderedNodes: OrderedRecord<ContextNode>[] = [];
+  private readonly orderedEdges: OrderedRecord<ContextEdge>[] = [];
   private revision = 0;
 
   use(provider: ContextProvider): ContextGraph {
@@ -208,19 +225,17 @@ export class ContextGraphEngine implements ContextGraph {
   }
 
   getNodes(query?: NodeQuery): ContextNode[] {
-    if (!query) {
-      return [...this.orderedNodes];
-    }
-
-    return this.orderedNodes.filter((node) => matchesNodeQuery(node, query));
+    const records = query
+      ? this.orderedNodes.filter((record) => matchesNodeQuery(record.entity, query))
+      : this.orderedNodes;
+    return records.map((record) => cloneEntity(record.entity));
   }
 
   getEdges(query?: EdgeQuery): ContextEdge[] {
-    if (!query) {
-      return [...this.orderedEdges];
-    }
-
-    return this.orderedEdges.filter((edge) => matchesEdgeQuery(edge, query));
+    const records = query
+      ? this.orderedEdges.filter((record) => matchesEdgeQuery(record.entity, query))
+      : this.orderedEdges;
+    return records.map((record) => cloneEntity(record.entity));
   }
 
   getSnapshot() {
@@ -254,39 +269,29 @@ export class ContextGraphEngine implements ContextGraph {
     return {
       upsertNode: (node) => {
         const key = scopedEntityKey(providerId, node.id);
-        const existing = this.nodes.get(key);
-        if (existing) {
-          removeItem(this.orderedNodes, existing);
-        }
-        this.nodes.set(key, node);
-        insertSorted(this.orderedNodes, node, compareNodes);
+        const storedNode = cloneEntity(node);
+        removeByKey(this.orderedNodes, key);
+        this.nodes.set(key, storedNode);
+        insertSorted(this.orderedNodes, { key, entity: storedNode }, compareNodeRecords);
         state.nodeKeys.add(key);
       },
       upsertEdge: (edge) => {
         const key = scopedEntityKey(providerId, edge.id);
-        const existing = this.edges.get(key);
-        if (existing) {
-          removeItem(this.orderedEdges, existing);
-        }
-        this.edges.set(key, edge);
-        insertSorted(this.orderedEdges, edge, compareEdges);
+        const storedEdge = cloneEntity(edge);
+        removeByKey(this.orderedEdges, key);
+        this.edges.set(key, storedEdge);
+        insertSorted(this.orderedEdges, { key, entity: storedEdge }, compareEdgeRecords);
         state.edgeKeys.add(key);
       },
       removeNode: (nodeId) => {
         const key = scopedEntityKey(providerId, nodeId);
-        const existing = this.nodes.get(key);
-        if (existing) {
-          removeItem(this.orderedNodes, existing);
-        }
+        removeByKey(this.orderedNodes, key);
         this.nodes.delete(key);
         state.nodeKeys.delete(key);
       },
       removeEdge: (edgeId) => {
         const key = scopedEntityKey(providerId, edgeId);
-        const existing = this.edges.get(key);
-        if (existing) {
-          removeItem(this.orderedEdges, existing);
-        }
+        removeByKey(this.orderedEdges, key);
         this.edges.delete(key);
         state.edgeKeys.delete(key);
       },
@@ -309,19 +314,13 @@ export class ContextGraphEngine implements ContextGraph {
 
   private clearProviderState(state: ProviderState): void {
     for (const edgeKey of state.edgeKeys) {
-      const existing = this.edges.get(edgeKey);
-      if (existing) {
-        removeItem(this.orderedEdges, existing);
-      }
+      removeByKey(this.orderedEdges, edgeKey);
       this.edges.delete(edgeKey);
     }
     state.edgeKeys.clear();
 
     for (const nodeKey of state.nodeKeys) {
-      const existing = this.nodes.get(nodeKey);
-      if (existing) {
-        removeItem(this.orderedNodes, existing);
-      }
+      removeByKey(this.orderedNodes, nodeKey);
       this.nodes.delete(nodeKey);
     }
     state.nodeKeys.clear();
