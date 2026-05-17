@@ -37,11 +37,11 @@ export function deriveWorkspaceRootFromDocumentUri(uri: string | undefined): {
     url.pathname = parentPath;
     const rootUri = url.href;
 
-    try {
-      return { rootUri, workspaceRoot: fileURLToPath(rootUri) };
-    } catch {
+    if (url.host && url.host !== 'localhost') {
       return { rootUri };
     }
+
+    return { rootUri, workspaceRoot: fileURLToPath(rootUri) };
   } catch {
     return {};
   }
