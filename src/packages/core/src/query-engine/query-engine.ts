@@ -72,11 +72,22 @@ function createBuiltinState(): {
   return { registry, metadataFunctions };
 }
 
+function cloneFunctionSignature(signature: FunctionSignature): FunctionSignature {
+  return {
+    ...signature,
+    parameters: signature.parameters.map((parameter) => ({
+      ...parameter,
+      examples: parameter.examples ? [...parameter.examples] : undefined,
+    })),
+    examples: [...signature.examples],
+  };
+}
+
 function cloneRegistry(registry: Map<string, RegistryEntry[]>): Map<string, RegistryEntry[]> {
   return new Map(
     Array.from(registry.entries(), ([name, entries]) => [
       name,
-      entries.map((entry) => ({ ...entry })),
+      entries.map((entry) => ({ ...entry, signature: cloneFunctionSignature(entry.signature) })),
     ])
   );
 }
@@ -85,7 +96,10 @@ function cloneFunctionMetadata(
   metadataFunctions: Map<string, FunctionSignature[]>
 ): Map<string, FunctionSignature[]> {
   return new Map(
-    Array.from(metadataFunctions.entries(), ([name, signatures]) => [name, [...signatures]])
+    Array.from(metadataFunctions.entries(), ([name, signatures]) => [
+      name,
+      signatures.map(cloneFunctionSignature),
+    ])
   );
 }
 

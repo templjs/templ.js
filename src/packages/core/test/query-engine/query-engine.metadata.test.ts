@@ -66,4 +66,31 @@ describe('QueryEngine metadata', () => {
     expect(second.getFunction('__local_only')).toBeUndefined();
     expect(second.getVariableType('local')).toBeUndefined();
   });
+
+  it('clones builtin signature metadata for each engine instance', () => {
+    const first = new QueryEngine();
+    const second = new QueryEngine();
+
+    const firstReplace = first.getFunction('replace');
+    const secondReplace = second.getFunction('replace');
+
+    expect(firstReplace).toBeDefined();
+    expect(secondReplace).toBeDefined();
+    expect(firstReplace).not.toBe(secondReplace);
+    expect(firstReplace?.parameters[0]).not.toBe(secondReplace?.parameters[0]);
+    expect(firstReplace?.examples).not.toBe(secondReplace?.examples);
+
+    firstReplace?.parameters.push({
+      name: 'local-only',
+      type: 'string',
+      required: false,
+      description: 'Locally mutated parameter metadata',
+    });
+    firstReplace?.examples.push('local mutation');
+
+    expect(second.getFunction('replace')?.parameters).toHaveLength(2);
+    expect(second.getFunction('replace')?.examples).toEqual([
+      'replace("hello world", "world", "there") → "hello there"',
+    ]);
+  });
 });
