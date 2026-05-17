@@ -128,7 +128,7 @@ jobs:
         run: |
           mkdir -p artifacts/prerelease
           cd src/extensions/vscode
-          npx --yes @vscode/vsce package --no-dependencies --pre-release --out "../../../artifacts/prerelease/templjs-$VSCODE_VERSION.vsix"
+          npx --yes @vscode/vsce@3.7.1 package --no-dependencies --pre-release --out "../../../artifacts/prerelease/templjs-$VSCODE_VERSION.vsix"
           cd ../../..
           shasum -a 256 "artifacts/prerelease/templjs-$VSCODE_VERSION.vsix" > "artifacts/prerelease/templjs-$VSCODE_VERSION.vsix.sha256"
 
@@ -173,6 +173,10 @@ jobs:
           PACKAGE_VERSION: ${{ needs.prepare-staging-prerelease.outputs.package_version }}
         run: |
           mapfile -t packages < <(pnpm exec tsx scripts/release/list-public-packages.ts)
+          if [ "${#packages[@]}" -eq 0 ]; then
+            echo "No public packages discovered for prerelease publishing" >&2
+            exit 1
+          fi
 
           for pkg in "${packages[@]}"; do
             if npm view "$pkg@$PACKAGE_VERSION" version >/dev/null 2>&1; then
@@ -364,9 +368,9 @@ jobs:
           mkdir -p artifacts/release
           cd src/extensions/vscode
           if [ "$VSCODE_PRERELEASE" = 'true' ]; then
-            npx --yes @vscode/vsce package --no-dependencies --pre-release --out "../../../artifacts/release/templjs-$VSCODE_VERSION.vsix"
+            npx --yes @vscode/vsce@3.7.1 package --no-dependencies --pre-release --out "../../../artifacts/release/templjs-$VSCODE_VERSION.vsix"
           else
-            npx --yes @vscode/vsce package --no-dependencies --out "../../../artifacts/release/templjs-$VSCODE_VERSION.vsix"
+            npx --yes @vscode/vsce@3.7.1 package --no-dependencies --out "../../../artifacts/release/templjs-$VSCODE_VERSION.vsix"
           fi
 
       - name: Collect VS Code release assets
@@ -414,6 +418,10 @@ jobs:
           NPM_DIST_TAG: ${{ needs.prepare-release.outputs.npm_dist_tag }}
         run: |
           mapfile -t packages < <(pnpm exec tsx scripts/release/list-public-packages.ts --format=name-version)
+          if [ "${#packages[@]}" -eq 0 ]; then
+            echo "No public packages discovered for release publishing" >&2
+            exit 1
+          fi
 
           for package_line in "${packages[@]}"; do
             pkg="${package_line%% *}"
