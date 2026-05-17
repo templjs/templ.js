@@ -45,7 +45,7 @@ jobs:
       github.event.pull_request.merged == true &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       vars.BACKLOG_AUTOMATION_ENABLED == 'true'
-    uses: calan-co/doc-vader/.github/workflows/backlog-ingest-pull-request.yml@v1
+    uses: calan-co/doc-vader/.github/workflows/backlog-ingest-pull-request.yml@7851f3293171a77354258ea5415e987c47576038
     with:
       consumer-config: .doc-vader/backlog-consumer.json
       doc-vader-version: next
@@ -61,7 +61,7 @@ jobs:
       github.event.workflow_run.head_repository.full_name == github.repository &&
       github.event.workflow_run.conclusion == 'success' &&
       vars.BACKLOG_AUTOMATION_ENABLED == 'true'
-    uses: calan-co/doc-vader/.github/workflows/backlog-ingest-workflow-run.yml@v1
+    uses: calan-co/doc-vader/.github/workflows/backlog-ingest-workflow-run.yml@7851f3293171a77354258ea5415e987c47576038
     with:
       consumer-config: .doc-vader/backlog-consumer.json
       doc-vader-version: next
@@ -94,7 +94,7 @@ jobs:
           (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging')
         )
       )
-    uses: calan-co/doc-vader/.github/workflows/backlog-sweep.yml@v1
+    uses: calan-co/doc-vader/.github/workflows/backlog-sweep.yml@7851f3293171a77354258ea5415e987c47576038
     with:
       dry-run: ${{ inputs.dry_run || false }}
       consumer-config: .doc-vader/backlog-consumer.json
