@@ -56,12 +56,25 @@ Prerelease version authority:
 
 Changesets configuration lives in [../.changeset/config.json](../.changeset/config.json).
 
-Fixed npm train:
+Public npm package set:
 
 - `@templjs/core`
 - `@templjs/cli`
 - `@templjs/volar`
 - `@templjs/context-graph`
+- `@templjs/language-core`
+- `@templjs/language-service`
+- `@templjs/language-server`
+- `@templjs/semantify`
+
+Fixed synchronized train:
+
+- `@templjs/core`
+- `@templjs/cli`
+- `@templjs/volar`
+- `@templjs/context-graph`
+
+Public dependent packages are published with the package release lane and should remain compatible with the synchronized train. `@templjs/semantify` is public and participates in the same package release inventory.
 
 Independent extension:
 
@@ -79,6 +92,10 @@ Scope rules:
   - `src/packages/core/**`
   - `src/packages/volar/**`
   - `src/packages/context-graph/**`
+  - `src/packages/language-core/**`
+  - `src/packages/language-service/**`
+  - `src/packages/language-server/**`
+  - `src/packages/semantify/**`
 
 Version rules:
 
@@ -171,7 +188,8 @@ The release workflow maintains an automated Changesets version PR on `main`.
 That PR:
 
 - applies pending Changesets
-- keeps the four npm packages aligned
+- keeps the fixed npm train aligned
+- publishes all public `@templjs/*` workspace packages included in the package release lane
 - updates the VS Code extension independently when selected
 - regenerates `src/extensions/vscode/CHANGELOG.md` when the extension version changes
 
@@ -250,6 +268,10 @@ Configure trusted publishing for:
 - `@templjs/cli`
 - `@templjs/volar`
 - `@templjs/context-graph`
+- `@templjs/language-core`
+- `@templjs/language-service`
+- `@templjs/language-server`
+- `@templjs/semantify`
 
 Use [../.github/scripts/prepare-npm-trusted-publishing.sh](../.github/scripts/prepare-npm-trusted-publishing.sh) to print the exact package URLs and trusted-publisher values.
 
