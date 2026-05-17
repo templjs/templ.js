@@ -36,6 +36,28 @@ describe('ContextGraphEngine', () => {
     expect(ids).toEqual(['node-a', 'node-z']);
   });
 
+  it('treats repeated use of the same provider as idempotent registration', async () => {
+    const graph = createContextGraph();
+    let invalidateCalls = 0;
+    const provider: ContextProvider = {
+      id: 'provider-a',
+      onInvalidate: (_uri, ctx) => {
+        invalidateCalls += 1;
+        ctx.upsertNode({
+          id: 'node-a',
+          profileId: 'editor-location',
+          kind: 'symbol',
+        });
+      },
+    };
+
+    graph.use(provider).use(provider);
+    await graph.invalidate('file:///duplicate-provider');
+
+    expect(invalidateCalls).toBe(1);
+    expect(graph.getNodes().map((node) => node.id)).toEqual(['node-a']);
+  });
+
   it('keeps provider contributions isolated when IDs overlap', async () => {
     const graph = createContextGraph();
 
@@ -68,6 +90,35 @@ describe('ContextGraphEngine', () => {
     const nodes = graph.getNodes().filter((node) => node.id === 'shared-node');
     expect(nodes).toHaveLength(2);
     expect(nodes.map((node) => node.attributes?.source).sort()).toEqual(['a', 'b']);
+  });
+
+  it('uses provider-scoped keys as stable ordering tiebreakers', async () => {
+    const graph = createContextGraph();
+    const registerProvider = (providerId: string, source: string): ContextProvider => ({
+      id: providerId,
+      onInvalidate: (_uri, ctx) => {
+        ctx.upsertNode({
+          id: 'shared-node',
+          profileId: 'shared-profile',
+          kind: 'symbol',
+          attributes: { source },
+        });
+        ctx.upsertEdge({
+          id: 'shared-edge',
+          profileId: 'shared-profile',
+          from: 'shared-node',
+          to: 'shared-node',
+          kind: 'self',
+          attributes: { source },
+        });
+      },
+    });
+
+    graph.use(registerProvider('provider-b', 'b')).use(registerProvider('provider-a', 'a'));
+    await graph.invalidate('file:///ordering-tiebreakers');
+
+    expect(graph.getNodes().map((node) => node.attributes?.source)).toEqual(['a', 'b']);
+    expect(graph.getEdges().map((edge) => edge.attributes?.source)).toEqual(['a', 'b']);
   });
 
   it('clears provider-owned nodes on re-invalidate', async () => {
@@ -182,6 +233,190 @@ describe('ContextGraphEngine', () => {
     expect(graph.query({ version: 'v1' }).edges.map((edge) => edge.id)).toEqual([
       'edge-a',
       'edge-z',
+    ]);
+  });
+
+  it('maintains deterministic ordering when provider-owned entries are replaced', async () => {
+    const graph = createContextGraph();
+    let profileId = 'z-profile';
+
+    graph
+      .use({
+        id: 'provider-a',
+        onInvalidate: (_uri, ctx) => {
+          ctx.upsertNode({ id: 'shared', profileId, kind: 'symbol' });
+        },
+      })
+      .use({
+        id: 'provider-b',
+        onInvalidate: (_uri, ctx) => {
+          ctx.upsertNode({ id: 'shared', profileId: 'm-profile', kind: 'symbol' });
+        },
+      });
+
+    await graph.invalidate('file:///ordered');
+    expect(graph.getNodes().map((node) => node.profileId)).toEqual(['m-profile', 'z-profile']);
+
+    profileId = 'a-profile';
+    await graph.invalidate('file:///ordered');
+    expect(graph.getNodes().map((node) => node.profileId)).toEqual(['a-profile', 'm-profile']);
+  });
+
+  it('updates ordered indexes for same-cycle upserts and explicit removals', async () => {
+    const graph = createContextGraph();
+
+    graph
+      .use({
+        id: 'provider-a',
+        onInvalidate: (_uri, ctx) => {
+          ctx.upsertNode({ id: 'node-replace', profileId: 'z-profile', kind: 'symbol' });
+          ctx.upsertNode({ id: 'node-remove', profileId: 'm-profile', kind: 'symbol' });
+          ctx.upsertNode({ id: 'node-replace', profileId: 'a-profile', kind: 'symbol' });
+          ctx.removeNode('node-remove');
+          ctx.removeNode('node-missing');
+
+          ctx.upsertEdge({
+            id: 'edge-replace',
+            profileId: 'z-profile',
+            from: 'node-replace',
+            to: 'node-replace',
+            kind: 'self',
+          });
+          ctx.upsertEdge({
+            id: 'edge-remove',
+            profileId: 'm-profile',
+            from: 'node-remove',
+            to: 'node-remove',
+            kind: 'self',
+          });
+          ctx.upsertEdge({
+            id: 'edge-replace',
+            profileId: 'a-profile',
+            from: 'node-replace',
+            to: 'node-replace',
+            kind: 'self',
+          });
+          ctx.removeEdge('edge-remove');
+          ctx.removeEdge('edge-missing');
+        },
+      })
+      .use({
+        id: 'provider-b',
+        onInvalidate: (_uri, ctx) => {
+          ctx.upsertNode({ id: 'node-peer', profileId: 'b-profile', kind: 'symbol' });
+          ctx.upsertEdge({
+            id: 'edge-peer',
+            profileId: 'b-profile',
+            from: 'node-peer',
+            to: 'node-peer',
+            kind: 'self',
+          });
+        },
+      });
+
+    await graph.invalidate('file:///same-cycle');
+
+    expect(graph.getNodes().map((node) => `${node.id}:${node.profileId}`)).toEqual([
+      'node-peer:b-profile',
+      'node-replace:a-profile',
+    ]);
+    expect(graph.getEdges().map((edge) => `${edge.id}:${edge.profileId}`)).toEqual([
+      'edge-peer:b-profile',
+      'edge-replace:a-profile',
+    ]);
+  });
+
+  it('removes provider-scoped entries by key when providers reuse entity objects', async () => {
+    const graph = createContextGraph();
+    const reusedNode = { id: 'shared', profileId: 'shared-profile', kind: 'symbol' };
+    const reusedEdge = {
+      id: 'shared-edge',
+      profileId: 'shared-profile',
+      from: 'shared',
+      to: 'shared',
+      kind: 'self',
+    };
+
+    graph
+      .use({
+        id: 'provider-a',
+        onInvalidate: (_uri, ctx) => {
+          ctx.upsertNode(reusedNode);
+          ctx.upsertEdge(reusedEdge);
+          ctx.removeNode('shared');
+          ctx.removeEdge('shared-edge');
+        },
+      })
+      .use({
+        id: 'provider-b',
+        onInvalidate: (_uri, ctx) => {
+          ctx.upsertNode(reusedNode);
+          ctx.upsertEdge(reusedEdge);
+        },
+      });
+
+    await graph.invalidate('file:///reused-objects');
+
+    expect(graph.getNodes().map((node) => node.id)).toEqual(['shared']);
+    expect(graph.getEdges().map((edge) => edge.id)).toEqual(['shared-edge']);
+  });
+
+  it('returns defensive copies so external mutation cannot corrupt ordering', async () => {
+    const graph = createContextGraph();
+    const inputNode = {
+      id: 'node-a',
+      profileId: 'profile-a',
+      kind: 'symbol',
+      attributes: { status: 'draft' },
+    };
+    const inputEdge = {
+      id: 'edge-a',
+      profileId: 'profile-a',
+      from: 'node-a',
+      to: 'node-a',
+      kind: 'self',
+      attributes: { status: 'draft' },
+    };
+
+    graph.use({
+      id: 'provider-mutation',
+      onInvalidate: (_uri, ctx) => {
+        ctx.upsertNode(inputNode);
+        ctx.upsertEdge(inputEdge);
+      },
+    });
+
+    await graph.invalidate('file:///mutation');
+
+    inputNode.id = 'node-z';
+    inputNode.attributes.status = 'published';
+    inputEdge.id = 'edge-z';
+    inputEdge.attributes.status = 'published';
+
+    const [returnedNode] = graph.getNodes();
+    const [returnedEdge] = graph.getEdges();
+    returnedNode!.id = 'node-y';
+    returnedNode!.attributes!.status = 'reviewed';
+    returnedEdge!.id = 'edge-y';
+    returnedEdge!.attributes!.status = 'reviewed';
+
+    expect(graph.getNodes()).toEqual([
+      {
+        id: 'node-a',
+        profileId: 'profile-a',
+        kind: 'symbol',
+        attributes: { status: 'draft' },
+      },
+    ]);
+    expect(graph.getEdges()).toEqual([
+      {
+        id: 'edge-a',
+        profileId: 'profile-a',
+        from: 'node-a',
+        to: 'node-a',
+        kind: 'self',
+        attributes: { status: 'draft' },
+      },
     ]);
   });
 
