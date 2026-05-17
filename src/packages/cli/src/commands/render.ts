@@ -65,8 +65,12 @@ function normalizeParsedInput(parsed: unknown, validateInput: boolean): Record<s
 }
 
 export function calculateProgressPercent(bytesRead: number, totalBytes: number): number {
-  if (!Number.isFinite(bytesRead) || !Number.isFinite(totalBytes) || totalBytes <= 0) {
+  if (!Number.isFinite(totalBytes) || totalBytes <= 0) {
     return 100;
+  }
+
+  if (!Number.isFinite(bytesRead)) {
+    return 0;
   }
 
   return Math.min(100, Math.max(0, Math.floor((bytesRead / totalBytes) * 100)));
@@ -233,6 +237,9 @@ class RenderCommandExecutor {
     let lastProgressBucket = -1;
 
     return (bytesRead: number) => {
+      if (!Number.isFinite(bytesRead)) {
+        return;
+      }
       const progress = calculateProgressPercent(bytesRead, totalBytes);
       const progressBucket = Math.floor(progress / 25);
       if (progressBucket > lastProgressBucket) {
