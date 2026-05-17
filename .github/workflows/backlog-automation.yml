@@ -32,7 +32,7 @@ on:
     types: [completed]
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: read
   packages: read
 
@@ -149,8 +149,8 @@ jobs:
           stale_seconds="$((STALE_HOURS * 3600))"
           warned=0
 
-          shopt -s nullglob globstar
-          for file in backlog/**/*.md; do
+          shopt -s nullglob
+          for file in backlog/active/work-item-*.md; do
             status="$(awk '
               /^---$/ {delims++; next}
               delims == 1 && /^status:[[:space:]]*/ {
