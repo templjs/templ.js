@@ -114,7 +114,16 @@ Policy posture:
 
 Changesets configuration lives in [../../.changeset/config.json](../../.changeset/config.json).
 
-- fixed npm train:
+- public npm package set:
+  - `@templjs/core`
+  - `@templjs/cli`
+  - `@templjs/volar`
+  - `@templjs/context-graph`
+  - `@templjs/language-core`
+  - `@templjs/language-service`
+  - `@templjs/language-server`
+  - `@templjs/semantify`
+- fixed synchronized train:
   - `@templjs/core`
   - `@templjs/cli`
   - `@templjs/volar`
