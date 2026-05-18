@@ -14,8 +14,6 @@ actual: 12
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/154
-  evidence:
-    - '[[record-20260516-124-first-release-candidate-execution-and-evidence]]'
 ---
 
 ## Goal
@@ -33,7 +31,7 @@ The RC scope now includes release blocker cleanup, shared schema rollout, contex
 - [x] Keep `WI-023` and `WI-088` deferred unless a direct RC blocker appears.
 - [x] Record milestone progress after immediate deliverables, release blockers, shared-schema rollout, architecture/parser scope, validation, and optional nice-to-have evaluation.
 - [x] Run and record the full validation matrix on Node 24.
-- [x] Hand final work item evidence, closure, and archiving to `backlog-automation`.
+- [ ] Hand final work item evidence, closure, and archiving to `backlog-automation`.
 
 ## Deliverables
 
