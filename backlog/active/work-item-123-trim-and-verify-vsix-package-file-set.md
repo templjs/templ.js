@@ -43,7 +43,7 @@ Make the VS Code extension VSIX file set intentional for the RC.
 
 - [x] VSIX package contents are intentional and exclude unrelated smoke/tooling files when appropriate.
 - [x] Runtime assets, syntaxes, bundled extension output, and required metadata remain packaged.
-- [x] `pnpm exec vsce package --no-dependencies --pre-release --out /private/tmp/templjs-rc-prerelease.vsix` succeeds.
+- [x] `pnpm exec vsce package --no-dependencies --pre-release --out /private/tmp/templjs-rc-pre-release.vsix` succeeds.
 
 ## Relationships
 
