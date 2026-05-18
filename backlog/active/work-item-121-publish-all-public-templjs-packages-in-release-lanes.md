@@ -26,11 +26,11 @@ The fixed train covers `@templjs/core`, `@templjs/cli`, `@templjs/volar`, and `@
 
 ## Tasks
 
-- [ ] Inventory all non-private public `@templjs/*` packages from the workspace.
-- [ ] Preserve fixed-version synchronization for `core`, `cli`, `volar`, and `context-graph`.
-- [ ] Update release scripts/workflows to version and publish all public packages in the appropriate release lane.
-- [ ] Include language packages and `@templjs/semantify` in prerelease/stable package dry-run validation.
-- [ ] Add targeted script tests or dry-run checks for the release inventory behavior.
+- [x] Inventory all non-private public `@templjs/*` packages from the workspace.
+- [x] Preserve fixed-version synchronization for `core`, `cli`, `volar`, and `context-graph`.
+- [x] Update release scripts/workflows to version and publish all public packages in the appropriate release lane.
+- [x] Include language packages and `@templjs/semantify` in prerelease/stable package dry-run validation.
+- [x] Add targeted script tests or dry-run checks for the release inventory behavior.
 
 ## Deliverables
 
@@ -40,10 +40,10 @@ The fixed train covers `@templjs/core`, `@templjs/cli`, `@templjs/volar`, and `@
 
 ## Acceptance Criteria
 
-- [ ] Release inventory enumerates all non-private `@templjs/*` workspace packages.
-- [ ] Fixed train packages remain synchronized.
-- [ ] Public dependent packages are not silently omitted from package publishing.
-- [ ] `@templjs/semantify` is included unless intentionally made private by a separate decision.
+- [x] Release inventory enumerates all non-private `@templjs/*` workspace packages.
+- [x] Fixed train packages remain synchronized.
+- [x] Public dependent packages are not silently omitted from package publishing.
+- [x] `@templjs/semantify` is included unless intentionally made private by a separate decision.
 
 ## Relationships
 

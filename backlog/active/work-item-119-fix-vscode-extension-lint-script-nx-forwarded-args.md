@@ -26,10 +26,10 @@ The current extension lint script exits through a shell command that receives Nx
 
 ## Tasks
 
-- [ ] Replace the shell `echo ... && exit 0` lint script with an argument-tolerant no-op or real lint command.
-- [ ] Verify the extension lint target directly with forwarded arguments.
-- [ ] Verify root `pnpm run lint:ci` reaches the next validation phase without the extension script failure.
-- [ ] Add a Changeset entry if the package-facing extension metadata changes.
+- [x] Replace the shell `echo ... && exit 0` lint script with an argument-tolerant no-op or real lint command.
+- [x] Verify the extension lint target directly with forwarded arguments.
+- [x] Verify root `pnpm run lint:ci` reaches the next validation phase without the extension script failure.
+- [x] Add a Changeset entry if the package-facing extension metadata changes.
 
 ## Deliverables
 
@@ -39,9 +39,9 @@ The current extension lint script exits through a shell command that receives Nx
 
 ## Acceptance Criteria
 
-- [ ] `pnpm --filter vscode-templjs lint -- --outputStyle=static` exits successfully after package identity normalization.
-- [ ] `pnpm run lint:ci` no longer fails because of the VS Code extension lint script.
-- [ ] The fix does not introduce an unrelated linting framework or release workflow change.
+- [x] `pnpm --filter vscode-templjs lint -- --outputStyle=static` exits successfully after package identity normalization.
+- [x] `pnpm run lint:ci` no longer fails because of the VS Code extension lint script.
+- [x] The fix does not introduce an unrelated linting framework or release workflow change.
 
 ## Relationships
 

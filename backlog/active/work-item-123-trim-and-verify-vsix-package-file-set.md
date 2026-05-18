@@ -26,10 +26,10 @@ Make the VS Code extension VSIX file set intentional for the RC.
 
 ## Tasks
 
-- [ ] Inspect `pnpm exec vsce ls --no-dependencies` output.
-- [ ] Decide the production VSIX allowlist/ignore behavior for smoke and tooling files.
-- [ ] Update package ignore configuration or packaging inputs without removing source tests from the repo.
-- [ ] Verify prerelease VSIX package generation after trimming.
+- [x] Inspect `pnpm exec vsce ls --no-dependencies` output.
+- [x] Decide the production VSIX allowlist/ignore behavior for smoke and tooling files.
+- [x] Update package ignore configuration or packaging inputs without removing source tests from the repo.
+- [x] Verify prerelease VSIX package generation after trimming.
 
 ## Deliverables
 
@@ -39,9 +39,9 @@ Make the VS Code extension VSIX file set intentional for the RC.
 
 ## Acceptance Criteria
 
-- [ ] VSIX package contents are intentional and exclude unrelated smoke/tooling files when appropriate.
-- [ ] Runtime assets, syntaxes, bundled extension output, and required metadata remain packaged.
-- [ ] `pnpm exec vsce package --no-dependencies --pre-release --out /private/tmp/templjs-rc-prerelease.vsix` succeeds.
+- [x] VSIX package contents are intentional and exclude unrelated smoke/tooling files when appropriate.
+- [x] Runtime assets, syntaxes, bundled extension output, and required metadata remain packaged.
+- [x] `pnpm exec vsce package --no-dependencies --pre-release --out /private/tmp/templjs-rc-prerelease.vsix` succeeds.
 
 ## Relationships
 
