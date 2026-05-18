@@ -6,8 +6,8 @@ summary: Coordinate full-stack RC implementation, validation, packaging, and evi
 type: work-item
 subtype: epic
 lifecycle: active
-status: ready
-status_reason: prioritized
+status: ready-for-review
+status_reason: handoff-prepared
 priority: critical
 estimated: 12
 actual: 0
@@ -26,12 +26,12 @@ The RC scope now includes release blocker cleanup, shared schema rollout, contex
 
 ## Tasks
 
-- [ ] Track required scope across `WI-037`, `WI-041`, `WI-061`, `WI-070` through `WI-087`, `WI-090`, `WI-118`, and `WI-119` through `WI-123`.
-- [ ] Track `WI-047` through `WI-052` as nice-to-have scope after required validation is green.
-- [ ] Keep `WI-023` and `WI-088` deferred unless a direct RC blocker appears.
-- [ ] Record milestone progress after immediate deliverables, release blockers, shared-schema rollout, architecture/parser scope, validation, and optional nice-to-have evaluation.
-- [ ] Run and record the full validation matrix on Node 24.
-- [ ] Hand final work item evidence, closure, and archiving to `backlog-automation`.
+- [x] Track required scope across `WI-037`, `WI-041`, `WI-061`, `WI-070` through `WI-087`, `WI-090`, `WI-118`, and `WI-119` through `WI-123`.
+- [x] Track `WI-047` through `WI-052` as nice-to-have scope after required validation is green.
+- [x] Keep `WI-023` and `WI-088` deferred unless a direct RC blocker appears.
+- [x] Record milestone progress after immediate deliverables, release blockers, shared-schema rollout, architecture/parser scope, validation, and optional nice-to-have evaluation.
+- [x] Run and record the full validation matrix on Node 24.
+- [x] Hand final work item evidence, closure, and archiving to `backlog-automation`.
 
 ## Deliverables
 
@@ -43,10 +43,10 @@ The RC scope now includes release blocker cleanup, shared schema rollout, contex
 
 ## Acceptance Criteria
 
-- [ ] Required RC scope has either merged implementation evidence or an explicit blocker recorded.
-- [ ] Full validation matrix has been run on Node 24.
-- [ ] Package and VSIX dry-runs succeed or have documented release blockers.
-- [ ] Work items remain available for `backlog-automation` to finalize rather than being manually archived.
+- [x] Required RC scope has either merged implementation evidence or an explicit blocker recorded.
+- [x] Full validation matrix has been run on Node 24.
+- [x] Package and VSIX dry-runs succeed or have documented release blockers.
+- [x] Work items remain available for `backlog-automation` to finalize rather than being manually archived.
 
 ## Relationships
 

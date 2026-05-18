@@ -13,11 +13,11 @@ description: >
 
 **Date**: May 18, 2026
 **Plan**: `backlog/plans/templjs-first-release-candidate-implementation-plan.md`
-**Primary Tracker**: `backlog/archive/work-item-124-first-release-candidate-execution-and-evidence.md`
+**Primary Tracker**: `backlog/active/work-item-124-first-release-candidate-execution-and-evidence.md`
 
 ## Milestone 1: Immediate Deliverables
 
-- Verified `WI-119` through `WI-124` already exist in `backlog/active/`.
+- Verified `WI-124` remains in `backlog/active/` for automation handoff and `WI-119` through `WI-123` are archived as completed blocker tracks.
 - Verified RC implementation plan file exists at `backlog/plans/templjs-first-release-candidate-implementation-plan.md`.
 - Frontmatter validation:
   - `fnm exec --using 24 pnpm run lint:frontmatter` -> pass.
@@ -105,6 +105,8 @@ Additional package evidence (all pass): `npm pack --dry-run` for each public pac
 
 - Manual work-item closure and archive movement were not performed.
 - RC evidence is captured here for `backlog-automation` to consume for final evidence normalization, closure confirmation, and archival workflows.
+- Handoff package prepared with `WI-124` remaining active as the automation-owned tracker.
+- Merge evidence for milestone execution lanes is now available across merged RC PRs, including Milestone 6 completion in PR `#153`.
 
 ## Files Changed in This Report Pass
 
