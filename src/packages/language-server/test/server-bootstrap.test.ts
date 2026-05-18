@@ -42,6 +42,7 @@ const getLanguageService = vi.fn();
 const createSimpleProject = vi.fn((plugins: unknown) => ({ plugins }));
 
 const createTempljsLanguagePlugin = vi.fn(() => ({ name: 'templjs-plugin' }));
+const createTempljsServicePlugins = vi.fn();
 
 vi.mock('@volar/language-server/node', () => ({
   createConnection: vi.fn(() => ({
@@ -82,6 +83,15 @@ vi.mock('@templjs/volar', async (importOriginal) => {
   };
 });
 
+vi.mock('@templjs/language-service', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@templjs/language-service')>();
+  createTempljsServicePlugins.mockImplementation(real.createTempljsServicePlugins);
+  return {
+    ...real,
+    createTempljsServicePlugins,
+  };
+});
+
 describe('language-server-bootstrap', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -106,6 +116,7 @@ describe('language-server-bootstrap', () => {
     getLanguageService.mockReset();
     createSimpleProject.mockClear();
     createTempljsLanguagePlugin.mockClear();
+    createTempljsServicePlugins.mockClear();
     connectionSupportsFormatting = true;
   });
 
@@ -244,6 +255,24 @@ describe('language-server-bootstrap', () => {
       plugins: [expect.objectContaining({ name: 'templjs-plugin' })],
     });
     expect(createTempljsLanguagePlugin).toHaveBeenCalledWith({});
+  });
+
+  it('passes one server-wide schema cache to service plugins across initializations', async () => {
+    await import('../src/index.ts');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => unknown;
+    await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
+    await initializeHandler({ rootUri: toTestWorkspaceUri('file:///workspace') });
+
+    const firstOptions = createTempljsServicePlugins.mock.calls[0]?.[0] as
+      | { schemaCache?: Map<string, unknown> }
+      | undefined;
+    const secondOptions = createTempljsServicePlugins.mock.calls[1]?.[0] as
+      | { schemaCache?: Map<string, unknown> }
+      | undefined;
+
+    expect(firstOptions?.schemaCache).toBeInstanceOf(Map);
+    expect(secondOptions?.schemaCache).toBe(firstOptions?.schemaCache);
   });
 
   it('uses workspaceFolders root when rootUri and documentContext are absent', async () => {
