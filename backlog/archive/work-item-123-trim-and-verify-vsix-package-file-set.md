@@ -49,4 +49,3 @@ Make the VS Code extension VSIX file set intentional for the RC.
 ## Relationships
 
 - `part_of`: [[work-item-124-first-release-candidate-execution-and-evidence]]
-- `depends_on`: [[work-item-120-normalize-vscode-extension-package-identity-and-changesets]]
