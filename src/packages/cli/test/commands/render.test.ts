@@ -13,9 +13,19 @@ vi.mock('@templjs/core', () => ({
 
 import { createReadStream, readFileSync, statSync } from 'fs';
 import { renderTemplate } from '@templjs/core';
-import { renderCommand } from '../../src/commands/render.js';
+import { calculateProgressPercent, renderCommand } from '../../src/commands/render.js';
 
 describe('renderCommand', () => {
+  it('calculates finite progress percentages for zero-byte and invalid values', () => {
+    expect(calculateProgressPercent(0, 0)).toBe(100);
+    expect(calculateProgressPercent(10, 0)).toBe(100);
+    expect(calculateProgressPercent(10, Number.NaN)).toBe(100);
+    expect(calculateProgressPercent(Number.NaN, 10)).toBe(0);
+    expect(calculateProgressPercent(-5, 10)).toBe(0);
+    expect(calculateProgressPercent(15, 10)).toBe(100);
+    expect(calculateProgressPercent(5, 10)).toBe(50);
+  });
+
   it('renders template output from file and JSON data', async () => {
     vi.mocked(statSync).mockReturnValue({ size: 1024 } as ReturnType<typeof statSync>);
     vi.mocked(readFileSync).mockImplementation((value) => {
@@ -229,6 +239,26 @@ describe('renderCommand', () => {
 
     expect(output).toBe('Hello ProgressHook');
     expect(progressReporter).toHaveBeenCalled();
+  });
+
+  it('rejects zero-byte JSON input files before progress reporting', async () => {
+    const progressReporter = vi.fn();
+    const initialRenderCallCount = vi.mocked(renderTemplate).mock.calls.length;
+    vi.mocked(statSync).mockReturnValue({ size: 0 } as ReturnType<typeof statSync>);
+    vi.mocked(readFileSync).mockImplementation((value) => {
+      if (value === 'template.templ') {
+        return 'Hello {{ data }}';
+      }
+      return '';
+    });
+    await expect(
+      renderCommand('template.templ', 'empty.json', {
+        progressReporter,
+        validateInput: false,
+      })
+    ).rejects.toThrow('Render failed: Failed to parse input data as JSON:');
+    expect(progressReporter).not.toHaveBeenCalled();
+    expect(vi.mocked(renderTemplate).mock.calls.length).toBe(initialRenderCallCount);
   });
 
   it('wraps failures with render context', async () => {
