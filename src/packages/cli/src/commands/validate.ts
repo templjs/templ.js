@@ -75,6 +75,19 @@ function getSharedSchemaValidator(
   return validator;
 }
 
+function getCachedSharedSchemaValidator(
+  schemaPath: string,
+  schemaDigest: string
+): SchemaValidator | null {
+  const cached = schemaValidatorCache.get(schemaPath)?.get(schemaDigest);
+  if (!cached) {
+    return null;
+  }
+
+  markSharedSchemaValidatorAsRecentlyUsed(schemaPath, schemaDigest);
+  return cached;
+}
+
 export function clearSharedSchemaValidatorCache(): void {
   schemaValidatorCache.clear();
   schemaValidatorCacheOrder.length = 0;
@@ -101,13 +114,15 @@ export async function validateCommand(
 
     if (schemaPath) {
       const schemaContent = readFileSync(schemaPath, 'utf-8');
-      const parsedSchema = await parseDataAsync(schemaContent, schemaPath);
-      const schema = parsedSchema as JSONSchema;
-      const validator = getSharedSchemaValidator(
-        schemaPath,
-        getSchemaDigest(schemaContent),
-        schema
-      );
+      const schemaDigest = getSchemaDigest(schemaContent);
+      const cachedValidator = getCachedSharedSchemaValidator(schemaPath, schemaDigest);
+      const validator = cachedValidator
+        ? cachedValidator
+        : getSharedSchemaValidator(
+            schemaPath,
+            schemaDigest,
+            (await parseDataAsync(schemaContent, schemaPath)) as JSONSchema
+          );
 
       if (!validator.isCompiled) {
         const compilationDetail =

@@ -129,7 +129,15 @@ describe('validateCommand fallback branches', () => {
 
   it('reuses schema validators for repeated validation with identical schema content', async () => {
     let validatorInstances = 0;
+    let schemaParseCalls = 0;
     const validateCommand = await loadValidateCommand({
+      parseDataAsyncImpl: async (content: string, filePath: string) => {
+        if (filePath === 'schema.json') {
+          schemaParseCalls += 1;
+        }
+
+        return JSON.parse(content);
+      },
       schemaValidatorFactory: class {
         isCompiled = true;
         compilationError = undefined;
@@ -154,6 +162,7 @@ describe('validateCommand fallback branches', () => {
     });
 
     expect(validatorInstances).toBe(1);
+    expect(schemaParseCalls).toBe(1);
   });
 
   it('creates fresh validators when schema content changes at the same path', async () => {
