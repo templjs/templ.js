@@ -6,12 +6,14 @@ summary: Align the VS Code extension workspace package name with documented rele
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
-status_reason: prioritized
+status: ready-for-review
+status_reason: awaiting-review
 priority: critical
 estimated: 4
 actual: 0
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/152
   evidence:
     - '[[record-20260516-120-normalize-vscode-extension-package-identity-and-changesets]]'
 ---
@@ -26,11 +28,11 @@ Repository instructions and ADR-004 identify the VS Code extension as `vscode-te
 
 ## Tasks
 
-- [ ] Rename the VS Code extension workspace package identity to `vscode-templjs`.
-- [ ] Normalize pending `.changeset/*.md` package entries so extension changes target `vscode-templjs`.
-- [ ] Keep VSIX output names explicit in release scripts or workflows where stable artifact names matter.
-- [ ] Verify workspace filters and release commands still find the extension package.
-- [ ] Verify `pnpm changeset status --verbose` succeeds.
+- [x] Rename the VS Code extension workspace package identity to `vscode-templjs`.
+- [x] Normalize pending `.changeset/*.md` package entries so extension changes target `vscode-templjs`.
+- [x] Keep VSIX output names explicit in release scripts or workflows where stable artifact names matter.
+- [x] Verify workspace filters and release commands still find the extension package.
+- [x] Verify `pnpm changeset status --verbose` succeeds.
 
 ## Deliverables
 
@@ -41,10 +43,10 @@ Repository instructions and ADR-004 identify the VS Code extension as `vscode-te
 
 ## Acceptance Criteria
 
-- [ ] `pnpm changeset status --verbose` succeeds without unknown package errors.
-- [ ] `pnpm --filter vscode-templjs build` resolves the extension workspace.
-- [ ] VSIX artifact names are deterministic and documented by command or workflow output.
-- [ ] No package versions are manually edited.
+- [x] `pnpm changeset status --verbose` succeeds without unknown package errors.
+- [x] `pnpm --filter vscode-templjs build` resolves the extension workspace.
+- [x] VSIX artifact names are deterministic and documented by command or workflow output.
+- [x] No package versions are manually edited.
 
 ## Relationships
 

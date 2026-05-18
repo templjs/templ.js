@@ -6,12 +6,14 @@ summary: Document how @templjs/semantify participates in package versioning and 
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
-status_reason: prioritized
+status: ready-for-review
+status_reason: awaiting-review
 priority: high
 estimated: 3
 actual: 0
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/152
   evidence:
     - '[[record-20260516-122-document-semantify-release-model]]'
 ---
@@ -26,10 +28,10 @@ The repository now contains `@templjs/semantify` as a public package, but existi
 
 ## Tasks
 
-- [ ] Update release documentation to classify `@templjs/semantify`.
-- [ ] Update package/versioning guidance to distinguish fixed-train packages from public dependent packages.
-- [ ] Update root `AGENTS.md` version-management guidance only as narrowly needed by the RC plan consent.
-- [ ] Cross-reference the release inventory work item.
+- [x] Update release documentation to classify `@templjs/semantify`.
+- [x] Update package/versioning guidance to distinguish fixed-train packages from public dependent packages.
+- [x] Update root `AGENTS.md` version-management guidance only as narrowly needed by the RC plan consent.
+- [x] Cross-reference the release inventory work item.
 
 ## Deliverables
 
@@ -39,10 +41,10 @@ The repository now contains `@templjs/semantify` as a public package, but existi
 
 ## Acceptance Criteria
 
-- [ ] Release docs state whether `@templjs/semantify` is public and how it is published.
-- [ ] Root package guidance no longer understates the public package inventory.
-- [ ] The fixed synchronized train remains limited to the documented fixed packages.
-- [ ] No package version is manually edited.
+- [x] Release docs state whether `@templjs/semantify` is public and how it is published.
+- [x] Root package guidance no longer understates the public package inventory.
+- [x] The fixed synchronized train remains limited to the documented fixed packages.
+- [x] No package version is manually edited.
 
 ## Relationships
 
