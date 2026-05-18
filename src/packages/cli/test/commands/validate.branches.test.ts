@@ -158,18 +158,18 @@ describe('validateCommand fallback branches', () => {
 
   it('creates fresh validators when schema content changes at the same path', async () => {
     let validatorInstances = 0;
-    let schemaReads = 0;
+    let schemaContent = '{"type":"object"}';
     const validateCommand = await loadValidateCommand({
       readFileSyncImpl: (path: string) => {
         if (path === 'schema.json') {
-          schemaReads += 1;
-          return schemaReads === 1 ? '{"type":"object"}' : '{"type":"array"}';
+          return schemaContent;
         }
         if (path === 'input.json') {
           return '{"name":"Taylor"}';
         }
         return 'Hello {{ name }}';
       },
+      parseDataAsyncImpl: async (content: string) => JSON.parse(content),
       schemaValidatorFactory: class {
         isCompiled = true;
         compilationError = undefined;
@@ -188,6 +188,9 @@ describe('validateCommand fallback branches', () => {
       valid: true,
       errors: [],
     });
+
+    schemaContent = '{"type":"array"}';
+
     await expect(validateCommand('template.templ', 'schema.json', 'input.json')).resolves.toEqual({
       valid: true,
       errors: [],
