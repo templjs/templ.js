@@ -608,6 +608,10 @@ describe('serverTesting helpers', () => {
     helpers.setStoredWorkspaceRoot('/workspace');
     helpers.setStoredInitializationOptions({ schemaPath: '.templjs/schema.json' });
     helpers.setServerTraceMode('messages');
+    const schemaCache = helpers.getSchemaSourceCache();
+    schemaCache.set('schema://cached', {});
     helpers.resetRuntimeState();
+    expect(helpers.getSchemaSourceCache()).toBe(schemaCache);
+    expect(schemaCache.size).toBe(0);
   });
 });
