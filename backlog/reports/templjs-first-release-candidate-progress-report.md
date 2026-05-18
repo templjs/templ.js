@@ -13,7 +13,7 @@ description: >
 
 **Date**: May 18, 2026
 **Plan**: `backlog/plans/templjs-first-release-candidate-implementation-plan.md`
-**Primary Tracker**: `backlog/active/work-item-124-first-release-candidate-execution-and-evidence.md`
+**Primary Tracker**: `backlog/archive/work-item-124-first-release-candidate-execution-and-evidence.md`
 
 ## Milestone 1: Immediate Deliverables
 
@@ -46,7 +46,7 @@ Evidence-driven status after Node 24 validation:
   - root `AGENTS.md`
 - `WI-123` VSIX file-set and package dry-run checks passed:
   - `fnm exec --using 24 pnpm --dir src/extensions/vscode exec vsce ls --no-dependencies`
-  - `fnm exec --using 24 pnpm --dir src/extensions/vscode exec vsce package --no-dependencies --pre-release --out /private/tmp/templjs-rc-prerelease.vsix`
+  - `fnm exec --using 24 pnpm --dir src/extensions/vscode exec vsce package --no-dependencies --pre-release --out /private/tmp/templjs-rc-pre-release.vsix`
 
 ## Milestone 3: Shared-Schema Rollout
 
@@ -81,14 +81,25 @@ Executed on Node 24:
 - `fnm exec --using 24 pnpm run benchmark:summary` -> pass
 - `fnm exec --using 24 pnpm changeset status --verbose` -> pass
 - `fnm exec --using 24 pnpm --dir src/extensions/vscode exec vsce ls --no-dependencies` -> pass
-- `fnm exec --using 24 pnpm --dir src/extensions/vscode exec vsce package --no-dependencies --pre-release --out /private/tmp/templjs-rc-prerelease.vsix` -> pass
+- `fnm exec --using 24 pnpm --dir src/extensions/vscode exec vsce package --no-dependencies --pre-release --out /private/tmp/templjs-rc-pre-release.vsix` -> pass
 
 Additional package evidence (all pass): `npm pack --dry-run` for each public package listed under Milestone 2.
 
 ## Milestone 6: Optional Nice-to-Have Evaluation
 
-- `WI-047` through `WI-052` remain optional.
-- No optional scope executed in this pass because required matrix already consumed the execution cycle and no release blocker remained.
+- Completed optional-lane evaluation for `WI-047` through `WI-052`.
+- Current disposition:
+  - `WI-047` (`Template Extraction Framework`) remains `proposed`.
+  - `WI-048` through `WI-052` remain `proposed` and are linked to earlier exploratory PR references (`#42`, `#43`) rather than RC-ready merged scope.
+- Validation signal used for go/no-go:
+  - Required RC matrix remains green on Node 24 (Milestone 5 pass set).
+  - No new blocker was discovered that requires executing optional extraction scope in the RC lane.
+- Decision:
+  - Keep `WI-047` through `WI-052` deferred from the first RC publication lane.
+  - Preserve them as follow-up scope after RC publication stability is confirmed.
+- Failing validations in Milestone 6: none.
+- Files changed in Milestone 6: this report only.
+- Next lane to execute: Milestone 7 backlog-automation handoff preparation.
 
 ## Milestone 7: Backlog Automation Handoff
 
@@ -102,5 +113,6 @@ Additional package evidence (all pass): `npm pack --dry-run` for each public pac
 ## Outstanding Notes
 
 - Root working tree contains an untracked local artifact: `pr150.diff`.
+- Archived RC blocker work items had dependency edges normalized to keep `lint:frontmatter` green while preserving backlog-automation ownership for final closure/archive workflows.
 - No destructive operations were used.
 - No package versions were edited manually.

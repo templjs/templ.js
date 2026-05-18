@@ -45,8 +45,3 @@ The current extension lint script exits through a shell command that receives Nx
 - [x] `pnpm --filter vscode-templjs lint -- --outputStyle=static` exits successfully after package identity normalization.
 - [x] `pnpm run lint:ci` no longer fails because of the VS Code extension lint script.
 - [x] The fix does not introduce an unrelated linting framework or release workflow change.
-
-## Relationships
-
-- `part_of`: [[work-item-124-first-release-candidate-execution-and-evidence]]
-- `depends_on`: [[work-item-120-normalize-vscode-extension-package-identity-and-changesets]]

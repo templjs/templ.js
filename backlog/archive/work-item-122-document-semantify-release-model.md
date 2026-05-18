@@ -49,5 +49,4 @@ The repository now contains `@templjs/semantify` as a public package, but existi
 
 ## Relationships
 
-- `part_of`: [[work-item-124-first-release-candidate-execution-and-evidence]]
-- `depends_on`: [[work-item-121-publish-all-public-templjs-packages-in-release-lanes]]
+- None.
