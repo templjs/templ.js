@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-async function loadValidateCommand(options?: {
+async function loadValidateModule(options?: {
   readFileSyncImpl?: (path: string) => string;
   validateTemplateImpl?: (template: string) => { errors?: string[] };
   schemaValidatorFactory?: new (schema?: unknown) => {
@@ -50,7 +50,23 @@ async function loadValidateCommand(options?: {
     ),
   }));
 
-  const module = await import('../../src/commands/validate.js');
+  return await import('../../src/commands/validate.js');
+}
+
+async function loadValidateCommand(options?: {
+  readFileSyncImpl?: (path: string) => string;
+  validateTemplateImpl?: (template: string) => { errors?: string[] };
+  schemaValidatorFactory?: new (schema?: unknown) => {
+    isCompiled: boolean;
+    compilationError?: string;
+    validate: (input: unknown) => {
+      valid: boolean;
+      errors: Array<{ path?: string; message: string }>;
+    };
+  };
+  parseDataAsyncImpl?: (content: string, filePath: string) => Promise<unknown>;
+}) {
+  const module = await loadValidateModule(options);
   return module.validateCommand;
 }
 
@@ -219,6 +235,76 @@ describe('validateCommand fallback branches', () => {
     });
 
     expect(validatorInstances).toBe(2);
+  });
+
+  it('clears cached validators when the shared cache reset helper is called', async () => {
+    let validatorInstances = 0;
+    const { clearSharedSchemaValidatorCache, validateCommand } = await loadValidateModule({
+      schemaValidatorFactory: class {
+        isCompiled = true;
+        compilationError = undefined;
+
+        constructor() {
+          validatorInstances += 1;
+        }
+
+        validate() {
+          return { valid: true, errors: [] };
+        }
+      },
+    });
+
+    await expect(validateCommand('template.templ', 'schema.json')).resolves.toEqual({
+      valid: true,
+      errors: [],
+    });
+
+    clearSharedSchemaValidatorCache();
+
+    await expect(validateCommand('template.templ', 'schema.json')).resolves.toEqual({
+      valid: true,
+      errors: [],
+    });
+
+    expect(validatorInstances).toBe(2);
+  });
+
+  it('evicts the oldest cached validator once the shared cache reaches its limit', async () => {
+    let validatorInstances = 0;
+    const { validateCommand } = await loadValidateModule({
+      readFileSyncImpl: (path: string) => {
+        if (path.startsWith('schema-')) {
+          return `{"$id":"${path}"}`;
+        }
+        return 'Hello {{ name }}';
+      },
+      schemaValidatorFactory: class {
+        isCompiled = true;
+        compilationError = undefined;
+
+        constructor() {
+          validatorInstances += 1;
+        }
+
+        validate() {
+          return { valid: true, errors: [] };
+        }
+      },
+    });
+
+    for (let index = 0; index <= 128; index += 1) {
+      await expect(validateCommand('template.templ', `schema-${index}.json`)).resolves.toEqual({
+        valid: true,
+        errors: [],
+      });
+    }
+
+    await expect(validateCommand('template.templ', 'schema-0.json')).resolves.toEqual({
+      valid: true,
+      errors: [],
+    });
+
+    expect(validatorInstances).toBe(130);
   });
 
   it('stringifies non-Error failures raised during validation', async () => {
