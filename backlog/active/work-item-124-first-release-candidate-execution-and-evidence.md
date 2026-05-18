@@ -10,7 +10,7 @@ status: ready-for-review
 status_reason: handoff-prepared
 priority: critical
 estimated: 12
-actual: 0
+actual: 12
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/154
