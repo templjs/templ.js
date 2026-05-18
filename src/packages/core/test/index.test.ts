@@ -8,6 +8,7 @@ import core, {
   extractTemplateBindings,
   createRenderer,
   createQueryEngine,
+  getBuiltinFilterOverloads,
   getBuiltinFilterSignatures,
   renderTemplate,
   validateTemplate,
@@ -75,6 +76,18 @@ describe('core entrypoint', () => {
     const second = getBuiltinFilterSignatures();
 
     expect(second).toBe(first);
+  });
+
+  it('exposes overload-aware built-in filter metadata from core', () => {
+    const overloads = getBuiltinFilterOverloads();
+    const reverseOverloads = overloads.reverse ?? [];
+
+    expect(reverseOverloads.length).toBeGreaterThanOrEqual(2);
+    expect(reverseOverloads.map((signature) => signature.category)).toEqual(
+      expect.arrayContaining(['string', 'array'])
+    );
+    expect(getBuiltinFilterOverloads()).toBe(overloads);
+    expect(getBuiltinFilterSignatures().reverse).toEqual(reverseOverloads[0]);
   });
 
   it('renders a simple template', () => {
