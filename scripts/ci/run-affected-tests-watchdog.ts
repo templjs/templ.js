@@ -39,7 +39,7 @@ function parseMode(argv: string[]): Mode {
 
 function resolveBaseBranch(mode: Mode): string {
   if (mode === 'ci') {
-    return 'origin/main';
+    return process.env.NX_BASE ?? 'origin/main';
   }
 
   const result = spawnSync('git', ['rev-parse', '--verify', 'origin/main'], {
