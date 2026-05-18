@@ -47,7 +47,3 @@ The fixed train covers `@templjs/core`, `@templjs/cli`, `@templjs/volar`, and `@
 - [x] Fixed train packages remain synchronized.
 - [x] Public dependent packages are not silently omitted from package publishing.
 - [x] `@templjs/semantify` is included unless intentionally made private by a separate decision.
-
-## Relationships
-
-- `related`: [[work-item-118-align-reusable-version-workflow-with-official-changesets-flow]]

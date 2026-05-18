@@ -48,7 +48,3 @@ Repository instructions and ADR-004 identify the VS Code extension as `vscode-te
 - [x] `pnpm --filter vscode-templjs build` resolves the extension workspace.
 - [x] VSIX artifact names are deterministic and documented by command or workflow output.
 - [x] No package versions are manually edited.
-
-## Relationships
-
-- `related`: [[work-item-118-align-reusable-version-workflow-with-official-changesets-flow]]
