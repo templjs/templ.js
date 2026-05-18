@@ -64,6 +64,18 @@ function normalizeParsedInput(parsed: unknown, validateInput: boolean): Record<s
   return { data: parsed };
 }
 
+export function calculateProgressPercent(bytesRead: number, totalBytes: number): number {
+  if (!Number.isFinite(totalBytes) || totalBytes <= 0) {
+    return 100;
+  }
+
+  if (!Number.isFinite(bytesRead)) {
+    return 0;
+  }
+
+  return Math.min(100, Math.max(0, Math.floor((bytesRead / totalBytes) * 100)));
+}
+
 async function parseJsonObjectStream(
   stream: AsyncIterable<string>,
   validateInput: boolean
@@ -225,7 +237,10 @@ class RenderCommandExecutor {
     let lastProgressBucket = -1;
 
     return (bytesRead: number) => {
-      const progress = Math.min(100, Math.floor((bytesRead / totalBytes) * 100));
+      if (!Number.isFinite(bytesRead)) {
+        return;
+      }
+      const progress = calculateProgressPercent(bytesRead, totalBytes);
       const progressBucket = Math.floor(progress / 25);
       if (progressBucket > lastProgressBucket) {
         this.options.progressReporter?.(`Reading large input file (${progress}%)\n`);
