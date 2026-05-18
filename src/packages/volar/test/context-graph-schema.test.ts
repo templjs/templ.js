@@ -53,4 +53,24 @@ describe('context graph schema helpers', () => {
     expect(second.title?.type).toBe('number');
     expect(getMetadataSpy).toHaveBeenCalledTimes(2);
   });
+
+  it('returns immutable metadata for shared schema objects', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        title: {
+          type: 'string',
+        },
+      },
+    };
+
+    const metadata = getSharedSchemaMetadata(schema);
+
+    expect(() => {
+      metadata.title!.type = 'number';
+    }).toThrow(TypeError);
+    expect(() => {
+      metadata['']!.properties!.push('other');
+    }).toThrow(TypeError);
+  });
 });
