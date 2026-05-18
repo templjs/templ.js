@@ -967,6 +967,7 @@ export function resolvePathDefinitionAcrossRefs(
   return visit(rootUri, segments, '#', 0);
 }
 
+/** @internal */
 export const contextGraphDefinitionResolutionTesting = {
   getPathRegistryKeysFromSchema,
   isLikelyPathValue,

@@ -18,11 +18,13 @@ import type {
 import { getSharedSchemaMetadata } from './context-graph-schema.js';
 import {
   contextGraphDefinitionResolutionTesting,
+  decodeJsonPointerSegment,
   findBestPropertyOffset,
   getPathValueDefinition,
   getPositionForOffset,
   getSchemaPathDefinition,
   resolvePathDefinitionAcrossRefs,
+  resolveRefTargetUri,
   toDefinitionTarget,
   type DefinitionResolutionOptions,
   type DefinitionTarget,
@@ -40,10 +42,6 @@ import {
   resolveZoneKind,
   type QueryAttributes,
 } from './context-graph-snapshot.js';
-import {
-  decodeJsonPointerSegment,
-  resolveRefTargetUri,
-} from './context-graph-definition-resolution.js';
 export type {
   DefinitionResolutionOptions,
   DefinitionTarget,

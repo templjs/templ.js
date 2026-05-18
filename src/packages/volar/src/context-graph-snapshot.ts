@@ -231,6 +231,7 @@ export function querySnapshot(snapshot: GraphSnapshot, request: QueryRequest): Q
   };
 }
 
+/** @internal */
 export const contextGraphSnapshotTesting = {
   stableSerialize,
 };
