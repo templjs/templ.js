@@ -10,9 +10,7 @@ import {
   type SemanticContextBlock,
   type SemanticOperation,
   type SemanticZone,
-  SchemaValidator,
   type TemplateBinding,
-  type SchemaMetadata,
 } from '@templjs/core';
 import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
@@ -25,6 +23,7 @@ import type {
 } from '@templjs/context-graph';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { splitSchemaSourceReference, resolveSchemaFilePathSync } from './schema-utils.js';
+import { getSharedSchemaMetadata } from './context-graph-schema.js';
 
 export interface SemanticQueryContext {
   operation: SemanticOperation;
@@ -1145,7 +1144,7 @@ function buildPathNodes(contextBlock: SemanticContextBlock, schema?: object): Co
 
   const profileId = getSemanticProfileId(contextBlock);
 
-  const metadata: SchemaMetadata = new SchemaValidator(schema).getMetadata();
+  const metadata = getSharedSchemaMetadata(schema);
   const nodes: ContextNode[] = [];
 
   for (const [path, entry] of Object.entries(metadata)) {
@@ -1490,7 +1489,7 @@ export class ContextGraphSemanticReadAdapter {
     try {
       const schemaText = this.readTextFile(fileURLToPath(resolved.uri));
       const schema = JSON.parse(schemaText) as object;
-      const metadata = new SchemaValidator(schema).getMetadata();
+      const metadata = getSharedSchemaMetadata(schema);
       const entry = metadata[resolved.pathAtTarget];
       if (!entry) {
         return null;
