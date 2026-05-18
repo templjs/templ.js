@@ -6,12 +6,14 @@ summary: Align the VS Code extension workspace package name with documented rele
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
-status_reason: prioritized
+status: ready-for-review
+status_reason: awaiting-review
 priority: critical
 estimated: 4
 actual: 0
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/152
   evidence:
     - '[[record-20260516-120-normalize-vscode-extension-package-identity-and-changesets]]'
 ---

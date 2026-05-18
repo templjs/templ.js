@@ -6,12 +6,14 @@ summary: Update release automation so all public templjs workspace packages are 
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
-status_reason: prioritized
+status: ready-for-review
+status_reason: awaiting-review
 priority: critical
 estimated: 6
 actual: 0
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/152
   evidence:
     - '[[record-20260516-121-publish-all-public-templjs-packages-in-release-lanes]]'
 ---

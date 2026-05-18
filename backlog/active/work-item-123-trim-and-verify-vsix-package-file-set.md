@@ -6,12 +6,14 @@ summary: Verify the VSIX production package file list and exclude unintended smo
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
-status_reason: prioritized
+status: ready-for-review
+status_reason: awaiting-review
 priority: medium
 estimated: 3
 actual: 0
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/152
   evidence:
     - '[[record-20260516-123-trim-and-verify-vsix-package-file-set]]'
 ---

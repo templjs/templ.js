@@ -6,12 +6,14 @@ summary: Document how @templjs/semantify participates in package versioning and 
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
-status_reason: prioritized
+status: ready-for-review
+status_reason: awaiting-review
 priority: high
 estimated: 3
 actual: 0
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/152
   evidence:
     - '[[record-20260516-122-document-semantify-release-model]]'
 ---
