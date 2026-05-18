@@ -48,4 +48,4 @@ Make the VS Code extension VSIX file set intentional for the RC.
 
 ## Relationships
 
-- `part_of`: [[work-item-124-first-release-candidate-execution-and-evidence]]
+- None.

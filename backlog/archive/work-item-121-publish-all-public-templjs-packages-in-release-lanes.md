@@ -50,5 +50,4 @@ The fixed train covers `@templjs/core`, `@templjs/cli`, `@templjs/volar`, and `@
 
 ## Relationships
 
-- `part_of`: [[work-item-124-first-release-candidate-execution-and-evidence]]
 - `related`: [[work-item-118-align-reusable-version-workflow-with-official-changesets-flow]]

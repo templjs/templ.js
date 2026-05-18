@@ -51,5 +51,4 @@ Repository instructions and ADR-004 identify the VS Code extension as `vscode-te
 
 ## Relationships
 
-- `part_of`: [[work-item-124-first-release-candidate-execution-and-evidence]]
 - `related`: [[work-item-118-align-reusable-version-workflow-with-official-changesets-flow]]

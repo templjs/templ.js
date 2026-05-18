@@ -48,4 +48,5 @@ The current extension lint script exits through a shell command that receives Nx
 
 ## Relationships
 
-- `part_of`: [[work-item-124-first-release-candidate-execution-and-evidence]]
+- None.
+
