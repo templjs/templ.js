@@ -187,6 +187,34 @@ describe('LanguagePlugin', () => {
       expect(virtualCode?.mappings.length).toBeGreaterThan(0);
     });
 
+    it('preserves CRLF line endings in host and DSL virtual documents', () => {
+      const content = 'Title\r\n{% if user %}\r\nBody\r\n{% endif %}\r\nTail';
+      const mockSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return content;
+          return content.slice(start, end);
+        },
+        getLength: () => content.length,
+        getChangeRange: () => undefined,
+      };
+
+      const virtualCode = plugin.createVirtualCode(
+        'file:///crlf.md.tmpl',
+        'templjs-markdown',
+        mockSnapshot
+      );
+
+      const host = virtualCode?.embeddedCodes.find((code) => code.id === 'host.markdown');
+      const dsl = virtualCode?.embeddedCodes.find((code) => code.id === 'templjs.dsl');
+      const hostText = host?.snapshot.getText(0, host.snapshot.getLength()) ?? '';
+      const dslText = dsl?.snapshot.getText(0, dsl.snapshot.getLength()) ?? '';
+
+      expect(hostText.split('\r\n')).toHaveLength(content.split('\r\n').length);
+      expect(dslText.split('\r\n')).toHaveLength(content.split('\r\n').length);
+      expect(hostText).not.toContain('\nBody\n');
+      expect(dslText).toContain('{% if user %}\r\n');
+    });
+
     it('should handle multiple template blocks', () => {
       const content =
         'Start\n{{ var1 }}\nMiddle\n{% for item in items %}\n{{ item }}\n{% endfor %}\nEnd';
@@ -673,6 +701,85 @@ describe('LanguagePlugin', () => {
 
       expect((incremental as any).cleaned).toBe((rebuilt as any).cleaned);
       expect((incremental as any).original).toBe(updatedContent);
+    });
+
+    it('keeps CRLF cleaned output identical to full rebuild after incremental edits', () => {
+      const initialContent = [
+        'Title',
+        '{% if user %}',
+        'Body line one',
+        '{% endif %}',
+        'Tail',
+      ].join('\r\n');
+
+      const initialSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return initialContent;
+          return initialContent.slice(start, end);
+        },
+        getLength: () => initialContent.length,
+        getChangeRange: () => undefined,
+      };
+
+      const incrementalPlugin = createTempljsLanguagePlugin();
+      const virtualCode = incrementalPlugin.createVirtualCode(
+        'file:///crlf-update.md.tmpl',
+        'templjs-markdown',
+        initialSnapshot
+      );
+
+      const target = 'Tail';
+      const targetStart = initialContent.indexOf(target);
+      const replacement = 'Tail updated';
+      const updatedContent =
+        initialContent.slice(0, targetStart) +
+        replacement +
+        initialContent.slice(targetStart + target.length);
+
+      const updateSnapshot = {
+        getText: (start?: number, end?: number) => {
+          if (start === undefined || end === undefined) return updatedContent;
+          return updatedContent.slice(start, end);
+        },
+        getLength: () => updatedContent.length,
+        getChangeRange: (oldSnapshot?: unknown) => {
+          if (!oldSnapshot || oldSnapshot === initialSnapshot) {
+            return {
+              span: { start: targetStart, length: target.length },
+              newLength: replacement.length,
+            };
+          }
+          return undefined;
+        },
+      };
+
+      const incremental = incrementalPlugin.updateVirtualCode(
+        'file:///crlf-update.md.tmpl',
+        (() => {
+          if (!virtualCode) {
+            throw new Error('Failed to create initial virtual code');
+          }
+          return virtualCode;
+        })(),
+        updateSnapshot
+      );
+
+      const rebuildPlugin = createTempljsLanguagePlugin();
+      const rebuilt = rebuildPlugin.createVirtualCode(
+        'file:///crlf-update.md.tmpl',
+        'templjs-markdown',
+        {
+          getText: (start?: number, end?: number) => {
+            if (start === undefined || end === undefined) return updatedContent;
+            return updatedContent.slice(start, end);
+          },
+          getLength: () => updatedContent.length,
+          getChangeRange: () => undefined,
+        }
+      );
+
+      expect((incremental as any).cleaned).toBe((rebuilt as any).cleaned);
+      expect((incremental as any).cleaned).toContain('\r\n');
     });
 
     it('maps original offsets to exact cleaned offsets for multiline template content', () => {
