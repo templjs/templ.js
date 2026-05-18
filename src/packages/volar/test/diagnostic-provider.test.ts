@@ -508,6 +508,18 @@ describe('DiagnosticProvider', () => {
     expect(missingEndfor?.range.start.character).toBe(4);
   });
 
+  it('reports undefined-variable ranges correctly in CRLF files', () => {
+    const text = ['# Title', 'Hello {{ unknownVar }}', 'Tail'].join('\r\n');
+    const diagnostics = collectDiagnostics(text, { schema: sampleSchema });
+    const diag = diagnostics.find((item) => item.code === 'templjs.undefinedVariable');
+    const secondLineOffset = text.split('\r\n')[1]?.indexOf('unknownVar') ?? -1;
+
+    expect(diag).toBeDefined();
+    expect(diag?.range.start.line).toBe(1);
+    expect(diag?.range.start.character).toBe(secondLineOffset);
+    expect(diag?.range.end.character).toBe(secondLineOffset + 'unknownVar'.length);
+  });
+
   it('handles multiple expressions in one line', () => {
     const diagnostics = collectDiagnostics('{{ unknown }} {{ user.name }}', {
       schema: sampleSchema,
