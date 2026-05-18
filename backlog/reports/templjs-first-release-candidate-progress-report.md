@@ -113,5 +113,6 @@ Additional package evidence (all pass): `npm pack --dry-run` for each public pac
 ## Outstanding Notes
 
 - Root working tree contains an untracked local artifact: `pr150.diff`.
+- Archived RC blocker work items had dependency edges normalized to keep `lint:frontmatter` green while preserving backlog-automation ownership for final closure/archive workflows.
 - No destructive operations were used.
 - No package versions were edited manually.
