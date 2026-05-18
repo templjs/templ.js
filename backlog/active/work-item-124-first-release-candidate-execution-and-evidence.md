@@ -12,6 +12,8 @@ priority: critical
 estimated: 12
 actual: 0
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/154
   evidence:
     - '[[record-20260516-124-first-release-candidate-execution-and-evidence]]'
 ---
