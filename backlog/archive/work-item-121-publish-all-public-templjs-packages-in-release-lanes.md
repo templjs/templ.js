@@ -5,12 +5,13 @@ title: '121: Publish All Public templjs Packages in Release Lanes'
 summary: Update release automation so all public templjs workspace packages are versioned and published consistently.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: awaiting-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: critical
 estimated: 6
 actual: 0
+completed_date: '2026-05-18'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/152

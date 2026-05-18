@@ -5,12 +5,13 @@ title: '122: Document semantify Release Model'
 summary: Document how @templjs/semantify participates in package versioning and release automation.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: awaiting-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 3
 actual: 0
+completed_date: '2026-05-18'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/152

@@ -5,12 +5,13 @@ title: '123: Trim and Verify VSIX Package File Set'
 summary: Verify the VSIX production package file list and exclude unintended smoke or tooling files.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: awaiting-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: medium
 estimated: 3
 actual: 0
+completed_date: '2026-05-18'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/152

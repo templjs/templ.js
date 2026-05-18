@@ -5,12 +5,13 @@ title: '119: Fix VS Code Extension Lint Script for Nx Forwarded Args'
 summary: Make the VS Code extension lint script tolerate Nx-forwarded arguments so root CI linting can complete.
 type: work-item
 subtype: bug
-lifecycle: active
-status: ready-for-review
-status_reason: awaiting-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 2
 actual: 0
+completed_date: '2026-05-18'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/152

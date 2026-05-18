@@ -5,12 +5,13 @@ title: '120: Normalize VS Code Extension Package Identity and Changesets'
 summary: Align the VS Code extension workspace package name with documented release identity and normalize pending Changesets.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: awaiting-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: critical
 estimated: 4
 actual: 0
+completed_date: '2026-05-18'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/152
