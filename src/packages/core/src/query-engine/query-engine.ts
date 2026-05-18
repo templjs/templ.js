@@ -34,6 +34,79 @@ interface RegistryEntry {
   handler: FilterFunction;
 }
 
+const builtinFunctions = [
+  ...stringFunctions,
+  ...numberFunctions,
+  ...datetimeFunctions,
+  ...arrayFunctions,
+  ...objectFunctions,
+  ...utilityFunctions,
+] as const;
+
+function addRegistryEntry(
+  registry: Map<string, RegistryEntry[]>,
+  metadataFunctions: Map<string, FunctionSignature[]>,
+  signature: FunctionSignature,
+  handler: FilterFunction
+): void {
+  const registrySignature = cloneFunctionSignature(signature);
+  const metadataSignature = cloneFunctionSignature(signature);
+  const registryEntries = registry.get(signature.name) ?? [];
+  registryEntries.push({ signature: registrySignature, handler });
+  registry.set(signature.name, registryEntries);
+
+  const metadataEntries = metadataFunctions.get(signature.name) ?? [];
+  metadataEntries.push(metadataSignature);
+  metadataFunctions.set(signature.name, metadataEntries);
+}
+
+function createBuiltinState(): {
+  registry: Map<string, RegistryEntry[]>;
+  metadataFunctions: Map<string, FunctionSignature[]>;
+} {
+  const registry = new Map<string, RegistryEntry[]>();
+  const metadataFunctions = new Map<string, FunctionSignature[]>();
+
+  for (const builtin of builtinFunctions) {
+    addRegistryEntry(registry, metadataFunctions, builtin.signature, builtin.handler);
+  }
+
+  return { registry, metadataFunctions };
+}
+
+function cloneFunctionSignature(signature: FunctionSignature): FunctionSignature {
+  return {
+    ...signature,
+    parameters: signature.parameters.map((parameter) => ({
+      ...parameter,
+      examples: parameter.examples ? [...parameter.examples] : undefined,
+    })),
+    examples: [...signature.examples],
+  };
+}
+
+function cloneRegistry(registry: Map<string, RegistryEntry[]>): Map<string, RegistryEntry[]> {
+  return new Map(
+    Array.from(registry.entries(), ([name, entries]) => [
+      name,
+      entries.map((entry) => ({ ...entry, signature: cloneFunctionSignature(entry.signature) })),
+    ])
+  );
+}
+
+function cloneFunctionMetadata(
+  metadataFunctions: Map<string, FunctionSignature[]>
+): Map<string, FunctionSignature[]> {
+  return new Map(
+    Array.from(metadataFunctions.entries(), ([name, signatures]) => [
+      name,
+      signatures.map(cloneFunctionSignature),
+    ])
+  );
+}
+
+const sharedBuiltinState = createBuiltinState();
+
 /**
  * Main Query Engine class.
  *
@@ -41,34 +114,11 @@ interface RegistryEntry {
  * filters, and 50+ built-in functions.
  */
 export class QueryEngine {
-  private registry: Map<string, RegistryEntry[]> = new Map();
+  private registry: Map<string, RegistryEntry[]> = cloneRegistry(sharedBuiltinState.registry);
   private metadata: QueryMetadata = {
-    functions: new Map(),
+    functions: cloneFunctionMetadata(sharedBuiltinState.metadataFunctions),
     variables: new Map(),
   };
-
-  constructor() {
-    this.registerBuiltins();
-  }
-
-  /**
-   * Register all built-in functions.
-   * Implemented by importing and registering functions from function modules.
-   */
-  private registerBuiltins(): void {
-    const builtins = [
-      ...stringFunctions,
-      ...numberFunctions,
-      ...datetimeFunctions,
-      ...arrayFunctions,
-      ...objectFunctions,
-      ...utilityFunctions,
-    ];
-
-    for (const builtin of builtins) {
-      this.registerFunction(builtin.signature, builtin.handler);
-    }
-  }
 
   /**
    * Register a custom function or built-in function.
@@ -77,13 +127,7 @@ export class QueryEngine {
    * @param handler - Handler function that implements the logic
    */
   registerFunction(sig: FunctionSignature, handler: FilterFunction): void {
-    const existing = this.registry.get(sig.name) ?? [];
-    existing.push({ signature: sig, handler });
-    this.registry.set(sig.name, existing);
-
-    const metadataEntries = this.metadata.functions.get(sig.name) ?? [];
-    metadataEntries.push(sig);
-    this.metadata.functions.set(sig.name, metadataEntries);
+    addRegistryEntry(this.registry, this.metadata.functions, sig, handler);
   }
 
   /**
