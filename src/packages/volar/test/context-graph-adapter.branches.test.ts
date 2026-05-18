@@ -352,6 +352,19 @@ describe('ContextGraphSemanticReadAdapter branch coverage', () => {
     expect(internals.resolveAllOfRefs(schema, 'file:///workspace/schema.json')).toBe(schema);
   });
 
+  it('returns original schema when allOf refs cannot be resolved', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const internals = adapter as unknown as {
+      resolveAllOfRefs: (schema: object, schemaUri: string) => object;
+    };
+    const schema = {
+      type: 'object',
+      allOf: [{ $ref: './missing-defs.json' }],
+    };
+
+    expect(internals.resolveAllOfRefs(schema, 'file:///workspace/schema.json')).toBe(schema);
+  });
+
   it('skips invalid allOf entries before merging a valid file ref', () => {
     const adapter = createContextGraphSemanticReadAdapter();
     const internals = adapter as unknown as {
@@ -1407,6 +1420,48 @@ describe('context-graph helper branch coverage', () => {
       'rows.missing'
     );
     expect(result).toBeNull();
+  });
+
+  it('returns null for schema-structure inputs without a searchable root path', () => {
+    expect(contextGraphAdapterTesting.findPropertyViaSchemaStructure('[]', 'title')).toBeNull();
+    expect(
+      contextGraphAdapterTesting.findPropertyViaSchemaStructure('{"properties": {', 'title')
+    ).toBeNull();
+    expect(
+      contextGraphAdapterTesting.findPropertyViaSchemaStructure('{"type":"object"}', '')
+    ).toBeNull();
+  });
+
+  it('covers schema-structure parser helper edge cases', () => {
+    expect(contextGraphAdapterTesting.findMatchingBracket('{"title": true', 0, '{', '}')).toBe(-1);
+    expect(
+      contextGraphAdapterTesting.collectTopLevelObjectRangesInArray('{"allOf":[]}', -1, 0)
+    ).toEqual([]);
+    expect(contextGraphAdapterTesting.collectTopLevelObjectRangesInArray('[]', 0, 2)).toEqual([]);
+  });
+
+  it('resolves direct property matches inside combinator branches', () => {
+    const schemaText = JSON.stringify(
+      {
+        allOf: [
+          {
+            title: {
+              type: 'string',
+            },
+          },
+        ],
+      },
+      null,
+      2
+    );
+
+    const result = contextGraphAdapterTesting.findPropertyViaCombinators(
+      schemaText,
+      'title',
+      0,
+      schemaText.length
+    );
+    expect(result).not.toBeNull();
   });
 
   it('continues items traversal when nested properties are absent', () => {
