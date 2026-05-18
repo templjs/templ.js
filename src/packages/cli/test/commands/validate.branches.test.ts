@@ -180,15 +180,15 @@ describe('validateCommand fallback branches', () => {
     expect(validatorInstances).toBe(2);
   });
 
-  it('does not reuse validators for distinct schema path and content tuples', async () => {
+  it('does not reuse validators for schema tuples that would collide with delimiter keys', async () => {
     let validatorInstances = 0;
     const validateCommand = await loadValidateCommand({
       readFileSyncImpl: (path: string) => {
-        if (path === 'schema.json') {
-          return 'suffix::content';
+        if (path === 'a.json') {
+          return 'x::y';
         }
-        if (path === 'schema.json::suffix') {
-          return 'content';
+        if (path === 'a.json::x') {
+          return 'y';
         }
         if (path === 'input.json') {
           return '{"name":"Taylor"}';
@@ -209,13 +209,11 @@ describe('validateCommand fallback branches', () => {
       },
     });
 
-    await expect(validateCommand('template.templ', 'schema.json', 'input.json')).resolves.toEqual({
+    await expect(validateCommand('template.templ', 'a.json', 'input.json')).resolves.toEqual({
       valid: true,
       errors: [],
     });
-    await expect(
-      validateCommand('template.templ', 'schema.json::suffix', 'input.json')
-    ).resolves.toEqual({
+    await expect(validateCommand('template.templ', 'a.json::x', 'input.json')).resolves.toEqual({
       valid: true,
       errors: [],
     });

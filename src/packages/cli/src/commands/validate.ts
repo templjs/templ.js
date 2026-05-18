@@ -28,15 +28,13 @@ function getSharedSchemaValidator(
   }
 
   const validator = new SchemaValidator(schema);
-  schemaValidatorCache.set(cacheKey, validator);
-
-  while (schemaValidatorCache.size > DEFAULT_SHARED_SCHEMA_VALIDATOR_CACHE_LIMIT) {
+  if (schemaValidatorCache.size >= DEFAULT_SHARED_SCHEMA_VALIDATOR_CACHE_LIMIT) {
     const oldestCacheKey = schemaValidatorCache.keys().next().value;
-    if (typeof oldestCacheKey !== 'string') {
-      break;
+    if (typeof oldestCacheKey === 'string') {
+      schemaValidatorCache.delete(oldestCacheKey);
     }
-    schemaValidatorCache.delete(oldestCacheKey);
   }
+  schemaValidatorCache.set(cacheKey, validator);
 
   return validator;
 }
