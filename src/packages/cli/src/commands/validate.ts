@@ -7,17 +7,42 @@ import { readFileSync } from 'fs';
 import { SchemaValidator, validateTemplate, type JSONSchema } from '@templjs/core';
 import { parseDataAsync } from '../formats/index.js';
 
+const DEFAULT_SHARED_SCHEMA_VALIDATOR_CACHE_LIMIT = 128;
 const schemaValidatorCache = new Map<string, SchemaValidator>();
 
-function getSharedSchemaValidator(cacheKey: string, schema: JSONSchema): SchemaValidator {
+function getSchemaValidatorCacheKey(schemaPath: string, schemaContent: string): string {
+  return JSON.stringify([schemaPath, schemaContent]);
+}
+
+function getSharedSchemaValidator(
+  schemaPath: string,
+  schemaContent: string,
+  schema: JSONSchema
+): SchemaValidator {
+  const cacheKey = getSchemaValidatorCacheKey(schemaPath, schemaContent);
   const cached = schemaValidatorCache.get(cacheKey);
   if (cached) {
+    schemaValidatorCache.delete(cacheKey);
+    schemaValidatorCache.set(cacheKey, cached);
     return cached;
   }
 
   const validator = new SchemaValidator(schema);
   schemaValidatorCache.set(cacheKey, validator);
+
+  while (schemaValidatorCache.size > DEFAULT_SHARED_SCHEMA_VALIDATOR_CACHE_LIMIT) {
+    const oldestCacheKey = schemaValidatorCache.keys().next().value;
+    if (typeof oldestCacheKey !== 'string') {
+      break;
+    }
+    schemaValidatorCache.delete(oldestCacheKey);
+  }
+
   return validator;
+}
+
+export function clearSharedSchemaValidatorCache(): void {
+  schemaValidatorCache.clear();
 }
 
 export interface ValidateCommandResult {
@@ -43,7 +68,7 @@ export async function validateCommand(
       const schemaContent = readFileSync(schemaPath, 'utf-8');
       const parsedSchema = await parseDataAsync(schemaContent, schemaPath);
       const schema = parsedSchema as JSONSchema;
-      const validator = getSharedSchemaValidator(`${schemaPath}::${schemaContent}`, schema);
+      const validator = getSharedSchemaValidator(schemaPath, schemaContent, schema);
 
       if (!validator.isCompiled) {
         const compilationDetail =

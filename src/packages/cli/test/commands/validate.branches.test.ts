@@ -140,6 +140,89 @@ describe('validateCommand fallback branches', () => {
     expect(validatorInstances).toBe(1);
   });
 
+  it('creates fresh validators when schema content changes at the same path', async () => {
+    let validatorInstances = 0;
+    let schemaReads = 0;
+    const validateCommand = await loadValidateCommand({
+      readFileSyncImpl: (path: string) => {
+        if (path === 'schema.json') {
+          schemaReads += 1;
+          return schemaReads === 1 ? '{"type":"object"}' : '{"type":"array"}';
+        }
+        if (path === 'input.json') {
+          return '{"name":"Taylor"}';
+        }
+        return 'Hello {{ name }}';
+      },
+      schemaValidatorFactory: class {
+        isCompiled = true;
+        compilationError = undefined;
+
+        constructor() {
+          validatorInstances += 1;
+        }
+
+        validate() {
+          return { valid: true, errors: [] };
+        }
+      },
+    });
+
+    await expect(validateCommand('template.templ', 'schema.json', 'input.json')).resolves.toEqual({
+      valid: true,
+      errors: [],
+    });
+    await expect(validateCommand('template.templ', 'schema.json', 'input.json')).resolves.toEqual({
+      valid: true,
+      errors: [],
+    });
+
+    expect(validatorInstances).toBe(2);
+  });
+
+  it('does not reuse validators for distinct schema path and content tuples', async () => {
+    let validatorInstances = 0;
+    const validateCommand = await loadValidateCommand({
+      readFileSyncImpl: (path: string) => {
+        if (path === 'schema.json') {
+          return 'suffix::content';
+        }
+        if (path === 'schema.json::suffix') {
+          return 'content';
+        }
+        if (path === 'input.json') {
+          return '{"name":"Taylor"}';
+        }
+        return 'Hello {{ name }}';
+      },
+      schemaValidatorFactory: class {
+        isCompiled = true;
+        compilationError = undefined;
+
+        constructor() {
+          validatorInstances += 1;
+        }
+
+        validate() {
+          return { valid: true, errors: [] };
+        }
+      },
+    });
+
+    await expect(validateCommand('template.templ', 'schema.json', 'input.json')).resolves.toEqual({
+      valid: true,
+      errors: [],
+    });
+    await expect(
+      validateCommand('template.templ', 'schema.json::suffix', 'input.json')
+    ).resolves.toEqual({
+      valid: true,
+      errors: [],
+    });
+
+    expect(validatorInstances).toBe(2);
+  });
+
   it('stringifies non-Error failures raised during validation', async () => {
     const validateCommand = await loadValidateCommand({
       validateTemplateImpl: () => {
