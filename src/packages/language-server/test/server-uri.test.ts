@@ -42,4 +42,11 @@ describe('server URI helpers', () => {
     expect(derived.rootUri).toBe('file://server/share');
     expect(derived.workspaceRoot).toBeUndefined();
   });
+
+  it('keeps local root URI when file path conversion fails', () => {
+    const derived = deriveWorkspaceRootFromDocumentUri('file:///%2F/template.md.tpl');
+
+    expect(derived.rootUri).toBe('file:///%2F');
+    expect(derived.workspaceRoot).toBeUndefined();
+  });
 });

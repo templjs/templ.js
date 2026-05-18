@@ -41,7 +41,11 @@ export function deriveWorkspaceRootFromDocumentUri(uri: string | undefined): {
       return { rootUri };
     }
 
-    return { rootUri, workspaceRoot: fileURLToPath(rootUri) };
+    try {
+      return { rootUri, workspaceRoot: fileURLToPath(rootUri) };
+    } catch {
+      return { rootUri };
+    }
   } catch {
     return {};
   }
