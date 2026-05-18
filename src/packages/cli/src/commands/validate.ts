@@ -8,10 +8,38 @@ import { SchemaValidator, validateTemplate, type JSONSchema } from '@templjs/cor
 import { parseDataAsync } from '../formats/index.js';
 
 const DEFAULT_SHARED_SCHEMA_VALIDATOR_CACHE_LIMIT = 128;
-const schemaValidatorCache = new Map<string, SchemaValidator>();
+const schemaValidatorCache = new Map<string, Map<string, SchemaValidator>>();
+const schemaValidatorCacheOrder: Array<{ schemaPath: string; schemaContent: string }> = [];
 
-function getSchemaValidatorCacheKey(schemaPath: string, schemaContent: string): string {
-  return JSON.stringify([schemaPath, schemaContent]);
+function markSharedSchemaValidatorAsRecentlyUsed(schemaPath: string, schemaContent: string): void {
+  const entryIndex = schemaValidatorCacheOrder.findIndex(
+    (entry) => entry.schemaPath === schemaPath && entry.schemaContent === schemaContent
+  );
+  if (entryIndex === -1) {
+    return;
+  }
+
+  const [entry] = schemaValidatorCacheOrder.splice(entryIndex, 1);
+  if (entry) {
+    schemaValidatorCacheOrder.push(entry);
+  }
+}
+
+function evictOldestSharedSchemaValidator(): void {
+  const oldestEntry = schemaValidatorCacheOrder.shift();
+  if (!oldestEntry) {
+    return;
+  }
+
+  const validatorsByContent = schemaValidatorCache.get(oldestEntry.schemaPath);
+  if (!validatorsByContent) {
+    return;
+  }
+
+  validatorsByContent.delete(oldestEntry.schemaContent);
+  if (validatorsByContent.size === 0) {
+    schemaValidatorCache.delete(oldestEntry.schemaPath);
+  }
 }
 
 function getSharedSchemaValidator(
@@ -19,28 +47,31 @@ function getSharedSchemaValidator(
   schemaContent: string,
   schema: JSONSchema
 ): SchemaValidator {
-  const cacheKey = getSchemaValidatorCacheKey(schemaPath, schemaContent);
-  const cached = schemaValidatorCache.get(cacheKey);
+  const cached = schemaValidatorCache.get(schemaPath)?.get(schemaContent);
   if (cached) {
-    schemaValidatorCache.delete(cacheKey);
-    schemaValidatorCache.set(cacheKey, cached);
+    markSharedSchemaValidatorAsRecentlyUsed(schemaPath, schemaContent);
     return cached;
   }
 
   const validator = new SchemaValidator(schema);
-  if (schemaValidatorCache.size >= DEFAULT_SHARED_SCHEMA_VALIDATOR_CACHE_LIMIT) {
-    const oldestCacheKey = schemaValidatorCache.keys().next().value;
-    if (typeof oldestCacheKey === 'string') {
-      schemaValidatorCache.delete(oldestCacheKey);
-    }
+  if (schemaValidatorCacheOrder.length >= DEFAULT_SHARED_SCHEMA_VALIDATOR_CACHE_LIMIT) {
+    evictOldestSharedSchemaValidator();
   }
-  schemaValidatorCache.set(cacheKey, validator);
+
+  let validatorsByContent = schemaValidatorCache.get(schemaPath);
+  if (!validatorsByContent) {
+    validatorsByContent = new Map<string, SchemaValidator>();
+    schemaValidatorCache.set(schemaPath, validatorsByContent);
+  }
+  validatorsByContent.set(schemaContent, validator);
+  schemaValidatorCacheOrder.push({ schemaPath, schemaContent });
 
   return validator;
 }
 
 export function clearSharedSchemaValidatorCache(): void {
   schemaValidatorCache.clear();
+  schemaValidatorCacheOrder.length = 0;
 }
 
 export interface ValidateCommandResult {

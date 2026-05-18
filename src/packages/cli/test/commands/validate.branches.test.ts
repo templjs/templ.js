@@ -196,21 +196,22 @@ describe('validateCommand fallback branches', () => {
     expect(validatorInstances).toBe(2);
   });
 
-  it('does not reuse validators for schema tuples that would collide with delimiter keys', async () => {
+  it('does not reuse validators for distinct path and schema-content pairs', async () => {
     let validatorInstances = 0;
     const validateCommand = await loadValidateCommand({
       readFileSyncImpl: (path: string) => {
         if (path === 'a.json') {
-          return 'x::y';
+          return '{"type":"string","$comment":"schema for a.json"}';
         }
         if (path === 'a.json::x') {
-          return 'y';
+          return '{"type":"number","$comment":"schema for a.json::x"}';
         }
         if (path === 'input.json') {
           return '{"name":"Taylor"}';
         }
         return 'Hello {{ name }}';
       },
+      parseDataAsyncImpl: async (content: string) => JSON.parse(content),
       schemaValidatorFactory: class {
         isCompiled = true;
         compilationError = undefined;
@@ -305,6 +306,65 @@ describe('validateCommand fallback branches', () => {
     });
 
     expect(validatorInstances).toBe(130);
+  });
+
+  it('keeps recently reused validators when eviction occurs', async () => {
+    let validatorInstances = 0;
+    const { validateCommand } = await loadValidateModule({
+      readFileSyncImpl: (path: string) => {
+        if (path.startsWith('schema-')) {
+          return `{"$id":"${path}"}`;
+        }
+        return 'Hello {{ name }}';
+      },
+      parseDataAsyncImpl: async (content: string) => JSON.parse(content),
+      schemaValidatorFactory: class {
+        isCompiled = true;
+        compilationError = undefined;
+
+        constructor() {
+          validatorInstances += 1;
+        }
+
+        validate() {
+          return { valid: true, errors: [] };
+        }
+      },
+    });
+
+    await expect(validateCommand('template.templ', 'schema-0.json')).resolves.toEqual({
+      valid: true,
+      errors: [],
+    });
+    await expect(validateCommand('template.templ', 'schema-1.json')).resolves.toEqual({
+      valid: true,
+      errors: [],
+    });
+    await expect(validateCommand('template.templ', 'schema-0.json')).resolves.toEqual({
+      valid: true,
+      errors: [],
+    });
+
+    for (let index = 2; index <= 128; index += 1) {
+      await expect(validateCommand('template.templ', `schema-${index}.json`)).resolves.toEqual({
+        valid: true,
+        errors: [],
+      });
+    }
+
+    const instancesBeforeReusedLookup = validatorInstances;
+    await expect(validateCommand('template.templ', 'schema-0.json')).resolves.toEqual({
+      valid: true,
+      errors: [],
+    });
+    expect(validatorInstances).toBe(instancesBeforeReusedLookup);
+
+    const instancesBeforeEvictedLookup = validatorInstances;
+    await expect(validateCommand('template.templ', 'schema-1.json')).resolves.toEqual({
+      valid: true,
+      errors: [],
+    });
+    expect(validatorInstances).toBe(instancesBeforeEvictedLookup + 1);
   });
 
   it('stringifies non-Error failures raised during validation', async () => {
