@@ -1,4 +1,4 @@
-import { fileURLToPath, pathToFileURL } from 'url';
+import { pathToFileURL } from 'url';
 import { URI } from 'vscode-uri';
 import { createConnection, createServer, createSimpleProject } from '@volar/language-server/node';
 import { createTempljsLanguagePlugins } from '@templjs/language-core';
@@ -9,6 +9,11 @@ import {
   type InitializeParamsLike,
   type ServerInitializationOptions,
 } from '@templjs/language-service';
+import {
+  deriveWorkspaceRootFromDocumentUri,
+  isLikelySchemaUri,
+  isYamlTemplateUri,
+} from './server-uri.js';
 
 // Write to stderr for debugging server startup
 console.error('[templjs-server] Starting instantiation...');
@@ -84,6 +89,7 @@ installCrashGuards();
 
 let storedWorkspaceRoot: string | undefined;
 let storedInitializationOptions: ServerInitializationOptions | undefined;
+const schemaSourceCache = new Map<string, unknown>();
 
 type TraceMode = 'off' | 'messages' | 'verbose';
 
@@ -114,44 +120,6 @@ function trace(message: string, level: 'messages' | 'verbose' = 'messages'): voi
   }
 
   connection.console.log(`[templjs-trace] ${message}`);
-}
-
-function isLikelySchemaUri(uri: string): boolean {
-  const normalized = uri.split(/[?#]/, 1)[0].toLowerCase();
-  if (!/\.(json|ya?ml)$/.test(normalized)) {
-    return false;
-  }
-
-  const fileName = normalized.split('/').pop() ?? normalized;
-  return !/\.(templ|template|tpl|tmpl)\.(json|ya?ml)$/.test(fileName);
-}
-
-export function isMdTemplateUri(uri: string): boolean {
-  return /\.(md|markdown)\.(templ|tmpl|tpl)$/i.test(uri.split(/[?#]/, 1)[0] ?? uri);
-}
-
-function isYamlTemplateUri(uri: string): boolean {
-  return /\.ya?ml\.(templ|tmpl|tpl)$/i.test(uri.split(/[?#]/, 1)[0] ?? uri);
-}
-
-function deriveWorkspaceRootFromDocumentUri(uri: string | undefined): string | undefined {
-  if (!uri || !uri.startsWith('file://')) {
-    return undefined;
-  }
-
-  try {
-    const url = new URL(uri);
-    const segments = url.pathname.split('/');
-    segments.pop();
-    const parentPath = segments.join('/');
-    if (!parentPath) {
-      return undefined;
-    }
-    url.pathname = parentPath;
-    return url.href;
-  } catch {
-    return undefined;
-  }
 }
 
 async function collectServiceDiagnosticsForDocument(
@@ -261,15 +229,9 @@ async function collectServiceDiagnosticsForDocument(
 connection.onInitialize(async (params) => {
   const typedParams = params as InitializeParamsLike;
   const activeDocumentUri = typedParams.initializationOptions?.documentContext?.uri;
-  const derivedRootUri = deriveWorkspaceRootFromDocumentUri(activeDocumentUri);
-  let derivedWorkspaceRoot: string | undefined;
-  if (derivedRootUri) {
-    try {
-      derivedWorkspaceRoot = fileURLToPath(derivedRootUri);
-    } catch {
-      derivedWorkspaceRoot = undefined;
-    }
-  }
+  const derivedRoot = deriveWorkspaceRootFromDocumentUri(activeDocumentUri);
+  const derivedRootUri = derivedRoot.rootUri;
+  const derivedWorkspaceRoot = derivedRoot.workspaceRoot;
 
   storedWorkspaceRoot = resolveWorkspaceRoot(typedParams) ?? derivedWorkspaceRoot;
   const initializeRootUri =
@@ -302,6 +264,7 @@ connection.onInitialize(async (params) => {
   const servicePlugins = createTempljsServicePlugins({
     workspaceFolder: storedWorkspaceRoot,
     initializationOptions: storedInitializationOptions,
+    schemaCache: schemaSourceCache,
     /* v8 ignore next */
     log: (message) => connection.console.log(message),
   });
@@ -414,6 +377,10 @@ export const serverTesting = {
     storedWorkspaceRoot = undefined;
     storedInitializationOptions = undefined;
     serverTraceMode = 'off';
+    schemaSourceCache.clear();
+  },
+  getSchemaSourceCache() {
+    return schemaSourceCache;
   },
   setStoredWorkspaceRoot(workspaceRoot: string | undefined) {
     storedWorkspaceRoot = workspaceRoot;

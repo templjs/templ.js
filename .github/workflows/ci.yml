@@ -224,6 +224,7 @@ jobs:
 
       - name: Run tests (affected)
         env:
+          NX_BASE: origin/${{ github.base_ref }}
           NX_PARALLEL: 1
           TEST_WATCHDOG_TIMEOUT_MS: 1200000
           VITEST_REPORTERS: dot,hanging-process
@@ -289,6 +290,8 @@ jobs:
             ${{ runner.os }}-nx-
 
       - name: Build packages (affected)
+        env:
+          NX_BASE: origin/${{ github.base_ref }}
         run: pnpm run ci:build
 
       - name: Archive build artifacts
