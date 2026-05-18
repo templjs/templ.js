@@ -5,15 +5,18 @@ title: '124: First Release Candidate Execution and Evidence'
 summary: Coordinate full-stack RC implementation, validation, packaging, and evidence handoff to backlog automation.
 type: work-item
 subtype: epic
-lifecycle: active
-status: ready-for-review
-status_reason: handoff-prepared
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: critical
 estimated: 12
 actual: 12
+completed_date: '2026-05-18'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/154
+  evidence:
+    - '[[record-20260518-225632-124-first-release-candidate-execution-and-evidence]]'
 ---
 
 ## Goal
