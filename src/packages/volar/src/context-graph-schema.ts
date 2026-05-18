@@ -1,21 +1,21 @@
 import { SchemaValidator, type SchemaMetadata } from '@templjs/core';
 
 const schemaMetadataCache = new WeakMap<object, SchemaMetadata>();
+type FrozenSchemaMetadataEntry = Omit<SchemaMetadata[string], 'properties'> & {
+  properties?: readonly string[];
+};
 
 function freezeMetadata(metadata: SchemaMetadata): SchemaMetadata {
-  const frozenMetadata: SchemaMetadata = {};
+  const frozenMetadata: Record<string, FrozenSchemaMetadataEntry> = {};
 
   for (const [path, entry] of Object.entries(metadata)) {
-    const frozenEntry = { ...entry };
-
-    if (entry.properties) {
-      frozenEntry.properties = Object.freeze([...entry.properties]) as unknown as string[];
-    }
-
-    frozenMetadata[path] = Object.freeze(frozenEntry);
+    frozenMetadata[path] = Object.freeze({
+      ...entry,
+      ...(entry.properties ? { properties: Object.freeze([...entry.properties]) } : {}),
+    });
   }
 
-  return Object.freeze(frozenMetadata);
+  return Object.freeze(frozenMetadata) as SchemaMetadata;
 }
 
 export function getSharedSchemaMetadata(schema: object): SchemaMetadata {

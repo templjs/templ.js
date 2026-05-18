@@ -72,5 +72,8 @@ describe('context graph schema helpers', () => {
     expect(() => {
       metadata['']!.properties!.push('other');
     }).toThrow(TypeError);
+    expect(() => {
+      metadata['']!.properties = [];
+    }).toThrow(TypeError);
   });
 });
