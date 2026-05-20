@@ -122,6 +122,7 @@ function createStableId(input: {
 
 function createProvenance(input: {
   adapterOutput: AdapterOutput;
+  profile: ProfileDefinition;
   sourceNode: AdapterNode;
   rule: ProjectionRule;
   targetId: string;
@@ -139,7 +140,7 @@ function createProvenance(input: {
     confidence: input.confidence ?? 'definite',
     targetId: input.targetId,
     attributes: {
-      profileVersion: input.rule.version,
+      profileVersion: input.profile.version,
       sourceNodeKind: input.sourceNode.kind,
     },
   };
@@ -171,6 +172,7 @@ function createRuleContext(input: {
         provenance: createProvenance({
           adapterOutput: input.adapterOutput,
           confidence,
+          profile: input.profile,
           rule: input.rule,
           sourceNode,
           targetId: id,
@@ -196,6 +198,7 @@ function createRuleContext(input: {
         provenance: createProvenance({
           adapterOutput: input.adapterOutput,
           confidence,
+          profile: input.profile,
           rule: input.rule,
           sourceNode,
           targetId: id,

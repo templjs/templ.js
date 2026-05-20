@@ -849,27 +849,47 @@ function withPositionRemap(
                     if (!definition) {
                       return definition;
                     }
-                    if (!Array.isArray(definition)) {
-                      return definition;
+                    if (Array.isArray(definition)) {
+                      return remapDefinitionResponse(
+                        rangeMapper,
+                        definition as unknown as Parameters<typeof remapDefinitionResponse>[1]
+                      ) as typeof definition;
                     }
-                    return remapDefinitionResponse(
-                      rangeMapper,
-                      definition as unknown as Parameters<typeof remapDefinitionResponse>[1]
-                    ) as typeof definition;
+                    if (
+                      typeof definition === 'object' &&
+                      definition !== null &&
+                      ('targetUri' in definition || ('uri' in definition && 'range' in definition))
+                    ) {
+                      return remapDefinitionResponse(rangeMapper, [
+                        definition,
+                      ] as unknown as Parameters<
+                        typeof remapDefinitionResponse
+                      >[1])[0] as typeof definition;
+                    }
+                    return definition;
                   });
                 }
 
                 if (!response) {
                   return response;
                 }
-                if (!Array.isArray(response)) {
+                if (Array.isArray(response)) {
+                  return remapDefinitionResponse(
+                    rangeMapper,
+                    response as unknown as Parameters<typeof remapDefinitionResponse>[1]
+                  ) as typeof response;
+                }
+                if (
+                  typeof response !== 'object' ||
+                  response === null ||
+                  !('targetUri' in response || ('uri' in response && 'range' in response))
+                ) {
                   return response;
                 }
 
-                return remapDefinitionResponse(
-                  rangeMapper,
-                  response as unknown as Parameters<typeof remapDefinitionResponse>[1]
-                ) as typeof response;
+                return remapDefinitionResponse(rangeMapper, [response] as unknown as Parameters<
+                  typeof remapDefinitionResponse
+                >[1])[0] as typeof response;
               },
             }
           : {}),
