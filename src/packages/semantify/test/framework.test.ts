@@ -424,4 +424,168 @@ describe('createSemantifyServices', () => {
       endOffset: 28,
     });
   });
+
+  it('returns no hover payload when there is no enclosing expression or statement at offset zero', () => {
+    const text = 'plain text only';
+
+    const candidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+      },
+      { text, offset: 0 }
+    );
+
+    expect(candidates).toEqual([]);
+  });
+
+  it('returns no hover payload when cursor is inside an empty template statement', () => {
+    const text = '{%    %}';
+    const offset = text.indexOf('%') + 2;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toEqual([]);
+  });
+
+  it('returns no hover payload for statement keywords without an expression symbol', () => {
+    const text = '{% endif %}';
+    const offset = text.indexOf('endif') + 1;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toEqual([]);
+  });
+
+  it('returns no hover payload for statement expressions that contain no symbol references', () => {
+    const text = '{% if 1 %}ok{% endif %}';
+    const offset = text.indexOf('1');
+
+    const candidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toEqual([]);
+  });
+
+  it('supports filter hover when cursor is immediately after a single filter token', () => {
+    const text = '{{ value | upper }}';
+    const offset = text.indexOf('upper') + 'upper'.length;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.kind).toBe('filter');
+    expect(candidates[0]?.label).toBe('upper');
+  });
+
+  it('derives local-binding hover directly from for-alias position inside statement header', () => {
+    const text = '{% for item in users %}ok{% endfor %}';
+    const offset = text.indexOf('item') + 1;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.label).toBe('item');
+    expect(candidates[0]?.metadata).toMatchObject({
+      symbolKind: 'localBinding',
+      alias: 'item',
+      isAliasTokenOnly: true,
+    });
+  });
+
+  it('prefers root alias hover detail for iterable expression symbols in for-headers', () => {
+    const text = '{% set users = data.users %}{% for item in users.list %}{{ item }}{% endfor %}';
+    const offset = text.indexOf('users.list') + 1;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.label).toBe('users');
+    expect(candidates[0]?.detail).toBe('local template variable');
+    expect(candidates[0]?.metadata).toMatchObject({
+      symbolKind: 'localBinding',
+      rawPath: 'users',
+    });
+  });
+
+  it('resolves dotted-path hover when cursor lands on the dot separator', () => {
+    const text = '{% for item in users %}{{ item.name }}{% endfor %}';
+    const offset = text.indexOf('item.name') + 'item'.length;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.metadata).toMatchObject({
+      symbolKind: 'schemaPath',
+      rawPath: 'item.name',
+    });
+  });
+
+  it('handles bracketed member paths as schema-path hover candidates', () => {
+    const text = '{% for item in users %}{{ item[0].name }}{% endfor %}';
+    const offset = text.indexOf('item[0].name') + 'item[0]'.length + 1;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.metadata).toMatchObject({
+      symbolKind: 'schemaPath',
+      rawPath: 'item[0].name',
+    });
+  });
+
+  it('returns no definition target when variablePath resolves to an empty alias', () => {
+    const text = '{% set value = page.value %}{{ value }}';
+    const offset = text.indexOf('value') + 1;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'definitionTarget',
+        metadata: {
+          variablePath: '',
+        },
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toEqual([]);
+  });
 });

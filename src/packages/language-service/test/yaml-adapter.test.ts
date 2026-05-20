@@ -6,7 +6,7 @@ vi.mock('volar-service-yaml', () => ({
   create: createYamlServiceMock,
 }));
 
-import { createYamlHostDiagnosticsAdapter } from '../src/yaml-adapter.ts';
+import { createYamlHostDiagnosticsAdapter, planYamlAdapterRuntime } from '../src/yaml-adapter.ts';
 
 describe('yaml-adapter', () => {
   it('guards yaml host feature providers against upstream schema-service exceptions', async () => {
@@ -42,7 +42,9 @@ describe('yaml-adapter', () => {
       getText: () => 'key: value\n',
     };
 
-    await expect(instance.provideDiagnostics?.(document as never, {} as never)).resolves.toEqual([]);
+    await expect(instance.provideDiagnostics?.(document as never, {} as never)).resolves.toEqual(
+      []
+    );
     await expect(
       instance.provideHover?.(document as never, { line: 0, character: 0 }, {} as never)
     ).resolves.toBeUndefined();
@@ -122,5 +124,128 @@ describe('yaml-adapter', () => {
         },
       },
     ]);
+  });
+
+  it('disables yaml adapter when runtime plan reports unavailable', () => {
+    expect(
+      planYamlAdapterRuntime({
+        initializationOptions: {
+          adapterRuntimes: {
+            'templjs-yaml': {
+              state: 'unavailable',
+              reason: 'unavailable-vscode-extension-yaml',
+            },
+          },
+        },
+      } as never)
+    ).toEqual({
+      enabled: false,
+      reason: 'unavailable-vscode-extension-yaml',
+    });
+
+    expect(
+      createYamlHostDiagnosticsAdapter({
+        initializationOptions: {
+          adapterRuntimes: {
+            'templjs-yaml': {
+              state: 'disabled',
+              reason: 'disabled-by-test',
+            },
+          },
+        },
+      } as never)
+    ).toBeUndefined();
+  });
+
+  it('returns empty diagnostics without retry when cleaned yaml content matches source text', async () => {
+    const mockProvideDiagnostics = vi.fn().mockRejectedValue(new Error('first failure'));
+
+    createYamlServiceMock.mockImplementation(() => ({
+      name: 'base-yaml',
+      capabilities: {},
+      create: () => ({
+        provideDiagnostics: mockProvideDiagnostics,
+      }),
+    }));
+
+    const plugin = createYamlHostDiagnosticsAdapter({ log: vi.fn() } as never);
+    const instance = plugin!.create({} as never);
+
+    const diagnostics = await instance.provideDiagnostics?.(
+      {
+        uri: 'file:///doc.yaml',
+        languageId: 'yaml',
+        getText: () => 'title: plain',
+      } as never,
+      {} as never
+    );
+
+    expect(mockProvideDiagnostics).toHaveBeenCalledTimes(1);
+    expect(diagnostics).toEqual([]);
+  });
+
+  it('disables yaml adapter when yaml language service is not registered for yaml', () => {
+    expect(
+      planYamlAdapterRuntime({
+        initializationOptions: {
+          redhatYamlRegisteredForYaml: false,
+        },
+      } as never)
+    ).toEqual({
+      enabled: false,
+      reason: 'disabled-yaml-ls-not-registered-for-yaml',
+    });
+
+    expect(
+      createYamlHostDiagnosticsAdapter({
+        initializationOptions: {
+          redhatYamlRegisteredForYaml: false,
+        },
+      } as never)
+    ).toBeUndefined();
+  });
+
+  it('safely returns undefined when optional host providers are missing', async () => {
+    createYamlServiceMock.mockImplementation(() => ({
+      name: 'base-yaml',
+      capabilities: {},
+      create: () => ({
+        provideDiagnostics: vi.fn().mockResolvedValue([]),
+      }),
+    }));
+
+    const plugin = createYamlHostDiagnosticsAdapter({ log: vi.fn() } as never);
+    const instance = plugin!.create({} as never);
+    const document = {
+      uri: 'file:///doc.yaml',
+      languageId: 'yaml',
+      getText: () => 'title: plain',
+    };
+
+    await expect(
+      instance.provideHover?.(document as never, { line: 0, character: 0 }, {} as never)
+    ).resolves.toBeUndefined();
+    await expect(
+      instance.provideCompletionItems?.(
+        document as never,
+        { line: 0, character: 0 },
+        { triggerKind: 1 } as never,
+        {} as never
+      )
+    ).resolves.toBeUndefined();
+    await expect(
+      instance.provideDefinition?.(document as never, { line: 0, character: 0 }, {} as never)
+    ).resolves.toBeUndefined();
+
+    await expect(
+      instance.provideDiagnostics?.(
+        {
+          uri: 'file:///doc.yaml.templ',
+          languageId: 'templjs-yaml',
+          getText: () => 'a: {{ x }}',
+        } as never,
+        {} as never
+      )
+    ).resolves.toBeUndefined();
   });
 });

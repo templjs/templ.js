@@ -73,6 +73,60 @@ describe('IntellisenseProvider branch coverage', () => {
     expect(hover).toBeNull();
   });
 
+  it('returns hover detail for variable candidate without explicit symbol metadata', () => {
+    const text = '{{ user.name }}';
+    const offset = text.indexOf('user') + 2;
+
+    const provider = new IntellisenseProvider(emptyAdapter, {
+      resolveContext: () => ({ regions: [], bindings: [] }),
+      resolveReferences: () => [],
+      planCandidates: (intent) => {
+        if (intent.type !== 'hoverPayload') {
+          return [];
+        }
+
+        return [
+          {
+            label: 'user.name',
+            kind: 'variable',
+            detail: 'string',
+            metadata: {},
+          },
+        ];
+      },
+    });
+
+    const hover = provider.getHover(text, offset, { debugLog: () => {} });
+    expect(hover?.contents).toBe('user.name: string');
+  });
+
+  it('returns null hover when semantify candidate metadata cannot be resolved', () => {
+    const text = '{{ user.name }}';
+    const offset = text.indexOf('user') + 2;
+
+    const provider = new IntellisenseProvider(emptyAdapter, {
+      resolveContext: () => ({ regions: [], bindings: [] }),
+      resolveReferences: () => [],
+      planCandidates: (intent) => {
+        if (intent.type !== 'hoverPayload') {
+          return [];
+        }
+
+        return [
+          {
+            label: 'user.name',
+            kind: 'variable',
+            metadata: {
+              symbolKind: 'unsupported',
+            },
+          },
+        ];
+      },
+    });
+
+    expect(provider.getHover(text, offset, { debugLog: () => {} })).toBeNull();
+  });
+
   it('returns null definition outside expression/statement/frontmatter when no document reference exists', () => {
     const provider = new IntellisenseProvider(emptyAdapter);
     const definition = provider.getDefinition('plain text', 2, {
