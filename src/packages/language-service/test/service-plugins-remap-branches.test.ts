@@ -713,7 +713,9 @@ describe('service-plugins position-remap branches', () => {
     }>;
     expect(asyncLinks[0]?.targetUri).toBe(externalUri);
     expect(asyncLinks[0]?.targetRange.start.character).toBe(5);
-    expect(asyncLinks[0]?.originSelectionRange?.start.character).toBeGreaterThan(5);
+    // originSelectionRange is always remapped; char 5 in cleaned 'alphabeta' maps
+    // to char 20 in original 'alpha{% set x = 1 %}beta' (15-char template removed)
+    expect(asyncLinks[0]?.originSelectionRange?.start.character).toBe(20);
 
     // sync Location: same as async – external range unchanged
     const syncLocations = instance.provideDefinition?.(
