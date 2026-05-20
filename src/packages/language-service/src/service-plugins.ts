@@ -857,7 +857,6 @@ function withPositionRemap(
                     }
                     if (
                       typeof definition === 'object' &&
-                      definition !== null &&
                       ('targetUri' in definition || ('uri' in definition && 'range' in definition))
                     ) {
                       return remapDefinitionResponse(rangeMapper, [
@@ -881,7 +880,6 @@ function withPositionRemap(
                 }
                 if (
                   typeof response !== 'object' ||
-                  response === null ||
                   !('targetUri' in response || ('uri' in response && 'range' in response))
                 ) {
                   return response;
