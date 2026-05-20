@@ -844,6 +844,8 @@ function withPositionRemap(
                   return response;
                 }
 
+                const sourceUri = getSourceUri(context, document.uri);
+
                 if (isPromiseLike(response)) {
                   return response.then((definition) => {
                     if (!definition) {
@@ -852,7 +854,8 @@ function withPositionRemap(
                     if (Array.isArray(definition)) {
                       return remapDefinitionResponse(
                         rangeMapper,
-                        definition as unknown as Parameters<typeof remapDefinitionResponse>[1]
+                        definition as unknown as Parameters<typeof remapDefinitionResponse>[1],
+                        sourceUri
                       ) as typeof definition;
                     }
                     if (
@@ -863,7 +866,7 @@ function withPositionRemap(
                         definition,
                       ] as unknown as Parameters<
                         typeof remapDefinitionResponse
-                      >[1])[0] as typeof definition;
+                      >[1], sourceUri)[0] as typeof definition;
                     }
                     return definition;
                   });
@@ -875,7 +878,8 @@ function withPositionRemap(
                 if (Array.isArray(response)) {
                   return remapDefinitionResponse(
                     rangeMapper,
-                    response as unknown as Parameters<typeof remapDefinitionResponse>[1]
+                    response as unknown as Parameters<typeof remapDefinitionResponse>[1],
+                    sourceUri
                   ) as typeof response;
                 }
                 if (
@@ -887,7 +891,7 @@ function withPositionRemap(
 
                 return remapDefinitionResponse(rangeMapper, [response] as unknown as Parameters<
                   typeof remapDefinitionResponse
-                >[1])[0] as typeof response;
+                >[1], sourceUri)[0] as typeof response;
               },
             }
           : {}),

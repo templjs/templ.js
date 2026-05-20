@@ -603,4 +603,134 @@ describe('service-plugins position-remap branches', () => {
       )
     ).toMatchObject({ isIncomplete: false });
   });
+
+  it('does not remap ranges for definition entries pointing to external documents', async () => {
+    // Use a context where the document URI differs from source URI so the
+    // fallback createRangeMapperFromOriginal path is taken. With template
+    // content the mapper shifts positions, letting us verify which entries
+    // were remapped and which were skipped.
+    const sourceUri = 'file:///source.yaml.templ';
+    const embeddedUri = 'file:///embedded.yaml';
+    const externalUri = 'file:///schema.json';
+    const sourceText = 'alpha{% set x = 1 %}beta';
+
+    const sourceFile = {
+      id: URI.parse(sourceUri),
+      languageId: 'templjs-yaml',
+      snapshot: {
+        getText: () => sourceText,
+        getLength: () => sourceText.length,
+      },
+    };
+
+    const remapCtx = {
+      decodeEmbeddedDocumentUri: vi.fn((uri: URI) =>
+        uri.toString() === embeddedUri
+          ? ([URI.parse(sourceUri), 'root'] as const)
+          : undefined
+      ),
+      language: {
+        scripts: {
+          get: vi.fn((uri: URI) =>
+            uri.toString() === sourceUri ? sourceFile : undefined
+          ),
+        },
+      },
+    };
+
+    const plugin = {
+      name: 'external-def-plugin',
+      create: () => ({
+        provideDefinition: vi
+          .fn()
+          // async: Location array pointing to external file
+          .mockResolvedValueOnce([
+            {
+              uri: externalUri,
+              range: { start: { line: 0, character: 5 }, end: { line: 0, character: 9 } },
+            },
+          ])
+          // async: LocationLink array with external targetUri
+          .mockResolvedValueOnce([
+            {
+              targetUri: externalUri,
+              originSelectionRange: {
+                start: { line: 0, character: 5 },
+                end: { line: 0, character: 9 },
+              },
+              targetRange: { start: { line: 0, character: 5 }, end: { line: 0, character: 9 } },
+              targetSelectionRange: { start: { line: 0, character: 5 }, end: { line: 0, character: 9 } },
+            },
+          ])
+          // sync: Location array pointing to external file
+          .mockReturnValueOnce([
+            {
+              uri: externalUri,
+              range: { start: { line: 0, character: 5 }, end: { line: 0, character: 9 } },
+            },
+          ])
+          // sync: LocationLink array with external targetUri
+          .mockReturnValueOnce([
+            {
+              targetUri: externalUri,
+              targetRange: { start: { line: 0, character: 5 }, end: { line: 0, character: 9 } },
+              targetSelectionRange: { start: { line: 0, character: 5 }, end: { line: 0, character: 9 } },
+            },
+          ]),
+      }),
+    };
+
+    const remapped = servicePluginTesting.withPositionRemap(plugin as never, 'templjs-yaml', {
+      log: vi.fn(),
+    } as never);
+    const instance = remapped.create(remapCtx as never);
+    const document = servicePluginTesting.createTextDocumentLike(
+      embeddedUri,
+      'templjs-yaml',
+      sourceText
+    );
+
+    // async Location: character 5 in cleaned doc should NOT be remapped to ~21
+    // because the location uri is external, so the range stays at character 5
+    const asyncLocations = (await instance.provideDefinition?.(
+      document,
+      { line: 0, character: 1 },
+      {} as never
+    )) as Array<{ uri: string; range: { start: { character: number } } }>;
+    expect(asyncLocations[0]?.uri).toBe(externalUri);
+    expect(asyncLocations[0]?.range.start.character).toBe(5);
+
+    // async LocationLink: originSelectionRange IS remapped (source-doc space),
+    // but targetRange is NOT remapped because targetUri is external
+    const asyncLinks = (await instance.provideDefinition?.(
+      document,
+      { line: 0, character: 1 },
+      {} as never
+    )) as Array<{
+      targetUri: string;
+      targetRange: { start: { character: number } };
+      originSelectionRange?: { start: { character: number } };
+    }>;
+    expect(asyncLinks[0]?.targetUri).toBe(externalUri);
+    expect(asyncLinks[0]?.targetRange.start.character).toBe(5);
+    expect(asyncLinks[0]?.originSelectionRange?.start.character).toBeGreaterThan(5);
+
+    // sync Location: same as async – external range unchanged
+    const syncLocations = instance.provideDefinition?.(
+      document,
+      { line: 0, character: 1 },
+      {} as never
+    ) as Array<{ uri: string; range: { start: { character: number } } }>;
+    expect(syncLocations[0]?.uri).toBe(externalUri);
+    expect(syncLocations[0]?.range.start.character).toBe(5);
+
+    // sync LocationLink: external targetRange unchanged
+    const syncLinks = instance.provideDefinition?.(
+      document,
+      { line: 0, character: 1 },
+      {} as never
+    ) as Array<{ targetUri: string; targetRange: { start: { character: number } } }>;
+    expect(syncLinks[0]?.targetUri).toBe(externalUri);
+    expect(syncLinks[0]?.targetRange.start.character).toBe(5);
+  });
 });
