@@ -176,6 +176,74 @@ describe('createSemantifyServices', () => {
     });
   });
 
+  it('derives hover payload directly from offset for schema paths before filters', () => {
+    const text = '{% if items | length > 0 %}ok{% endif %}';
+    const offset = text.indexOf('items') + 1;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.metadata).toMatchObject({
+      symbolKind: 'schemaPath',
+      rawPath: 'items',
+    });
+  });
+
+  it('derives hover payload directly from offset for member-access segments', () => {
+    const text = '{% for item in users %}{{ item.name }}{% endfor %}';
+    const itemOffset = text.indexOf('item.name') + 1;
+    const nameOffset = text.indexOf('name') + 1;
+
+    const itemCandidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+      },
+      { text, offset: itemOffset }
+    );
+    const nameCandidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+      },
+      { text, offset: nameOffset }
+    );
+
+    expect(itemCandidates[0]?.metadata).toMatchObject({
+      symbolKind: 'schemaPath',
+      rawPath: 'item.name',
+    });
+    expect(nameCandidates[0]?.metadata).toMatchObject({
+      symbolKind: 'schemaPath',
+      rawPath: 'item.name',
+    });
+  });
+
+  it('derives hover payload directly from offset for filters', () => {
+    const text = '{{ user.name | upper }}';
+    const offset = text.indexOf('upper') + 1;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]).toMatchObject({
+      label: 'upper',
+      kind: 'filter',
+    });
+    expect(candidates[0]?.metadata).toMatchObject({
+      symbolKind: 'filterName',
+      rawPath: 'upper',
+    });
+  });
+
   it('falls back to basePath metadata when variablePath is absent', () => {
     const text = '{% set title = page.title %}{{ title }}';
     const offset = text.lastIndexOf('title') + 'title'.length;

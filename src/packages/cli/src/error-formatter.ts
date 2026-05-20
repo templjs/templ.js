@@ -103,6 +103,9 @@ export function formatError(
  * Try to provide helpful error message for common template/data errors
  */
 export function provideErrorSuggestion(errorMessage: string): string | undefined {
+  if (!errorMessage) return undefined;
+  if (!errorMessage?.toLowerCase) return String(errorMessage);
+
   const normalized = errorMessage.toLowerCase();
 
   // File not found (check before generic "not found")

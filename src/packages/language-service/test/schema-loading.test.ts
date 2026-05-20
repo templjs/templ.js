@@ -116,6 +116,42 @@ describe('language-service schema-loading coverage branches', () => {
       schemaPath: '.templjs/root.json',
       contentSchemaPath: '.templjs/content.json',
     });
+
+    expect(
+      resolveDocumentSchemaSources({
+        rootUri: 'file:///workspace',
+        initializationOptions: {
+          documentContext: {
+            uri: 'file:///workspace/invalid_example.yaml.tmpl',
+            content: [
+              '# yaml-language-server: $schema=./example.schema.json',
+              'title: yaml block',
+            ].join('\n'),
+          },
+        },
+      })
+    ).toEqual({
+      schemaPath: './example.schema.json',
+      contentSchemaPath: undefined,
+    });
+
+    expect(
+      resolveDocumentSchemaSources({
+        rootUri: 'file:///workspace',
+        initializationOptions: {
+          documentContext: {
+            uri: 'file:///workspace/invalid_example.yaml.tmpl',
+            content: [
+              '"$schema": "./quoted.schema.json"',
+              'title: yaml block',
+            ].join('\n'),
+          },
+        },
+      })
+    ).toEqual({
+      schemaPath: './quoted.schema.json',
+      contentSchemaPath: undefined,
+    });
   });
 
   it('returns empty sync schema results when URL loading fails or file paths cannot resolve', () => {

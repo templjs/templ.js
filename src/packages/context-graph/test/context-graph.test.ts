@@ -202,6 +202,51 @@ describe('ContextGraphEngine', () => {
     expect(response.nodes.map((node) => node.id)).toEqual(['node-editor']);
   });
 
+  it('preserves provenance on graph facts without mutating stored state', async () => {
+    const graph = createContextGraph();
+
+    graph.use({
+      id: 'provider-provenance',
+      onInvalidate: (_uri, ctx) => {
+        ctx.upsertNode({
+          id: 'node-1',
+          profileId: 'templjs-authoring',
+          kind: 'binding',
+          provenance: {
+            version: 'v1',
+            providerId: 'provider-provenance',
+            providerVersion: '1.0.0',
+            sourceDocId: 'file:///template.md.tpl',
+            sourceSpan: {
+              startOffset: 4,
+              endOffset: 8,
+            },
+            projectionRuleId: 'templjs.binding.to-node',
+            confidence: 'definite',
+            targetId: 'node-1',
+          },
+        });
+      },
+    });
+
+    await graph.invalidate('file:///template.md.tpl');
+
+    const node = graph.getNodes()[0];
+    expect(node?.provenance).toMatchObject({
+      providerId: 'provider-provenance',
+      sourceSpan: {
+        startOffset: 4,
+        endOffset: 8,
+      },
+    });
+
+    if (node?.provenance) {
+      node.provenance.sourceSpan.startOffset = 999;
+    }
+
+    expect(graph.getNodes()[0]?.provenance?.sourceSpan.startOffset).toBe(4);
+  });
+
   it('keeps deterministic edge ordering across read APIs', async () => {
     const graph = createContextGraph();
     const provider: ContextProvider = {

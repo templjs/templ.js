@@ -13,6 +13,7 @@ vi.mock('../../../extensions/vscode/src/service-plugins', async () => {
 });
 
 import { URI } from 'vscode-uri';
+import { cleanTemplateContent } from '@templjs/volar';
 
 const extensionServicePluginsTestUrl = new URL(
   '../../../extensions/vscode/test/service-plugins.test.ts',
@@ -631,6 +632,223 @@ describe('language-service service-plugins coverage branches', () => {
     );
   });
 
+  it('remaps completion, hover, and definition documents for matching language ids', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+    const provideCompletionItems = vi.fn(async (document) => [document.languageId]);
+    const provideHover = vi.fn(async (document) => ({ contents: [document.languageId] }));
+    const provideDefinition = vi.fn(async (document) => [document.languageId]);
+
+    const remapped = servicePluginTesting.withLanguageIdRemap(
+      {
+        name: 'test-remap-features',
+        create: () => ({
+          provideCompletionItems,
+          provideHover,
+          provideDefinition,
+        }),
+      } as never,
+      'templjs-markdown',
+      'markdown'
+    );
+
+    const instance = remapped.create({} as never);
+    const document = servicePluginTesting.createTextDocumentLike(
+      'file:///doc.md.templ',
+      'templjs-markdown',
+      '# Templ'
+    );
+
+    await instance.provideCompletionItems?.(
+      document,
+      { line: 0, character: 1 },
+      { triggerKind: 1 },
+      {} as never
+    );
+    await instance.provideHover?.(document, { line: 0, character: 1 }, {} as never);
+    await instance.provideDefinition?.(document, { line: 0, character: 1 }, {} as never);
+
+    expect(provideCompletionItems).toHaveBeenCalledWith(
+      expect.objectContaining({ languageId: 'markdown' }),
+      expect.anything(),
+      expect.anything(),
+      expect.anything()
+    );
+    expect(provideHover).toHaveBeenCalledWith(
+      expect.objectContaining({ languageId: 'markdown' }),
+      expect.anything(),
+      expect.anything()
+    );
+    expect(provideDefinition).toHaveBeenCalledWith(
+      expect.objectContaining({ languageId: 'markdown' }),
+      expect.anything(),
+      expect.anything()
+    );
+  });
+
+  it.each([
+    ['templjs-markdown-host', 'templjs-markdown', 'file:///doc.md.templ', 'markdown'],
+    ['templjs-markdownlint-host', 'templjs-markdown', 'file:///doc.md.templ', 'markdown'],
+    ['templjs-yaml', 'templjs-yaml', 'file:///doc.yaml.templ', 'yaml'],
+  ] as const)('remaps diagnostic positions for %s', async (adapterId, sourceLanguageId, sourceUri, expectedLanguageId) => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+    const sourceText = 'alpha{% set x = 1 -%}beta';
+    const cleanedText = cleanTemplateContent(sourceText, undefined, { mode: 'text-only' }).cleaned;
+    const cleanedOffset = cleanedText.indexOf('beta');
+    const sourceOffset = sourceText.indexOf('beta');
+
+    expect(cleanedOffset).toBeGreaterThanOrEqual(0);
+    expect(cleanedOffset).not.toBe(sourceOffset);
+
+    const stubPlugin = {
+      name: `stub-${adapterId}`,
+      create: () => ({
+        provideDiagnostics(document: { languageId: string; getText(): string }) {
+          const localCleanedText = cleanTemplateContent(document.getText(), undefined, {
+            mode: 'text-only',
+          }).cleaned;
+          const localOffset = localCleanedText.indexOf('beta');
+
+          return [
+            {
+              message: document.languageId,
+              range: {
+                start: { line: 0, character: localOffset },
+                end: { line: 0, character: localOffset + 4 },
+              },
+            },
+          ];
+        },
+      }),
+    };
+
+    const remapped = servicePluginTesting.withPositionRemap(
+      servicePluginTesting.withLanguageIdRemap(stubPlugin as never, sourceLanguageId, expectedLanguageId),
+      sourceLanguageId,
+      { log: vi.fn() } as never
+    );
+
+    const sourceFile = {
+      id: URI.parse(sourceUri),
+      languageId: sourceLanguageId,
+      snapshot: {
+        getText: () => sourceText,
+        getLength: () => sourceText.length,
+      },
+    };
+
+    const context = {
+      decodeEmbeddedDocumentUri: vi.fn((uri: URI) =>
+        uri.toString() === `embedded-content://${adapterId}`
+          ? ([sourceFile.id, 'root'] as const)
+          : undefined
+      ),
+      language: {
+        scripts: {
+          get: vi.fn((uri: URI) => (uri.toString() === sourceUri ? sourceFile : undefined)),
+        },
+      },
+    };
+
+    const instance = remapped.create(context as never);
+    const result = await instance.provideDiagnostics?.(
+      servicePluginTesting.createTextDocumentLike(
+        `embedded-content://${adapterId}`,
+        sourceLanguageId,
+        sourceText
+      ),
+      {} as never
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result?.[0]).toMatchObject({
+      message: expectedLanguageId,
+      range: {
+        start: { line: 0, character: sourceOffset },
+        end: { line: 0, character: sourceOffset + 4 },
+      },
+    });
+  });
+
+  it('prefers Volar source maps for diagnostic remapping when available', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    const remapped = servicePluginTesting.withPositionRemap(
+      {
+        name: 'test-remap-volar-map',
+        create: () => ({
+          provideDiagnostics: () => [
+            {
+              message: 'map-first',
+              range: {
+                start: { line: 0, character: 0 },
+                end: { line: 0, character: 3 },
+              },
+            },
+          ],
+        }),
+      } as never,
+      'templjs-markdown',
+      { log: vi.fn() } as never
+    );
+
+    const sourceUri = URI.parse('file:///doc.md.templ');
+    const sourceText = 'prefix foo suffix';
+    const embeddedCode = { id: 'host.markdown' };
+    const sourceScript = {
+      languageId: 'templjs-markdown',
+      snapshot: {
+        getText: () => sourceText,
+        getLength: () => sourceText.length,
+      },
+      generated: {
+        root: { id: 'root' },
+        embeddedCodes: new Map([['host.markdown', embeddedCode]]),
+      },
+    };
+
+    const map = {
+      *toSourceRange() {
+        yield [7, 10] as const;
+      },
+    };
+
+    const context = {
+      decodeEmbeddedDocumentUri: vi.fn((uri: URI) =>
+        uri.toString() === 'embedded-content://volar-map'
+          ? ([sourceUri, 'host.markdown'] as const)
+          : undefined
+      ),
+      language: {
+        scripts: {
+          get: vi.fn((uri: URI) => (uri.toString() === sourceUri.toString() ? sourceScript : undefined)),
+        },
+        maps: {
+          get: vi.fn((virtualCode: unknown, source: unknown) =>
+            virtualCode === embeddedCode && source === sourceScript ? map : undefined
+          ),
+        },
+      },
+    };
+
+    const instance = remapped.create(context as never);
+    const diagnostics = await instance.provideDiagnostics?.(
+      servicePluginTesting.createTextDocumentLike(
+        'embedded-content://volar-map',
+        'templjs-markdown',
+        'xxx'
+      ),
+      {} as never
+    );
+
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics?.[0]).toMatchObject({
+      range: {
+        start: { line: 0, character: 7 },
+        end: { line: 0, character: 10 },
+      },
+    });
+  });
+
   it('returns the plugin instance unchanged when diagnostics are not provided', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
     const createOnly = vi.fn(() => ({ provideHover: vi.fn() }));
@@ -807,7 +1025,8 @@ describe('language-service service-plugins coverage branches', () => {
         'templjs-markdown',
         '{{ value }}'
       ),
-      { line: 0, character: 3 }
+      { line: 0, character: 3 },
+      {} as never
     );
 
     expect(hover).toBeUndefined();

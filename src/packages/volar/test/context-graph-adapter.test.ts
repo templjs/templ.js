@@ -61,6 +61,9 @@ describe('ContextGraphSemanticReadAdapter', () => {
     expect(first.revision).toBe(second.revision);
     expect(first.nodes).toEqual(second.nodes);
     expect(first.nodes.length).toBeGreaterThan(0);
+    expect(first.nodes.some((node) => node.provenance?.providerId === 'templjs-schema')).toBe(
+      true
+    );
     // Public memoization signal: repeated queries return references to the same
     // underlying context node objects from the cached snapshot.
     expect(first.nodes[0]).toBe(second.nodes[0]);

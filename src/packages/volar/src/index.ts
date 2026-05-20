@@ -118,6 +118,26 @@ function getBaseFormatLanguageId(baseFormat: BaseFormat): string {
 }
 
 /**
+ * Map base format to templjs-variant language ID for embedded host virtual codes.
+ * This ensures host diagnostics are skipped by adapters that check for 'templjs-' prefix.
+ */
+function getTempljsHostLanguageId(baseFormat: BaseFormat): string {
+  switch (baseFormat) {
+    case 'markdown':
+      return 'templjs-markdown';
+    case 'json':
+      return 'templjs-json';
+    case 'yaml':
+      return 'templjs-yaml';
+    case 'html':
+      return 'templjs-html';
+    case 'plain':
+    default:
+      return 'templjs';
+  }
+}
+
+/**
  * Create a TypeScript snapshot from cleaned code content
  * Used to provide cleaned code to language services via Volar's virtual code
  */
@@ -170,7 +190,7 @@ class TempljsHostEmbeddedVirtualCode implements VirtualCode {
 
   constructor(baseFormat: BaseFormat, cleaned: string, mappings: VirtualCode['mappings']) {
     this.id = `host.${getBaseFormatLanguageId(baseFormat)}`;
-    this.languageId = getBaseFormatLanguageId(baseFormat);
+    this.languageId = getTempljsHostLanguageId(baseFormat);
     this.snapshot = createCleanedSnapshot(cleaned);
     this.mappings = mappings;
   }
@@ -1061,3 +1081,5 @@ export * from './diagnostic-provider.js';
 export * from './context-graph-adapter.js';
 export * from './intellisense-provider.js';
 export * from './service-plugin.js';
+export * from './position-mapping.js';
+export * from './semantify-projection-adapter.js';

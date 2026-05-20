@@ -172,4 +172,32 @@ describe('textmate-harness', () => {
     expect(scopesForLine.some((scope) => scope.includes('meta.block.template'))).toBe(true);
     expect(scopesForLine.some((scope) => scope.includes('keyword.control.template'))).toBe(true);
   });
+
+  it('keeps inline template expression tokenization active in yaml host scalar lines', async () => {
+    const { registry, scopes } = await createRegistry();
+    const grammar = await registry.loadGrammar(scopes.yaml);
+    expect(grammar).toBeDefined();
+
+    const scopesForLine = lineScopes(grammar!, 'title: {{ user.name }}');
+    expect(scopesForLine.some((scope) => scope.includes('meta.embedded.block.yaml'))).toBe(true);
+    expect(scopesForLine.some((scope) => scope.includes('meta.expression.template'))).toBe(true);
+    expect(scopesForLine.some((scope) => scope.includes('punctuation.definition.template'))).toBe(
+      true
+    );
+  });
+
+  it('keeps inline template expression tokenization active in markdown frontmatter lines', async () => {
+    const { registry, scopes } = await createRegistry();
+    const grammar = await registry.loadGrammar(scopes.md);
+    expect(grammar).toBeDefined();
+
+    const scopesForLine = lineScopes(grammar!, 'title: {{ user.name }}');
+    expect(scopesForLine.some((scope) => scope.includes('meta.embedded.block.markdown'))).toBe(
+      true
+    );
+    expect(scopesForLine.some((scope) => scope.includes('meta.expression.template'))).toBe(true);
+    expect(scopesForLine.some((scope) => scope.includes('punctuation.definition.template'))).toBe(
+      true
+    );
+  });
 });

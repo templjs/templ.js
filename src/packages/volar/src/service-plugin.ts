@@ -48,6 +48,10 @@ export interface LSPHoverInfo {
     kind: 'markdown' | 'plaintext';
     value: string;
   };
+  range?: {
+    start: { line: number; character: number };
+    end: { line: number; character: number };
+  };
 }
 
 export interface LSPDefinitionLocation {
@@ -109,12 +113,18 @@ export class TempljsServicePlugin {
       return null;
     }
 
-    return {
+    const result: LSPHoverInfo = {
       contents: {
         kind: 'markdown',
         value: hover.contents,
       },
     };
+
+    if (hover.range) {
+      result.range = hover.range;
+    }
+
+    return result;
   }
 
   /**
