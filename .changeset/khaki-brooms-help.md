@@ -1,5 +1,5 @@
 ---
-"@templjs/context-graph": patch
+'@templjs/context-graph': patch
 ---
 
 # @templjs/context-graph provenance contract updates
