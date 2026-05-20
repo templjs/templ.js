@@ -6,12 +6,14 @@ summary: Migrate semantify and context-graph toward adapter/profile projection a
 type: work-item
 subtype: epic
 lifecycle: active
-status: in-progress
-status_reason: implementation
+status: ready-for-review
+status_reason: implementation-complete
 priority: high
 estimated: 32
 actual: 0
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/156
   evidence:
     - '[[record-20260520-125-semantify-projection-architecture-migration-epic]]'
 ---
@@ -43,7 +45,7 @@ Current Semantify behavior is narrowly shaped around template text, offsets, hov
 - [x] Land Semantify adapter/profile/projection contract updates.
 - [x] Introduce a typed projection runtime foundation that can evolve toward a declarative DSL.
 - [x] Add TemplJS template and schema adapters/profile integration.
-- [ ] Cut language-service and Volar consumers over to profile helper extension boundaries.
+- [x] Cut language-service and Volar consumers over to profile helper extension boundaries.
 - [x] Update package READMEs and architecture docs with the final boundaries.
 
 ## Progress Notes
@@ -54,6 +56,7 @@ Current Semantify behavior is narrowly shaped around template text, offsets, hov
 - 2026-05-20: Added a Volar projection snapshot adapter as the first language-service-facing bridge. Full removal of legacy editor-shaped helper paths remains for follow-up cutover.
 - 2026-05-20: Routed Volar schema-path and enum semantic reads through Semantify projected graph output while preserving the existing compatibility query shape.
 - 2026-05-20: Validation passed for `pnpm run build`, `pnpm run type-check`, and `pnpm run test` under Node 24. `pnpm run lint:frontmatter` remains blocked by archived `WI-124` depending on ready `WI-037`.
+- 2026-05-20: PR #156 merged to `staging` with green CI and migration coverage updates for language-service and Volar cutover branches.
 
 ## Deliverables
 
