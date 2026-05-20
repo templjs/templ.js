@@ -33,7 +33,6 @@ import {
 import {
   asNonEmptyString,
   asString,
-  buildPathNodes,
   buildSnapshotCacheKey,
   contextGraphSnapshotTesting,
   querySnapshot,
@@ -42,6 +41,7 @@ import {
   resolveZoneKind,
   type QueryAttributes,
 } from './context-graph-snapshot.js';
+import { createSemantifyProjectionSnapshot } from './semantify-projection-adapter.js';
 export type {
   DefinitionResolutionOptions,
   DefinitionTarget,
@@ -187,13 +187,45 @@ export class ContextGraphSemanticReadAdapter {
       rawContentSchema && contentSchemaUri
         ? this.resolveAllOfRefs(rawContentSchema, contentSchemaUri)
         : rawContentSchema;
+
+    const projectedSnapshot = createSemantifyProjectionSnapshot({
+      text: '',
+      schema: options.schema,
+      contentSchema,
+    });
+
     return {
       version: 'v1',
-      revision: 1,
-      nodes: [
-        ...buildPathNodes('frontmatter', options.schema),
-        ...buildPathNodes('content', contentSchema),
-      ],
+      revision: projectedSnapshot.revision,
+      nodes: projectedSnapshot.nodes.flatMap((node) => {
+        if (node.kind !== 'templjs.schema-path' && node.kind !== 'templjs.schema-enum-value') {
+          return [];
+        }
+
+        const profileId = asNonEmptyString(node.attributes?.profileId) ?? node.profileId;
+        const path = asString(node.attributes?.path) ?? '';
+        const compatibilityKind =
+          node.kind === 'templjs.schema-path' ? 'schema-path' : 'schema-enum-value';
+        const value = node.attributes?.value ?? node.attributes?.label ?? '';
+        const id =
+          compatibilityKind === 'schema-path'
+            ? `${profileId}:schema-path:${path}`
+            : `${profileId}:schema-enum:${path}:${String(value)}`;
+
+        return [
+          {
+            ...node,
+            id,
+            profileId,
+            kind: compatibilityKind,
+            attributes: {
+              ...(node.attributes ?? {}),
+              projectedSemanticKind: node.kind,
+              projectionProfileId: node.profileId,
+            },
+          },
+        ];
+      }),
       edges: [],
     };
   }

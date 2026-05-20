@@ -284,6 +284,9 @@ importers:
 
   src/packages/semantify:
     dependencies:
+      '@templjs/context-graph':
+        specifier: workspace:*
+        version: link:../context-graph
       '@templjs/core':
         specifier: workspace:*
         version: link:../core

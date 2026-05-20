@@ -9,13 +9,33 @@
       "name": "meta.embedded.block.yaml",
       "patterns": [
         {
-          "include": "source.yaml"
+          "include": "#yamlTemplScalar"
         },
         {
           "include": "source.templjs"
         },
         {
+          "include": "source.yaml"
+        },
+        {
           "include": "#yamlScalarValue"
+        }
+      ]
+    },
+    "yamlTemplScalar": {
+      "begin": "^(\\s*[^:#\\n][^:\\n]*:\\s*)(?=.*(?:\\{\\{|\\{%|\\{#))",
+      "end": "$",
+      "beginCaptures": {
+        "1": {
+          "name": "meta.mapping.key.yaml"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.templjs"
+        },
+        {
+          "include": "source.yaml"
         }
       ]
     },

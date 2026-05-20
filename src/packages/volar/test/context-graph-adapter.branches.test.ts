@@ -24,6 +24,33 @@ afterEach(() => {
 });
 
 describe('ContextGraphSemanticReadAdapter branch coverage', () => {
+  it('skips bindings without source paths or unsupported kinds when expanding scoped paths', () => {
+    const adapter = createContextGraphSemanticReadAdapter() as unknown as {
+      expandScopedPath(path: string, bindings: Array<Record<string, unknown>>): string;
+    };
+
+    const resolved = adapter.expandScopedPath('item.name', [
+      { name: 'item', kind: 'for-alias' },
+      { name: 'item', kind: 'unsupported-kind', sourcePath: 'users' },
+    ]);
+
+    expect(resolved).toBe('item.name');
+  });
+
+  it('returns null path details when no schema URI is available and metadata query misses', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const details = adapter.getPathDetails(
+      {
+        operation: 'hover',
+        contextBlock: 'content',
+      },
+      'missing.path',
+      {}
+    );
+
+    expect(details).toBeNull();
+  });
+
   it('returns null for document definitions with non-registry frontmatter keys', () => {
     const adapter = createContextGraphSemanticReadAdapter();
     const text = ['---', 'name: value', '---'].join('\n');

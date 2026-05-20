@@ -85,7 +85,9 @@ export const planMarkdownAdapterRuntime = planMarkdownlintAdapterRuntime;
 
 function isMarkdownLanguage(languageId: string): boolean {
   const normalized = languageId.toLowerCase();
-  return normalized === 'markdown' || normalized === 'templjs-markdown';
+  // Only match canonical 'markdown', not 'templjs-markdown' which is an embedded host code
+  // that should not receive direct diagnostics (remap wrapper routes root documents instead)
+  return normalized === 'markdown';
 }
 
 function toMarkdownlintCode(ruleNames: MarkdownlintIssue['ruleNames']): string | undefined {
@@ -149,60 +151,22 @@ function offsetToLineAndCharacter(
   };
 }
 
-function buildCleanedToSourceOffsets(
-  originalToCleanedOffsets: number[],
-  cleanedLength: number
-): number[] {
-  const cleanedToSource = new Array<number>(cleanedLength + 1).fill(-1);
-
-  for (let sourceOffset = 0; sourceOffset < originalToCleanedOffsets.length; sourceOffset++) {
-    const cleanedOffset = originalToCleanedOffsets[sourceOffset] ?? 0;
-    if (cleanedOffset <= cleanedLength && cleanedToSource[cleanedOffset] === -1) {
-      cleanedToSource[cleanedOffset] = sourceOffset;
-    }
-  }
-
-  let lastKnown = 0;
-  for (let i = 0; i < cleanedToSource.length; i++) {
-    if (cleanedToSource[i] !== -1) {
-      lastKnown = cleanedToSource[i] ?? lastKnown;
-    } else {
-      cleanedToSource[i] = lastKnown;
-    }
-  }
-
-  return cleanedToSource;
-}
-
-function toDiagnostic(
-  issue: MarkdownlintIssue,
-  sourceText: string,
-  cleanedInput: MarkdownlintCleanedInput
-) {
+function toDiagnostic(issue: MarkdownlintIssue, cleanedInput: MarkdownlintCleanedInput) {
   const lineNumber = Math.max(1, issue.lineNumber ?? 1);
   const rangeStart = Math.max(1, issue.errorRange?.[0] ?? 1);
   const rangeLength = Math.max(1, issue.errorRange?.[1] ?? 1);
 
   const cleanedLineOffsets = buildLineOffsets(cleanedInput.cleaned);
-  const sourceLineOffsets = buildLineOffsets(sourceText);
-  const cleanedToSourceOffsets = buildCleanedToSourceOffsets(
-    cleanedInput.originalToCleanedOffsets,
-    cleanedInput.cleaned.length
-  );
 
   const cleanedStartOffset = Math.min(
     cleanedInput.cleaned.length,
     lineAndColumnToOffset(cleanedLineOffsets, lineNumber, rangeStart - 1)
   );
   const cleanedEndOffset = Math.min(cleanedInput.cleaned.length, cleanedStartOffset + rangeLength);
-
-  const sourceStartOffset = cleanedToSourceOffsets[cleanedStartOffset] ?? 0;
-  const sourceEndOffset = cleanedToSourceOffsets[cleanedEndOffset] ?? sourceStartOffset;
-
-  const sourceStart = offsetToLineAndCharacter(sourceLineOffsets, sourceStartOffset);
-  const sourceEnd = offsetToLineAndCharacter(
-    sourceLineOffsets,
-    Math.max(sourceStartOffset, sourceEndOffset)
+  const start = offsetToLineAndCharacter(cleanedLineOffsets, cleanedStartOffset);
+  const end = offsetToLineAndCharacter(
+    cleanedLineOffsets,
+    Math.max(cleanedStartOffset, cleanedEndOffset)
   );
 
   const severity: 1 | 2 | 3 | 4 = 2;
@@ -213,8 +177,8 @@ function toDiagnostic(
     source: 'markdownlint',
     code: toMarkdownlintCode(issue.ruleNames),
     range: {
-      start: sourceStart,
-      end: sourceEnd,
+      start,
+      end,
     },
   };
 }
@@ -382,7 +346,7 @@ async function collectMarkdownlintDiagnostics(
         });
 
         return parseMarkdownlintDiagnostics(String(stdout ?? ''), tempFile.tempFilePath).map(
-          (issue) => toDiagnostic(issue, sourceText, cleanedInput)
+          (issue) => toDiagnostic(issue, cleanedInput)
         );
       } catch (error) {
         const typedError = error as {
@@ -407,7 +371,7 @@ async function collectMarkdownlintDiagnostics(
         const output = stdout.trim().length > 0 ? stdout : stderr;
         if (output.trim().length > 0) {
           return parseMarkdownlintDiagnostics(output, tempFile.tempFilePath).map((issue) =>
-            toDiagnostic(issue, sourceText, cleanedInput)
+            toDiagnostic(issue, cleanedInput)
           );
         }
 
@@ -507,7 +471,6 @@ export const markdownAdapterTesting = {
   buildLineOffsets,
   lineAndColumnToOffset,
   offsetToLineAndCharacter,
-  buildCleanedToSourceOffsets,
   toDiagnostic,
   extractIssuesFromResult,
   parseTextDiagnostics,

@@ -1,3 +1,15 @@
+import type {
+  ContextEdge,
+  ContextNode,
+  GraphProvenance,
+  GraphSnapshot,
+  JsonObject,
+  JsonPrimitive,
+  JsonValue,
+} from '@templjs/context-graph';
+
+export type SemantifySchemaVersion = '1.0.0';
+
 export type RegionKind =
   | 'metadata'
   | 'templateExpression'
@@ -10,6 +22,11 @@ export type RegionKind =
 export interface OffsetRange {
   startOffset: number;
   endOffset: number;
+}
+
+export interface SourceLocation {
+  line: number;
+  character: number;
 }
 
 export interface DelimiterConfigInput {
@@ -96,3 +113,166 @@ export interface SemantifyServices {
   resolveReferences(input: SemanticContextResolverInput): SymbolRef[];
   planCandidates(intent: QueryIntent, input: SemanticContextResolverInput): CandidateItem[];
 }
+
+export type AdapterId = string;
+export type ProfileDefinitionId = string;
+export type ProjectionRuleId = string;
+export type ProjectionDiagnosticSeverity = 'info' | 'warning' | 'error';
+
+export interface AdapterNode {
+  id?: string;
+  kind: string;
+  sourceSpan: OffsetRange;
+  sourceLoc?: SourceLocation;
+  content: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AdapterDiagnostic {
+  severity: ProjectionDiagnosticSeverity;
+  message: string;
+  span?: OffsetRange;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AdapterOutput {
+  schemaVersion: SemantifySchemaVersion;
+  adapterId: AdapterId;
+  adapterVersion: string;
+  sourceDocId: string;
+  sourceUri?: string;
+  nodes: AdapterNode[];
+  diagnostics?: AdapterDiagnostic[];
+  metadata?: Record<string, unknown>;
+}
+
+export type ProjectionStepKind = 'extract' | 'normalize' | 'canonicalize' | 'enrich' | 'synthesize';
+
+export interface ProjectionStep {
+  kind: ProjectionStepKind;
+  description: string;
+  inputPath?: string;
+  outputPath?: string;
+  constraints?: Record<string, unknown>;
+}
+
+export interface ProjectionRule {
+  schemaVersion: SemantifySchemaVersion;
+  id: ProjectionRuleId;
+  name: string;
+  version: string;
+  sourceNodeKind: string;
+  targetSemanticKind: string;
+  deterministicBehavior: 'strict' | 'order-preserving';
+  transformationSteps: ProjectionStep[];
+}
+
+export interface SemanticKindDefinition {
+  kind: string;
+  description?: string;
+  requiredContentFields?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export type ProfileHelperExtensionKind =
+  | 'candidate-provider'
+  | 'definition-resolver'
+  | 'hover-renderer'
+  | 'diagnostic-planner';
+
+export interface ProfileHelperExtension {
+  schemaVersion: SemantifySchemaVersion;
+  id: string;
+  kind: ProfileHelperExtensionKind;
+  consumesSemanticKinds: string[];
+  description?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ProfileAdapterManifestEntry {
+  adapterId: AdapterId;
+  adapterVersionRange: string;
+  sourceNodeKinds: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface ProfileDefinition {
+  schemaVersion: SemantifySchemaVersion;
+  id: ProfileDefinitionId;
+  version: string;
+  semanticKinds: SemanticKindDefinition[];
+  projectionRules: ProjectionRule[];
+  helperExtensions?: ProfileHelperExtension[];
+  defaultAdapters?: ProfileAdapterManifestEntry[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface ProjectionDiagnostic {
+  severity: ProjectionDiagnosticSeverity;
+  message: string;
+  adapterId?: AdapterId;
+  projectionRuleId?: ProjectionRuleId;
+  sourceNodeKind?: string;
+  span?: OffsetRange;
+  metadata?: Record<string, unknown>;
+}
+
+export type SemanticGraphNode = ContextNode;
+export type SemanticGraphEdge = ContextEdge;
+export type SemanticGraphSnapshot = GraphSnapshot;
+export type SemanticGraphProvenance = GraphProvenance;
+
+export interface ProjectionResult {
+  schemaVersion: SemantifySchemaVersion;
+  graph: SemanticGraphSnapshot;
+  diagnostics: ProjectionDiagnostic[];
+  provenance: SemanticGraphProvenance[];
+  metadata?: Record<string, unknown>;
+}
+
+export type ProjectionEntity =
+  | { type: 'node'; node: SemanticGraphNode }
+  | { type: 'edge'; edge: SemanticGraphEdge };
+
+export interface ProjectionRuleContext {
+  profile: ProfileDefinition;
+  adapterOutput: AdapterOutput;
+  rule: ProjectionRule;
+  createNode(input: {
+    sourceNode: AdapterNode;
+    kind?: string;
+    content?: Record<string, unknown>;
+    idSuffix?: string;
+    attributes?: JsonObject;
+    confidence?: SemanticGraphProvenance['confidence'];
+  }): SemanticGraphNode;
+  createEdge(input: {
+    sourceNode: AdapterNode;
+    from: string;
+    to: string;
+    kind?: string;
+    content?: Record<string, unknown>;
+    idSuffix?: string;
+    attributes?: JsonObject;
+    confidence?: SemanticGraphProvenance['confidence'];
+  }): SemanticGraphEdge;
+  toJsonObject(value: Record<string, unknown>): JsonObject;
+}
+
+export interface TypedProjectionRule {
+  ruleId: ProjectionRuleId;
+  project(sourceNode: AdapterNode, context: ProjectionRuleContext): ProjectionEntity[];
+}
+
+export interface ProjectionRuntimeInput {
+  adapterOutput: AdapterOutput;
+  profile: ProfileDefinition;
+}
+
+export interface ProjectionRuntimeOptions {
+  rules?: TypedProjectionRule[];
+}
+
+export type ProjectionJsonObject = JsonObject;
+export type ProjectionJsonValue = JsonValue;
+export type ProjectionJsonPrimitive = JsonPrimitive;

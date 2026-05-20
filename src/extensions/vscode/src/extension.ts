@@ -22,7 +22,6 @@ import {
   type ServerOptions,
   TransportKind,
 } from 'vscode-languageclient/node';
-import { TempljsVirtualDocumentProvider, VIRTUAL_SCHEME } from './virtual-document-provider.js';
 
 let languageClient: LanguageClient | undefined;
 let outputChannel: vscode.OutputChannel | undefined;
@@ -339,14 +338,6 @@ export function activate(context: vscode.ExtensionContext): void {
       void restartLanguageClient(context);
     })
   );
-
-  // Host language delegation via virtual documents.
-  // Serves cleaned template content under `templjs-virtual://` so VS Code routes each
-  // embedded document to whatever language server the user has configured — markdownlint,
-  // remark, Vale, the built-in markdown server, etc. — without any hardcoded dependency.
-  // TODO(WI-093): supersede with @volar/language-client when Volar adds client-side
-  // embedded-language forwarding.
-  initializeHostLanguageDelegation(context);
 }
 
 /* c8 ignore start */
@@ -565,88 +556,6 @@ function initializeLanguageServer(context: vscode.ExtensionContext): void {
     );
   });
 }
-
-/**
- * Register the virtual document provider and keep it in sync with open templjs documents.
- *
- * `templjs-virtual://` documents contain the cleaned template content (template expressions
- * deleted, offset-mapped). VS Code routes them to whichever LSP-based language server is
- * registered for the base format language ID. No in-process language services are run here.
- */
-/* c8 ignore start */
-/* v8 ignore start */
-function initializeHostLanguageDelegation(context: vscode.ExtensionContext): void {
-  const provider = new TempljsVirtualDocumentProvider();
-  const hostDiagnostics = vscode.languages.createDiagnosticCollection('templjs-host');
-  context.subscriptions.push(provider);
-  context.subscriptions.push(hostDiagnostics);
-  context.subscriptions.push(
-    vscode.workspace.registerTextDocumentContentProvider(VIRTUAL_SCHEME, provider)
-  );
-
-  function syncDocument(document: vscode.TextDocument): void {
-    if (!isTempljsDocument(document)) return;
-    const virtualUri = provider.update(document.uri, document.getText());
-    void vscode.workspace.openTextDocument(virtualUri);
-  }
-
-  // Sync all documents already open when the extension activates.
-  for (const document of vscode.workspace.textDocuments) {
-    syncDocument(document);
-  }
-
-  context.subscriptions.push(
-    vscode.workspace.onDidOpenTextDocument((doc) => {
-      syncDocument(doc);
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.workspace.onDidChangeTextDocument((e) => {
-      syncDocument(e.document);
-
-      const activeEditor = vscode.window.activeTextEditor;
-      if (!activeEditor || activeEditor.document !== e.document) {
-        return;
-      }
-
-      if (!shouldAutoTriggerSuggestOnChange(e.document, e.contentChanges)) {
-        return;
-      }
-
-      void vscode.commands.executeCommand('editor.action.triggerSuggest');
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.languages.onDidChangeDiagnostics((event) => {
-      for (const uri of event.uris) {
-        if (!provider.isVirtualUri(uri)) {
-          continue;
-        }
-
-        const sourceUri = provider.toSourceUri(uri);
-        const mappedDiagnostics = vscode.languages
-          .getDiagnostics(uri)
-          .map((diagnostic) => provider.mapDiagnosticToSource(sourceUri, diagnostic))
-          .filter((diagnostic): diagnostic is vscode.Diagnostic => diagnostic !== undefined);
-
-        hostDiagnostics.set(sourceUri, mappedDiagnostics);
-      }
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.workspace.onDidCloseTextDocument((doc) => {
-      if (isTempljsDocument(doc)) {
-        provider.remove(doc.uri);
-        hostDiagnostics.delete(doc.uri);
-      }
-    })
-  );
-}
-/* v8 ignore stop */
-/* c8 ignore stop */
 
 interface ActiveDocumentContext {
   uri: string;

@@ -52,3 +52,5 @@ The RC scope now includes release blocker cleanup, shared schema rollout, contex
 - [x] Work items remain available for `backlog-automation` to finalize rather than being manually archived.
 
 ## Relationships
+
+<!-- Stale dependencies removed: WI-024 is archived with 'closed' status and cannot depend on non-closed work items. The tracked scope items have either completed or been deferred; tracking is now in WI-125 epic. -->

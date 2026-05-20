@@ -1,6 +1,10 @@
-test: yaml block
-$schema: https://makesomething.up
-id: "{% set id = \"yaml-block\" %}{{ id }}"
-{% for c in id %}
-{{ c }}
+# yaml-language-server: $schema=./example.schema.json
+title: yaml block
+id: {% set id = 'yaml-block' %}"{{ id }}"
+{% if items | length > 0 %}
+items:
+{% for item in items %}
+- name: "{{ item.name }}"
+  value: "{{ item.value }}"
 {% endfor %}
+{% endif %}
