@@ -5,13 +5,16 @@ title: '127: Semantify Adapter and Profile Contract Surface'
 summary: Define Semantify adapter output, profile definition, projection output, and helper extension contracts.
 type: work-item
 subtype: task
-lifecycle: active
-status: in-progress
-status_reason: implementation
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 6
 actual: 0
+completed_date: '2026-05-20'
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/156
   evidence:
     - '[[record-20260520-127-semantify-adapter-and-profile-contract-surface]]'
 ---
@@ -37,6 +40,7 @@ The current Semantify API accepts template text and offsets and exposes context,
 
 - 2026-05-20: Added adapter/profile/projection model exports while preserving `resolveContext`, `resolveReferences`, and `planCandidates`.
 - 2026-05-20: Added projection and TemplJS adapter tests through public package exports.
+- 2026-05-20: Merged via PR #156 to `staging`; public Semantify contracts validated with compatibility exports intact.
 
 ## Deliverables
 
@@ -46,10 +50,10 @@ The current Semantify API accepts template text and offsets and exposes context,
 
 ## Acceptance Criteria
 
-- [ ] Semantify exposes adapter/profile/projection contracts without external dependency leakage.
-- [ ] Profiles are modeled as semantic definitions plus projection rules and helper extension metadata.
-- [ ] Adapter implementations remain replaceable and are not intrinsic to Semantify core.
-- [ ] Editor affordance names do not become required core projection concepts.
+- [x] Semantify exposes adapter/profile/projection contracts without external dependency leakage.
+- [x] Profiles are modeled as semantic definitions plus projection rules and helper extension metadata.
+- [x] Adapter implementations remain replaceable and are not intrinsic to Semantify core.
+- [x] Editor affordance names do not become required core projection concepts.
 
 ## Relationships
 

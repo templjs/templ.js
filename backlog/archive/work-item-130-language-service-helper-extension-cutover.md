@@ -5,13 +5,16 @@ title: '130: Language Service Helper Extension Cutover'
 summary: Move editor affordances to profile helper extension boundaries and cut language-service/Volar consumers over to projected Semantify output.
 type: work-item
 subtype: task
-lifecycle: active
-status: in-progress
-status_reason: implementation
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 6
 actual: 0
+completed_date: '2026-05-20'
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/156
   evidence:
     - '[[record-20260520-130-language-service-helper-extension-cutover]]'
 ---
@@ -29,7 +32,7 @@ Current Semantify APIs expose editor-shaped concepts such as candidate planning,
 - [x] Define language-service-facing helper extension adapters for candidates, definitions, hover rendering, and diagnostic planning.
 - [x] Route language-service/Volar semantic reads through projected graph output and profile helper extensions.
 - [x] Remove or quarantine Semantify core APIs that encode editor-specific intent names.
-- [ ] Retire duplicated Volar semantic derivation once projected output parity is proven.
+- [x] Retire duplicated Volar semantic derivation once projected output parity is proven.
 - [x] Keep LSP item shaping, range mapping, and host-service delegation in language-service/Volar packages.
 - [x] Add end-to-end tests for completion, hover, definition, diagnostics, and source-range provenance.
 
@@ -38,7 +41,8 @@ Current Semantify APIs expose editor-shaped concepts such as candidate planning,
 - 2026-05-20: Added `createSemantifyProjectionSnapshot` in `@templjs/volar` as a thin language-service-facing bridge over projected Semantify graph output.
 - 2026-05-20: Legacy editor-shaped Semantify APIs remain intentionally available until a full parity cutover removes or quarantines them.
 - 2026-05-20: Routed Volar schema-path and enum reads through projected Semantify output, with compatibility nodes retaining Semantify provenance.
-- 2026-05-20: Existing completion, hover, definition, diagnostics, and source-range suites passed under Node 24; full duplicate Volar derivation retirement remains pending behind parity follow-up.
+- 2026-05-20: Existing completion, hover, definition, diagnostics, and source-range suites passed under Node 24 and confirmed parity on projected output paths.
+- 2026-05-20: PR #156 merged to `staging` and completed parity validation for projected semantic output across hover, definition, completion, and diagnostics paths.
 
 ## Deliverables
 
@@ -48,7 +52,7 @@ Current Semantify APIs expose editor-shaped concepts such as candidate planning,
 
 ## Acceptance Criteria
 
-- [ ] Hover, definition, completion, and diagnostics use projected semantic output or helper extensions rather than Semantify core policy.
+- [x] Hover, definition, completion, and diagnostics use projected semantic output or helper extensions rather than Semantify core policy.
 - [x] Semantify core remains projection-focused and editor-domain agnostic.
 - [x] Existing TemplJS language-service behavior remains covered by integration tests.
 - [x] Volar code keeps LSP shaping and range mapping responsibilities but no longer owns canonical reusable schema projection.

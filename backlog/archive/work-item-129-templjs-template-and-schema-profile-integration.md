@@ -5,13 +5,16 @@ title: '129: TemplJS Template and Schema Profile Integration'
 summary: Add TemplJS template/schema adapters and profile rules so existing authoring semantics flow through Semantify projection.
 type: work-item
 subtype: task
-lifecycle: active
-status: in-progress
-status_reason: implementation
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 8
 actual: 0
+completed_date: '2026-05-20'
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/156
   evidence:
     - '[[record-20260520-129-templjs-template-and-schema-profile-integration]]'
 ---
@@ -30,13 +33,14 @@ Current schema path graph construction and query behavior live in Volar's contex
 - [x] Define a schema adapter over shared schema metadata and schema source information.
 - [x] Define a TemplJS authoring profile with semantic kinds and projection rules for template bindings, schema paths, enum values, zones, and references.
 - [x] Move reusable schema graph construction out of Volar-specific modules into adapter/profile projection paths.
-- [ ] Preserve current custom delimiter, frontmatter/content, local alias, and schema path behavior.
+- [x] Preserve current custom delimiter, frontmatter/content, local alias, and schema path behavior.
 - [x] Add integration tests comparing old authoring behavior to projected graph output.
 
 ## Progress Notes
 
 - 2026-05-20: Added `createTempljsTemplateAdapterOutput`, `createTempljsSchemaAdapterOutput`, and `createTempljsAuthoringProfile`.
 - 2026-05-20: Added tests proving template bindings, schema paths, enum values, and helper metadata project through the authoring profile.
+- 2026-05-20: Merged via PR #156 to `staging`; compatibility tests cover delimiter, frontmatter/content, alias, and schema-path parity scenarios.
 
 ## Deliverables
 
@@ -46,10 +50,10 @@ Current schema path graph construction and query behavior live in Volar's contex
 
 ## Acceptance Criteria
 
-- [ ] TemplJS adapters emit normalized adapter output with source spans and metadata.
-- [ ] The TemplJS profile projects existing template/schema semantics into graph output with provenance.
-- [ ] Volar-specific schema graph construction is no longer the canonical reusable semantic path.
-- [ ] Existing authoring behavior remains covered by package integration tests.
+- [x] TemplJS adapters emit normalized adapter output with source spans and metadata.
+- [x] The TemplJS profile projects existing template/schema semantics into graph output with provenance.
+- [x] Volar-specific schema graph construction is no longer the canonical reusable semantic path.
+- [x] Existing authoring behavior remains covered by package integration tests.
 
 ## Relationships
 
