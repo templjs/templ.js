@@ -12,7 +12,11 @@ export type {
   GraphDelta,
   GraphError,
   GraphErrorCode,
+  GraphEdge,
   GraphOperationError,
+  GraphNode,
+  GraphProvenance,
+  GraphProvenanceConfidence,
   GraphSnapshot,
   GraphWriteContext,
   ProfileId,
@@ -25,6 +29,8 @@ export type {
   NodeId,
   NodeQuery,
   ProviderId,
+  SourceLocation,
+  SourceSpan,
   SubjectRef,
 } from './public-types.js';
 

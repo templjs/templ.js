@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import type { GraphOperationError, QueryRequest, QueryResponse } from '../src/index.js';
+import type { GraphOperationError, GraphProvenance, QueryRequest, QueryResponse } from '../src/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,5 +64,27 @@ describe('API boundary and contract compatibility', () => {
 
     const roundTrip = JSON.parse(JSON.stringify(errorPayload));
     expect(roundTrip).toEqual(errorPayload);
+  });
+
+  it('graph provenance is v1-compatible and serialization-safe', () => {
+    const provenance: GraphProvenance = {
+      version: 'v1',
+      providerId: 'templjs-template',
+      providerVersion: '1.0.0',
+      sourceDocId: 'file:///template.md.tpl',
+      sourceSpan: {
+        startOffset: 12,
+        endOffset: 24,
+      },
+      projectionRuleId: 'templjs.binding.to-node',
+      confidence: 'definite',
+      targetId: 'node-1',
+      attributes: {
+        adapterId: 'templjs-template',
+      },
+    };
+
+    const roundTrip = JSON.parse(JSON.stringify(provenance));
+    expect(roundTrip).toEqual(provenance);
   });
 });
