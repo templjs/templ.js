@@ -6,12 +6,14 @@ summary: Implement the Semantify projection runtime foundation with deterministi
 type: work-item
 subtype: task
 lifecycle: active
-status: in-progress
-status_reason: implementation
+status: ready-for-review
+status_reason: implementation-complete
 priority: high
 estimated: 8
 actual: 0
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/156
   evidence:
     - '[[record-20260520-128-semantify-projection-runtime-and-dsl-foundation]]'
 ---
@@ -37,6 +39,7 @@ The target architecture should be declarative, but the DSL should not be frozen 
 
 - 2026-05-20: Added `SemantifyProjectionRuntime`, `createProjectionRuntime`, and `projectSemanticGraph`.
 - 2026-05-20: Added tests for deterministic projection, typed projection rules, and invalid-span diagnostics.
+- 2026-05-20: Merged via PR #156 to `staging`; projection runtime determinism and diagnostics validated in CI.
 
 ## Deliverables
 
@@ -46,10 +49,10 @@ The target architecture should be declarative, but the DSL should not be frozen 
 
 ## Acceptance Criteria
 
-- [ ] Same adapter input plus same profile/rule versions produces byte-stable output ordering.
-- [ ] Every projected node/edge has provenance that traces to adapter input and projection rule id.
-- [ ] Projection diagnostics are structured but do not encode editor or CI policy.
-- [ ] The runtime can evolve toward declarative rules without changing adapter output contracts.
+- [x] Same adapter input plus same profile/rule versions produces byte-stable output ordering.
+- [x] Every projected node/edge has provenance that traces to adapter input and projection rule id.
+- [x] Projection diagnostics are structured but do not encode editor or CI policy.
+- [x] The runtime can evolve toward declarative rules without changing adapter output contracts.
 
 ## Relationships
 

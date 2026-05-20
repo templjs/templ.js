@@ -6,12 +6,14 @@ summary: Add domain-agnostic graph primitives and required provenance support to
 type: work-item
 subtype: task
 lifecycle: active
-status: in-progress
-status_reason: implementation
+status: ready-for-review
+status_reason: implementation-complete
 priority: high
 estimated: 5
 actual: 0
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/156
   evidence:
     - '[[record-20260520-126-context-graph-primitive-and-provenance-contracts]]'
 ---
@@ -37,6 +39,7 @@ The current package exposes `ContextNode`, `ContextEdge`, snapshots, queries, an
 
 - 2026-05-20: Added `GraphProvenance`, `SourceSpan`, `SourceLocation`, `GraphNode`, and `GraphEdge` public types.
 - 2026-05-20: Added provenance serialization and mutation-isolation tests.
+- 2026-05-20: Merged via PR #156 to `staging` with deterministic ordering and provenance lineage validation in CI.
 
 ## Deliverables
 
@@ -46,10 +49,10 @@ The current package exposes `ContextNode`, `ContextEdge`, snapshots, queries, an
 
 ## Acceptance Criteria
 
-- [ ] Projected graph facts can carry required source/projection provenance.
-- [ ] Public graph contracts remain package-owned and JSON-compatible.
-- [ ] Existing Context Graph tests remain green or have intentional migration coverage.
-- [ ] No domain-specific semantic rules are added to Context Graph.
+- [x] Projected graph facts can carry required source/projection provenance.
+- [x] Public graph contracts remain package-owned and JSON-compatible.
+- [x] Existing Context Graph tests remain green or have intentional migration coverage.
+- [x] No domain-specific semantic rules are added to Context Graph.
 
 ## Relationships
 
