@@ -550,6 +550,18 @@ function parseInlineSchemaDirectives(content: string): {
   };
 }
 
+function parseYamlLanguageServerSchemaDirective(content: string): string | undefined {
+  const match = content.match(
+    /^\s*#\s*yaml-language-server\s*:\s*\$schema\s*=\s*([^\s#]+)\s*$/im
+  );
+  return match?.[1]?.trim();
+}
+
+function parseLooseSchemaProperty(content: string): string | undefined {
+  const match = content.match(/^\s*['"]?\$schema['"]?\s*:\s*['"]([^'"\n]+)['"]\s*$/m);
+  return match?.[1]?.trim();
+}
+
 function getSchemaValueFromRecord(
   record: Record<string, unknown> | undefined,
   keys: string[]
@@ -591,9 +603,13 @@ function extractRootPropertySchemas(content: string): {
   contentSchema?: string;
 } {
   const fromFrontmatter = getFrontmatterSchemaAliases(content);
+  const fromYamlDirective = parseYamlLanguageServerSchemaDirective(content);
+  const fromLooseSchemaProperty = parseLooseSchemaProperty(content);
   const parsedRootObject = parseRootObject(content);
 
   const templSchema =
+    fromYamlDirective ??
+    fromLooseSchemaProperty ??
     fromFrontmatter.templSchema ??
     getSchemaValueFromRecord(parsedRootObject, ['$templ-schema', '$schema']);
   const contentSchema =

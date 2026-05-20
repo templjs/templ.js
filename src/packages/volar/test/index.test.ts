@@ -119,7 +119,7 @@ describe('LanguagePlugin', () => {
       const host = virtualCode?.embeddedCodes.find((code) => code.id === 'host.markdown');
       const dsl = virtualCode?.embeddedCodes.find((code) => code.id === 'templjs.dsl');
 
-      expect(host?.languageId).toBe('markdown');
+      expect(host?.languageId).toBe('templjs-markdown');
       expect(dsl?.languageId).toBe('templjs');
 
       const dslText = dsl?.snapshot.getText(0, dsl.snapshot.getLength()) ?? '';

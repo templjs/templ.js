@@ -393,6 +393,49 @@ describe('IntellisenseProvider', () => {
     expect(hover?.contents).toContain('upper');
   });
 
+  it('resolves statement hover to variable path when cursor is on source before a filter', () => {
+    const text = '{% if items | length > 0 %}ok{% endif %}';
+    const offset = text.indexOf('items') + 1;
+
+    const hover = provider.getHover(text, offset, {
+      schema: {
+        type: 'object',
+        properties: {
+          items: {
+            type: 'array',
+            items: { type: 'object' },
+            description: 'Collection of items',
+          },
+        },
+      },
+      documentUri: 'file:///workspace/example.yaml.tmpl',
+    });
+
+    expect(hover?.contents).toContain('items: array');
+    expect(hover?.contents).toContain('Collection of items');
+  });
+
+  it('returns segment-scoped hover ranges for member access paths', () => {
+    const text = '{{ user.name }}';
+    const userHover = provider.getHover(text, text.indexOf('user') + 1, {
+      schema: sampleSchema,
+      documentUri: 'file:///workspace/example.yaml.tmpl',
+    });
+    const nameHover = provider.getHover(text, text.indexOf('name') + 1, {
+      schema: sampleSchema,
+      documentUri: 'file:///workspace/example.yaml.tmpl',
+    });
+
+    expect(userHover?.range).toEqual({
+      start: { line: 0, character: 3 },
+      end: { line: 0, character: 7 },
+    });
+    expect(nameHover?.range).toEqual({
+      start: { line: 0, character: 8 },
+      end: { line: 0, character: 12 },
+    });
+  });
+
   it('returns null hover outside expressions', () => {
     const hover = provider.getHover('plain text', 5, { schema: sampleSchema });
     expect(hover).toBeNull();

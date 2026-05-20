@@ -10,6 +10,13 @@ import {
 } from '@templjs/volar';
 import { pathToFileURL } from 'url';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import {
+  createRangeMapperFromOriginal,
+  remapCompletionResponse,
+  remapDefinitionResponse,
+  remapDiagnosticsResponse,
+  remapHoverResponse,
+} from './position-remapping-utility.js';
 import { loadSchemaSourceSync, resolveDocumentSchemaSources } from './schema-loading.js';
 import {
   createMarkdownHostDiagnosticsAdapter,
@@ -55,6 +62,15 @@ type ResolvedSchemaOptions = {
   schemaUri?: string;
   contentSchema?: object;
   contentSchemaUri?: string;
+};
+
+type SourceFileInfo = {
+  id?: { toString(): string };
+  languageId?: string;
+  snapshot?: {
+    getText(start: number, end: number): string;
+    getLength(): number;
+  };
 };
 
 function resolveSchemaOptionsForSource(
@@ -150,13 +166,32 @@ function toDiagnosticOptions(
   };
 }
 
-function getSourceFileInfo(context: LanguageServiceContext, uri: string) {
-  const decoded = context.decodeEmbeddedDocumentUri(URI.parse(uri));
+function getSourceFileInfo(
+  context: LanguageServiceContext,
+  uri: string
+): SourceFileInfo | undefined {
+  const scripts = (
+    context as unknown as { language?: { scripts?: { get: (uri: URI) => unknown } } }
+  ).language?.scripts;
+  if (!scripts) {
+    return undefined;
+  }
+
+  const parsedUri = URI.parse(uri);
+  const decodeEmbeddedDocumentUri = (
+    context as unknown as {
+      decodeEmbeddedDocumentUri?: (
+        uri: URI
+      ) => ReturnType<LanguageServiceContext['decodeEmbeddedDocumentUri']>;
+    }
+  ).decodeEmbeddedDocumentUri;
+
+  const decoded = decodeEmbeddedDocumentUri?.(parsedUri);
   if (decoded) {
     const [documentUri] = decoded;
-    return context.language.scripts.get(documentUri);
+    return scripts.get(documentUri) as SourceFileInfo | undefined;
   }
-  return context.language.scripts.get(URI.parse(uri));
+  return scripts.get(parsedUri) as SourceFileInfo | undefined;
 }
 
 function getSourceUri(context: LanguageServiceContext, uri: string): string {
@@ -246,13 +281,30 @@ function mergeCompletionItems(
     return preferred;
   }
 
+  const toLabelKey = (label: unknown): string => {
+    if (typeof label === 'string') {
+      return label.toLowerCase();
+    }
+
+    if (
+      label &&
+      typeof label === 'object' &&
+      'label' in label &&
+      typeof (label as { label?: unknown }).label === 'string'
+    ) {
+      return (label as { label: string }).label.toLowerCase();
+    }
+
+    return String(label).toLowerCase();
+  };
+
   const seen = new Set(
-    preferred.map((item) => `${item.label.toLowerCase()}::${item.kind ?? ''}::${item.detail ?? ''}`)
+    preferred.map((item) => `${toLabelKey(item.label)}::${item.kind ?? ''}::${item.detail ?? ''}`)
   );
   const merged = [...preferred];
 
   for (const item of fallback) {
-    const key = `${item.label.toLowerCase()}::${item.kind ?? ''}::${item.detail ?? ''}`;
+    const key = `${toLabelKey(item.label)}::${item.kind ?? ''}::${item.detail ?? ''}`;
     if (seen.has(key)) {
       continue;
     }
@@ -456,35 +508,350 @@ function createTempljsAdditionalPlugin(options: PluginOptions): LanguageServiceP
 
 /**
  * Wraps a language service plugin so that documents whose `languageId` matches
- * `from` are treated as `to` before being dispatched to `provideDiagnostics`.
- * Useful when cleaned virtual codes carry a TemplJS-flavored variant languageId
- * and need to be routed to a canonical language service.
+ * `from` are treated as `to` before being dispatched to host-language feature
+ * providers. Useful when cleaned virtual codes carry a TemplJS-flavored variant
+ * languageId and need to be routed to a canonical language service.
  */
 function withLanguageIdRemap(
   plugin: LanguageServicePlugin,
   from: string,
-  to: string
+  to: string,
+  options: { preserveSourceLanguageIdForDiagnostics?: boolean } = {}
+): LanguageServicePlugin {
+  const remapDocument = <T extends { uri: string; languageId: string; getText(): string }>(
+    document: T
+  ): T => {
+    if (document.languageId !== from) {
+      return document;
+    }
+
+    return createTextDocumentLike(document.uri, to, document.getText()) as unknown as T;
+  };
+
+  return {
+    ...plugin,
+    create(context) {
+      const instance = plugin.create(context);
+
+      const { provideDiagnostics, provideCompletionItems, provideHover, provideDefinition } =
+        instance;
+
+      if (!provideDiagnostics && !provideCompletionItems && !provideHover && !provideDefinition) {
+        return instance;
+      }
+
+      return {
+        ...instance,
+        ...(provideDiagnostics
+          ? {
+              provideDiagnostics(document, token) {
+                const decodedEmbeddedDocument = (
+                  context as unknown as {
+                    decodeEmbeddedDocumentUri?: (
+                      uri: URI
+                    ) => ReturnType<LanguageServiceContext['decodeEmbeddedDocumentUri']>;
+                  }
+                ).decodeEmbeddedDocumentUri?.(URI.parse(document.uri));
+                const shouldPreserveSourceLanguageId =
+                  options.preserveSourceLanguageIdForDiagnostics &&
+                  document.languageId === from &&
+                  !decodedEmbeddedDocument;
+                return provideDiagnostics(
+                  shouldPreserveSourceLanguageId ? document : remapDocument(document),
+                  token
+                );
+              },
+            }
+          : {}),
+        ...(provideCompletionItems
+          ? {
+              provideCompletionItems(document, position, completionContext, token) {
+                return provideCompletionItems(
+                  remapDocument(document),
+                  position,
+                  completionContext,
+                  token
+                );
+              },
+            }
+          : {}),
+        ...(provideHover
+          ? {
+              provideHover(document, position, token) {
+                return provideHover(remapDocument(document), position, token);
+              },
+            }
+          : {}),
+        ...(provideDefinition
+          ? {
+              provideDefinition(document, position, token) {
+                return provideDefinition(remapDocument(document), position, token);
+              },
+            }
+          : {}),
+      };
+    },
+  };
+}
+
+function withPositionRemap(
+  plugin: LanguageServicePlugin,
+  sourceLanguageId: string,
+  options: PluginOptions
 ): LanguageServicePlugin {
   return {
     ...plugin,
     create(context) {
       const instance = plugin.create(context);
-      if (!instance.provideDiagnostics) return instance;
-      const { provideDiagnostics } = instance;
+
+      const { provideDiagnostics, provideCompletionItems, provideHover, provideDefinition } =
+        instance;
+
+      if (!provideDiagnostics && !provideCompletionItems && !provideHover && !provideDefinition) {
+        return instance;
+      }
+
+      const getRangeMapper = (document: { uri: string; languageId: string; getText(): string }) => {
+        const resolvedSourceLanguageId =
+          getSourceLanguageId(context, document.uri) ?? document.languageId;
+        if (resolvedSourceLanguageId !== sourceLanguageId) {
+          return;
+        }
+
+        // Prefer Volar's canonical generated->source map when available.
+        // This avoids drift between adapter-internal cleaning and regex-based fallback remapping.
+        const decoded = context.decodeEmbeddedDocumentUri?.(URI.parse(document.uri));
+        if (decoded) {
+          const [sourceScriptUri, embeddedCodeId] = decoded;
+          const sourceScript = context.language.scripts.get(sourceScriptUri) as
+            | {
+                languageId?: string;
+                snapshot?: SourceSnapshot;
+                generated?: {
+                  root?: { id?: string };
+                  embeddedCodes?: Map<string, unknown>;
+                };
+              }
+            | undefined;
+
+          const virtualCode =
+            sourceScript?.generated?.root?.id === embeddedCodeId
+              ? sourceScript.generated.root
+              : sourceScript?.generated?.embeddedCodes?.get(embeddedCodeId);
+
+          const languageMaps = (context.language as unknown as {
+            maps?: {
+              get?: (virtualCode: unknown, sourceScript: unknown) => {
+                toSourceRange?: (
+                  generatedStart: number,
+                  generatedEnd: number,
+                  fallbackToAnyMatch: boolean
+                ) => Generator<readonly [number, number], unknown, unknown>;
+              };
+            };
+          }).maps;
+          const sourceMap =
+            virtualCode && languageMaps?.get ? languageMaps.get(virtualCode, sourceScript) : undefined;
+
+          if (sourceMap?.toSourceRange && sourceScript?.snapshot?.getText && sourceScript.snapshot.getLength) {
+            const sourceUri = sourceScriptUri.toString();
+            const sourceTextValue = sourceScript.snapshot.getText(0, sourceScript.snapshot.getLength());
+            const sourceDoc = createTextDocumentLike(
+              sourceUri,
+              sourceScript.languageId ?? sourceLanguageId,
+              sourceTextValue
+            );
+            const generatedDoc = createTextDocumentLike(document.uri, document.languageId, document.getText());
+
+            return {
+              cleanedRangeToOriginal(startLine: number, startCol: number, endLine: number, endCol: number) {
+                const generatedStart = generatedDoc.offsetAt({ line: startLine, character: startCol });
+                const generatedEnd = generatedDoc.offsetAt({ line: endLine, character: endCol });
+                const mappedRanges = sourceMap.toSourceRange?.(generatedStart, generatedEnd, true);
+                const firstMatch = mappedRanges?.next().value as readonly [number, number] | undefined;
+
+                if (!firstMatch) {
+                  return { startLine, startCol, endLine, endCol };
+                }
+
+                const [sourceStartOffset, sourceEndOffset] = firstMatch;
+                const sourceStart = sourceDoc.positionAt(sourceStartOffset);
+                const sourceEnd = sourceDoc.positionAt(sourceEndOffset);
+                return {
+                  startLine: sourceStart.line,
+                  startCol: sourceStart.character,
+                  endLine: sourceEnd.line,
+                  endCol: sourceEnd.character,
+                };
+              },
+            } as Parameters<typeof remapDiagnosticsResponse>[0];
+          }
+        }
+
+        const sourceUri = getSourceUri(context, document.uri);
+        const sourceText = getSourceDocumentText(context, document, sourceUri);
+        if (!sourceText.fromSource) {
+          return;
+        }
+
+        try {
+          return createRangeMapperFromOriginal(sourceText.text);
+        } catch (error) {
+          options.log?.(
+            `[templjs-remap] failed uri=${document.uri} message=${error instanceof Error ? error.message : String(error)}`
+          );
+          return;
+        }
+      };
+
       return {
         ...instance,
-        provideDiagnostics(document, token) {
-          if (document.languageId !== from) return provideDiagnostics(document, token);
-          const normalized = createTextDocumentLike(
-            document.uri,
-            to,
-            document.getText()
-          ) as Parameters<typeof provideDiagnostics>[0];
-          return provideDiagnostics(normalized, token);
-        },
+        ...(provideDiagnostics
+          ? {
+              provideDiagnostics(document, token) {
+                const response = provideDiagnostics(document, token);
+                const rangeMapper = getRangeMapper(document);
+                if (!rangeMapper) {
+                  return response;
+                }
+
+                if (isPromiseLike(response)) {
+                  return response.then((items) => {
+                    if (!items) {
+                      return items;
+                    }
+                    return remapDiagnosticsResponse(
+                      rangeMapper,
+                      items as unknown as Parameters<typeof remapDiagnosticsResponse>[1]
+                    ) as typeof items;
+                  });
+                }
+
+                if (!response) {
+                  return response;
+                }
+
+                return remapDiagnosticsResponse(
+                  rangeMapper,
+                  response as unknown as Parameters<typeof remapDiagnosticsResponse>[1]
+                ) as typeof response;
+              },
+            }
+          : {}),
+        ...(provideCompletionItems
+          ? {
+              provideCompletionItems(document, position, completionContext, token) {
+                const response = provideCompletionItems(
+                  document,
+                  position,
+                  completionContext,
+                  token
+                );
+                const rangeMapper = getRangeMapper(document);
+                if (!rangeMapper) {
+                  return response;
+                }
+
+                if (isPromiseLike(response)) {
+                  return response.then((completion) => {
+                    if (!completion) {
+                      return completion;
+                    }
+                    return remapCompletionResponse(
+                      rangeMapper,
+                      completion as unknown as Parameters<typeof remapCompletionResponse>[1]
+                    ) as typeof completion;
+                  });
+                }
+
+                if (!response) {
+                  return response;
+                }
+
+                return remapCompletionResponse(
+                  rangeMapper,
+                  response as unknown as Parameters<typeof remapCompletionResponse>[1]
+                ) as typeof response;
+              },
+            }
+          : {}),
+        ...(provideHover
+          ? {
+              provideHover(document, position, token) {
+                const response = provideHover(document, position, token);
+                const rangeMapper = getRangeMapper(document);
+                if (!rangeMapper) {
+                  return response;
+                }
+
+                if (isPromiseLike(response)) {
+                  return response.then((hover) => {
+                    if (!hover) {
+                      return hover;
+                    }
+                    return remapHoverResponse(
+                      rangeMapper,
+                      hover as unknown as Parameters<typeof remapHoverResponse>[1]
+                    ) as typeof hover;
+                  });
+                }
+
+                if (!response) {
+                  return response;
+                }
+
+                return remapHoverResponse(
+                  rangeMapper,
+                  response as unknown as Parameters<typeof remapHoverResponse>[1]
+                ) as typeof response;
+              },
+            }
+          : {}),
+        ...(provideDefinition
+          ? {
+              provideDefinition(document, position, token) {
+                const response = provideDefinition(document, position, token);
+                const rangeMapper = getRangeMapper(document);
+                if (!rangeMapper) {
+                  return response;
+                }
+
+                if (isPromiseLike(response)) {
+                  return response.then((definition) => {
+                    if (!definition) {
+                      return definition;
+                    }
+                    if (!Array.isArray(definition)) {
+                      return definition;
+                    }
+                    return remapDefinitionResponse(
+                      rangeMapper,
+                      definition as unknown as Parameters<typeof remapDefinitionResponse>[1]
+                    ) as typeof definition;
+                  });
+                }
+
+                if (!response) {
+                  return response;
+                }
+                if (!Array.isArray(response)) {
+                  return response;
+                }
+
+                return remapDefinitionResponse(
+                  rangeMapper,
+                  response as unknown as Parameters<typeof remapDefinitionResponse>[1]
+                ) as typeof response;
+              },
+            }
+          : {}),
       };
     },
   };
+}
+
+function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
+  return !!value && typeof (value as { then?: unknown }).then === 'function';
 }
 
 function createTextDocumentLike(uri: string, languageId: string, text: string) {
@@ -675,8 +1042,46 @@ export function createServicePlugins(options: PluginOptions): LanguageServicePlu
 
   const corePlugins = listCoreServicePluginFactories().map((factory) => factory(options));
 
+  const hostLanguageRemaps: Partial<
+    Record<string, { fromLanguageId: string; toLanguageId: string }>
+  > = {
+    'templjs-yaml': {
+      fromLanguageId: 'templjs-yaml',
+      toLanguageId: 'yaml',
+    },
+    'templjs-markdown-host': {
+      fromLanguageId: 'templjs-markdown',
+      toLanguageId: 'markdown',
+    },
+    'templjs-markdownlint-host': {
+      fromLanguageId: 'templjs-markdown',
+      toLanguageId: 'markdown',
+    },
+  };
+
   const hostPlugins = runtimeManifest.adapters
-    .map((adapter) => getHostAdapterPluginFactory(adapter.id)?.(options))
+    .map((adapter) => {
+      const basePlugin = getHostAdapterPluginFactory(adapter.id)?.(options);
+      if (!basePlugin) {
+        return undefined;
+      }
+
+      const remap = hostLanguageRemaps[adapter.id];
+      if (!remap) {
+        return basePlugin;
+      }
+
+      const languageIdRemapped = withLanguageIdRemap(
+        basePlugin,
+        remap.fromLanguageId,
+        remap.toLanguageId,
+        {
+          preserveSourceLanguageIdForDiagnostics: adapter.id === 'templjs-yaml',
+        }
+      );
+
+      return withPositionRemap(languageIdRemapped, remap.fromLanguageId, options);
+    })
     .filter((plugin): plugin is LanguageServicePlugin => plugin !== undefined);
 
   return [...corePlugins, ...hostPlugins];
@@ -686,6 +1091,8 @@ export function createServicePlugins(options: PluginOptions): LanguageServicePlu
 /* v8 ignore start */
 export const servicePluginTesting = {
   withLanguageIdRemap,
+  withPositionRemap,
+  isPromiseLike,
   getSourceUri,
   getSourceLanguageId,
   getSourceDocumentText,

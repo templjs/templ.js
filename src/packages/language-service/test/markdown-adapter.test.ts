@@ -84,7 +84,7 @@ describe('markdown-adapter', () => {
 
   it('covers markdownlint helper transforms and offset mapping', () => {
     expect(markdownAdapterTesting.isMarkdownLanguage('markdown')).toBe(true);
-    expect(markdownAdapterTesting.isMarkdownLanguage('templjs-markdown')).toBe(true);
+    expect(markdownAdapterTesting.isMarkdownLanguage('templjs-markdown')).toBe(false);
     expect(markdownAdapterTesting.isMarkdownLanguage('yaml')).toBe(false);
 
     expect(markdownAdapterTesting.toMarkdownlintCode(['MD041', 'first-line-heading'])).toBe(
@@ -114,8 +114,6 @@ describe('markdown-adapter', () => {
       character: 1,
     });
 
-    expect(markdownAdapterTesting.buildCleanedToSourceOffsets([0, 0, 1, 2], 2)).toEqual([0, 2, 3]);
-
     const diag = markdownAdapterTesting.toDiagnostic(
       {
         lineNumber: 2,
@@ -123,7 +121,6 @@ describe('markdown-adapter', () => {
         ruleDescription: 'First line heading',
         errorRange: [1, 1],
       },
-      '# Title\n{{ x }}\n',
       markdownAdapterTesting.cleanMarkdownlintInput('# Title\n{{ x }}\n')
     );
 
@@ -146,14 +143,9 @@ describe('markdown-adapter', () => {
       }
     );
 
-    const sparseOffsets = [] as unknown as number[];
-    sparseOffsets[2] = 1;
-    expect(markdownAdapterTesting.buildCleanedToSourceOffsets(sparseOffsets, 2)).toEqual([0, 2, 2]);
-
     expect(
       markdownAdapterTesting.toDiagnostic(
         {},
-        '# Title\n',
         markdownAdapterTesting.cleanMarkdownlintInput('# Title\n')
       )
     ).toMatchObject({ source: 'markdownlint', code: undefined });
@@ -579,7 +571,7 @@ describe('markdown-adapter', () => {
       } as never)
       .provideDiagnostics?.({
         uri: 'embedded-content://doc',
-        languageId: 'templjs-markdown',
+        languageId: 'markdown',
         getText: () => sourceText,
       } as never);
 

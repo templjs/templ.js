@@ -36,7 +36,7 @@ export interface GraphProvenance {
   sourceLoc?: SourceLocation;
   projectionRuleId?: string;
   confidence: GraphProvenanceConfidence;
-  targetId: string;
+  targetId: NodeId | EdgeId;
   attributes?: JsonObject;
 }
 

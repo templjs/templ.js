@@ -39,6 +39,10 @@ export interface CompletionItem {
 
 export interface HoverInfo {
   contents: string;
+  range?: {
+    start: { line: number; character: number };
+    end: { line: number; character: number };
+  };
 }
 
 export interface DefinitionLocation {
@@ -285,23 +289,6 @@ function resolveLocalAliasReferenceFromSemantify(
   };
 }
 
-function resolveLocalAliasHoverFromSemantify(
-  semantifyServices: SemantifyServices,
-  text: string,
-  variablePath: string,
-  offset: number,
-  delimiters: IntellisenseDelimiters
-): LocalAliasResolution | null {
-  return resolveLocalAliasReferenceFromSemantify(
-    semantifyServices,
-    text,
-    variablePath,
-    offset,
-    delimiters,
-    'hoverPayload'
-  );
-}
-
 function resolveLocalAliasDefinitionFromSemantify(
   semantifyServices: SemantifyServices,
   text: string,
@@ -358,9 +345,30 @@ const VALID_COMPLETION_KINDS = new Set<CompletionItem['kind']>([
   'property',
 ]);
 
+function normalizeCompletionLabel(label: unknown): string {
+  if (typeof label === 'string') {
+    return label;
+  }
+
+  if (
+    label &&
+    typeof label === 'object' &&
+    'label' in label &&
+    typeof (label as { label?: unknown }).label === 'string'
+  ) {
+    return (label as { label: string }).label;
+  }
+
+  return String(label);
+}
+
+function normalizeCompletionLabelKey(label: unknown): string {
+  return normalizeCompletionLabel(label).toLowerCase();
+}
+
 function coerceCandidates(items: CandidateItem[]): CompletionItem[] {
   return items.map((item) => ({
-    label: item.label,
+    label: normalizeCompletionLabel(item.label),
     kind: VALID_COMPLETION_KINDS.has(item.kind as CompletionItem['kind'])
       ? (item.kind as CompletionItem['kind'])
       : 'variable',
@@ -382,14 +390,16 @@ function dedupeCandidatesByNearestLabel(items: CandidateItem[]): CandidateItem[]
 
   const nearestByLabel = new Map<string, CandidateItem>();
   for (const item of items) {
-    const key = item.label.toLowerCase();
+    const key = normalizeCompletionLabelKey(item.label);
     const current = nearestByLabel.get(key);
     if (!current || getCandidateStartOffset(item) >= getCandidateStartOffset(current)) {
       nearestByLabel.set(key, item);
     }
   }
 
-  return items.filter((item) => nearestByLabel.get(item.label.toLowerCase()) === item);
+  return items.filter(
+    (item) => nearestByLabel.get(normalizeCompletionLabelKey(item.label)) === item
+  );
 }
 
 function applyFilterSignatureMetadata(
@@ -433,7 +443,7 @@ function filterAndSortCompletions(items: CompletionItem[], rawPrefix: string): C
 
   const withScore = items
     .map((item) => {
-      const label = item.label.toLowerCase();
+      const label = normalizeCompletionLabelKey(item.label);
       const startsWith = label.startsWith(prefix);
       const includes = label.includes(prefix);
 
@@ -467,11 +477,11 @@ function mergeUniqueCompletions(
 
   // Combine primary and secondary, keeping duplicates within each source
   // but avoiding duplicates across sources
-  const seenFromPrimary = new Set(primary.map((item) => item.label.toLowerCase()));
+  const seenFromPrimary = new Set(primary.map((item) => normalizeCompletionLabelKey(item.label)));
   const merged = [...primary];
 
   for (const item of secondary) {
-    const key = item.label.toLowerCase();
+    const key = normalizeCompletionLabelKey(item.label);
     if (seenFromPrimary.has(key)) {
       continue; // Skip items from secondary that are already in primary
     }
@@ -489,7 +499,7 @@ function dedupeCompletionItems(items: CompletionItem[]): CompletionItem[] {
   const seen = new Set<string>();
   const deduped: CompletionItem[] = [];
   for (const item of items) {
-    const key = `${item.label.toLowerCase()}::${item.kind}::${item.detail ?? ''}`;
+    const key = `${normalizeCompletionLabelKey(item.label)}::${item.kind}::${item.detail ?? ''}`;
     if (seen.has(key)) {
       continue;
     }
@@ -503,7 +513,7 @@ function dedupeCompletionItems(items: CompletionItem[]): CompletionItem[] {
 function summarizeDuplicateLabels(items: CompletionItem[]): string[] {
   const counts = new Map<string, number>();
   for (const item of items) {
-    const key = item.label.toLowerCase();
+    const key = normalizeCompletionLabelKey(item.label);
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 
@@ -555,14 +565,18 @@ function normalizeExpression(text: string, delimiters: IntellisenseDelimiters): 
   return trimmed;
 }
 
-function getVariablePathAtOffset(content: string, offsetInContent: number): string | null {
+function getVariablePathAtOffset(
+  content: string,
+  offsetInContent: number,
+  options?: { allowSingleFallback?: boolean }
+): string | null {
   const refs = extractExpressionVariableReferences(content);
-  const activeRef = refs.find((ref) => offsetInContent >= ref.start && offsetInContent <= ref.end);
+  const activeRef = refs.find((ref) => offsetInContent >= ref.start && offsetInContent < ref.end);
   if (activeRef) {
     return activeRef.path;
   }
 
-  if (refs.length === 1) {
+  if (options?.allowSingleFallback !== false && refs.length === 1) {
     return refs[0].path;
   }
 
@@ -637,14 +651,18 @@ function getVariablePathPrefixAtOffset(content: string, offsetInContent: number)
   return targetRef.path;
 }
 
-function getFilterNameAtOffset(content: string, offsetInContent: number): string | null {
+function getFilterNameAtOffset(
+  content: string,
+  offsetInContent: number,
+  options?: { allowSingleFallback?: boolean }
+): string | null {
   const refs = extractExpressionFilterReferences(content);
-  const activeRef = refs.find((ref) => offsetInContent >= ref.start && offsetInContent <= ref.end);
+  const activeRef = refs.find((ref) => offsetInContent >= ref.start && offsetInContent < ref.end);
   if (activeRef) {
     return activeRef.name;
   }
 
-  if (refs.length === 1) {
+  if (options?.allowSingleFallback !== false && refs.length === 1) {
     return refs[0].name;
   }
 
@@ -1250,6 +1268,93 @@ export class IntellisenseProvider {
       return details ? { contents: details } : null;
     };
 
+    const withOffsetRange = (
+      hover: HoverInfo | null,
+      absoluteStartOffset: number,
+      absoluteEndOffset: number
+    ): HoverInfo | null => {
+      if (!hover) {
+        return null;
+      }
+
+      return {
+        ...hover,
+        range: {
+          start: getPositionForOffset(text, absoluteStartOffset),
+          end: getPositionForOffset(text, absoluteEndOffset),
+        },
+      };
+    };
+
+    const getSemantifyHoverResult = (): HoverInfo | null => {
+      const candidate = this.semantifyServices.planCandidates(
+        {
+          type: 'hoverPayload',
+        },
+        {
+          text,
+          offset,
+          documentUri: options?.documentUri,
+          delimiters: toSemantifyDelimiters(delimiters),
+        }
+      )[0];
+
+      if (!candidate) {
+        return null;
+      }
+
+      const metadata = candidate.metadata as
+        | {
+            symbolKind?: unknown;
+            rawPath?: unknown;
+            rangeStartOffset?: unknown;
+            rangeEndOffset?: unknown;
+            isAliasTokenOnly?: unknown;
+          }
+        | undefined;
+      const rangeStartOffset =
+        typeof metadata?.rangeStartOffset === 'number' ? metadata.rangeStartOffset : undefined;
+      const rangeEndOffset =
+        typeof metadata?.rangeEndOffset === 'number' ? metadata.rangeEndOffset : undefined;
+      const applyRange = (hover: HoverInfo | null): HoverInfo | null => {
+        if (rangeStartOffset === undefined || rangeEndOffset === undefined) {
+          return hover;
+        }
+        return withOffsetRange(hover, rangeStartOffset, rangeEndOffset);
+      };
+
+      if (metadata?.symbolKind === 'filterName') {
+        const signature = resolveFilterSignature(filters, candidate.label);
+        options?.debugLog?.(
+          `[intellisense] hover filter=${candidate.label} result=${signature ? 'present' : 'none'}`
+        );
+        return applyRange(
+          signature ? { contents: `${signature.name}: ${signature.description}` } : null
+        );
+      }
+
+      if (
+        metadata?.symbolKind === 'localBinding' &&
+        metadata?.isAliasTokenOnly === true &&
+        candidate.detail
+      ) {
+        options?.debugLog?.(
+          `[intellisense] hover alias=${candidate.label} source=semantify result=present`
+        );
+        return applyRange({ contents: `${candidate.label}: ${candidate.detail}` });
+      }
+
+      if (!metadata?.symbolKind && candidate.kind === 'variable' && candidate.detail) {
+        return { contents: `${candidate.label}: ${candidate.detail}` };
+      }
+
+      if (typeof metadata?.rawPath === 'string') {
+        return applyRange(getHoverDetailsForPath(metadata.rawPath));
+      }
+
+      return null;
+    };
+
     if (!expression && !statement) {
       if (contextBlock !== 'frontmatter') {
         options?.debugLog?.(
@@ -1282,141 +1387,28 @@ export class IntellisenseProvider {
     }
 
     if (!expression && statement) {
-      const rawInner = text
-        .slice(statement.start, statement.end)
-        .slice(delimiters.statementStart.length, -delimiters.statementEnd.length);
-      const statementContent = rawInner.trim();
-      if (!statementContent) {
-        return null;
-      }
-
-      const statementOffset =
-        statement.start +
-        delimiters.statementStart.length +
-        (rawInner.indexOf(statementContent) >= 0 ? rawInner.indexOf(statementContent) : 0);
-      const cursorInStatement = offset - statementOffset;
-
-      const forHeaderMatch = parseForHeader(statementContent);
-      if (forHeaderMatch) {
-        const { aliasName, aliasStart, aliasEnd, iterableExpression, iterableStart } =
-          forHeaderMatch;
-
-        if (cursorInStatement >= aliasStart && cursorInStatement <= aliasEnd) {
-          options?.debugLog?.(
-            `[intellisense] hover alias=${aliasName} source=statement-local result=present`
-          );
-          return { contents: `${aliasName}: local loop alias` };
-        }
-
-        const cursorInIterable = cursorInStatement - iterableStart;
-        if (cursorInIterable >= 0) {
-          const iterablePath = getVariablePathPrefixAtOffset(
-            iterableExpression,
-            Math.max(0, cursorInIterable)
-          );
-          if (iterablePath) {
-            const localAlias =
-              resolveLocalAliasHoverFromSemantify(
-                this.semantifyServices,
-                text,
-                iterablePath,
-                offset,
-                delimiters
-              ) ?? resolveLocalAliasReference(this.semanticReadAdapter, text, iterablePath, offset);
-            if (localAlias?.isAliasTokenOnly) {
-              options?.debugLog?.(
-                `[intellisense] hover alias=${localAlias.alias} source=statement-iterable-local result=present`
-              );
-              return { contents: `${localAlias.alias}: local template variable` };
-            }
-
-            return getHoverDetailsForPath(iterablePath);
-          }
-        }
-      }
-
-      const statementExpression = extractTemplateStatementExpression(statementContent);
-      if (!statementExpression) {
-        return null;
-      }
-
-      const expressionPart = statementExpression.expression;
-      const expressionPartStart = statementExpression.startOffset;
-      const relativeOffset = offset - statementOffset - expressionPartStart;
-
-      const filterName = getFilterNameAtOffset(expressionPart, Math.max(0, relativeOffset));
-      if (filterName) {
-        const signature = resolveFilterSignature(filters, filterName);
+      const hover = getSemantifyHoverResult();
+      if (!hover) {
         options?.debugLog?.(
-          `[intellisense] hover filter=${filterName} result=${signature ? 'present' : 'none'}`
+          '[intellisense] hover miss: no active filter or variable metadata',
+          'messages'
         );
-        return signature ? { contents: `${signature.name}: ${signature.description}` } : null;
       }
-
-      const variablePath = getVariablePathAtOffset(expressionPart, Math.max(0, relativeOffset));
-      if (variablePath) {
-        const localAlias =
-          resolveLocalAliasHoverFromSemantify(
-            this.semantifyServices,
-            text,
-            variablePath,
-            offset,
-            delimiters
-          ) ?? resolveLocalAliasReference(this.semanticReadAdapter, text, variablePath, offset);
-        if (localAlias?.isAliasTokenOnly) {
-          options?.debugLog?.(
-            `[intellisense] hover alias=${localAlias.alias} source=statement-expression-local result=present`
-          );
-          return { contents: `${localAlias.alias}: local loop alias` };
-        }
-
-        return getHoverDetailsForPath(variablePath);
-      }
-
-      options?.debugLog?.('[intellisense] hover miss: no statement variable/filter metadata');
-      return null;
+      return hover;
     }
 
     if (!expression) {
       return null;
     }
 
-    const expressionText = text.slice(expression.start, expression.end);
-    const content = normalizeExpression(expressionText, delimiters);
-    const contentStart = expressionText.indexOf(content);
-    const relativeOffset = offset - expression.start - contentStart;
-
-    const filterName = getFilterNameAtOffset(content, Math.max(0, relativeOffset));
-    if (filterName) {
-      const signature = resolveFilterSignature(filters, filterName);
+    const hover = getSemantifyHoverResult();
+    if (!hover) {
       options?.debugLog?.(
-        `[intellisense] hover filter=${filterName} result=${signature ? 'present' : 'none'}`
+        '[intellisense] hover miss: no active filter or variable metadata',
+        'messages'
       );
-      return signature ? { contents: `${signature.name}: ${signature.description}` } : null;
     }
-
-    const variablePath = getVariablePathAtOffset(content, Math.max(0, relativeOffset));
-    if (variablePath) {
-      const localAlias =
-        resolveLocalAliasHoverFromSemantify(
-          this.semantifyServices,
-          text,
-          variablePath,
-          offset,
-          delimiters
-        ) ?? resolveLocalAliasReference(this.semanticReadAdapter, text, variablePath, offset);
-      if (localAlias?.isAliasTokenOnly) {
-        return { contents: `${localAlias.alias}: local loop alias` };
-      }
-
-      return getHoverDetailsForPath(variablePath);
-    }
-
-    options?.debugLog?.(
-      '[intellisense] hover miss: no active filter or variable metadata',
-      'messages'
-    );
-    return null;
+    return hover;
   }
 
   getDefinition(
