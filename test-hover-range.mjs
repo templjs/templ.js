@@ -1,7 +1,7 @@
 import { cleanTemplateContent } from './src/packages/volar/dist/index.js';
 import { createRangeMapperFromOriginal } from './src/packages/language-service/dist/position-remapping-utility.js';
 
-// Test case: YAML line with template expression  
+// Test case: YAML line with template expression
 const sourceDoc = `title: yaml block
 id: {% set id = 'yaml-block' %}"{{ id }}"
 name: "{{ item.name }}"`;

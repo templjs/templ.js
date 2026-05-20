@@ -639,36 +639,64 @@ function withPositionRemap(
               ? sourceScript.generated.root
               : sourceScript?.generated?.embeddedCodes?.get(embeddedCodeId);
 
-          const languageMaps = (context.language as unknown as {
-            maps?: {
-              get?: (virtualCode: unknown, sourceScript: unknown) => {
-                toSourceRange?: (
-                  generatedStart: number,
-                  generatedEnd: number,
-                  fallbackToAnyMatch: boolean
-                ) => Generator<readonly [number, number], unknown, unknown>;
+          const languageMaps = (
+            context.language as unknown as {
+              maps?: {
+                get?: (
+                  virtualCode: unknown,
+                  sourceScript: unknown
+                ) => {
+                  toSourceRange?: (
+                    generatedStart: number,
+                    generatedEnd: number,
+                    fallbackToAnyMatch: boolean
+                  ) => Generator<readonly [number, number], unknown, unknown>;
+                };
               };
-            };
-          }).maps;
+            }
+          ).maps;
           const sourceMap =
-            virtualCode && languageMaps?.get ? languageMaps.get(virtualCode, sourceScript) : undefined;
+            virtualCode && languageMaps?.get
+              ? languageMaps.get(virtualCode, sourceScript)
+              : undefined;
 
-          if (sourceMap?.toSourceRange && sourceScript?.snapshot?.getText && sourceScript.snapshot.getLength) {
+          if (
+            sourceMap?.toSourceRange &&
+            sourceScript?.snapshot?.getText &&
+            sourceScript.snapshot.getLength
+          ) {
             const sourceUri = sourceScriptUri.toString();
-            const sourceTextValue = sourceScript.snapshot.getText(0, sourceScript.snapshot.getLength());
+            const sourceTextValue = sourceScript.snapshot.getText(
+              0,
+              sourceScript.snapshot.getLength()
+            );
             const sourceDoc = createTextDocumentLike(
               sourceUri,
               sourceScript.languageId ?? sourceLanguageId,
               sourceTextValue
             );
-            const generatedDoc = createTextDocumentLike(document.uri, document.languageId, document.getText());
+            const generatedDoc = createTextDocumentLike(
+              document.uri,
+              document.languageId,
+              document.getText()
+            );
 
             return {
-              cleanedRangeToOriginal(startLine: number, startCol: number, endLine: number, endCol: number) {
-                const generatedStart = generatedDoc.offsetAt({ line: startLine, character: startCol });
+              cleanedRangeToOriginal(
+                startLine: number,
+                startCol: number,
+                endLine: number,
+                endCol: number
+              ) {
+                const generatedStart = generatedDoc.offsetAt({
+                  line: startLine,
+                  character: startCol,
+                });
                 const generatedEnd = generatedDoc.offsetAt({ line: endLine, character: endCol });
                 const mappedRanges = sourceMap.toSourceRange?.(generatedStart, generatedEnd, true);
-                const firstMatch = mappedRanges?.next().value as readonly [number, number] | undefined;
+                const firstMatch = mappedRanges?.next().value as
+                  | readonly [number, number]
+                  | undefined;
 
                 if (!firstMatch) {
                   return { startLine, startCol, endLine, endCol };

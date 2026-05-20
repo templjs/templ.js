@@ -198,10 +198,7 @@ export class ContextGraphSemanticReadAdapter {
       version: 'v1',
       revision: projectedSnapshot.revision,
       nodes: projectedSnapshot.nodes.flatMap((node) => {
-        if (
-          node.kind !== 'templjs.schema-path' &&
-          node.kind !== 'templjs.schema-enum-value'
-        ) {
+        if (node.kind !== 'templjs.schema-path' && node.kind !== 'templjs.schema-enum-value') {
           return [];
         }
 

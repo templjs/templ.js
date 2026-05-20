@@ -141,10 +141,7 @@ describe('language-service schema-loading coverage branches', () => {
         initializationOptions: {
           documentContext: {
             uri: 'file:///workspace/invalid_example.yaml.tmpl',
-            content: [
-              '"$schema": "./quoted.schema.json"',
-              'title: yaml block',
-            ].join('\n'),
+            content: ['"$schema": "./quoted.schema.json"', 'title: yaml block'].join('\n'),
           },
         },
       })

@@ -296,7 +296,11 @@ export function createTempljsAuthoringProfile(): ProfileDefinition {
         schemaVersion: SEMANTIFY_SCHEMA_VERSION,
         id: 'templjs.authoring.candidates',
         kind: 'candidate-provider',
-        consumesSemanticKinds: ['templjs.binding', 'templjs.schema-path', 'templjs.schema-enum-value'],
+        consumesSemanticKinds: [
+          'templjs.binding',
+          'templjs.schema-path',
+          'templjs.schema-enum-value',
+        ],
         description: 'Language-service candidate provider over projected TemplJS authoring facts.',
       },
       {

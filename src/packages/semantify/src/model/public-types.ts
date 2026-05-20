@@ -146,12 +146,7 @@ export interface AdapterOutput {
   metadata?: Record<string, unknown>;
 }
 
-export type ProjectionStepKind =
-  | 'extract'
-  | 'normalize'
-  | 'canonicalize'
-  | 'enrich'
-  | 'synthesize';
+export type ProjectionStepKind = 'extract' | 'normalize' | 'canonicalize' | 'enrich' | 'synthesize';
 
 export interface ProjectionStep {
   kind: ProjectionStepKind;

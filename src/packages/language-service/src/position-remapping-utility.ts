@@ -37,10 +37,7 @@ import type { TemplateDelimiters } from '@templjs/volar';
 /**
  * Remaps a range from cleaned to original space
  */
-export function remapRange(
-  rangeMapper: RangeMapper,
-  range: Range
-): Range {
+export function remapRange(rangeMapper: RangeMapper, range: Range): Range {
   const mapped = rangeMapper.cleanedRangeToOriginal(
     range.start.line,
     range.start.character,
@@ -80,10 +77,7 @@ export function remapRange(
 /**
  * Remaps diagnostic ranges and nested ranges
  */
-export function remapDiagnostic(
-  rangeMapper: RangeMapper,
-  diagnostic: Diagnostic
-): Diagnostic {
+export function remapDiagnostic(rangeMapper: RangeMapper, diagnostic: Diagnostic): Diagnostic {
   const remapped: Diagnostic = {
     ...diagnostic,
     range: remapRange(rangeMapper, diagnostic.range),
@@ -92,12 +86,12 @@ export function remapDiagnostic(
   if (diagnostic.relatedInformation) {
     remapped.relatedInformation = diagnostic.relatedInformation.map(
       (info: DiagnosticRelatedInformation) => ({
-      ...info,
-      location: {
-        uri: info.location.uri,
-        range: remapRange(rangeMapper, info.location.range),
-      },
-    })
+        ...info,
+        location: {
+          uri: info.location.uri,
+          range: remapRange(rangeMapper, info.location.range),
+        },
+      })
     );
   }
 
@@ -107,10 +101,7 @@ export function remapDiagnostic(
 /**
  * Remaps hover range if present
  */
-export function remapHover(
-  rangeMapper: RangeMapper,
-  hover: Hover
-): Hover {
+export function remapHover(rangeMapper: RangeMapper, hover: Hover): Hover {
   if (!hover.range) {
     return hover;
   }
@@ -124,10 +115,7 @@ export function remapHover(
 /**
  * Remaps location range
  */
-export function remapLocation(
-  rangeMapper: RangeMapper,
-  location: Location
-): Location {
+export function remapLocation(rangeMapper: RangeMapper, location: Location): Location {
   return {
     uri: location.uri,
     range: remapRange(rangeMapper, location.range),
@@ -137,10 +125,7 @@ export function remapLocation(
 /**
  * Remaps location link ranges
  */
-export function remapLocationLink(
-  rangeMapper: RangeMapper,
-  link: LocationLink
-): LocationLink {
+export function remapLocationLink(rangeMapper: RangeMapper, link: LocationLink): LocationLink {
   return {
     originSelectionRange: link.originSelectionRange
       ? remapRange(rangeMapper, link.originSelectionRange)

@@ -54,7 +54,12 @@ function hashString(input: string): string {
 }
 
 function sanitizeJsonValue(value: unknown): JsonValue {
-  if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+  if (
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
     return value;
   }
 
@@ -227,7 +232,10 @@ function validateAdapterOutput(adapterOutput: AdapterOutput): ProjectionDiagnost
   return diagnostics;
 }
 
-function defaultProject(sourceNode: AdapterNode, context: ProjectionRuleContext): ProjectionEntity[] {
+function defaultProject(
+  sourceNode: AdapterNode,
+  context: ProjectionRuleContext
+): ProjectionEntity[] {
   return [
     {
       type: 'node',
@@ -290,7 +298,9 @@ export class SemantifyProjectionRuntime {
           profile: input.profile,
           rule,
         });
-        const entities = this.rules.get(rule.id)?.project(sourceNode, context) ?? defaultProject(sourceNode, context);
+        const entities =
+          this.rules.get(rule.id)?.project(sourceNode, context) ??
+          defaultProject(sourceNode, context);
         for (const entity of entities) {
           if (entity.type === 'node') {
             nodes.push(entity.node);
@@ -305,8 +315,12 @@ export class SemantifyProjectionRuntime {
     edges.sort(compareEdges);
 
     const provenance = [
-      ...nodes.map((node) => node.provenance).filter((item): item is SemanticGraphProvenance => !!item),
-      ...edges.map((edge) => edge.provenance).filter((item): item is SemanticGraphProvenance => !!item),
+      ...nodes
+        .map((node) => node.provenance)
+        .filter((item): item is SemanticGraphProvenance => !!item),
+      ...edges
+        .map((edge) => edge.provenance)
+        .filter((item): item is SemanticGraphProvenance => !!item),
     ].sort((left, right) => left.targetId.localeCompare(right.targetId));
 
     return {

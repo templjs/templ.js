@@ -3,10 +3,8 @@ import { URI } from 'vscode-uri';
 
 describe('member access range remapping', () => {
   it('handles member access expressions with proper range boundaries', async () => {
-    const { servicePluginTesting } = await import(
-      '../src/index.ts'
-    );
-    
+    const { servicePluginTesting } = await import('../src/index.ts');
+
     // YAML with template expression containing member access
     const sourceText = `items:
 - name: "{{ item.name }}"
@@ -29,19 +27,17 @@ describe('member access range remapping', () => {
             },
             // The origin selection range - this is what gets highlighted when using cmd+click
             originSelectionRange: {
-              start: { line: 1, character: 19 },  // Should ideally point to just "item" or just "name"
-              end: { line: 1, character: 28 },    // But currently spans the whole "item.name"
+              start: { line: 1, character: 19 }, // Should ideally point to just "item" or just "name"
+              end: { line: 1, character: 28 }, // But currently spans the whole "item.name"
             },
           },
         ]),
       }),
     };
 
-    const remapped = servicePluginTesting.withPositionRemap(
-      stubPlugin as never,
-      'templjs-yaml',
-      { log: vi.fn() } as never
-    );
+    const remapped = servicePluginTesting.withPositionRemap(stubPlugin as never, 'templjs-yaml', {
+      log: vi.fn(),
+    } as never);
 
     const sourceFile = {
       id: URI.parse('file:///test.yaml.templ'),
@@ -76,22 +72,23 @@ describe('member access range remapping', () => {
 
     const result = await instance.provideDefinition?.(
       document,
-      { line: 1, character: 23 },  // Position of "item.name"
+      { line: 1, character: 23 }, // Position of "item.name"
       {} as never
     );
-    
+
     console.log('Definition result:', result);
-    
+
     if (Array.isArray(result) && result[0]) {
       const link = result[0];
       console.log('Origin selection range:', link.originSelectionRange);
-      
+
       // The origin range should ideally point to just the identifier where the cursor is
       // Currently it might be spanning the whole "item.name" expression
-      const rangeLength = (link.originSelectionRange?.end.character ?? 0) - 
-                         (link.originSelectionRange?.start.character ?? 0);
+      const rangeLength =
+        (link.originSelectionRange?.end.character ?? 0) -
+        (link.originSelectionRange?.start.character ?? 0);
       console.log(`Range spans ${rangeLength} characters`);
-      
+
       if (rangeLength > 10) {
         console.log('⚠ Warning: Range is very wide (> 10 chars) for member access');
       } else {

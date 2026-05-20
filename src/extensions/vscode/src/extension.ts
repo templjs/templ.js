@@ -338,7 +338,6 @@ export function activate(context: vscode.ExtensionContext): void {
       void restartLanguageClient(context);
     })
   );
-
 }
 
 /* c8 ignore start */

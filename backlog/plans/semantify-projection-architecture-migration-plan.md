@@ -22,25 +22,25 @@ The immediate deliverable is backlog tracking for `WI-125` through `WI-130`. The
 
 ## Target Boundaries
 
-| Layer | Owns | Does Not Own |
-| --- | --- | --- |
-| Adapter | Source-context parsing/extraction, spans, adapter metadata | Canonical semantic policy |
-| Profile | Semantic definition, projection rules, helper extension contracts | Adapter internals, editor or CI policy |
-| Semantify | Adapter validation, projection execution, deterministic graph output, provenance emission | Hover text, definition policy, CI severity, domain resolution |
-| Context Graph | Node/edge/provenance primitives, snapshots, deterministic in-process query | Semantic interpretation, graph database behavior |
-| Language Service / Volar | LSP shaping, range mapping, host-service delegation, profile helper execution | Canonical reusable semantic projection |
-| Linkity / Domain Clients | Resolution, backlinks, policy, diagnostics outcomes | Adapter internals, Semantify projection internals |
+| Layer                    | Owns                                                                                      | Does Not Own                                                  |
+| ------------------------ | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Adapter                  | Source-context parsing/extraction, spans, adapter metadata                                | Canonical semantic policy                                     |
+| Profile                  | Semantic definition, projection rules, helper extension contracts                         | Adapter internals, editor or CI policy                        |
+| Semantify                | Adapter validation, projection execution, deterministic graph output, provenance emission | Hover text, definition policy, CI severity, domain resolution |
+| Context Graph            | Node/edge/provenance primitives, snapshots, deterministic in-process query                | Semantic interpretation, graph database behavior              |
+| Language Service / Volar | LSP shaping, range mapping, host-service delegation, profile helper execution             | Canonical reusable semantic projection                        |
+| Linkity / Domain Clients | Resolution, backlinks, policy, diagnostics outcomes                                       | Adapter internals, Semantify projection internals             |
 
 ## Work Items
 
-| Work item | Scope | Role |
-| --- | --- | --- |
-| `WI-125` | Semantify projection architecture migration epic | Overall migration umbrella |
-| `WI-126` | Context Graph primitive and provenance contracts | Graph/provenance substrate |
-| `WI-127` | Semantify adapter and profile contract surface | Public projection contracts |
-| `WI-128` | Semantify projection runtime and DSL foundation | Runtime implementation and DSL path |
-| `WI-129` | TemplJS template and schema profile integration | TemplJS adapters/profile rollout |
-| `WI-130` | Language service helper extension cutover | Editor integration cleanup |
+| Work item | Scope                                            | Role                                |
+| --------- | ------------------------------------------------ | ----------------------------------- |
+| `WI-125`  | Semantify projection architecture migration epic | Overall migration umbrella          |
+| `WI-126`  | Context Graph primitive and provenance contracts | Graph/provenance substrate          |
+| `WI-127`  | Semantify adapter and profile contract surface   | Public projection contracts         |
+| `WI-128`  | Semantify projection runtime and DSL foundation  | Runtime implementation and DSL path |
+| `WI-129`  | TemplJS template and schema profile integration  | TemplJS adapters/profile rollout    |
+| `WI-130`  | Language service helper extension cutover        | Editor integration cleanup          |
 
 ## Execution Order
 

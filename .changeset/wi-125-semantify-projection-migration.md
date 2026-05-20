@@ -16,7 +16,7 @@ Migrate Semantify and Context Graph to projection-first architecture with proven
 ## Changes
 
 - **Context Graph**: Add graph primitives, provenance contracts, and deterministic snapshots (WI-126)
-- **Semantify**: Add adapter/profile/projection contracts and runtime foundation (WI-127, WI-128)  
+- **Semantify**: Add adapter/profile/projection contracts and runtime foundation (WI-127, WI-128)
 - **TemplJS Profile**: Add template and schema adapters with reusable projection (WI-129)
 - **Volar/Language Service**: Route semantic reads through projected output with profile helpers (WI-130)
 - **VS Code Extension**: Update integration with new Semantify projection boundaries

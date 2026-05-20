@@ -319,8 +319,7 @@ function resolveVariableReferenceAtOffset(
 ): SymbolRef | null {
   const refs = extractExpressionVariableReferences(expression);
   const activeRef = refs.find(
-    (reference) =>
-      offsetInExpression >= reference.start && offsetInExpression < reference.end
+    (reference) => offsetInExpression >= reference.start && offsetInExpression < reference.end
   );
   if (!activeRef) {
     return null;
@@ -397,8 +396,7 @@ function resolveFilterReferenceAtOffset(
 ): SymbolRef | null {
   const refs = extractExpressionFilterReferences(expression);
   const activeRef = refs.find(
-    (reference) =>
-      offsetInExpression >= reference.start && offsetInExpression < reference.end
+    (reference) => offsetInExpression >= reference.start && offsetInExpression < reference.end
   );
   if (!activeRef && refs.length === 1) {
     const ref = refs[0]!;
@@ -636,15 +634,13 @@ class CoreBackedSemantifyServices implements SemantifyServices {
         if (activeRef.kind === 'localBinding') {
           const bindingKind = (activeRef.metadata as { bindingKind?: unknown } | undefined)
             ?.bindingKind;
-          const hoverDetail = (
-            activeRef.metadata as { hoverDetail?: unknown } | undefined
-          )?.hoverDetail;
+          const hoverDetail = (activeRef.metadata as { hoverDetail?: unknown } | undefined)
+            ?.hoverDetail;
           return [
             {
               label: activeRef.rawPath,
               kind: 'variable',
-              detail:
-                typeof hoverDetail === 'string' ? hoverDetail : getBindingDetail(bindingKind),
+              detail: typeof hoverDetail === 'string' ? hoverDetail : getBindingDetail(bindingKind),
               metadata: {
                 symbolKind: activeRef.kind,
                 rawPath: activeRef.rawPath,

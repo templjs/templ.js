@@ -80,10 +80,10 @@ export function createYamlHostDiagnosticsAdapter(
           source,
           cleaned,
           document: TextDocument.create(
-          document.uri,
-          document.languageId,
-          document.version ?? 1,
-          cleaned
+            document.uri,
+            document.languageId,
+            document.version ?? 1,
+            cleaned
           ),
         };
       };
@@ -131,7 +131,12 @@ export function createYamlHostDiagnosticsAdapter(
           }
 
           try {
-            return await instance.provideCompletionItems(document, position, completionContext, token);
+            return await instance.provideCompletionItems(
+              document,
+              position,
+              completionContext,
+              token
+            );
           } catch (error) {
             logYamlFeatureError('completion', document.uri, error);
             return;

@@ -551,9 +551,7 @@ function parseInlineSchemaDirectives(content: string): {
 }
 
 function parseYamlLanguageServerSchemaDirective(content: string): string | undefined {
-  const match = content.match(
-    /^\s*#\s*yaml-language-server\s*:\s*\$schema\s*=\s*([^\s#]+)\s*$/im
-  );
+  const match = content.match(/^\s*#\s*yaml-language-server\s*:\s*\$schema\s*=\s*([^\s#]+)\s*$/im);
   return match?.[1]?.trim();
 }
 

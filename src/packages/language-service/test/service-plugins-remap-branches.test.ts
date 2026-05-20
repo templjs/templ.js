@@ -438,23 +438,19 @@ describe('service-plugins position-remap branches', () => {
     const plugin = {
       name: 'mapped-async-plugin',
       create: () => ({
-        provideDiagnostics: vi
-          .fn()
-          .mockResolvedValue([
-            {
-              message: 'd',
-              range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
-            },
-          ]),
+        provideDiagnostics: vi.fn().mockResolvedValue([
+          {
+            message: 'd',
+            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+          },
+        ]),
         provideCompletionItems: vi
           .fn()
           .mockResolvedValue({ isIncomplete: false, items: [{ label: 'a' }] }),
-        provideHover: vi
-          .fn()
-          .mockResolvedValue({
-            contents: 'hover',
-            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
-          }),
+        provideHover: vi.fn().mockResolvedValue({
+          contents: 'hover',
+          range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+        }),
         provideDefinition: vi.fn().mockResolvedValue([
           {
             uri: 'file:///loc',

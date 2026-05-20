@@ -3,10 +3,8 @@ import { URI } from 'vscode-uri';
 
 describe('YAML schema validation for unknown properties', () => {
   it('reports diagnostic for unknown property when schema is specified', async () => {
-    const { servicePluginTesting } = await import(
-      '../src/index.ts'
-    );
-    
+    const { servicePluginTesting } = await import('../src/index.ts');
+
     // YAML with schema directive and invalid property
     const sourceText = `# yaml-language-server: $schema=./test.schema.json
 title: test
@@ -38,11 +36,9 @@ id: invalid
       }),
     };
 
-    const remapped = servicePluginTesting.withPositionRemap(
-      stubPlugin as never,
-      'templjs-yaml',
-      { log: vi.fn() } as never
-    );
+    const remapped = servicePluginTesting.withPositionRemap(stubPlugin as never, 'templjs-yaml', {
+      log: vi.fn(),
+    } as never);
 
     const sourceFile = {
       id: URI.parse('file:///test.yaml.templ'),
@@ -75,17 +71,16 @@ id: invalid
       sourceText
     );
 
-    const diagnostics = await instance.provideDiagnostics?.(
-      document,
-      {} as never
-    );
-    
+    const diagnostics = await instance.provideDiagnostics?.(document, {} as never);
+
     console.log('Diagnostics:', diagnostics);
-    
+
     if (diagnostics && diagnostics.length > 0) {
       console.log('✓ Diagnostics returned');
-      diagnostics.forEach(diag => {
-        console.log(`  - ${diag.message} at (${diag.range.start.line}, ${diag.range.start.character})`);
+      diagnostics.forEach((diag) => {
+        console.log(
+          `  - ${diag.message} at (${diag.range.start.line}, ${diag.range.start.character})`
+        );
       });
     } else {
       console.log('✗ No diagnostics returned');

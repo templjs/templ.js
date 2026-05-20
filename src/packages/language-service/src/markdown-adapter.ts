@@ -151,10 +151,7 @@ function offsetToLineAndCharacter(
   };
 }
 
-function toDiagnostic(
-  issue: MarkdownlintIssue,
-  cleanedInput: MarkdownlintCleanedInput
-) {
+function toDiagnostic(issue: MarkdownlintIssue, cleanedInput: MarkdownlintCleanedInput) {
   const lineNumber = Math.max(1, issue.lineNumber ?? 1);
   const rangeStart = Math.max(1, issue.errorRange?.[0] ?? 1);
   const rangeLength = Math.max(1, issue.errorRange?.[1] ?? 1);
@@ -348,8 +345,8 @@ async function collectMarkdownlintDiagnostics(
           killSignal: 'SIGKILL',
         });
 
-        return parseMarkdownlintDiagnostics(String(stdout ?? ''), tempFile.tempFilePath).map((issue) =>
-          toDiagnostic(issue, cleanedInput)
+        return parseMarkdownlintDiagnostics(String(stdout ?? ''), tempFile.tempFilePath).map(
+          (issue) => toDiagnostic(issue, cleanedInput)
         );
       } catch (error) {
         const typedError = error as {
