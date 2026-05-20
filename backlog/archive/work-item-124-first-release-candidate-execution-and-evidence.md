@@ -53,7 +53,6 @@ The RC scope now includes release blocker cleanup, shared schema rollout, contex
 
 ## Relationships
 
-- `depends_on`: [[work-item-037-volar-crlf-offset-mapping]]
 - `depends_on`: [[work-item-041-cli-progress-zero-byte-guard]]
 - `depends_on`: [[work-item-061-multiple-filter-signatures]]
 - `depends_on`: [[work-item-070-adopt-shared-schema-analysis-in-volar]]
