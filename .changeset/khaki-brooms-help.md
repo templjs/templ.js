@@ -1,8 +1,7 @@
 ---
-"@templjs/core": patch
-"@templjs/cli": patch
-"@templjs/volar": patch
 "@templjs/context-graph": patch
 ---
 
-Add provenance-aware Context Graph graph fact contracts while preserving the existing node and edge APIs.
+# @templjs/context-graph provenance contract updates
+
+Add provenance-aware Context Graph fact contracts while preserving the existing node and edge APIs.
