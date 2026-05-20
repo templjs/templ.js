@@ -5,6 +5,7 @@ export type NodeId = string;
 export type EdgeId = string;
 export type ProfileId = string;
 export type GraphErrorCode = 'provider-not-registered' | 'provider-failed' | 'invalid-payload';
+export type GraphProvenanceConfidence = 'definite' | 'heuristic' | 'synthetic';
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonObject | JsonArray;
@@ -15,11 +16,36 @@ export interface SubjectRef {
   id: NodeId;
 }
 
+export interface SourceSpan {
+  startOffset: number;
+  endOffset: number;
+}
+
+export interface SourceLocation {
+  line: number;
+  character: number;
+}
+
+export interface GraphProvenance {
+  version: ContractVersion;
+  providerId: ProviderId;
+  providerVersion?: string;
+  sourceDocId: string;
+  sourceUri?: string;
+  sourceSpan: SourceSpan;
+  sourceLoc?: SourceLocation;
+  projectionRuleId?: string;
+  confidence: GraphProvenanceConfidence;
+  targetId: string;
+  attributes?: JsonObject;
+}
+
 export interface ContextNode {
   id: NodeId;
   profileId: ProfileId;
   kind: string;
   attributes?: JsonObject;
+  provenance?: GraphProvenance;
 }
 
 export interface ContextEdge {
@@ -29,7 +55,11 @@ export interface ContextEdge {
   to: NodeId;
   kind: string;
   attributes?: JsonObject;
+  provenance?: GraphProvenance;
 }
+
+export type GraphNode = ContextNode;
+export type GraphEdge = ContextEdge;
 
 export interface GraphSnapshot {
   version: ContractVersion;
