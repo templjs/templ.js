@@ -5,12 +5,13 @@ title: '129: TemplJS Template and Schema Profile Integration'
 summary: Add TemplJS template/schema adapters and profile rules so existing authoring semantics flow through Semantify projection.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: implementation-complete
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 8
 actual: 0
+completed_date: '2026-05-20'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/156

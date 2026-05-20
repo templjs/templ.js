@@ -5,12 +5,13 @@ title: '126: Context Graph Primitive and Provenance Contracts'
 summary: Add domain-agnostic graph primitives and required provenance support to @templjs/context-graph.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: implementation-complete
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 5
 actual: 0
+completed_date: '2026-05-20'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/156

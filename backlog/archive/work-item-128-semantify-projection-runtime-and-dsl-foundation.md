@@ -5,12 +5,13 @@ title: '128: Semantify Projection Runtime and DSL Foundation'
 summary: Implement the Semantify projection runtime foundation with deterministic typed rules and a path toward declarative DSL adoption.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: implementation-complete
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 8
 actual: 0
+completed_date: '2026-05-20'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/156

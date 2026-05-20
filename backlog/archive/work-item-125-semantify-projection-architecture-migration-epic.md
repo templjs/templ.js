@@ -5,12 +5,13 @@ title: '125: Semantify Projection Architecture Migration Epic'
 summary: Migrate semantify and context-graph toward adapter/profile projection architecture for reusable semantic overlays.
 type: work-item
 subtype: epic
-lifecycle: active
-status: ready-for-review
-status_reason: implementation-complete
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 32
 actual: 0
+completed_date: '2026-05-20'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/156
