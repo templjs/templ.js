@@ -625,15 +625,11 @@ describe('service-plugins position-remap branches', () => {
 
     const remapCtx = {
       decodeEmbeddedDocumentUri: vi.fn((uri: URI) =>
-        uri.toString() === embeddedUri
-          ? ([URI.parse(sourceUri), 'root'] as const)
-          : undefined
+        uri.toString() === embeddedUri ? ([URI.parse(sourceUri), 'root'] as const) : undefined
       ),
       language: {
         scripts: {
-          get: vi.fn((uri: URI) =>
-            uri.toString() === sourceUri ? sourceFile : undefined
-          ),
+          get: vi.fn((uri: URI) => (uri.toString() === sourceUri ? sourceFile : undefined)),
         },
       },
     };
@@ -659,7 +655,10 @@ describe('service-plugins position-remap branches', () => {
                 end: { line: 0, character: 9 },
               },
               targetRange: { start: { line: 0, character: 5 }, end: { line: 0, character: 9 } },
-              targetSelectionRange: { start: { line: 0, character: 5 }, end: { line: 0, character: 9 } },
+              targetSelectionRange: {
+                start: { line: 0, character: 5 },
+                end: { line: 0, character: 9 },
+              },
             },
           ])
           // sync: Location array pointing to external file
@@ -674,7 +673,10 @@ describe('service-plugins position-remap branches', () => {
             {
               targetUri: externalUri,
               targetRange: { start: { line: 0, character: 5 }, end: { line: 0, character: 9 } },
-              targetSelectionRange: { start: { line: 0, character: 5 }, end: { line: 0, character: 9 } },
+              targetSelectionRange: {
+                start: { line: 0, character: 5 },
+                end: { line: 0, character: 9 },
+              },
             },
           ]),
       }),

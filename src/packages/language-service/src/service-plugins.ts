@@ -862,11 +862,11 @@ function withPositionRemap(
                       typeof definition === 'object' &&
                       ('targetUri' in definition || ('uri' in definition && 'range' in definition))
                     ) {
-                      return remapDefinitionResponse(rangeMapper, [
-                        definition,
-                      ] as unknown as Parameters<
-                        typeof remapDefinitionResponse
-                      >[1], sourceUri)[0] as typeof definition;
+                      return remapDefinitionResponse(
+                        rangeMapper,
+                        [definition] as unknown as Parameters<typeof remapDefinitionResponse>[1],
+                        sourceUri
+                      )[0] as typeof definition;
                     }
                     return definition;
                   });
@@ -889,9 +889,11 @@ function withPositionRemap(
                   return response;
                 }
 
-                return remapDefinitionResponse(rangeMapper, [response] as unknown as Parameters<
-                  typeof remapDefinitionResponse
-                >[1], sourceUri)[0] as typeof response;
+                return remapDefinitionResponse(
+                  rangeMapper,
+                  [response] as unknown as Parameters<typeof remapDefinitionResponse>[1],
+                  sourceUri
+                )[0] as typeof response;
               },
             }
           : {}),
