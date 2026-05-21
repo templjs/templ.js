@@ -208,14 +208,16 @@ describe('schema source resolution helpers', () => {
     ).toBeNull();
     expect(t.findObjectRangeByPointer(schemaText, 'not-a-pointer')).toEqual(rootRange);
 
-    const rootUri = 'file:///tmp/root/schema.json';
+    const baseDir = path.join(tmpdir(), 'templjs-sem-source-resolution');
+    const rootUri = pathToFileURL(path.join(baseDir, 'root', 'schema.json')).toString();
+    const defsUri = pathToFileURL(path.join(baseDir, 'defs.json')).toString();
     expect(t.resolveRefTargetUri('https://example.com/schema.json', '#')).toBeNull();
     expect(t.resolveRefTargetUri(rootUri, '')).toBe(rootUri);
     expect(t.resolveRefTargetUri(rootUri, '#/$defs/local')).toBe(rootUri);
     expect(t.resolveRefTargetUri(rootUri, 'https://example.com/remote.json')).toBe(
       'https://example.com/remote.json'
     );
-    expect(t.resolveRefTargetUri(rootUri, '../defs.json')).toBe('file:///tmp/defs.json');
+    expect(t.resolveRefTargetUri(rootUri, '../defs.json')).toBe(defsUri);
     expect(t.resolveRefTargetUri('file:///tmp/%E0%A4%A', './defs.json')).toBeNull();
   });
 
@@ -251,8 +253,13 @@ describe('schema source resolution helpers', () => {
   });
 
   it('resolves path definitions across local, external, terminal, and recursive refs', () => {
-    const rootUri = 'file:///tmp/project/root.schema.json';
-    const defsUri = 'file:///tmp/project/defs.json';
+    const projectRoot = path.join(tmpdir(), 'templjs-semantify-project');
+    const rootSchemaPath = path.join(projectRoot, 'root.schema.json');
+    const defsSchemaPath = path.join(projectRoot, 'defs.json');
+    const moreSchemaPath = path.join(projectRoot, 'more.json');
+
+    const rootUri = pathToFileURL(rootSchemaPath).toString();
+    const defsUri = pathToFileURL(defsSchemaPath).toString();
     const defsText = JSON.stringify(
       {
         $defs: {
@@ -268,7 +275,7 @@ describe('schema source resolution helpers', () => {
       null,
       2
     );
-    const moreUri = 'file:///tmp/project/more.json';
+    const moreUri = pathToFileURL(moreSchemaPath).toString();
     const moreText = JSON.stringify(
       {
         $defs: {
@@ -284,9 +291,9 @@ describe('schema source resolution helpers', () => {
       2
     );
     const files = new Map<string, string>([
-      ['/tmp/project/root.schema.json', schemaText],
-      ['/tmp/project/defs.json', defsText],
-      ['/tmp/project/more.json', moreText],
+      [rootSchemaPath, schemaText],
+      [defsSchemaPath, defsText],
+      [moreSchemaPath, moreText],
     ]);
     const readFn = (filePath: string): string => {
       const text = files.get(filePath);
