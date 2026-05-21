@@ -111,8 +111,14 @@ describe('TemplJS adapters and authoring profile', () => {
       'candidate-provider',
       'definition-resolver',
       'diagnostic-planner',
+      'formatting-orchestrator',
       'hover-renderer',
+      'semantic-token-provider',
     ]);
+
+    expect(
+      profile.helperExtensions?.every((helper) => helper.consumesSemanticKinds.length > 0)
+    ).toBe(true);
   });
 
   it('supports partial custom delimiters and adapter metadata defaults', () => {

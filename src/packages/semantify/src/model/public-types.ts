@@ -178,13 +178,22 @@ export type ProfileHelperExtensionKind =
   | 'candidate-provider'
   | 'definition-resolver'
   | 'hover-renderer'
-  | 'diagnostic-planner';
+  | 'diagnostic-planner'
+  | 'semantic-token-provider'
+  | 'formatting-orchestrator';
+
+export interface ProjectionProvenanceRequirement {
+  requireSourceSpan?: boolean;
+  requireProfileVersionAttribute?: boolean;
+  requireSourceNodeKindAttribute?: boolean;
+}
 
 export interface ProfileHelperExtension {
   schemaVersion: SemantifySchemaVersion;
   id: string;
   kind: ProfileHelperExtensionKind;
   consumesSemanticKinds: string[];
+  provenance?: ProjectionProvenanceRequirement;
   description?: string;
   metadata?: Record<string, unknown>;
 }

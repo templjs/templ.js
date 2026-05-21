@@ -1,6 +1,7 @@
 import type {
   AdapterNode,
   AdapterOutput,
+  ProfileHelperExtension,
   ProjectionDiagnostic,
   ProjectionEntity,
   ProjectionResult,
@@ -19,6 +20,14 @@ import type { JsonObject, JsonValue } from '@templjs/context-graph';
 
 const SEMANTIFY_SCHEMA_VERSION: SemantifySchemaVersion = '1.0.0';
 const GRAPH_CONTRACT_VERSION = 'v1' as const;
+const VALID_HELPER_KINDS = new Set([
+  'candidate-provider',
+  'definition-resolver',
+  'hover-renderer',
+  'diagnostic-planner',
+  'semantic-token-provider',
+  'formatting-orchestrator',
+]);
 
 function stableNormalize(value: unknown): unknown {
   if (value === null || typeof value !== 'object') {
@@ -235,6 +244,258 @@ function validateAdapterOutput(adapterOutput: AdapterOutput): ProjectionDiagnost
   return diagnostics;
 }
 
+function validateProfileDefinition(profile: ProfileDefinition): ProjectionDiagnostic[] {
+  const diagnostics: ProjectionDiagnostic[] = [];
+
+  if (profile.schemaVersion !== SEMANTIFY_SCHEMA_VERSION) {
+    diagnostics.push({
+      severity: 'error',
+      message: `Unsupported profile schema version: ${profile.schemaVersion}`,
+    });
+  }
+
+  const semanticKinds = new Set<string>();
+  for (const semanticKind of profile.semanticKinds) {
+    if (!semanticKind.kind) {
+      diagnostics.push({
+        severity: 'error',
+        message: 'Profile semantic kinds must include a non-empty kind value.',
+      });
+      continue;
+    }
+
+    if (semanticKinds.has(semanticKind.kind)) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Duplicate semantic kind definition: ${semanticKind.kind}`,
+      });
+      continue;
+    }
+
+    semanticKinds.add(semanticKind.kind);
+  }
+
+  const ruleIds = new Set<string>();
+  for (const rule of profile.projectionRules) {
+    if (rule.schemaVersion !== SEMANTIFY_SCHEMA_VERSION) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Projection rule ${rule.id} has unsupported schema version ${rule.schemaVersion}.`,
+        projectionRuleId: rule.id,
+      });
+    }
+
+    if (!rule.transformationSteps.length) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Projection rule ${rule.id} must declare at least one transformation step.`,
+        projectionRuleId: rule.id,
+      });
+    }
+
+    if (ruleIds.has(rule.id)) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Duplicate projection rule id: ${rule.id}`,
+        projectionRuleId: rule.id,
+      });
+    }
+    ruleIds.add(rule.id);
+
+    if (!semanticKinds.has(rule.targetSemanticKind)) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Projection rule ${rule.id} targets unknown semantic kind ${rule.targetSemanticKind}.`,
+        projectionRuleId: rule.id,
+      });
+    }
+  }
+
+  for (const helper of profile.helperExtensions ?? []) {
+    diagnostics.push(...validateHelperExtension(profile, helper, semanticKinds));
+  }
+
+  return diagnostics;
+}
+
+function validateHelperExtension(
+  profile: ProfileDefinition,
+  helper: ProfileHelperExtension,
+  semanticKinds: Set<string>
+): ProjectionDiagnostic[] {
+  const diagnostics: ProjectionDiagnostic[] = [];
+
+  if (helper.schemaVersion !== SEMANTIFY_SCHEMA_VERSION) {
+    diagnostics.push({
+      severity: 'error',
+      message: `Helper extension ${helper.id} has unsupported schema version ${helper.schemaVersion}.`,
+    });
+  }
+
+  if (!VALID_HELPER_KINDS.has(helper.kind)) {
+    diagnostics.push({
+      severity: 'error',
+      message: `Helper extension ${helper.id} has unsupported kind ${String(helper.kind)}.`,
+    });
+  }
+
+  if (!helper.consumesSemanticKinds.length) {
+    diagnostics.push({
+      severity: 'error',
+      message: `Helper extension ${helper.id} must consume at least one semantic kind.`,
+    });
+  }
+
+  for (const kind of helper.consumesSemanticKinds) {
+    if (!semanticKinds.has(kind)) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Helper extension ${helper.id} consumes unknown semantic kind ${kind}.`,
+      });
+    }
+  }
+
+  if (
+    helper.provenance?.requireSourceSpan ||
+    helper.provenance?.requireProfileVersionAttribute ||
+    helper.provenance?.requireSourceNodeKindAttribute
+  ) {
+    const profileKinds = new Set(profile.semanticKinds.map((item) => item.kind));
+    for (const consumedKind of helper.consumesSemanticKinds) {
+      if (!profileKinds.has(consumedKind)) {
+        diagnostics.push({
+          severity: 'error',
+          message: `Helper extension ${helper.id} declares provenance requirements for unknown semantic kind ${consumedKind}.`,
+        });
+      }
+    }
+  }
+
+  return diagnostics;
+}
+
+function validateAdapterProfileCompatibility(
+  adapterOutput: AdapterOutput,
+  profile: ProfileDefinition
+): ProjectionDiagnostic[] {
+  const diagnostics: ProjectionDiagnostic[] = [];
+  const adapterManifest = profile.defaultAdapters?.find(
+    (entry) => entry.adapterId === adapterOutput.adapterId
+  );
+
+  if (profile.defaultAdapters?.length && !adapterManifest) {
+    diagnostics.push({
+      severity: 'error',
+      message: `Profile ${profile.id} does not declare adapter ${adapterOutput.adapterId} in defaultAdapters.`,
+      adapterId: adapterOutput.adapterId,
+    });
+    return diagnostics;
+  }
+
+  if (!adapterManifest) {
+    return diagnostics;
+  }
+
+  const isVersionCompatible = (() => {
+    const range = adapterManifest.adapterVersionRange.trim();
+    const version = adapterOutput.adapterVersion.trim();
+
+    if (!range || !version) {
+      return false;
+    }
+
+    if (range.startsWith('^')) {
+      const expectedMajor = Number.parseInt(range.slice(1).split('.')[0] ?? '', 10);
+      const actualMajor = Number.parseInt(version.split('.')[0] ?? '', 10);
+      return (
+        Number.isFinite(expectedMajor) &&
+        Number.isFinite(actualMajor) &&
+        expectedMajor === actualMajor
+      );
+    }
+
+    return range === version;
+  })();
+
+  if (!isVersionCompatible) {
+    diagnostics.push({
+      severity: 'error',
+      message: `Adapter ${adapterOutput.adapterId} version ${adapterOutput.adapterVersion} does not satisfy profile adapterVersionRange ${adapterManifest.adapterVersionRange}.`,
+      adapterId: adapterOutput.adapterId,
+    });
+  }
+
+  const allowedNodeKinds = new Set(adapterManifest.sourceNodeKinds);
+  for (const node of adapterOutput.nodes) {
+    if (!allowedNodeKinds.has(node.kind)) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Adapter node kind ${node.kind} is not allowed by profile adapter manifest for ${adapterOutput.adapterId}.`,
+        adapterId: adapterOutput.adapterId,
+        sourceNodeKind: node.kind,
+      });
+    }
+  }
+
+  return diagnostics;
+}
+
+function validateProvenanceContracts(
+  profile: ProfileDefinition,
+  nodes: SemanticGraphNode[]
+): ProjectionDiagnostic[] {
+  const diagnostics: ProjectionDiagnostic[] = [];
+  const helpers = profile.helperExtensions ?? [];
+
+  for (const helper of helpers) {
+    const requiresSourceSpan = helper.provenance?.requireSourceSpan ?? true;
+    const requiresProfileVersion = helper.provenance?.requireProfileVersionAttribute ?? true;
+    const requiresSourceNodeKind = helper.provenance?.requireSourceNodeKindAttribute ?? true;
+    const consumedKinds = new Set(helper.consumesSemanticKinds);
+
+    for (const node of nodes) {
+      if (!consumedKinds.has(node.kind)) {
+        continue;
+      }
+
+      if (!node.provenance) {
+        diagnostics.push({
+          severity: 'error',
+          message: `Node ${node.id} (${node.kind}) consumed by helper ${helper.id} is missing provenance.`,
+          sourceNodeKind: node.kind,
+        });
+        continue;
+      }
+
+      if (requiresSourceSpan && !node.provenance.sourceSpan) {
+        diagnostics.push({
+          severity: 'error',
+          message: `Node ${node.id} (${node.kind}) consumed by helper ${helper.id} is missing provenance sourceSpan.`,
+          sourceNodeKind: node.kind,
+        });
+      }
+
+      if (requiresProfileVersion && !node.provenance.attributes?.profileVersion) {
+        diagnostics.push({
+          severity: 'error',
+          message: `Node ${node.id} (${node.kind}) consumed by helper ${helper.id} is missing provenance attribute profileVersion.`,
+          sourceNodeKind: node.kind,
+        });
+      }
+
+      if (requiresSourceNodeKind && !node.provenance.attributes?.sourceNodeKind) {
+        diagnostics.push({
+          severity: 'error',
+          message: `Node ${node.id} (${node.kind}) consumed by helper ${helper.id} is missing provenance attribute sourceNodeKind.`,
+          sourceNodeKind: node.kind,
+        });
+      }
+    }
+  }
+
+  return diagnostics;
+}
+
 function defaultProject(
   sourceNode: AdapterNode,
   context: ProjectionRuleContext
@@ -279,6 +540,8 @@ export class SemantifyProjectionRuntime {
   project(input: ProjectionRuntimeInput): ProjectionResult {
     const diagnostics = [
       ...validateAdapterOutput(input.adapterOutput),
+      ...validateProfileDefinition(input.profile),
+      ...validateAdapterProfileCompatibility(input.adapterOutput, input.profile),
       ...(input.adapterOutput.diagnostics ?? []),
     ];
     const nodes: SemanticGraphNode[] = [];
@@ -325,6 +588,8 @@ export class SemantifyProjectionRuntime {
         .map((edge) => edge.provenance)
         .filter((item): item is SemanticGraphProvenance => !!item),
     ].sort((left, right) => left.targetId.localeCompare(right.targetId));
+
+    diagnostics.push(...validateProvenanceContracts(input.profile, nodes));
 
     return {
       schemaVersion: SEMANTIFY_SCHEMA_VERSION,
