@@ -94,7 +94,7 @@ export type { DelimiterConfig };
 export { DEFAULT_DELIMITERS };
 
 function tokenPositionToOffset(mapper: LineColumnMapper, line: number, column: number): number {
-  return mapper.lineColToOffset(Math.max(0, line - 1), column);
+  return mapper.lineColCodePointToOffset(Math.max(0, line - 1), column);
 }
 
 function getTokenContentRange(
@@ -131,6 +131,10 @@ function extractFilterReferencesForHighlighting(
   const parserBacked = extractExpressionFilterReferences(content).flatMap((ref) => {
     const identifier = /^[A-Za-z_][\w-]*/.exec(ref.name)?.[0];
     if (!identifier) {
+      return [];
+    }
+    const prefix = content.slice(0, ref.start);
+    if (!isTopLevelFilterContext(prefix)) {
       return [];
     }
     return [
@@ -211,6 +215,49 @@ function extractFilterReferencesForHighlighting(
   }
 
   return refs;
+}
+
+function isTopLevelFilterContext(prefix: string): boolean {
+  let inString: '"' | "'" | null = null;
+  let escaped = false;
+  let bracketDepth = 0;
+  let parenDepth = 0;
+
+  for (let index = 0; index < prefix.length; index += 1) {
+    const char = prefix[index];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === '\\') {
+        escaped = true;
+      } else if (char === inString) {
+        inString = null;
+      }
+      continue;
+    }
+
+    if (char === '"' || char === "'") {
+      inString = char;
+      continue;
+    }
+    if (char === '[') {
+      bracketDepth += 1;
+      continue;
+    }
+    if (char === ']') {
+      bracketDepth = Math.max(0, bracketDepth - 1);
+      continue;
+    }
+    if (char === '(') {
+      parenDepth += 1;
+      continue;
+    }
+    if (char === ')') {
+      parenDepth = Math.max(0, parenDepth - 1);
+    }
+  }
+
+  return inString === null && bracketDepth === 0 && parenDepth === 0;
 }
 
 /**

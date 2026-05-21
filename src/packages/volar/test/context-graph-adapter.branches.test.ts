@@ -1306,6 +1306,55 @@ describe('context-graph helper branch coverage', () => {
     expect(target).toBeNull();
   });
 
+  it('resolves content-schema key definitions to existing local schema files', () => {
+    const tempDir = makeTempDir();
+    const schemaPath = path.join(tempDir, 'content.schema.json');
+    writeFileSync(schemaPath, '{"type":"object"}', 'utf8');
+    const text = ['---', '$content-schema: ./content.schema.json', '---'].join('\n');
+    const offset = text.indexOf('$content-schema') + 2;
+
+    const target = contextGraphAdapterTesting.getSchemaPathDefinition(text, offset, {
+      workspaceRoot: tempDir,
+      documentUri: pathToFileURL(path.join(tempDir, 'doc.md.tmpl')).toString(),
+    });
+
+    expect(target?.uri).toBe(pathToFileURL(schemaPath).toString());
+  });
+
+  it('returns null schema-path definitions when the resolved local file is missing', () => {
+    const tempDir = makeTempDir();
+    const text = ['---', '$schema: ./missing.schema.json', '---'].join('\n');
+    const offset = text.indexOf('missing.schema.json') + 1;
+
+    const target = contextGraphAdapterTesting.getSchemaPathDefinition(text, offset, {
+      workspaceRoot: tempDir,
+      documentUri: pathToFileURL(path.join(tempDir, 'doc.md.tmpl')).toString(),
+    });
+
+    expect(target).toBeNull();
+  });
+
+  it('resolves registered path-value definitions to existing local schema files', () => {
+    const tempDir = makeTempDir();
+    const schemaPath = path.join(tempDir, 'data.schema.json');
+    writeFileSync(schemaPath, '{"type":"object"}', 'utf8');
+    const text = ['---', 'schemaPath: ./data.schema.json', '---'].join('\n');
+    const offset = text.indexOf('data.schema.json') + 1;
+
+    const target = contextGraphAdapterTesting.getPathValueDefinition(text, offset, {
+      workspaceRoot: tempDir,
+      documentUri: pathToFileURL(path.join(tempDir, 'doc.md.tmpl')).toString(),
+      schema: {
+        type: 'object',
+        properties: {
+          schemaPath: { type: 'string', format: 'uri-reference' },
+        },
+      },
+    });
+
+    expect(target?.uri).toBe(pathToFileURL(schemaPath).toString());
+  });
+
   it('computes line/character positions from offsets', () => {
     const pos = contextGraphAdapterTesting.getPositionForOffset('a\nbc\n', 3);
     expect(pos.line).toBe(1);

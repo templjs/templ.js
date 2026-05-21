@@ -83,7 +83,7 @@ function getDelimiters(options?: DiagnosticOptions): TemplateDelimiters {
 }
 
 function tokenPositionToOffset(mapper: LineColumnMapper, line: number, column: number): number {
-  return mapper.lineColToOffset(Math.max(0, line - 1), column);
+  return mapper.lineColCodePointToOffset(Math.max(0, line - 1), column);
 }
 
 function extractBlocks(text: string, delimiters: TemplateDelimiters): BlockMatch[] {
@@ -288,10 +288,6 @@ export function collectTemplateDiagnostics(
   const statementStack: BlockStackEntry[] = [];
 
   for (const block of statementBlocks) {
-    if (isInsideBlocks(block.start, commentBlocks)) {
-      continue;
-    }
-
     const tag = parseStatementTag(block.content, delimiters);
     if (!tag) continue;
 
@@ -498,10 +494,6 @@ export function collectTemplateDiagnostics(
   }
 
   for (const block of expressionBlocks) {
-    if (isInsideBlocks(block.start, commentBlocks)) {
-      continue;
-    }
-
     const rawInner = block.content.slice(
       delimiters.expressionStart.length,
       block.content.length - delimiters.expressionEnd.length

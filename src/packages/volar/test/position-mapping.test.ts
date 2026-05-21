@@ -114,6 +114,16 @@ describe('LineColumnMapper', () => {
     const mapper = new LineColumnMapper('first\nsecond');
     expect(mapper.lineColToOffset(99, 10)).toBe(6);
   });
+
+  it('should convert code-point columns to UTF-16 offsets', () => {
+    const mapper = new LineColumnMapper('ab😀cd\nx');
+
+    expect(mapper.lineColCodePointToOffset(0, 0)).toBe(0);
+    expect(mapper.lineColCodePointToOffset(0, 2)).toBe(2);
+    expect(mapper.lineColCodePointToOffset(0, 3)).toBe(4);
+    expect(mapper.lineColCodePointToOffset(0, 5)).toBe(6);
+    expect(mapper.lineColCodePointToOffset(1, 1)).toBe(8);
+  });
 });
 
 describe('generatePositionMappings', () => {

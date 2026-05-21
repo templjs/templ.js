@@ -246,6 +246,18 @@ describe('SemanticTokenProvider', () => {
       const funcTokens = tokens.filter((t) => t.type === SemanticTokenTypes.Function);
       expect(funcTokens.length).toBe(0);
     });
+
+    it('should ignore legacy filter separators inside strings, brackets, and calls', () => {
+      const text =
+        '{{ "a|b" | default: "x\\"|y" }} {{ items[name | lower] | join: "," }} {{ call(name | trim) | upper }} {{ value | }}';
+      const tokens = extractSemanticTokens(text);
+
+      const filterNames = tokens
+        .filter((t) => t.type === SemanticTokenTypes.Function)
+        .map((token) => text.slice(token.offset, token.offset + token.length));
+
+      expect(filterNames).toEqual(['default', 'join', 'upper']);
+    });
   });
 
   describe('Complex Templates', () => {
