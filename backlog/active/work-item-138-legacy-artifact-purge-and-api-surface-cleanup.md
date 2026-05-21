@@ -1,0 +1,60 @@
+---
+'$schema': schemas/work-management/frontmatter/work-item.json
+id: work-item:138-legacy-artifact-purge-and-api-surface-cleanup
+title: '138: Legacy Artifact Purge and API Surface Cleanup'
+summary: Remove all Semantify migration artifacts, compatibility shims, and obsolete tests/docs after projection-backed feature cutover.
+type: work-item
+subtype: task
+lifecycle: active
+status: ready
+status_reason: prioritized
+priority: critical
+estimated: 8
+actual: 0
+---
+
+## Goal
+
+Delete all transition and legacy compatibility artifacts so Semantify and dependent packages expose projection-only semantic architecture.
+
+## Background
+
+Cutover quality requires explicit removal, not just deprecation. Mixed-path artifacts create long-term ambiguity, maintenance drag, and hidden fallback behavior.
+
+## Scope
+
+- Remove Semantify compatibility APIs and exports.
+- Remove migration fallback code and outdated tests.
+- Update docs to final-state projection architecture language.
+
+## Tasks
+
+- [ ] Remove legacy compatibility APIs from Semantify source and public exports.
+- [ ] Remove compatibility fallback code paths in Volar/language-service.
+- [ ] Remove tests that validate legacy behavior contracts.
+- [ ] Update README/ADR/docs to final-state projection-only architecture guidance.
+- [ ] Run full repo validation after removal and resolve breakages.
+
+## Deliverables
+
+- Projection-only API surface and source tree.
+- Updated docs with no migration/transition framing.
+- Cleaned tests aligned to final architecture.
+
+## Acceptance Criteria
+
+- [ ] No source/test/doc reference remains for legacy Semantify compatibility APIs.
+- [ ] Public Semantify exports are projection/profile contract focused.
+- [ ] Build, type-check, and tests pass with legacy paths removed.
+
+## Relationships
+
+- `depends_on`: [[work-item-137-language-service-server-capability-wiring-finalization]]
+
+## Validation
+
+```bash
+pnpm run type-check
+pnpm run test
+pnpm run build
+```
