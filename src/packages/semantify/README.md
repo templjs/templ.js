@@ -21,15 +21,14 @@ deterministic graph facts with provenance.
 - Keeps editor affordances, domain resolution, diagnostics policy, and CI
   pass/fail rules outside Semantify core.
 
-## Compatibility
+## Integration Guidance
 
-The existing source-backed services remain available while projection-first
-integration rolls out:
+Projection contracts are the canonical integration path:
 
-- `resolveContext`
-- `resolveReferences`
-- `planCandidates`
+- build adapter output with stable spans and metadata,
+- define semantic kinds and projection rules in profiles,
+- execute helper extensions from projected graph/provenance facts.
 
-These compatibility APIs continue to use `@templjs/core` as syntax and binding
-authority. New integrations should prefer adapter output plus profile projection
-when reusable semantics and provenance are required.
+Semantify core does not own editor-specific policy. Language-service and
+domain clients should consume projected graph/provenance output and apply
+feature policy in their own layers.

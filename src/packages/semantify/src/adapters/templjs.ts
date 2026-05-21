@@ -352,6 +352,22 @@ export function createTempljsAuthoringProfile(): ProfileDefinition {
         consumesSemanticKinds: ['templjs.binding', 'templjs.schema-path'],
         description: 'Language-service diagnostic planner over projected TemplJS authoring facts.',
       },
+      {
+        schemaVersion: SEMANTIFY_SCHEMA_VERSION,
+        id: 'templjs.authoring.semantic-tokens',
+        kind: 'semantic-token-provider',
+        consumesSemanticKinds: ['templjs.binding', 'templjs.schema-path', 'templjs.semantic-zone'],
+        description:
+          'Language-service semantic token planner over projected TemplJS authoring facts.',
+      },
+      {
+        schemaVersion: SEMANTIFY_SCHEMA_VERSION,
+        id: 'templjs.authoring.formatting',
+        kind: 'formatting-orchestrator',
+        consumesSemanticKinds: ['templjs.binding', 'templjs.schema-path', 'templjs.semantic-zone'],
+        description:
+          'Language-service formatting orchestration metadata over projected TemplJS authoring facts.',
+      },
     ],
     defaultAdapters: [
       {

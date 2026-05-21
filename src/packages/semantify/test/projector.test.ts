@@ -81,6 +81,88 @@ describe('SemantifyProjectionRuntime', () => {
     });
   });
 
+  it('validates helper extension contracts and adapter/profile compatibility', () => {
+    const result = projectSemanticGraph({
+      adapterOutput: {
+        ...adapterOutput,
+        adapterId: 'unknown-adapter',
+      },
+      profile: {
+        ...profile,
+        defaultAdapters: [
+          {
+            adapterId: 'test-adapter',
+            adapterVersionRange: '^1.0.0',
+            sourceNodeKinds: ['test.symbol'],
+          },
+        ],
+        helperExtensions: [
+          {
+            schemaVersion: '1.0.0',
+            id: 'broken-helper',
+            kind: 'semantic-token-provider',
+            consumesSemanticKinds: [],
+          },
+        ],
+      },
+    });
+
+    expect(
+      result.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('does not declare adapter unknown-adapter')
+      )
+    ).toBe(true);
+    expect(
+      result.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('must consume at least one semantic kind')
+      )
+    ).toBe(true);
+  });
+
+  it('enforces provenance requirements for helper-consumed semantic kinds', () => {
+    const runtime = createProjectionRuntime({
+      rules: [
+        {
+          ruleId: 'test.symbol.to-node',
+          project: () => [
+            {
+              type: 'node',
+              node: {
+                id: 'manual-node',
+                profileId: 'test-profile',
+                kind: 'test.symbol',
+                attributes: {
+                  label: 'manual',
+                },
+              } as never,
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = runtime.project({
+      adapterOutput,
+      profile: {
+        ...profile,
+        helperExtensions: [
+          {
+            schemaVersion: '1.0.0',
+            id: 'strict-helper',
+            kind: 'semantic-token-provider',
+            consumesSemanticKinds: ['test.symbol'],
+          },
+        ],
+      },
+    });
+
+    expect(
+      result.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('consumed by helper strict-helper is missing provenance')
+      )
+    ).toBe(true);
+  });
+
   it('supports typed projection rules over the declarative rule metadata', () => {
     const runtime = createProjectionRuntime({
       rules: [
