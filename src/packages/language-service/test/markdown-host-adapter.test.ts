@@ -37,4 +37,38 @@ describe('markdown host adapter', () => {
       ignoreLinks: [],
     });
   });
+
+  it('moves link.no-such-reference diagnostics onto the actual reference text', async () => {
+    createMarkdownServiceMock.mockImplementation(() => ({
+      name: 'base-markdown',
+      create: () => ({
+        provideDiagnostics: () => [
+          {
+            code: 'link.no-such-reference',
+            data: { ref: 'foo' },
+            range: {
+              start: { line: 0, character: 1 },
+              end: { line: 0, character: 4 },
+            },
+          },
+        ],
+      }),
+    }));
+
+    const plugin = createMarkdownHostDiagnosticsAdapter({} as never);
+    const diagnostics = await plugin?.create({} as never).provideDiagnostics?.(
+      {
+        uri: 'file:///doc.md',
+        languageId: 'markdown',
+        getText: () => '[        foo ]',
+      } as never,
+      undefined as never
+    );
+
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics?.[0]?.range).toEqual({
+      start: { line: 0, character: 9 },
+      end: { line: 0, character: 12 },
+    });
+  });
 });

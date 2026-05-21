@@ -4,10 +4,15 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import type { LanguageServiceContext, LanguageServicePlugin } from '@volar/language-service';
+import type {
+  Diagnostic,
+  LanguageServiceContext,
+  LanguageServicePlugin,
+} from '@volar/language-service';
 import { create as createVolarMarkdownServicePlugin } from 'volar-service-markdown';
 import { cleanTemplateContent } from '@templjs/volar';
 import { URI } from 'vscode-uri';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
 import { getResolvedAdapterRuntime } from './runtime-manifest.js';
 
@@ -409,7 +414,72 @@ export function createMarkdownHostDiagnosticsAdapter(
   return {
     ...basePlugin,
     name: 'templjs-markdown-host',
+    create(context: LanguageServiceContext) {
+      const instance = basePlugin.create(context);
+      const { provideDiagnostics } = instance;
+      if (!provideDiagnostics) {
+        return instance;
+      }
+      return {
+        ...instance,
+        provideDiagnostics(
+          document: { uri: string; languageId: string; getText(): string },
+          token: unknown
+        ) {
+          const result = provideDiagnostics.call(instance, document as never, token as never);
+          if (result == null) return result;
+          const td = TextDocument.create(document.uri, document.languageId, 1, document.getText());
+          const fix = (items: Diagnostic[]) => fixLinkRefDiagnosticRanges(items, td);
+          if (typeof (result as { then?: unknown }).then === 'function') {
+            return (result as Promise<Diagnostic[] | null | undefined>).then((items) =>
+              items ? fix(items) : items
+            );
+          }
+          return fix(result as Diagnostic[]);
+        },
+      };
+    },
   };
+}
+
+const LINK_NO_SUCH_REFERENCE = 'link.no-such-reference';
+const MAX_SCAN_DISTANCE = 64;
+
+type Position = { line: number; character: number };
+type TextDocumentLike = {
+  getText(): string;
+  offsetAt(pos: Position): number;
+  positionAt(offset: number): Position;
+};
+
+/**
+ * For `link.no-such-reference` diagnostics the markdown language service computes
+ * `hrefRange` as `{ start: raw_open_bracket_offset + 1, end: raw_open_bracket_offset + 1 + trimmed_ref.length }`.
+ * When template syntax has been replaced by spaces the starting offset lands in the
+ * whitespace region, not on the actual reference text.  This helper scans forward from
+ * the raw range start to find where `ref` actually appears in the document and updates
+ * the range accordingly, giving the source-map a chance to land on the correct column.
+ */
+function fixLinkRefDiagnosticRanges(
+  diagnostics: Diagnostic[],
+  document: TextDocumentLike
+): Diagnostic[] {
+  return diagnostics.map((diag) => {
+    if (diag.code !== LINK_NO_SUCH_REFERENCE) return diag;
+    const ref = (diag.data as Record<string, unknown> | undefined)?.ref;
+    if (typeof ref !== 'string' || !ref) return diag;
+    const startOffset = document.offsetAt(diag.range.start);
+    const docText = document.getText();
+    const refIndex = docText.indexOf(ref, startOffset);
+    if (refIndex === -1 || refIndex - startOffset > MAX_SCAN_DISTANCE) return diag;
+    return {
+      ...diag,
+      range: {
+        start: document.positionAt(refIndex),
+        end: document.positionAt(refIndex + ref.length),
+      },
+    };
+  });
 }
 
 function cleanMarkdownlintInput(sourceText: string): MarkdownlintCleanedInput {

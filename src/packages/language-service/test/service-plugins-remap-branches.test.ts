@@ -80,6 +80,45 @@ function createMappedContext(sourceText: string, sourceLanguageId = 'templjs-yam
   };
 }
 
+function createMappedContextWithoutSourceMatch(
+  sourceText: string,
+  sourceLanguageId = 'templjs-yaml'
+) {
+  const sourceUri = URI.parse('file:///source.yaml.templ');
+  const embeddedUri = 'embedded-content://yaml';
+  const embeddedId = 'root';
+
+  return {
+    decodeEmbeddedDocumentUri: vi.fn((uri: URI) =>
+      uri.toString() === embeddedUri ? ([sourceUri, embeddedId] as const) : undefined
+    ),
+    language: {
+      scripts: {
+        get: vi.fn((uri: URI) =>
+          uri.toString() === sourceUri.toString()
+            ? {
+                id: sourceUri,
+                languageId: sourceLanguageId,
+                snapshot: {
+                  getText: () => sourceText,
+                  getLength: () => sourceText.length,
+                },
+                generated: {
+                  root: { id: embeddedId },
+                },
+              }
+            : undefined
+        ),
+      },
+      maps: {
+        get: vi.fn(() => ({
+          toSourceRange: () => [][Symbol.iterator]() as Generator<readonly [number, number]>,
+        })),
+      },
+    },
+  };
+}
+
 describe('service-plugins position-remap branches', () => {
   it('returns original instance when remap wrappers have no provider hooks', () => {
     const barePlugin = {
@@ -489,6 +528,39 @@ describe('service-plugins position-remap branches', () => {
     ).resolves.toSatisfy((value) => Array.isArray(value));
   });
 
+  it('falls back to original generated ranges when a source map returns no matching range', async () => {
+    const plugin = {
+      name: 'mapped-empty-range-plugin',
+      create: () => ({
+        provideHover: vi.fn().mockResolvedValue({
+          contents: 'hover',
+          range: { start: { line: 0, character: 2 }, end: { line: 0, character: 4 } },
+        }),
+      }),
+    };
+
+    const remapped = servicePluginTesting.withPositionRemap(plugin as never, 'templjs-yaml', {
+      log: vi.fn(),
+    } as never);
+    const instance = remapped.create(
+      createMappedContextWithoutSourceMatch('alpha{% set x = 1 %}beta') as never
+    );
+    const document = servicePluginTesting.createTextDocumentLike(
+      'embedded-content://yaml',
+      'templjs-yaml',
+      'alpha{% set x = 1 %}beta'
+    );
+
+    await expect(
+      instance.provideHover?.(document, { line: 0, character: 0 }, {} as never)
+    ).resolves.toMatchObject({
+      range: {
+        start: { line: 0, character: 2 },
+        end: { line: 0, character: 4 },
+      },
+    });
+  });
+
   it('covers async guard returns for falsy and non-array remap payloads', async () => {
     const plugin = {
       name: 'mapped-async-guards-plugin',
@@ -545,6 +617,150 @@ describe('service-plugins position-remap branches', () => {
     await expect(
       instance.provideDefinition?.(document, { line: 0, character: 0 }, {} as never)
     ).resolves.toEqual({ uri: 'file:///single-async' });
+  });
+
+  it('passes through scalar definition payloads that are not remappable location shapes', async () => {
+    const plugin = {
+      name: 'mapped-scalar-guard-plugin',
+      create: () => ({
+        provideDefinition: vi
+          .fn()
+          .mockResolvedValueOnce('not-a-location')
+          .mockResolvedValueOnce({ targetUri: 'file:///schema.json' })
+          .mockReturnValueOnce(42)
+          .mockReturnValueOnce({ uri: 'file:///schema.json' }),
+      }),
+    };
+
+    const remapped = servicePluginTesting.withPositionRemap(plugin as never, 'templjs-yaml', {
+      log: vi.fn(),
+    } as never);
+    const instance = remapped.create(createMappedContext('alpha{% set x = 1 %}beta') as never);
+    const document = servicePluginTesting.createTextDocumentLike(
+      'embedded-content://yaml',
+      'templjs-yaml',
+      'alpha{% set x = 1 %}beta'
+    );
+
+    await expect(
+      instance.provideDefinition?.(document, { line: 0, character: 0 }, {} as never)
+    ).resolves.toBe('not-a-location');
+    await expect(
+      instance.provideDefinition?.(document, { line: 0, character: 0 }, {} as never)
+    ).resolves.toEqual({ targetUri: 'file:///schema.json' });
+    expect(instance.provideDefinition?.(document, { line: 0, character: 0 }, {} as never)).toBe(42);
+    expect(instance.provideDefinition?.(document, { line: 0, character: 0 }, {} as never)).toEqual({
+      uri: 'file:///schema.json',
+    });
+  });
+
+  it('remaps scalar definition responses for sync and async mapped contexts', async () => {
+    const sourceText = 'alpha{% set x = 1 %}beta';
+    const sourceUri = 'file:///test.yaml.templ';
+    const externalUri = 'file:///schema.json';
+    const plugin = {
+      name: 'mapped-scalar-definition-plugin',
+      create: () => ({
+        provideDefinition: vi
+          .fn()
+          .mockResolvedValueOnce({
+            uri: sourceUri,
+            range: {
+              start: { line: 0, character: 5 },
+              end: { line: 0, character: 9 },
+            },
+          })
+          .mockResolvedValueOnce({
+            targetUri: externalUri,
+            targetRange: {
+              start: { line: 0, character: 5 },
+              end: { line: 0, character: 9 },
+            },
+            targetSelectionRange: {
+              start: { line: 0, character: 5 },
+              end: { line: 0, character: 9 },
+            },
+            originSelectionRange: {
+              start: { line: 0, character: 5 },
+              end: { line: 0, character: 9 },
+            },
+          })
+          .mockReturnValueOnce({
+            uri: sourceUri,
+            range: {
+              start: { line: 0, character: 5 },
+              end: { line: 0, character: 9 },
+            },
+          })
+          .mockReturnValueOnce({
+            targetUri: externalUri,
+            targetRange: {
+              start: { line: 0, character: 5 },
+              end: { line: 0, character: 9 },
+            },
+            targetSelectionRange: {
+              start: { line: 0, character: 5 },
+              end: { line: 0, character: 9 },
+            },
+            originSelectionRange: {
+              start: { line: 0, character: 5 },
+              end: { line: 0, character: 9 },
+            },
+          }),
+      }),
+    };
+
+    const remapped = servicePluginTesting.withPositionRemap(plugin as never, 'templjs-yaml', {
+      log: vi.fn(),
+    } as never);
+    const instance = remapped.create(createContext(sourceText) as never);
+    const document = servicePluginTesting.createTextDocumentLike(
+      'file:///test.yaml.templ',
+      'templjs-yaml',
+      sourceText
+    );
+
+    const asyncLocation = (await instance.provideDefinition?.(
+      document,
+      { line: 0, character: 0 },
+      {} as never
+    )) as { uri: string; range: { start: { character: number } } };
+    expect(asyncLocation.uri).toBe(sourceUri);
+    expect(asyncLocation.range.start.character).toBe(5);
+
+    const asyncLink = (await instance.provideDefinition?.(
+      document,
+      { line: 0, character: 0 },
+      {} as never
+    )) as {
+      targetUri: string;
+      targetRange: { start: { character: number } };
+      originSelectionRange?: { start: { character: number } };
+    };
+    expect(asyncLink.targetUri).toBe(externalUri);
+    expect(asyncLink.targetRange.start.character).toBe(5);
+    expect(asyncLink.originSelectionRange?.start.character).toBe(5);
+
+    const syncLocation = instance.provideDefinition?.(
+      document,
+      { line: 0, character: 0 },
+      {} as never
+    ) as { uri: string; range: { start: { character: number } } };
+    expect(syncLocation.uri).toBe(sourceUri);
+    expect(syncLocation.range.start.character).toBe(5);
+
+    const syncLink = instance.provideDefinition?.(
+      document,
+      { line: 0, character: 0 },
+      {} as never
+    ) as {
+      targetUri: string;
+      targetRange: { start: { character: number } };
+      originSelectionRange?: { start: { character: number } };
+    };
+    expect(syncLink.targetUri).toBe(externalUri);
+    expect(syncLink.targetRange.start.character).toBe(5);
+    expect(syncLink.originSelectionRange?.start.character).toBe(5);
   });
 
   it('covers sync diagnostics/completion remap branches with mapped contexts', () => {

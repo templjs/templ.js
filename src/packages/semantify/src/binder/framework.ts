@@ -506,7 +506,12 @@ function resolveActiveSymbolReference(
 
   const forHeader = parseTemplateForHeader(statementContent);
   if (forHeader) {
-    if (cursorInStatement >= forHeader.aliasStart && cursorInStatement <= forHeader.aliasEnd) {
+    if (cursorInStatement < forHeader.aliasStart) {
+      // Cursor is on the "for" keyword — no symbol reference.
+      return null;
+    }
+
+    if (cursorInStatement >= forHeader.aliasStart && cursorInStatement < forHeader.aliasEnd) {
       const binding = bindings.find((entry) => entry.name === forHeader.aliasName);
       return {
         kind: 'localBinding',
@@ -522,6 +527,11 @@ function resolveActiveSymbolReference(
           sourcePath: binding?.sourcePath,
         },
       };
+    }
+
+    if (cursorInStatement < forHeader.iterableStart) {
+      // Cursor is on the "in" keyword — no symbol reference.
+      return null;
     }
 
     const cursorInIterable = cursorInStatement - forHeader.iterableStart;
@@ -542,6 +552,7 @@ function resolveActiveSymbolReference(
         };
       }
     }
+    return null;
   }
 
   const statementExpression = extractTemplateStatementExpression(statementContent);
@@ -550,6 +561,10 @@ function resolveActiveSymbolReference(
   }
 
   const relativeOffset = input.offset - statementOffset - statementExpression.startOffset;
+  if (relativeOffset < 0) {
+    // Cursor is on a keyword before the expression (e.g. "if" in "{% if cond %}").
+    return null;
+  }
   const symbol = resolveExpressionSymbolAtOffset(
     statementExpression.expression,
     Math.max(0, relativeOffset),

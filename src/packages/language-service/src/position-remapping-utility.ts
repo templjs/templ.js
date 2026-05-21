@@ -113,44 +113,43 @@ export function remapHover(rangeMapper: RangeMapper, hover: Hover): Hover {
 }
 
 /**
- * Remaps location range.
- * When sourceUri is provided, only remaps if location.uri refers to that document.
+ * Remaps location range
  */
 export function remapLocation(
   rangeMapper: RangeMapper,
   location: Location,
   sourceUri?: string
 ): Location {
-  if (sourceUri !== undefined && location.uri !== sourceUri) {
-    return location;
-  }
   return {
     uri: location.uri,
-    range: remapRange(rangeMapper, location.range),
+    range:
+      sourceUri === undefined || location.uri === sourceUri
+        ? remapRange(rangeMapper, location.range)
+        : location.range,
   };
 }
 
 /**
- * Remaps location link ranges.
- * originSelectionRange is always remapped (it lives in the source document's coordinate space).
- * targetRange and targetSelectionRange are only remapped when sourceUri is undefined or
- * link.targetUri refers to that same source document.
+ * Remaps location link ranges
  */
 export function remapLocationLink(
   rangeMapper: RangeMapper,
   link: LocationLink,
   sourceUri?: string
 ): LocationLink {
-  const remapTarget = sourceUri === undefined || link.targetUri === sourceUri;
   return {
     originSelectionRange: link.originSelectionRange
       ? remapRange(rangeMapper, link.originSelectionRange)
       : undefined,
     targetUri: link.targetUri,
-    targetRange: remapTarget ? remapRange(rangeMapper, link.targetRange) : link.targetRange,
-    targetSelectionRange: remapTarget
-      ? remapRange(rangeMapper, link.targetSelectionRange)
-      : link.targetSelectionRange,
+    targetRange:
+      sourceUri === undefined || link.targetUri === sourceUri
+        ? remapRange(rangeMapper, link.targetRange)
+        : link.targetRange,
+    targetSelectionRange:
+      sourceUri === undefined || link.targetUri === sourceUri
+        ? remapRange(rangeMapper, link.targetSelectionRange)
+        : link.targetSelectionRange,
   };
 }
 
