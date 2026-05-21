@@ -5,9 +5,14 @@ title: Semantify Projection Architecture Migration Plan
 summary: Migration plan for projection-first Semantify, provenance-aware Context Graph primitives, and TemplJS adapter/profile integration.
 type: plan
 subtype: tactical
-lifecycle: draft
-status: proposed
-status_reason: needs-triage
+lifecycle: inactive
+status: closed
+status_reason: completed
+links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/156
+    - https://github.com/templjs/templ.js/pull/157
+    - https://github.com/templjs/templ.js/pull/158
 ---
 
 ## Purpose
