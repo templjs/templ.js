@@ -80,6 +80,45 @@ function createMappedContext(sourceText: string, sourceLanguageId = 'templjs-yam
   };
 }
 
+function createMappedContextWithoutSourceMatch(
+  sourceText: string,
+  sourceLanguageId = 'templjs-yaml'
+) {
+  const sourceUri = URI.parse('file:///source.yaml.templ');
+  const embeddedUri = 'embedded-content://yaml';
+  const embeddedId = 'root';
+
+  return {
+    decodeEmbeddedDocumentUri: vi.fn((uri: URI) =>
+      uri.toString() === embeddedUri ? ([sourceUri, embeddedId] as const) : undefined
+    ),
+    language: {
+      scripts: {
+        get: vi.fn((uri: URI) =>
+          uri.toString() === sourceUri.toString()
+            ? {
+                id: sourceUri,
+                languageId: sourceLanguageId,
+                snapshot: {
+                  getText: () => sourceText,
+                  getLength: () => sourceText.length,
+                },
+                generated: {
+                  root: { id: embeddedId },
+                },
+              }
+            : undefined
+        ),
+      },
+      maps: {
+        get: vi.fn(() => ({
+          toSourceRange: () => [][Symbol.iterator]() as Generator<readonly [number, number]>,
+        })),
+      },
+    },
+  };
+}
+
 describe('service-plugins position-remap branches', () => {
   it('returns original instance when remap wrappers have no provider hooks', () => {
     const barePlugin = {
@@ -487,6 +526,39 @@ describe('service-plugins position-remap branches', () => {
     await expect(
       instance.provideDefinition?.(document, { line: 0, character: 0 }, {} as never)
     ).resolves.toSatisfy((value) => Array.isArray(value));
+  });
+
+  it('falls back to original generated ranges when a source map returns no matching range', async () => {
+    const plugin = {
+      name: 'mapped-empty-range-plugin',
+      create: () => ({
+        provideHover: vi.fn().mockResolvedValue({
+          contents: 'hover',
+          range: { start: { line: 0, character: 2 }, end: { line: 0, character: 4 } },
+        }),
+      }),
+    };
+
+    const remapped = servicePluginTesting.withPositionRemap(plugin as never, 'templjs-yaml', {
+      log: vi.fn(),
+    } as never);
+    const instance = remapped.create(
+      createMappedContextWithoutSourceMatch('alpha{% set x = 1 %}beta') as never
+    );
+    const document = servicePluginTesting.createTextDocumentLike(
+      'embedded-content://yaml',
+      'templjs-yaml',
+      'alpha{% set x = 1 %}beta'
+    );
+
+    await expect(
+      instance.provideHover?.(document, { line: 0, character: 0 }, {} as never)
+    ).resolves.toMatchObject({
+      range: {
+        start: { line: 0, character: 2 },
+        end: { line: 0, character: 4 },
+      },
+    });
   });
 
   it('covers async guard returns for falsy and non-array remap payloads', async () => {
