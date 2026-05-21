@@ -21,7 +21,7 @@ Ensure `adapterVersionRange` validation uses semver-correct behavior so compatib
 
 Copilot feedback on PR `#163` identified that current caret handling compares only major version, which can incorrectly accept incompatible versions (for example `^1.2.0` vs `1.0.0`, and `^0.9.0` behavior).
 
-Tracking moved from remote issue `#164` into local backlog work management for execution within the Semantify full-cutover lane.
+Tracking moved from remote issue `#164` into local backlog work management for execution alongside the Semantify full-cutover lane.
 
 ## Scope
 

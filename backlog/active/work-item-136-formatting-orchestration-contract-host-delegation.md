@@ -43,7 +43,7 @@ You selected permanent host delegation for formatting to preserve consistency wi
 
 ## Acceptance Criteria
 
-- [ ] Formatting remains host delegated for all produced edits.
+- [ ] Formatting remains host-delegated for all produced edits.
 - [ ] Semantic orchestration contract exists, is deterministic, and is tested.
 - [ ] No Semantify core code path encodes formatter-specific policy decisions.
 
