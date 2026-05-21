@@ -203,6 +203,97 @@ describe('IntellisenseProvider branch coverage', () => {
     expect(definition).toBeNull();
   });
 
+  it('returns null definitions for for-header keyword offsets before the iterable expression', () => {
+    const provider = new IntellisenseProvider({
+      ...emptyAdapter,
+      resolvePathDefinition: (_ctx, path) =>
+        path === 'items'
+          ? {
+              uri: 'file:///schema.json',
+              range: {
+                start: { line: 0, character: 0 },
+                end: { line: 0, character: 5 },
+              },
+            }
+          : null,
+    });
+    const text = '{% for item in items %}';
+
+    for (const offset of [0, 1, 2, 3, 4, 5, 6, 12, 13, 14]) {
+      expect(
+        provider.getDefinition(text, offset, {
+          debugLog: () => {},
+          schemaUri: 'file:///schema.json',
+          documentUri: 'file:///doc.md.tmpl',
+        })
+      ).toBeNull();
+    }
+  });
+
+  it('returns null hover for for-header keyword boundary offsets', () => {
+    const provider = new IntellisenseProvider({
+      ...emptyAdapter,
+      getPathDetails: (_ctx, path) =>
+        path === 'items'
+          ? {
+              path: 'items',
+              type: 'array',
+              description: 'Items array',
+            }
+          : null,
+    });
+    const text = '{% for item in items %}';
+
+    for (const offset of [0, 1, 2, 3, 4, 5, 6, 12, 13, 14]) {
+      expect(
+        provider.getHover(text, offset, {
+          debugLog: () => {},
+          documentUri: 'file:///doc.md.tmpl',
+        })
+      ).toBeNull();
+    }
+  });
+
+  it('returns null hover and definition on the alias trailing boundary', () => {
+    const provider = new IntellisenseProvider({
+      ...emptyAdapter,
+      getPathDetails: (_ctx, path) =>
+        path === 'items'
+          ? {
+              path: 'items',
+              type: 'array',
+              description: 'Items array',
+            }
+          : null,
+      resolvePathDefinition: (_ctx, path) =>
+        path === 'items'
+          ? {
+              uri: 'file:///schema.json',
+              range: {
+                start: { line: 0, character: 0 },
+                end: { line: 0, character: 5 },
+              },
+            }
+          : null,
+    });
+    const text = '{% for item in items %}';
+    const aliasTrailingBoundary = 11;
+
+    expect(
+      provider.getHover(text, aliasTrailingBoundary, {
+        debugLog: () => {},
+        documentUri: 'file:///doc.md.tmpl',
+      })
+    ).toBeNull();
+    expect(
+      provider.getDefinition(text, aliasTrailingBoundary, {
+        debugLog: () => {},
+        schemaUri: 'file:///schema.json',
+        documentUri: 'file:///doc.md.tmpl',
+      })
+    ).toBeNull();
+  });
+
   it('returns local alias definition when cursor is on for-iterable source variable', () => {
     const adapter: SemanticReadAdapter = {
       ...emptyAdapter,

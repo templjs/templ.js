@@ -113,17 +113,9 @@ export function remapHover(rangeMapper: RangeMapper, hover: Hover): Hover {
 }
 
 /**
- * Remaps location range.
- * When sourceUri is provided, only remaps if location.uri refers to that document.
+ * Remaps location range
  */
-export function remapLocation(
-  rangeMapper: RangeMapper,
-  location: Location,
-  sourceUri?: string
-): Location {
-  if (sourceUri !== undefined && location.uri !== sourceUri) {
-    return location;
-  }
+export function remapLocation(rangeMapper: RangeMapper, location: Location): Location {
   return {
     uri: location.uri,
     range: remapRange(rangeMapper, location.range),
@@ -131,26 +123,16 @@ export function remapLocation(
 }
 
 /**
- * Remaps location link ranges.
- * originSelectionRange is always remapped (it lives in the source document's coordinate space).
- * targetRange and targetSelectionRange are only remapped when sourceUri is undefined or
- * link.targetUri refers to that same source document.
+ * Remaps location link ranges
  */
-export function remapLocationLink(
-  rangeMapper: RangeMapper,
-  link: LocationLink,
-  sourceUri?: string
-): LocationLink {
-  const remapTarget = sourceUri === undefined || link.targetUri === sourceUri;
+export function remapLocationLink(rangeMapper: RangeMapper, link: LocationLink): LocationLink {
   return {
     originSelectionRange: link.originSelectionRange
       ? remapRange(rangeMapper, link.originSelectionRange)
       : undefined,
     targetUri: link.targetUri,
-    targetRange: remapTarget ? remapRange(rangeMapper, link.targetRange) : link.targetRange,
-    targetSelectionRange: remapTarget
-      ? remapRange(rangeMapper, link.targetSelectionRange)
-      : link.targetSelectionRange,
+    targetRange: remapRange(rangeMapper, link.targetRange),
+    targetSelectionRange: remapRange(rangeMapper, link.targetSelectionRange),
   };
 }
 
@@ -186,8 +168,7 @@ export function remapHoverResponse(rangeMapper: RangeMapper, hover: Hover): Hove
 
 export function remapDefinitionResponse(
   rangeMapper: RangeMapper,
-  definition: Location[] | LocationLink[],
-  sourceUri?: string
+  definition: Location[] | LocationLink[]
 ): Location[] | LocationLink[] {
   if (definition.length === 0) {
     return definition;
@@ -195,14 +176,10 @@ export function remapDefinitionResponse(
 
   const first = definition[0];
   if (first && 'targetUri' in first) {
-    return (definition as LocationLink[]).map((link) =>
-      remapLocationLink(rangeMapper, link, sourceUri)
-    );
+    return (definition as LocationLink[]).map((link) => remapLocationLink(rangeMapper, link));
   }
 
-  return (definition as Location[]).map((location) =>
-    remapLocation(rangeMapper, location, sourceUri)
-  );
+  return (definition as Location[]).map((location) => remapLocation(rangeMapper, location));
 }
 
 export function remapCompletionResponse(
