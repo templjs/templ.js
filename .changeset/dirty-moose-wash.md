@@ -4,4 +4,6 @@
 '@templjs/volar': patch
 ---
 
+<!-- markdownlint-disable MD041 -->
+
 Simplify context graph public type names.
