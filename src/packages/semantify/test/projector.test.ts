@@ -609,4 +609,43 @@ describe('SemantifyProjectionRuntime', () => {
     expect(tiedEdges.map((edge) => edge.from)).toEqual(['a-from', 'b-from']);
     expect(result.graph.edges.some((edge) => edge.attributes?.explicit === true)).toBe(true);
   });
+
+  it('produces byte-stable projection snapshots in strict mode', () => {
+    const strictOptions = { strictMode: true };
+    const first = projectSemanticGraph({ adapterOutput, profile }, strictOptions);
+    const second = projectSemanticGraph({ adapterOutput, profile }, strictOptions);
+
+    const firstSerialized = semantifyProjectionTesting.stableSerialize(first);
+    const secondSerialized = semantifyProjectionTesting.stableSerialize(second);
+    expect(firstSerialized).toBe(secondSerialized);
+  });
+
+  it('fails fast in strict mode when provenance is missing or malformed', () => {
+    const runtime = createProjectionRuntime({
+      strictMode: true,
+      rules: [
+        {
+          ruleId: 'test.symbol.to-node',
+          project: () => [
+            {
+              type: 'node',
+              node: {
+                id: 'node-without-provenance',
+                profileId: 'test-profile',
+                kind: 'test.symbol',
+                attributes: {},
+              } as never,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(() => runtime.project({ adapterOutput, profile })).toThrowError(
+      /Semantify strict mode validation failed/
+    );
+    expect(() => runtime.project({ adapterOutput, profile })).toThrowError(
+      /missing or malformed|requires provenance/i
+    );
+  });
 });

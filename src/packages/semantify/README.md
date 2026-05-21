@@ -32,3 +32,17 @@ Projection contracts are the canonical integration path:
 Semantify core does not own editor-specific policy. Language-service and
 domain clients should consume projected graph/provenance output and apply
 feature policy in their own layers.
+
+## Strict Mode
+
+Projection runtime strict mode is available for validation-heavy workflows:
+
+- pass `strictMode: true` to `createProjectionRuntime(...)` or
+  `projectSemanticGraph(...)` options,
+- enforce deterministic graph/provenance ordering guarantees,
+- require complete provenance coverage and required provenance attributes,
+- fail fast when provenance is missing, malformed, or mismatched to graph
+  entities.
+
+Use strict mode in CI and fixture-based validation lanes where deterministic
+projection output is a release gate.
