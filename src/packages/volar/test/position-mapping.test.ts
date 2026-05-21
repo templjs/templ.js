@@ -189,6 +189,19 @@ describe('generatePositionMappings', () => {
     expect(cleaned).toBe(original);
   });
 
+  it('should handle empty input without templates', () => {
+    const { cleaned, mappings } = generatePositionMappings('', /\{\{[\s\S]*?\}\}/g);
+
+    expect(cleaned).toBe('');
+    expect(mappings).toEqual([
+      {
+        originalOffset: 0,
+        cleanedOffset: 0,
+        length: 0,
+      },
+    ]);
+  });
+
   describe('Edge cases', () => {
     it('should handle consecutive templates', () => {
       const original = '{{ a }}{{ b }}{{ c }}';

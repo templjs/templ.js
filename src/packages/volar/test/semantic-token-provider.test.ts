@@ -258,6 +258,28 @@ describe('SemanticTokenProvider', () => {
 
       expect(filterNames).toEqual(['default', 'join', 'upper']);
     });
+
+    it('extracts filters from trim-marker expressions', () => {
+      const text = '{{- value | upper -}}';
+      const tokens = extractSemanticTokens(text);
+
+      const filterNames = tokens
+        .filter((t) => t.type === SemanticTokenTypes.Function)
+        .map((token) => text.slice(token.offset, token.offset + token.length));
+
+      expect(filterNames).toEqual(['upper']);
+    });
+
+    it('keeps parser-backed top-level filters when nested strings contain escapes', () => {
+      const text = '{{ call("a\\\"b") | upper }}';
+      const tokens = extractSemanticTokens(text);
+
+      const filterNames = tokens
+        .filter((t) => t.type === SemanticTokenTypes.Function)
+        .map((token) => text.slice(token.offset, token.offset + token.length));
+
+      expect(filterNames).toEqual(['upper']);
+    });
   });
 
   describe('Complex Templates', () => {

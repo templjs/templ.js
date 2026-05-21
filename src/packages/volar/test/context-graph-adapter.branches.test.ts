@@ -1298,6 +1298,33 @@ describe('context-graph helper branch coverage', () => {
     expect(target).toBeNull();
   });
 
+  it('returns null path-value definitions when no workspace or document root can resolve a relative source', () => {
+    const text = ['---', '$schema: ./missing.json', '---'].join('\n');
+    const offset = text.indexOf('missing.json') + 1;
+
+    const target = contextGraphAdapterTesting.getPathValueDefinition(text, offset, {});
+
+    expect(target).toBeNull();
+  });
+
+  it('resolves content schema aliases from frontmatter key tokens', () => {
+    const target = contextGraphAdapterTesting.getSchemaPathDefinition(
+      ['---', '$content-schema: "https://example.com/content.json"', '---'].join('\n'),
+      16,
+      {}
+    );
+
+    expect(target?.uri).toBe('https://example.com/content.json');
+  });
+
+  it('returns null schema-path definitions when a relative json token cannot be resolved', () => {
+    const text = ['---', '$schema: ./missing.json', '---'].join('\n');
+    const offset = text.indexOf('missing.json') + 1;
+
+    const target = contextGraphAdapterTesting.getSchemaPathDefinition(text, offset, {});
+    expect(target).toBeNull();
+  });
+
   it('returns null schema-path definitions when no token can be extracted', () => {
     const text = ['---', '$schema: ', '---'].join('\n');
     const offset = text.indexOf('$schema:') + '$schema:'.length + 1;
