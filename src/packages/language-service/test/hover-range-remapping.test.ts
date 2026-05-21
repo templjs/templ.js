@@ -12,14 +12,16 @@ describe('hover range remapping', () => {
         provideHover: vi.fn(async () => ({
           contents: 'test hover',
           range: {
-            start: { line: 0, character: 6 }, // position of 'beta' in cleaned doc
-            end: { line: 0, character: 10 },
+            start: { line: 0, character: 5 }, // position of 'beta' in cleaned doc
+            end: { line: 0, character: 9 },
           },
         })),
       }),
     };
 
     const sourceText = 'alpha{% set x = 1 -%}beta';
+    const sourceUri = URI.parse('file:///test.yaml.templ');
+    const embeddedUri = 'embedded-content://yaml';
     const languageIdRemapped = servicePluginTesting.withLanguageIdRemap(
       stubPlugin as never,
       'templjs-yaml',
@@ -31,7 +33,7 @@ describe('hover range remapping', () => {
     } as never);
 
     const sourceFile = {
-      id: URI.parse('file:///test.yaml.templ'),
+      id: sourceUri,
       languageId: 'templjs-yaml',
       snapshot: {
         getText: () => sourceText,
@@ -41,14 +43,12 @@ describe('hover range remapping', () => {
 
     const context = {
       decodeEmbeddedDocumentUri: vi.fn((uri: URI) =>
-        uri.toString() === 'file:///test.yaml.templ'
-          ? ([URI.parse('file:///test.yaml.templ'), 'root'] as const)
-          : undefined
+        uri.toString() === embeddedUri ? ([sourceUri, 'root'] as const) : undefined
       ),
       language: {
         scripts: {
           get: vi.fn((uri: URI) =>
-            uri.toString() === 'file:///test.yaml.templ' ? sourceFile : undefined
+            uri.toString() === sourceUri.toString() ? sourceFile : undefined
           ),
         },
       },
@@ -56,34 +56,18 @@ describe('hover range remapping', () => {
 
     const instance = remapped.create(context as never);
     const document = servicePluginTesting.createTextDocumentLike(
-      'file:///test.yaml.templ',
+      embeddedUri,
       'templjs-yaml',
       sourceText
     );
 
     const result = await instance.provideHover?.(document, { line: 0, character: 1 }, {} as never);
+    const sourceOffset = sourceText.indexOf('beta');
 
-    console.log('Hover result:', result);
-
-    if (result?.range) {
-      console.log('Original range: (0, 6) to (0, 10)');
-      console.log('Remapped range:', result.range);
-
-      // The 'beta' is at position 21-25 in the original source
-      // So the remapped range should be around there
-      const sourceOffset = sourceText.indexOf('beta');
-      console.log('Expected offset for beta in source:', sourceOffset);
-
-      // Check if remapping happened (range should be different from original)
-      const isRemapped = result.range.start.character !== 6 || result.range.end.character !== 10;
-
-      if (isRemapped) {
-        console.log('✓ Range was remapped');
-      } else {
-        console.log('✗ Range was NOT remapped');
-      }
-    } else {
-      console.log('No range in hover result');
-    }
+    expect(result).toBeDefined();
+    expect(result?.range).toEqual({
+      start: { line: 0, character: sourceOffset },
+      end: { line: 0, character: sourceOffset + 4 },
+    });
   });
 });

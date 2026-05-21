@@ -259,4 +259,146 @@ describe('position-remapping-utility', () => {
 
     expect(link.originSelectionRange?.start.character).toBe(1);
   });
+
+  it('skips remapping Location.range when uri does not match sourceUri', () => {
+    const mapper = {
+      cleanedRangeToOriginal: vi.fn(
+        (startLine: number, startCol: number, endLine: number, endCol: number) => ({
+          startLine,
+          startCol: startCol + 10,
+          endLine,
+          endCol: endCol + 10,
+        })
+      ),
+    } as never;
+
+    const sourceUri = 'file:///source.templ';
+
+    const locSame = remapLocation(
+      mapper,
+      {
+        uri: sourceUri,
+        range: { start: { line: 0, character: 1 }, end: { line: 0, character: 2 } },
+      },
+      sourceUri
+    );
+    expect(locSame.range.start.character).toBe(11);
+
+    const locOther = remapLocation(
+      mapper,
+      {
+        uri: 'file:///other.json',
+        range: { start: { line: 0, character: 1 }, end: { line: 0, character: 2 } },
+      },
+      sourceUri
+    );
+    expect(locOther.range.start.character).toBe(1);
+  });
+
+  it('remaps only originSelectionRange for LocationLink when targetUri differs from sourceUri', () => {
+    const mapper = {
+      cleanedRangeToOriginal: vi.fn(
+        (startLine: number, startCol: number, endLine: number, endCol: number) => ({
+          startLine,
+          startCol: startCol + 10,
+          endLine,
+          endCol: endCol + 10,
+        })
+      ),
+    } as never;
+
+    const sourceUri = 'file:///source.templ';
+
+    const linkOtherTarget = remapLocationLink(
+      mapper,
+      {
+        targetUri: 'file:///schema.json',
+        originSelectionRange: { start: { line: 0, character: 1 }, end: { line: 0, character: 2 } },
+        targetRange: { start: { line: 5, character: 0 }, end: { line: 5, character: 4 } },
+        targetSelectionRange: { start: { line: 5, character: 1 }, end: { line: 5, character: 3 } },
+      },
+      sourceUri
+    );
+    expect(linkOtherTarget.originSelectionRange?.start.character).toBe(11);
+    expect(linkOtherTarget.targetRange.start.character).toBe(0);
+    expect(linkOtherTarget.targetSelectionRange.start.character).toBe(1);
+
+    const linkSameTarget = remapLocationLink(
+      mapper,
+      {
+        targetUri: sourceUri,
+        targetRange: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+        targetSelectionRange: { start: { line: 0, character: 1 }, end: { line: 0, character: 2 } },
+      },
+      sourceUri
+    );
+    expect(linkSameTarget.targetRange.start.character).toBe(10);
+    expect(linkSameTarget.targetSelectionRange.start.character).toBe(11);
+  });
+
+  it('passes sourceUri through remapDefinitionResponse for conditional remapping', () => {
+    const mapper = {
+      cleanedRangeToOriginal: vi.fn(
+        (startLine: number, startCol: number, endLine: number, endCol: number) => ({
+          startLine,
+          startCol: startCol + 10,
+          endLine,
+          endCol: endCol + 10,
+        })
+      ),
+    } as never;
+
+    const sourceUri = 'file:///source.templ';
+
+    const locations = remapDefinitionResponse(
+      mapper,
+      [
+        {
+          uri: sourceUri,
+          range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+        },
+        {
+          uri: 'file:///other.json',
+          range: { start: { line: 2, character: 5 }, end: { line: 2, character: 8 } },
+        },
+      ],
+      sourceUri
+    ) as Array<{ uri: string; range: { start: { character: number } } }>;
+    expect(locations[0]?.range.start.character).toBe(10);
+    expect(locations[1]?.range.start.character).toBe(5);
+
+    const links = remapDefinitionResponse(
+      mapper,
+      [
+        {
+          targetUri: 'file:///schema.json',
+          targetRange: { start: { line: 1, character: 2 }, end: { line: 1, character: 4 } },
+          targetSelectionRange: {
+            start: { line: 1, character: 2 },
+            end: { line: 1, character: 4 },
+          },
+          originSelectionRange: {
+            start: { line: 0, character: 3 },
+            end: { line: 0, character: 5 },
+          },
+        },
+        {
+          targetUri: sourceUri,
+          targetRange: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+          targetSelectionRange: {
+            start: { line: 0, character: 0 },
+            end: { line: 0, character: 1 },
+          },
+        },
+      ],
+      sourceUri
+    ) as Array<{
+      targetUri: string;
+      targetRange: { start: { character: number } };
+      originSelectionRange?: { start: { character: number } };
+    }>;
+    expect(links[0]?.targetRange.start.character).toBe(2);
+    expect(links[0]?.originSelectionRange?.start.character).toBe(13);
+    expect(links[1]?.targetRange.start.character).toBe(10);
+  });
 });

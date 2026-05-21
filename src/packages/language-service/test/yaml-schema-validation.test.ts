@@ -11,14 +11,6 @@ title: test
 id: invalid
 `;
 
-    const testSchema = {
-      type: 'object',
-      properties: {
-        title: { type: 'string' },
-      },
-      additionalProperties: false,
-    };
-
     // Create a mock YAML adapter that returns diagnostics
     const stubPlugin = {
       name: 'test-yaml-diagnostics',
@@ -73,17 +65,14 @@ id: invalid
 
     const diagnostics = await instance.provideDiagnostics?.(document, {} as never);
 
-    console.log('Diagnostics:', diagnostics);
-
-    if (diagnostics && diagnostics.length > 0) {
-      console.log('✓ Diagnostics returned');
-      diagnostics.forEach((diag) => {
-        console.log(
-          `  - ${diag.message} at (${diag.range.start.line}, ${diag.range.start.character})`
-        );
-      });
-    } else {
-      console.log('✗ No diagnostics returned');
-    }
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics?.[0]).toMatchObject({
+      message: 'id is not a valid property',
+      severity: 1,
+      range: {
+        start: { line: 2, character: 0 },
+        end: { line: 2, character: 2 },
+      },
+    });
   });
 });

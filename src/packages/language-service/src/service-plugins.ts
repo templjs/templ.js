@@ -844,32 +844,56 @@ function withPositionRemap(
                   return response;
                 }
 
+                const sourceUri = getSourceUri(context, document.uri);
+
                 if (isPromiseLike(response)) {
                   return response.then((definition) => {
                     if (!definition) {
                       return definition;
                     }
-                    if (!Array.isArray(definition)) {
-                      return definition;
+                    if (Array.isArray(definition)) {
+                      return remapDefinitionResponse(
+                        rangeMapper,
+                        definition as unknown as Parameters<typeof remapDefinitionResponse>[1],
+                        sourceUri
+                      ) as typeof definition;
                     }
-                    return remapDefinitionResponse(
-                      rangeMapper,
-                      definition as unknown as Parameters<typeof remapDefinitionResponse>[1]
-                    ) as typeof definition;
+                    if (
+                      typeof definition === 'object' &&
+                      ('targetUri' in definition || ('uri' in definition && 'range' in definition))
+                    ) {
+                      return remapDefinitionResponse(
+                        rangeMapper,
+                        [definition] as unknown as Parameters<typeof remapDefinitionResponse>[1],
+                        sourceUri
+                      )[0] as typeof definition;
+                    }
+                    return definition;
                   });
                 }
 
                 if (!response) {
                   return response;
                 }
-                if (!Array.isArray(response)) {
+                if (Array.isArray(response)) {
+                  return remapDefinitionResponse(
+                    rangeMapper,
+                    response as unknown as Parameters<typeof remapDefinitionResponse>[1],
+                    sourceUri
+                  ) as typeof response;
+                }
+                if (
+                  typeof response !== 'object' ||
+                  !('targetUri' in response || ('uri' in response && 'range' in response))
+                ) {
                   return response;
                 }
 
                 return remapDefinitionResponse(
                   rangeMapper,
-                  response as unknown as Parameters<typeof remapDefinitionResponse>[1]
-                ) as typeof response;
+                  [response] as unknown as Parameters<typeof remapDefinitionResponse>[1],
+                  sourceUri
+                )[0] as typeof response;
               },
             }
           : {}),
