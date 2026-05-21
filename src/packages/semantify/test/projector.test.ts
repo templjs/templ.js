@@ -119,6 +119,102 @@ describe('SemantifyProjectionRuntime', () => {
     ).toBe(true);
   });
 
+  it('emits diagnostics for invalid profile, rule, and helper contract definitions', () => {
+    const result = projectSemanticGraph({
+      adapterOutput,
+      profile: {
+        ...profile,
+        schemaVersion: '0.9.0' as never,
+        semanticKinds: [{ kind: '' as never }, { kind: 'dup.kind' }, { kind: 'dup.kind' }],
+        projectionRules: [
+          {
+            schemaVersion: '0.9.0' as never,
+            id: 'dup.rule',
+            name: 'Broken rule A',
+            version: '1.0.0',
+            sourceNodeKind: 'test.symbol',
+            targetSemanticKind: 'missing.kind',
+            deterministicBehavior: 'strict',
+            transformationSteps: [],
+          },
+          {
+            schemaVersion: '1.0.0',
+            id: 'dup.rule',
+            name: 'Broken rule B',
+            version: '1.0.0',
+            sourceNodeKind: 'test.symbol',
+            targetSemanticKind: 'missing.kind',
+            deterministicBehavior: 'strict',
+            transformationSteps: [{ kind: 'canonicalize' }],
+          },
+        ],
+        helperExtensions: [
+          {
+            schemaVersion: '0.9.0' as never,
+            id: 'invalid-helper',
+            kind: 'unsupported-kind' as never,
+            consumesSemanticKinds: ['missing.kind'],
+            provenance: {
+              requireSourceSpan: true,
+            },
+          },
+        ],
+      },
+    });
+
+    const messages = result.diagnostics.map((diagnostic) => diagnostic.message);
+    expect(messages.some((message) => message.includes('Unsupported profile schema version'))).toBe(
+      true
+    );
+    expect(
+      messages.some((message) => message.includes('must include a non-empty kind value'))
+    ).toBe(true);
+    expect(messages.some((message) => message.includes('Duplicate semantic kind definition'))).toBe(
+      true
+    );
+    expect(messages.some((message) => message.includes('unsupported schema version'))).toBe(true);
+    expect(
+      messages.some((message) => message.includes('must declare at least one transformation step'))
+    ).toBe(true);
+    expect(messages.some((message) => message.includes('Duplicate projection rule id'))).toBe(true);
+    expect(messages.some((message) => message.includes('targets unknown semantic kind'))).toBe(
+      true
+    );
+    expect(
+      messages.some((message) => message.includes('has unsupported kind unsupported-kind'))
+    ).toBe(true);
+    expect(messages.some((message) => message.includes('consumes unknown semantic kind'))).toBe(
+      true
+    );
+    expect(
+      messages.some((message) =>
+        message.includes('declares provenance requirements for unknown semantic kind')
+      )
+    ).toBe(true);
+  });
+
+  it('reports adapter node kinds that are outside the declared adapter manifest', () => {
+    const result = projectSemanticGraph({
+      adapterOutput,
+      profile: {
+        ...profile,
+        defaultAdapters: [
+          {
+            adapterId: 'test-adapter',
+            adapterVersionRange: '^1.0.0',
+            sourceNodeKinds: ['templjs.schema-path'],
+          },
+        ],
+      },
+    });
+
+    expect(
+      result.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('is not allowed by profile adapter manifest')
+      )
+    ).toBe(true);
+  });
+
   it('enforces provenance requirements for helper-consumed semantic kinds', () => {
     const runtime = createProjectionRuntime({
       rules: [
@@ -159,6 +255,69 @@ describe('SemantifyProjectionRuntime', () => {
     expect(
       result.diagnostics.some((diagnostic) =>
         diagnostic.message.includes('consumed by helper strict-helper is missing provenance')
+      )
+    ).toBe(true);
+  });
+
+  it('enforces helper provenance attribute requirements when provenance is present but incomplete', () => {
+    const runtime = createProjectionRuntime({
+      rules: [
+        {
+          ruleId: 'test.symbol.to-node',
+          project: () => [
+            {
+              type: 'node',
+              node: {
+                id: 'incomplete-provenance-node',
+                profileId: 'test-profile',
+                kind: 'test.symbol',
+                attributes: {
+                  label: 'manual',
+                },
+                provenance: {
+                  version: 'v1',
+                  providerId: 'manual',
+                  providerVersion: '1.0.0',
+                  sourceDocId: 'file:///manual',
+                  projectionRuleId: 'test.symbol.to-node',
+                  targetId: 'incomplete-provenance-node',
+                  confidence: 'definite',
+                },
+              } as never,
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = runtime.project({
+      adapterOutput,
+      profile: {
+        ...profile,
+        helperExtensions: [
+          {
+            schemaVersion: '1.0.0',
+            id: 'strict-helper',
+            kind: 'semantic-token-provider',
+            consumesSemanticKinds: ['test.symbol'],
+          },
+        ],
+      },
+    });
+
+    expect(
+      result.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('missing provenance sourceSpan')
+      )
+    ).toBe(true);
+    expect(
+      result.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('missing provenance attribute profileVersion')
+      )
+    ).toBe(true);
+    expect(
+      result.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('missing provenance attribute sourceNodeKind')
       )
     ).toBe(true);
   });
