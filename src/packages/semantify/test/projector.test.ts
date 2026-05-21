@@ -145,7 +145,9 @@ describe('SemantifyProjectionRuntime', () => {
             sourceNodeKind: 'test.symbol',
             targetSemanticKind: 'missing.kind',
             deterministicBehavior: 'strict',
-            transformationSteps: [{ kind: 'canonicalize' }],
+            transformationSteps: [
+              { kind: 'canonicalize', description: 'Keep deterministic ordering.' },
+            ],
           },
         ],
         helperExtensions: [
@@ -211,6 +213,28 @@ describe('SemantifyProjectionRuntime', () => {
     expect(
       result.diagnostics.some((diagnostic) =>
         diagnostic.message.includes('is not allowed by profile adapter manifest')
+      )
+    ).toBe(true);
+  });
+
+  it('reports adapter versions that do not satisfy the declared adapter version range', () => {
+    const result = projectSemanticGraph({
+      adapterOutput,
+      profile: {
+        ...profile,
+        defaultAdapters: [
+          {
+            adapterId: 'test-adapter',
+            adapterVersionRange: '^2.0.0',
+            sourceNodeKinds: ['test.symbol'],
+          },
+        ],
+      },
+    });
+
+    expect(
+      result.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('does not satisfy profile adapterVersionRange')
       )
     ).toBe(true);
   });

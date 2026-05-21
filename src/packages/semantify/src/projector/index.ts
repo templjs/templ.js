@@ -396,6 +396,35 @@ function validateAdapterProfileCompatibility(
     return diagnostics;
   }
 
+  const isVersionCompatible = (() => {
+    const range = adapterManifest.adapterVersionRange.trim();
+    const version = adapterOutput.adapterVersion.trim();
+
+    if (!range || !version) {
+      return false;
+    }
+
+    if (range.startsWith('^')) {
+      const expectedMajor = Number.parseInt(range.slice(1).split('.')[0] ?? '', 10);
+      const actualMajor = Number.parseInt(version.split('.')[0] ?? '', 10);
+      return (
+        Number.isFinite(expectedMajor) &&
+        Number.isFinite(actualMajor) &&
+        expectedMajor === actualMajor
+      );
+    }
+
+    return range === version;
+  })();
+
+  if (!isVersionCompatible) {
+    diagnostics.push({
+      severity: 'error',
+      message: `Adapter ${adapterOutput.adapterId} version ${adapterOutput.adapterVersion} does not satisfy profile adapterVersionRange ${adapterManifest.adapterVersionRange}.`,
+      adapterId: adapterOutput.adapterId,
+    });
+  }
+
   const allowedNodeKinds = new Set(adapterManifest.sourceNodeKinds);
   for (const node of adapterOutput.nodes) {
     if (!allowedNodeKinds.has(node.kind)) {
