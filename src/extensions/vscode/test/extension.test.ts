@@ -141,6 +141,22 @@ const onDidChangeDiagnostics = vi.fn(() => ({ dispose: vi.fn() }));
 const getDiagnostics = vi.fn((_uri?: unknown) => []);
 const getExtension = vi.fn((_id: string) => undefined);
 
+async function waitForAssertion(assertion: () => void, attempts = 20): Promise<void> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      assertion();
+      return;
+    } catch (error) {
+      lastError = error;
+      await Promise.resolve();
+    }
+  }
+
+  throw lastError;
+}
+
 vi.mock('vscode', () => ({
   commands: {
     registerCommand,
@@ -537,9 +553,11 @@ describe('extension-activation', () => {
     const module = await import('../src/extension');
     module.activate(context as never);
 
-    expect(showErrorMessage).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to activate Templjs: Error: broken path resolution')
-    );
+    await waitForAssertion(() => {
+      expect(showErrorMessage).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to activate Templjs: Error: broken path resolution')
+      );
+    });
   });
 
   it('handles activation when TypeScript SDK is resolvable', async () => {
@@ -697,12 +715,14 @@ describe('extension-activation', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(showErrorMessage).toHaveBeenCalledWith(
-      expect.stringContaining('Templjs: Language client failed to start: Error: startup exploded')
-    );
-    expect(outputChannel.appendLine).toHaveBeenCalledWith(
-      expect.stringContaining('Language client start failed: Error: startup exploded')
-    );
+    await waitForAssertion(() => {
+      expect(showErrorMessage).toHaveBeenCalledWith(
+        expect.stringContaining('Templjs: Language client failed to start: Error: startup exploded')
+      );
+      expect(outputChannel.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('Language client start failed: Error: startup exploded')
+      );
+    });
   });
 
   it('traces middleware activity for completion, hover, and definition in verbose mode', async () => {
