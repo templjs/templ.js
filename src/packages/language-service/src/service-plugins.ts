@@ -16,6 +16,8 @@ import {
   remapDefinitionResponse,
   remapDiagnosticsResponse,
   remapHoverResponse,
+  remapLocation,
+  remapLocationLink,
 } from './position-remapping-utility.js';
 import { loadSchemaSourceSync, resolveDocumentSchemaSources } from './schema-loading.js';
 import {
@@ -732,6 +734,12 @@ function withPositionRemap(
         }
       };
 
+      const getSourceDocumentUri = (document: {
+        uri: string;
+        languageId: string;
+        getText(): string;
+      }) => getSourceUri(context, document.uri);
+
       return {
         ...instance,
         ...(provideDiagnostics
@@ -850,11 +858,24 @@ function withPositionRemap(
                       return definition;
                     }
                     if (!Array.isArray(definition)) {
-                      return definition;
+                      return (
+                        'targetUri' in definition
+                          ? remapLocationLink(
+                              rangeMapper,
+                              definition as Parameters<typeof remapLocationLink>[1],
+                              getSourceDocumentUri(document)
+                            )
+                          : remapLocation(
+                              rangeMapper,
+                              definition as Parameters<typeof remapLocation>[1],
+                              getSourceDocumentUri(document)
+                            )
+                      ) as typeof definition;
                     }
                     return remapDefinitionResponse(
                       rangeMapper,
-                      definition as unknown as Parameters<typeof remapDefinitionResponse>[1]
+                      definition as unknown as Parameters<typeof remapDefinitionResponse>[1],
+                      getSourceDocumentUri(document)
                     ) as typeof definition;
                   });
                 }
@@ -863,12 +884,25 @@ function withPositionRemap(
                   return response;
                 }
                 if (!Array.isArray(response)) {
-                  return response;
+                  return (
+                    'targetUri' in response
+                      ? remapLocationLink(
+                          rangeMapper,
+                          response as Parameters<typeof remapLocationLink>[1],
+                          getSourceDocumentUri(document)
+                        )
+                      : remapLocation(
+                          rangeMapper,
+                          response as Parameters<typeof remapLocation>[1],
+                          getSourceDocumentUri(document)
+                        )
+                  ) as typeof response;
                 }
 
                 return remapDefinitionResponse(
                   rangeMapper,
-                  response as unknown as Parameters<typeof remapDefinitionResponse>[1]
+                  response as unknown as Parameters<typeof remapDefinitionResponse>[1],
+                  getSourceDocumentUri(document)
                 ) as typeof response;
               },
             }
