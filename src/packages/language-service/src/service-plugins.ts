@@ -858,6 +858,9 @@ function withPositionRemap(
                       return definition;
                     }
                     if (!Array.isArray(definition)) {
+                      if (!isObjectLike(definition)) {
+                        return definition;
+                      }
                       return (
                         'targetUri' in definition
                           ? remapLocationLink(
@@ -884,6 +887,9 @@ function withPositionRemap(
                   return response;
                 }
                 if (!Array.isArray(response)) {
+                  if (!isObjectLike(response)) {
+                    return response;
+                  }
                   return (
                     'targetUri' in response
                       ? remapLocationLink(
@@ -914,6 +920,10 @@ function withPositionRemap(
 
 function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
   return !!value && typeof (value as { then?: unknown }).then === 'function';
+}
+
+function isObjectLike(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
 function createTextDocumentLike(uri: string, languageId: string, text: string) {

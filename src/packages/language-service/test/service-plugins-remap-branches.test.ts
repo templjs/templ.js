@@ -619,6 +619,30 @@ describe('service-plugins position-remap branches', () => {
     ).resolves.toEqual({ uri: 'file:///single-async' });
   });
 
+  it('passes through scalar definition payloads that are not object-like', async () => {
+    const plugin = {
+      name: 'mapped-scalar-guard-plugin',
+      create: () => ({
+        provideDefinition: vi.fn().mockResolvedValueOnce('not-a-location').mockReturnValueOnce(42),
+      }),
+    };
+
+    const remapped = servicePluginTesting.withPositionRemap(plugin as never, 'templjs-yaml', {
+      log: vi.fn(),
+    } as never);
+    const instance = remapped.create(createMappedContext('alpha{% set x = 1 %}beta') as never);
+    const document = servicePluginTesting.createTextDocumentLike(
+      'embedded-content://yaml',
+      'templjs-yaml',
+      'alpha{% set x = 1 %}beta'
+    );
+
+    await expect(
+      instance.provideDefinition?.(document, { line: 0, character: 0 }, {} as never)
+    ).resolves.toBe('not-a-location');
+    expect(instance.provideDefinition?.(document, { line: 0, character: 0 }, {} as never)).toBe(42);
+  });
+
   it('remaps scalar definition responses for sync and async mapped contexts', async () => {
     const sourceText = 'alpha{% set x = 1 %}beta';
     const sourceUri = 'file:///test.yaml.templ';
