@@ -1,4 +1,4 @@
-import type { ContextEdge, ContextNode, GraphSnapshot } from '@templjs/context-graph';
+import type { Edge, Node, Snapshot } from '@templjs/context-graph';
 import type { JSONSchema } from '@templjs/core';
 import {
   createTempljsAuthoringProfile,
@@ -16,9 +16,9 @@ export interface SemantifyProjectionSnapshotOptions {
   delimiters?: DelimiterConfigInput;
 }
 
-function mergeSnapshots(snapshots: GraphSnapshot[]): GraphSnapshot {
-  const nodes = new Map<string, ContextNode>();
-  const edges = new Map<string, ContextEdge>();
+function mergeSnapshots(snapshots: Snapshot[]): Snapshot {
+  const nodes = new Map<string, Node>();
+  const edges = new Map<string, Edge>();
 
   for (const snapshot of snapshots) {
     for (const node of snapshot.nodes) {
@@ -39,10 +39,10 @@ function mergeSnapshots(snapshots: GraphSnapshot[]): GraphSnapshot {
 
 export function createSemantifyProjectionSnapshot(
   options: SemantifyProjectionSnapshotOptions
-): GraphSnapshot {
+): Snapshot {
   const profile = createTempljsAuthoringProfile();
   const sourceDocId = options.documentUri ?? 'templjs:anonymous';
-  const snapshots: GraphSnapshot[] = [
+  const snapshots: Snapshot[] = [
     projectSemanticGraph({
       adapterOutput: createTempljsTemplateAdapterOutput({
         text: options.text,

@@ -1,8 +1,8 @@
 import type {
-  ContextEdge,
-  ContextNode,
-  GraphProvenance,
-  GraphSnapshot,
+  Edge,
+  Node,
+  Provenance,
+  Snapshot,
   JsonObject,
   JsonPrimitive,
   JsonValue,
@@ -217,10 +217,10 @@ export interface ProjectionDiagnostic {
   metadata?: Record<string, unknown>;
 }
 
-export type SemanticGraphNode = ContextNode;
-export type SemanticGraphEdge = ContextEdge;
-export type SemanticGraphSnapshot = GraphSnapshot;
-export type SemanticGraphProvenance = GraphProvenance;
+export type SemanticGraphNode = Node;
+export type SemanticGraphEdge = Edge;
+export type SemanticGraphSnapshot = Snapshot;
+export type SemanticGraphProvenance = Provenance;
 
 export interface ProjectionResult {
   schemaVersion: SemantifySchemaVersion;

@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ContextGraphError, createContextGraph, type ContextProvider } from '../src/index.js';
+import { GraphError, createContextGraph, type Provider } from '../src/index.js';
 
 describe('ContextGraphEngine', () => {
   it('supports N providers and deterministic node ordering', async () => {
     const graph = createContextGraph();
 
-    const providerA: ContextProvider = {
+    const providerA: Provider = {
       id: 'provider-a',
       onInvalidate: (_uri, ctx) => {
         ctx.upsertNode({
@@ -17,7 +17,7 @@ describe('ContextGraphEngine', () => {
       },
     };
 
-    const providerB: ContextProvider = {
+    const providerB: Provider = {
       id: 'provider-b',
       onInvalidate: (_uri, ctx) => {
         ctx.upsertNode({
@@ -39,7 +39,7 @@ describe('ContextGraphEngine', () => {
   it('treats repeated use of the same provider as idempotent registration', async () => {
     const graph = createContextGraph();
     let invalidateCalls = 0;
-    const provider: ContextProvider = {
+    const provider: Provider = {
       id: 'provider-a',
       onInvalidate: (_uri, ctx) => {
         invalidateCalls += 1;
@@ -94,7 +94,7 @@ describe('ContextGraphEngine', () => {
 
   it('uses provider-scoped keys as stable ordering tiebreakers', async () => {
     const graph = createContextGraph();
-    const registerProvider = (providerId: string, source: string): ContextProvider => ({
+    const registerProvider = (providerId: string, source: string): Provider => ({
       id: providerId,
       onInvalidate: (_uri, ctx) => {
         ctx.upsertNode({
@@ -125,7 +125,7 @@ describe('ContextGraphEngine', () => {
     const graph = createContextGraph();
     let counter = 0;
 
-    const provider: ContextProvider = {
+    const provider: Provider = {
       id: 'provider-counter',
       onInvalidate: (_uri, ctx) => {
         counter += 1;
@@ -148,7 +148,7 @@ describe('ContextGraphEngine', () => {
   it('supports close lifecycle and returns deterministic snapshot', async () => {
     const graph = createContextGraph();
 
-    const provider: ContextProvider = {
+    const provider: Provider = {
       id: 'provider-close',
       onInvalidate: (_uri, ctx) => {
         ctx.upsertNode({ id: 'node-1', profileId: 'editor-location', kind: 'range' });
@@ -180,7 +180,7 @@ describe('ContextGraphEngine', () => {
   it('supports profile-aware and versioned query contract', async () => {
     const graph = createContextGraph();
 
-    const provider: ContextProvider = {
+    const provider: Provider = {
       id: 'provider-query',
       onInvalidate: (_uri, ctx) => {
         ctx.upsertNode({ id: 'node-editor', profileId: 'editor-location', kind: 'symbol' });
@@ -249,7 +249,7 @@ describe('ContextGraphEngine', () => {
 
   it('keeps deterministic edge ordering across read APIs', async () => {
     const graph = createContextGraph();
-    const provider: ContextProvider = {
+    const provider: Provider = {
       id: 'provider-edges',
       onInvalidate: (_uri, ctx) => {
         ctx.upsertNode({ id: 'a', profileId: 'editor-location', kind: 'node' });
@@ -467,7 +467,7 @@ describe('ContextGraphEngine', () => {
 
   it('throws structured error for unsupported query contract version', async () => {
     const graph = createContextGraph();
-    const provider: ContextProvider = {
+    const provider: Provider = {
       id: 'provider-version',
       onInvalidate: (_uri, _ctx) => undefined,
     };
@@ -479,8 +479,8 @@ describe('ContextGraphEngine', () => {
       graph.query({ version: 'v2' as never });
       throw new Error('expected query to throw');
     } catch (error) {
-      expect(error).toBeInstanceOf(ContextGraphError);
-      const payload = (error as ContextGraphError).payload;
+      expect(error).toBeInstanceOf(GraphError);
+      const payload = (error as GraphError).payload;
       expect(payload.code).toBe('invalid-payload');
       expect(payload.version).toBe('v1');
       expect(payload.message).toContain('Unsupported query version');
@@ -489,7 +489,7 @@ describe('ContextGraphEngine', () => {
 
   it('throws structured provider-failed error payloads', async () => {
     const graph = createContextGraph();
-    const provider: ContextProvider = {
+    const provider: Provider = {
       id: 'provider-fail',
       onInvalidate: () => {
         throw new Error('boom');
@@ -502,8 +502,8 @@ describe('ContextGraphEngine', () => {
       await graph.invalidate('file:///fail');
       throw new Error('expected invalidate to throw');
     } catch (error) {
-      expect(error).toBeInstanceOf(ContextGraphError);
-      const payload = (error as ContextGraphError).payload;
+      expect(error).toBeInstanceOf(GraphError);
+      const payload = (error as GraphError).payload;
       expect(payload.code).toBe('provider-failed');
       expect(payload.providerId).toBe('provider-fail');
       expect(payload.version).toBe('v1');
@@ -580,20 +580,18 @@ describe('ContextGraphEngine', () => {
 
   it('supports onClose write operations after clearing provider-owned state', async () => {
     const graph = createContextGraph();
-    const onClose = vi.fn(
-      (_uri: string, ctx: Parameters<NonNullable<ContextProvider['onClose']>>[1]) => {
-        ctx.removeNode('node-before-close');
-        ctx.removeEdge('edge-before-close');
-        ctx.upsertNode({ id: 'node-after-close', profileId: 'runtime', kind: 'summary' });
-        ctx.upsertEdge({
-          id: 'edge-after-close',
-          profileId: 'runtime',
-          from: 'node-after-close',
-          to: 'node-after-close',
-          kind: 'self',
-        });
-      }
-    );
+    const onClose = vi.fn((_uri: string, ctx: Parameters<NonNullable<Provider['onClose']>>[1]) => {
+      ctx.removeNode('node-before-close');
+      ctx.removeEdge('edge-before-close');
+      ctx.upsertNode({ id: 'node-after-close', profileId: 'runtime', kind: 'summary' });
+      ctx.upsertEdge({
+        id: 'edge-after-close',
+        profileId: 'runtime',
+        from: 'node-after-close',
+        to: 'node-after-close',
+        kind: 'self',
+      });
+    });
 
     graph.use({
       id: 'provider-close-write',

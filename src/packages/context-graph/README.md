@@ -34,3 +34,19 @@ into this package.
 - Export JSON-compatible payloads and opaque ids
 - Do not expose third-party dependency symbols in public signatures
 - Keep semantic-domain meaning in providers, profiles, or downstream clients
+
+## Public type naming
+
+Context Graph owns this package's graph domain. Public graph-domain types use
+concise names such as `Graph`, `Node`, `Edge`, `Provider`, `Snapshot`, `Delta`,
+`Provenance`, and `WriteContext`.
+
+Qualifiers are reserved for names where they add meaning or avoid ambiguity:
+opaque identity domains use names such as `NodeId`, `EdgeId`, `ProviderId`, and
+`ProfileId`; error contracts use `ErrorCode`, `ErrorPayload`, and
+`OperationError`; the thrown error class is `GraphError` because plain `Error`
+would collide with the platform type; query contracts preserve the explicit
+`QueryRequest` / `QueryResponse` pair.
+
+Avoid adding `Context*`, `Graph*`, or package-name prefixes solely to repeat the
+package namespace.

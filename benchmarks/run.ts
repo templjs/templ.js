@@ -11,10 +11,7 @@ import {
   SchemaValidator,
   tokenize,
 } from '../src/packages/core/src/index.ts';
-import {
-  createContextGraph,
-  type ContextProvider,
-} from '../src/packages/context-graph/src/index.ts';
+import { createContextGraph, type Provider } from '../src/packages/context-graph/src/index.ts';
 import { TempljsServicePlugin } from '../src/packages/volar/src/service-plugin.ts';
 import schemaLoadingModule from '../src/extensions/vscode/src/schema-loading.ts';
 import {
@@ -262,7 +259,7 @@ const cases: Array<BenchmarkCase<unknown>> = [
     description: 'Runs representative node and edge filters against a seeded context graph.',
     setup: async () => {
       const graph = createContextGraph();
-      const providers: ContextProvider[] = Array.from({ length: 4 }, (_, providerIndex) => ({
+      const providers: Provider[] = Array.from({ length: 4 }, (_, providerIndex) => ({
         id: `provider-${providerIndex + 1}`,
         onInvalidate: (_uri, ctx) => {
           for (let nodeIndex = 0; nodeIndex < 180; nodeIndex += 1) {

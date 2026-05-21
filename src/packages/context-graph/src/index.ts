@@ -1,41 +1,39 @@
-import { ContextGraphEngine, ContextGraphError } from './internal/context-graph-engine.js';
-import type { ContextGraph } from './public-types.js';
+import { ContextGraphEngine, GraphError } from './internal/context-graph-engine.js';
+import type { Graph } from './public-types.js';
 
 export type {
-  ContextEdge,
-  ContextGraph,
-  ContextNode,
-  ContextProvider,
   ContractVersion,
+  Delta,
+  Edge,
   EdgeId,
   EdgeQuery,
-  GraphDelta,
-  GraphError,
-  GraphErrorCode,
-  GraphEdge,
-  GraphOperationError,
-  GraphNode,
-  GraphProvenance,
-  GraphProvenanceConfidence,
-  GraphSnapshot,
-  GraphWriteContext,
-  ProfileId,
-  QueryRequest,
-  QueryResponse,
+  ErrorCode,
+  ErrorPayload,
+  Graph,
   JsonArray,
   JsonObject,
   JsonPrimitive,
   JsonValue,
+  Node,
   NodeId,
   NodeQuery,
+  OperationError,
+  ProfileId,
+  Provenance,
+  ProvenanceConfidence,
+  Provider,
   ProviderId,
+  QueryRequest,
+  QueryResponse,
+  Snapshot,
   SourceLocation,
   SourceSpan,
   SubjectRef,
+  WriteContext,
 } from './public-types.js';
 
-export function createContextGraph(): ContextGraph {
+export function createContextGraph(): Graph {
   return new ContextGraphEngine();
 }
 
-export { ContextGraphError };
+export { GraphError };

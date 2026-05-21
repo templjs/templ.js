@@ -9,8 +9,8 @@ import {
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import type {
-  ContextNode,
-  GraphSnapshot,
+  Node,
+  Snapshot,
   JsonPrimitive,
   QueryRequest,
   QueryResponse,
@@ -100,7 +100,7 @@ export const contextGraphAdapterTesting = {
 };
 
 export class ContextGraphSemanticReadAdapter {
-  private readonly snapshotCache = new Map<string, GraphSnapshot>();
+  private readonly snapshotCache = new Map<string, Snapshot>();
 
   constructor(private readonly options: ContextGraphSemanticReadAdapterOptions = {}) {}
 
@@ -114,7 +114,7 @@ export class ContextGraphSemanticReadAdapter {
     schema?: object;
     contentSchema?: object;
     contentSchemaUri?: string;
-  }): GraphSnapshot {
+  }): Snapshot {
     const cacheKey = buildSnapshotCacheKey(options);
     const cachedSnapshot = this.snapshotCache.get(cacheKey);
     if (cachedSnapshot) {
@@ -180,7 +180,7 @@ export class ContextGraphSemanticReadAdapter {
     schema?: object;
     contentSchema?: object;
     contentSchemaUri?: string;
-  }): GraphSnapshot {
+  }): Snapshot {
     const rawContentSchema = options.contentSchema ?? options.schema;
     const contentSchemaUri = options.contentSchemaUri;
     const contentSchema =
@@ -406,7 +406,7 @@ export class ContextGraphSemanticReadAdapter {
       context
     );
 
-    return response.nodes.map((node: ContextNode) => ({
+    return response.nodes.map((node: Node) => ({
       label: String(node.attributes?.label ?? ''),
       kind: parentPath ? 'property' : 'variable',
       detail: asString(node.attributes?.type),
@@ -440,7 +440,7 @@ export class ContextGraphSemanticReadAdapter {
       context
     );
 
-    return response.nodes.map((node: ContextNode) => ({
+    return response.nodes.map((node: Node) => ({
       label: String(node.attributes?.label ?? ''),
       kind: 'keyword',
       detail: `${path} enum`,
@@ -586,7 +586,7 @@ export class ContextGraphSemanticReadAdapter {
     });
   }
 
-  private withContext(snapshot: GraphSnapshot, context?: SemanticQueryContext): GraphSnapshot {
+  private withContext(snapshot: Snapshot, context?: SemanticQueryContext): Snapshot {
     if (!context) {
       return snapshot;
     }
@@ -612,7 +612,7 @@ export class ContextGraphSemanticReadAdapter {
 
     return {
       ...snapshot,
-      nodes: snapshot.nodes.map((node: ContextNode) => ({
+      nodes: snapshot.nodes.map((node: Node) => ({
         ...node,
         attributes: {
           ...(node.attributes ?? {}),

@@ -72,12 +72,28 @@ Public APIs in `@templjs/context-graph` must follow these rules:
 1. Export only package-owned types/interfaces.
 2. Export only JSON-serializable or primitive-based payload shapes.
 3. Do not export third-party classes/generics/enums in signatures.
-4. Keep ids opaque (`NodeId`, `ProviderId`, `SnapshotId`).
+4. Keep ids opaque (`NodeId`, `EdgeId`, `ProviderId`, `ProfileId`).
 5. Version all externally observable payload shapes.
 6. Provide deterministic query ordering.
 7. Do not encode transport-specific assumptions in core contracts.
 8. Include profile scoping in fact and query contracts.
 9. Standardize a versioned query request/response shape.
+
+### Public type naming
+
+The package name supplies the context namespace. Public graph-domain types should
+therefore use concise package-owned names such as `Graph`, `Node`, `Edge`,
+`Provider`, `Snapshot`, `Delta`, `Provenance`, and `WriteContext`.
+
+Use qualifiers when they carry domain meaning or prevent ambiguity in consumer
+code. Opaque ids keep their identity-domain prefixes (`NodeId`, `EdgeId`,
+`ProviderId`, `ProfileId`), error contracts use explicit names (`ErrorCode`,
+`ErrorPayload`, `OperationError`), the thrown error class is `GraphError`
+because plain `Error` would collide with the platform type, and the query
+contract keeps the `QueryRequest` / `QueryResponse` pair.
+
+Do not add `Context*`, `Graph*`, or package-name prefixes only to repeat the
+package namespace.
 
 ## Rust-Ready-from-Day-1 Checklist
 

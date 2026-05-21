@@ -4,8 +4,8 @@ export type ProviderId = string;
 export type NodeId = string;
 export type EdgeId = string;
 export type ProfileId = string;
-export type GraphErrorCode = 'provider-not-registered' | 'provider-failed' | 'invalid-payload';
-export type GraphProvenanceConfidence = 'definite' | 'heuristic' | 'synthetic';
+export type ErrorCode = 'provider-not-registered' | 'provider-failed' | 'invalid-payload';
+export type ProvenanceConfidence = 'definite' | 'heuristic' | 'synthetic';
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonObject | JsonArray;
@@ -26,7 +26,7 @@ export interface SourceLocation {
   character: number;
 }
 
-export interface GraphProvenance {
+export interface Provenance {
   version: ContractVersion;
   providerId: ProviderId;
   providerVersion?: string;
@@ -35,50 +35,47 @@ export interface GraphProvenance {
   sourceSpan: SourceSpan;
   sourceLoc?: SourceLocation;
   projectionRuleId?: string;
-  confidence: GraphProvenanceConfidence;
+  confidence: ProvenanceConfidence;
   targetId: NodeId | EdgeId;
   attributes?: JsonObject;
 }
 
-export interface ContextNode {
+export interface Node {
   id: NodeId;
   profileId: ProfileId;
   kind: string;
   attributes?: JsonObject;
-  provenance?: GraphProvenance;
+  provenance?: Provenance;
 }
 
-export interface ContextEdge {
+export interface Edge {
   id: EdgeId;
   profileId: ProfileId;
   from: NodeId;
   to: NodeId;
   kind: string;
   attributes?: JsonObject;
-  provenance?: GraphProvenance;
+  provenance?: Provenance;
 }
 
-export type GraphNode = ContextNode;
-export type GraphEdge = ContextEdge;
-
-export interface GraphSnapshot {
+export interface Snapshot {
   version: ContractVersion;
   revision: number;
-  nodes: ContextNode[];
-  edges: ContextEdge[];
+  nodes: Node[];
+  edges: Edge[];
 }
 
-export interface GraphError {
-  code: GraphErrorCode;
+export interface ErrorPayload {
+  code: ErrorCode;
   message: string;
   providerId?: ProviderId;
 }
 
-export interface GraphOperationError extends GraphError {
+export interface OperationError extends ErrorPayload {
   version: ContractVersion;
 }
 
-export interface GraphDelta {
+export interface Delta {
   version: ContractVersion;
   revision: number;
   type: 'provider-invalidated' | 'provider-closed';
@@ -109,29 +106,29 @@ export interface QueryRequest {
 export interface QueryResponse {
   version: ContractVersion;
   revision: number;
-  nodes: ContextNode[];
-  edges: ContextEdge[];
+  nodes: Node[];
+  edges: Edge[];
 }
 
-export interface GraphWriteContext {
-  upsertNode(node: ContextNode): void;
-  upsertEdge(edge: ContextEdge): void;
+export interface WriteContext {
+  upsertNode(node: Node): void;
+  upsertEdge(edge: Edge): void;
   removeNode(nodeId: NodeId): void;
   removeEdge(edgeId: EdgeId): void;
 }
 
-export interface ContextProvider {
+export interface Provider {
   id: ProviderId;
-  onInvalidate(uri: string, ctx: GraphWriteContext): void | Promise<void>;
-  onClose?(uri: string, ctx: GraphWriteContext): void | Promise<void>;
+  onInvalidate(uri: string, ctx: WriteContext): void | Promise<void>;
+  onClose?(uri: string, ctx: WriteContext): void | Promise<void>;
 }
 
-export interface ContextGraph {
-  use(provider: ContextProvider): ContextGraph;
-  invalidate(uri: string): Promise<GraphDelta[]>;
-  close(uri: string): Promise<GraphDelta[]>;
-  getNodes(query?: NodeQuery): ContextNode[];
-  getEdges(query?: EdgeQuery): ContextEdge[];
+export interface Graph {
+  use(provider: Provider): Graph;
+  invalidate(uri: string): Promise<Delta[]>;
+  close(uri: string): Promise<Delta[]>;
+  getNodes(query?: NodeQuery): Node[];
+  getEdges(query?: EdgeQuery): Edge[];
   query(request: QueryRequest): QueryResponse;
-  getSnapshot(): GraphSnapshot;
+  getSnapshot(): Snapshot;
 }

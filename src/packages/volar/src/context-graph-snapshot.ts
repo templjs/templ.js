@@ -1,7 +1,7 @@
 import { getSemanticProfileId, type SemanticContextBlock } from '@templjs/core';
 import type {
-  ContextNode,
-  GraphSnapshot,
+  Node,
+  Snapshot,
   JsonPrimitive,
   QueryRequest,
   QueryResponse,
@@ -131,7 +131,7 @@ export function asNonEmptyString(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
-export function buildPathNodes(contextBlock: SemanticContextBlock, schema?: object): ContextNode[] {
+export function buildPathNodes(contextBlock: SemanticContextBlock, schema?: object): Node[] {
   if (!schema) {
     return [];
   }
@@ -139,7 +139,7 @@ export function buildPathNodes(contextBlock: SemanticContextBlock, schema?: obje
   const profileId = getSemanticProfileId(contextBlock);
 
   const metadata = getSharedSchemaMetadata(schema);
-  const nodes: ContextNode[] = [];
+  const nodes: Node[] = [];
 
   for (const [path, entry] of Object.entries(metadata)) {
     nodes.push({
@@ -197,8 +197,8 @@ export function buildPathNodes(contextBlock: SemanticContextBlock, schema?: obje
   return nodes;
 }
 
-export function filterNodes(snapshot: GraphSnapshot, request: QueryRequest): ContextNode[] {
-  return snapshot.nodes.filter((node: ContextNode) => {
+export function filterNodes(snapshot: Snapshot, request: QueryRequest): Node[] {
+  return snapshot.nodes.filter((node: Node) => {
     if (request.nodes?.kind && node.kind !== request.nodes.kind) {
       return false;
     }
@@ -220,11 +220,11 @@ export function filterNodes(snapshot: GraphSnapshot, request: QueryRequest): Con
   });
 }
 
-export function querySnapshot(snapshot: GraphSnapshot, request: QueryRequest): QueryResponse {
+export function querySnapshot(snapshot: Snapshot, request: QueryRequest): QueryResponse {
   return {
     version: request.version,
     revision: snapshot.revision,
-    nodes: filterNodes(snapshot, request).sort((left: ContextNode, right: ContextNode) =>
+    nodes: filterNodes(snapshot, request).sort((left: Node, right: Node) =>
       left.id.localeCompare(right.id)
     ),
     edges: [],

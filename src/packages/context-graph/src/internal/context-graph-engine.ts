@@ -1,14 +1,14 @@
 import type {
-  ContextEdge,
-  ContextGraph,
-  ContextNode,
-  ContextProvider,
+  Delta,
+  Edge,
   EdgeQuery,
-  GraphDelta,
-  GraphOperationError,
-  GraphWriteContext,
+  Graph,
+  Node,
   NodeQuery,
+  OperationError,
+  Provider,
   QueryRequest,
+  WriteContext,
 } from '../public-types.js';
 
 type ProviderState = {
@@ -24,10 +24,10 @@ type OrderedRecord<T> = {
 const CONTRACT_VERSION = 'v1' as const;
 
 function createOperationError(
-  code: GraphOperationError['code'],
+  code: OperationError['code'],
   message: string,
   providerId?: string
-): GraphOperationError {
+): OperationError {
   return {
     version: CONTRACT_VERSION,
     code,
@@ -36,15 +36,16 @@ function createOperationError(
   };
 }
 
-export class ContextGraphError extends Error {
-  readonly payload: GraphOperationError;
+export class GraphError extends Error {
+  readonly payload: OperationError;
 
-  constructor(payload: GraphOperationError) {
+  constructor(payload: OperationError) {
     super(payload.message);
-    this.name = 'ContextGraphError';
+    this.name = 'GraphError';
     this.payload = payload;
   }
 }
+
 function compareByProperties<T>(a: T, b: T, propertyNames: (keyof T)[]): number {
   for (const propName of propertyNames) {
     const aValue = String(a[propName]);
@@ -58,19 +59,19 @@ function compareByProperties<T>(a: T, b: T, propertyNames: (keyof T)[]): number 
   return 0;
 }
 
-function compareNodes(a: ContextNode, b: ContextNode): number {
+function compareNodes(a: Node, b: Node): number {
   return compareByProperties(a, b, ['id', 'profileId', 'kind']);
 }
 
-function compareEdges(a: ContextEdge, b: ContextEdge): number {
+function compareEdges(a: Edge, b: Edge): number {
   return compareByProperties(a, b, ['id', 'profileId', 'from', 'to']);
 }
 
-function compareNodeRecords(a: OrderedRecord<ContextNode>, b: OrderedRecord<ContextNode>): number {
+function compareNodeRecords(a: OrderedRecord<Node>, b: OrderedRecord<Node>): number {
   return compareNodes(a.entity, b.entity) || a.key.localeCompare(b.key);
 }
 
-function compareEdgeRecords(a: OrderedRecord<ContextEdge>, b: OrderedRecord<ContextEdge>): number {
+function compareEdgeRecords(a: OrderedRecord<Edge>, b: OrderedRecord<Edge>): number {
   return compareEdges(a.entity, b.entity) || a.key.localeCompare(b.key);
 }
 
@@ -99,11 +100,11 @@ function scopedEntityKey(providerId: string, entityId: string): string {
   return `${providerId}\u0000${entityId}`;
 }
 
-function cloneEntity<T extends ContextNode | ContextEdge>(entity: T): T {
+function cloneEntity<T extends Node | Edge>(entity: T): T {
   return JSON.parse(JSON.stringify(entity)) as T;
 }
 
-function matchesNodeQuery(node: ContextNode, query: NodeQuery): boolean {
+function matchesNodeQuery(node: Node, query: NodeQuery): boolean {
   if (query.kind && node.kind !== query.kind) {
     return false;
   }
@@ -130,7 +131,7 @@ function matchesNodeQuery(node: ContextNode, query: NodeQuery): boolean {
   return true;
 }
 
-function matchesEdgeQuery(edge: ContextEdge, query: EdgeQuery): boolean {
+function matchesEdgeQuery(edge: Edge, query: EdgeQuery): boolean {
   if (query.kind && edge.kind !== query.kind) {
     return false;
   }
@@ -150,16 +151,16 @@ function matchesEdgeQuery(edge: ContextEdge, query: EdgeQuery): boolean {
   return true;
 }
 
-export class ContextGraphEngine implements ContextGraph {
-  private readonly providers = new Map<string, ContextProvider>();
+export class ContextGraphEngine implements Graph {
+  private readonly providers = new Map<string, Provider>();
   private readonly providerStates = new Map<string, ProviderState>();
-  private readonly nodes = new Map<string, ContextNode>();
-  private readonly edges = new Map<string, ContextEdge>();
-  private readonly orderedNodes: OrderedRecord<ContextNode>[] = [];
-  private readonly orderedEdges: OrderedRecord<ContextEdge>[] = [];
+  private readonly nodes = new Map<string, Node>();
+  private readonly edges = new Map<string, Edge>();
+  private readonly orderedNodes: OrderedRecord<Node>[] = [];
+  private readonly orderedEdges: OrderedRecord<Edge>[] = [];
   private revision = 0;
 
-  use(provider: ContextProvider): ContextGraph {
+  use(provider: Provider): Graph {
     this.providers.set(provider.id, provider);
     if (!this.providerStates.has(provider.id)) {
       this.providerStates.set(provider.id, {
@@ -171,8 +172,8 @@ export class ContextGraphEngine implements ContextGraph {
     return this;
   }
 
-  async invalidate(uri: string): Promise<GraphDelta[]> {
-    const deltas: GraphDelta[] = [];
+  async invalidate(uri: string): Promise<Delta[]> {
+    const deltas: Delta[] = [];
 
     for (const provider of this.providers.values()) {
       const state = this.getOrCreateProviderState(provider.id);
@@ -184,7 +185,7 @@ export class ContextGraphEngine implements ContextGraph {
         await provider.onInvalidate(uri, writeContext);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        throw new ContextGraphError(createOperationError('provider-failed', message, provider.id));
+        throw new GraphError(createOperationError('provider-failed', message, provider.id));
       }
       // Revision advances per provider lifecycle event so each emitted delta
       // has a unique monotonic revision.
@@ -195,8 +196,8 @@ export class ContextGraphEngine implements ContextGraph {
     return deltas;
   }
 
-  async close(uri: string): Promise<GraphDelta[]> {
-    const deltas: GraphDelta[] = [];
+  async close(uri: string): Promise<Delta[]> {
+    const deltas: Delta[] = [];
 
     for (const provider of this.providers.values()) {
       const state = this.getOrCreateProviderState(provider.id);
@@ -209,9 +210,7 @@ export class ContextGraphEngine implements ContextGraph {
           await provider.onClose(uri, this.createWriteContext(provider.id, state));
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          throw new ContextGraphError(
-            createOperationError('provider-failed', message, provider.id)
-          );
+          throw new GraphError(createOperationError('provider-failed', message, provider.id));
         }
       }
 
@@ -224,14 +223,14 @@ export class ContextGraphEngine implements ContextGraph {
     return deltas;
   }
 
-  getNodes(query?: NodeQuery): ContextNode[] {
+  getNodes(query?: NodeQuery): Node[] {
     const records = query
       ? this.orderedNodes.filter((record) => matchesNodeQuery(record.entity, query))
       : this.orderedNodes;
     return records.map((record) => cloneEntity(record.entity));
   }
 
-  getEdges(query?: EdgeQuery): ContextEdge[] {
+  getEdges(query?: EdgeQuery): Edge[] {
     const records = query
       ? this.orderedEdges.filter((record) => matchesEdgeQuery(record.entity, query))
       : this.orderedEdges;
@@ -249,7 +248,7 @@ export class ContextGraphEngine implements ContextGraph {
 
   query(request: QueryRequest) {
     if (request.version !== CONTRACT_VERSION) {
-      throw new ContextGraphError(
+      throw new GraphError(
         createOperationError(
           'invalid-payload',
           `Unsupported query version: received ${String((request as { version?: unknown }).version)}, expected ${CONTRACT_VERSION}`
@@ -265,7 +264,7 @@ export class ContextGraphEngine implements ContextGraph {
     };
   }
 
-  private createWriteContext(providerId: string, state: ProviderState): GraphWriteContext {
+  private createWriteContext(providerId: string, state: ProviderState): WriteContext {
     return {
       upsertNode: (node) => {
         const key = scopedEntityKey(providerId, node.id);
@@ -326,11 +325,7 @@ export class ContextGraphEngine implements ContextGraph {
     state.nodeKeys.clear();
   }
 
-  private createDelta(
-    providerId: string,
-    type: GraphDelta['type'],
-    state: ProviderState
-  ): GraphDelta {
+  private createDelta(providerId: string, type: Delta['type'], state: ProviderState): Delta {
     return {
       version: CONTRACT_VERSION,
       revision: this.revision,
