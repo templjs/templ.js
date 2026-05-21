@@ -7,10 +7,7 @@ import {
 } from '@templjs/core';
 import { existsSync } from 'fs';
 import { pathToFileURL } from 'url';
-import {
-  schemaSourceResolutionTesting,
-  splitSchemaSourceReference,
-} from '@templjs/semantify';
+import { schemaSourceResolutionTesting, splitSchemaSourceReference } from '@templjs/semantify';
 import { resolveSchemaFilePathSync } from './schema-utils.js';
 
 export {

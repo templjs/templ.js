@@ -132,10 +132,12 @@ function schemaSourceSpan(
     return { startOffset: 0, endOffset: 0 };
   }
 
-  return findBestPropertyRange(schemaText, path, pathKind, valueToken) ?? {
-    startOffset: 0,
-    endOffset: 0,
-  };
+  return (
+    findBestPropertyRange(schemaText, path, pathKind, valueToken) ?? {
+      startOffset: 0,
+      endOffset: 0,
+    }
+  );
 }
 
 function walkEnumNodes(
