@@ -315,6 +315,15 @@ Content: {{ name | upper }}
       expect(Array.isArray(tokens)).toBe(true);
     });
 
+    it('should preserve recovered expression content for unclosed filters', () => {
+      const text = '{{ name | upper';
+      const tokens = extractSemanticTokens(text);
+
+      const funcToken = tokens.find((t) => t.type === SemanticTokenTypes.Function);
+      expect(funcToken?.offset).toBe(text.indexOf('upper'));
+      expect(funcToken?.length).toBe('upper'.length);
+    });
+
     it('should handle special characters in content', () => {
       const text = '{{ special_var-name.property[0] }}';
       const tokens = extractSemanticTokens(text);

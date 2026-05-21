@@ -15,6 +15,7 @@ import {
   tokenize,
   TokenType,
 } from '@templjs/core';
+import { LineColumnMapper } from './position-mapping.js';
 
 /**
  * Semantic token types for template syntax highlighting
@@ -92,19 +93,8 @@ export interface TokenInfo {
 export type { DelimiterConfig };
 export { DEFAULT_DELIMITERS };
 
-function buildLineOffsets(text: string): number[] {
-  const offsets = [0];
-  for (let index = 0; index < text.length; index += 1) {
-    if (text[index] === '\n') {
-      offsets.push(index + 1);
-    }
-  }
-  return offsets;
-}
-
-function positionToOffset(lineOffsets: number[], line: number, column: number): number {
-  const lineIndex = Math.max(0, line - 1);
-  return (lineOffsets[lineIndex] ?? 0) + column;
+function tokenPositionToOffset(mapper: LineColumnMapper, line: number, column: number): number {
+  return mapper.lineColToOffset(Math.max(0, line - 1), column);
 }
 
 function getTokenContentRange(
@@ -115,13 +105,17 @@ function getTokenContentRange(
   trimLeft?: boolean,
   trimRight?: boolean
 ): { content: string; offset: number } {
+  const hasClosingDelimiter =
+    closingDelimiter.length > 0 && tokenContent.endsWith(closingDelimiter);
   let start = openingDelimiter.length;
-  let end = tokenContent.length - closingDelimiter.length;
+  let end = hasClosingDelimiter
+    ? tokenContent.length - closingDelimiter.length
+    : tokenContent.length;
 
   if (trimLeft && tokenContent[start] === '-') {
     start += 1;
   }
-  if (trimRight && tokenContent[end - 1] === '-') {
+  if (trimRight && hasClosingDelimiter && tokenContent[end - 1] === '-') {
     end -= 1;
   }
 
@@ -234,7 +228,7 @@ export function extractSemanticTokens(
 
   if (!text) return tokens;
 
-  const lineOffsets = buildLineOffsets(text);
+  const mapper = new LineColumnMapper(text);
   const templateTokens = tokenize(text, {
     recoverUnclosedDelimiters: true,
     delimiters: {
@@ -252,7 +246,7 @@ export function extractSemanticTokens(
       continue;
     }
 
-    const tokenOffset = positionToOffset(lineOffsets, token.start.line, token.start.column);
+    const tokenOffset = tokenPositionToOffset(mapper, token.start.line, token.start.column);
     tokens.push({
       offset: tokenOffset,
       length: token.content.length,

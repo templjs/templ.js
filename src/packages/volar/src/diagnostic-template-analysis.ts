@@ -82,23 +82,13 @@ function getDelimiters(options?: DiagnosticOptions): TemplateDelimiters {
   return resolveDelimiters(options?.delimiters);
 }
 
-function buildLineOffsets(text: string): number[] {
-  const offsets = [0];
-  for (let index = 0; index < text.length; index += 1) {
-    if (text[index] === '\n') {
-      offsets.push(index + 1);
-    }
-  }
-  return offsets;
-}
-
-function positionToOffset(lineOffsets: number[], line: number, column: number): number {
-  return (lineOffsets[Math.max(0, line - 1)] ?? 0) + column;
+function tokenPositionToOffset(mapper: LineColumnMapper, line: number, column: number): number {
+  return mapper.lineColToOffset(Math.max(0, line - 1), column);
 }
 
 function extractBlocks(text: string, delimiters: TemplateDelimiters): BlockMatch[] {
   const blocks: BlockMatch[] = [];
-  const lineOffsets = buildLineOffsets(text);
+  const mapper = new LineColumnMapper(text);
   const tokens = tokenize(text, {
     recoverUnclosedDelimiters: true,
     delimiters: {
@@ -119,7 +109,7 @@ function extractBlocks(text: string, delimiters: TemplateDelimiters): BlockMatch
       continue;
     }
 
-    const start = positionToOffset(lineOffsets, token.start.line, token.start.column);
+    const start = tokenPositionToOffset(mapper, token.start.line, token.start.column);
     blocks.push({
       type: token.type,
       start,
