@@ -66,6 +66,44 @@ describe('TemplJS adapters and authoring profile', () => {
     });
   });
 
+  it('projects schema source spans from schema text into graph provenance', () => {
+    const schemaText = [
+      '{',
+      '  "type": "object",',
+      '  "properties": {',
+      '    "status": {',
+      '      "type": "string",',
+      '      "enum": ["draft", "ready"]',
+      '    }',
+      '  }',
+      '}',
+    ].join('\n');
+    const adapterOutput = createTempljsSchemaAdapterOutput({
+      sourceDocId: 'file:///example.schema.json',
+      sourceUri: 'file:///example.schema.json',
+      schemaText,
+      schema: JSON.parse(schemaText) as object,
+    });
+    const profile = createTempljsAuthoringProfile();
+
+    const result = projectSemanticGraph({ adapterOutput, profile });
+    const statusNode = result.graph.nodes.find(
+      (node) => node.kind === 'templjs.schema-path' && node.attributes?.path === 'status'
+    );
+    const draftNode = result.graph.nodes.find(
+      (node) => node.kind === 'templjs.schema-enum-value' && node.attributes?.label === 'draft'
+    );
+
+    expect(statusNode?.provenance?.sourceSpan).toEqual({
+      startOffset: schemaText.indexOf('"status"'),
+      endOffset: schemaText.indexOf('"status"') + '"status"'.length,
+    });
+    expect(draftNode?.provenance?.sourceSpan).toEqual({
+      startOffset: schemaText.indexOf('"draft"'),
+      endOffset: schemaText.indexOf('"draft"') + '"draft"'.length,
+    });
+  });
+
   it('declares helper extension metadata without executing editor policy', () => {
     const profile = createTempljsAuthoringProfile();
 

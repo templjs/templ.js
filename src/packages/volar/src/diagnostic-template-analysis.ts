@@ -6,10 +6,12 @@ import {
   resolveSemanticZoneByHostLanguage,
   resolveSemanticZone,
   SchemaValidator,
+  tokenize,
+  TokenType,
   validateTemplateStatementSyntax,
 } from '@templjs/core';
 import { LineColumnMapper } from './position-mapping.js';
-import { buildBlockPattern, resolveDelimiters } from './template-delimiters.js';
+import { resolveDelimiters } from './template-delimiters.js';
 import {
   buildForScopesInText,
   resolveScopedPath,
@@ -39,6 +41,7 @@ function getDefaultFilters(): ReadonlySet<string> {
 }
 
 interface BlockMatch {
+  type: TokenType.COMMENT | TokenType.STATEMENT | TokenType.EXPRESSION;
   start: number;
   end: number;
   content: string;
@@ -79,16 +82,39 @@ function getDelimiters(options?: DiagnosticOptions): TemplateDelimiters {
   return resolveDelimiters(options?.delimiters);
 }
 
-function extractBlocks(text: string, start: string, end: string): BlockMatch[] {
-  const blocks: BlockMatch[] = [];
-  const regex = buildBlockPattern(start, end);
-  let match: RegExpExecArray | null;
+function tokenPositionToOffset(mapper: LineColumnMapper, line: number, column: number): number {
+  return mapper.lineColCodePointToOffset(Math.max(0, line - 1), column);
+}
 
-  while ((match = regex.exec(text)) !== null) {
+function extractBlocks(text: string, delimiters: TemplateDelimiters): BlockMatch[] {
+  const blocks: BlockMatch[] = [];
+  const mapper = new LineColumnMapper(text);
+  const tokens = tokenize(text, {
+    recoverUnclosedDelimiters: true,
+    delimiters: {
+      statement_start: delimiters.statementStart,
+      statement_end: delimiters.statementEnd,
+      expression_start: delimiters.expressionStart,
+      expression_end: delimiters.expressionEnd,
+      comment_start: delimiters.commentStart,
+      comment_end: delimiters.commentEnd,
+    },
+  });
+
+  for (const token of tokens) {
+    if (token.type === TokenType.TEXT) {
+      continue;
+    }
+    if (token.delimiterEnd && !token.content.endsWith(token.delimiterEnd)) {
+      continue;
+    }
+
+    const start = tokenPositionToOffset(mapper, token.start.line, token.start.column);
     blocks.push({
-      start: match.index,
-      end: match.index + match[0].length,
-      content: match[0],
+      type: token.type,
+      start,
+      end: start + token.content.length,
+      content: token.content,
     });
   }
 
@@ -253,22 +279,15 @@ export function collectTemplateDiagnostics(
     return contentValidator ?? frontmatterValidator;
   };
 
-  const commentBlocks = extractBlocks(text, delimiters.commentStart, delimiters.commentEnd);
-  const statementBlocks = extractBlocks(text, delimiters.statementStart, delimiters.statementEnd);
-  const expressionBlocks = extractBlocks(
-    text,
-    delimiters.expressionStart,
-    delimiters.expressionEnd
-  );
+  const templateBlocks = extractBlocks(text, delimiters);
+  const commentBlocks = templateBlocks.filter((block) => block.type === TokenType.COMMENT);
+  const statementBlocks = templateBlocks.filter((block) => block.type === TokenType.STATEMENT);
+  const expressionBlocks = templateBlocks.filter((block) => block.type === TokenType.EXPRESSION);
   const forScopes = buildForScopesInText(text, delimiters);
 
   const statementStack: BlockStackEntry[] = [];
 
   for (const block of statementBlocks) {
-    if (isInsideBlocks(block.start, commentBlocks)) {
-      continue;
-    }
-
     const tag = parseStatementTag(block.content, delimiters);
     if (!tag) continue;
 
@@ -475,10 +494,6 @@ export function collectTemplateDiagnostics(
   }
 
   for (const block of expressionBlocks) {
-    if (isInsideBlocks(block.start, commentBlocks)) {
-      continue;
-    }
-
     const rawInner = block.content.slice(
       delimiters.expressionStart.length,
       block.content.length - delimiters.expressionEnd.length

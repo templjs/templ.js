@@ -77,9 +77,11 @@ export class PositionMapper {
  * Line and column position tracker
  */
 export class LineColumnMapper {
+  private code: string;
   private lineOffsets: number[] = [0]; // Start of each line
 
   constructor(code: string) {
+    this.code = code;
     for (let i = 0; i < code.length; i++) {
       if (code[i] === '\n') {
         this.lineOffsets.push(i + 1);
@@ -108,6 +110,38 @@ export class LineColumnMapper {
       return this.lineOffsets[this.lineOffsets.length - 1];
     }
     return this.lineOffsets[line] + column;
+  }
+
+  /**
+   * Convert (line, code-point column) to UTF-16 code-unit offset.
+   *
+   * The core tokenizer tracks columns by code points, while language-server
+   * offsets are UTF-16 based. This bridge prevents misalignment on astral chars.
+   */
+  lineColCodePointToOffset(line: number, codePointColumn: number): number {
+    if (line >= this.lineOffsets.length) {
+      return this.lineOffsets[this.lineOffsets.length - 1];
+    }
+
+    const targetCodePoints = Math.max(0, codePointColumn);
+    const lineStart = this.lineOffsets[line];
+    const nextLineStart =
+      line + 1 < this.lineOffsets.length ? this.lineOffsets[line + 1] : this.code.length;
+
+    let offset = lineStart;
+    let remaining = targetCodePoints;
+
+    while (offset < nextLineStart && remaining > 0) {
+      const codePoint = this.code.codePointAt(offset);
+      if (codePoint === undefined) {
+        break;
+      }
+
+      offset += codePoint > 0xffff ? 2 : 1;
+      remaining -= 1;
+    }
+
+    return offset;
   }
 
   /**

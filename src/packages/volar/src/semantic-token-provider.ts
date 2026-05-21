@@ -5,11 +5,17 @@
  */
 
 import {
-  buildBlockPattern,
   resolveDelimiters,
   type DelimiterConfig,
   DEFAULT_DELIMITERS,
 } from './template-delimiters.js';
+import {
+  extractExpressionFilterReferences,
+  getBuiltinFilterNames,
+  tokenize,
+  TokenType,
+} from '@templjs/core';
+import { LineColumnMapper } from './position-mapping.js';
 
 /**
  * Semantic token types for template syntax highlighting
@@ -72,33 +78,7 @@ const KEYWORDS = new Set([
   'null',
 ]);
 
-/**
- * Built-in filters for template language
- */
-const FILTERS = new Set([
-  'upper',
-  'lower',
-  'capitalize',
-  'title',
-  'trim',
-  'length',
-  'slice',
-  'first',
-  'last',
-  'reverse',
-  'sort',
-  'default',
-  'escape',
-  'safe',
-  'json',
-  'join',
-  'split',
-  'replace',
-  'round',
-  'abs',
-  'int',
-  'float',
-]);
+const FILTERS = new Set(getBuiltinFilterNames());
 
 /**
  * Token information for semantic highlighting
@@ -112,6 +92,179 @@ export interface TokenInfo {
 
 export type { DelimiterConfig };
 export { DEFAULT_DELIMITERS };
+
+function tokenPositionToOffset(mapper: LineColumnMapper, line: number, column: number): number {
+  return mapper.lineColCodePointToOffset(Math.max(0, line - 1), column);
+}
+
+function getTokenContentRange(
+  tokenContent: string,
+  tokenOffset: number,
+  openingDelimiter: string,
+  closingDelimiter: string,
+  trimLeft?: boolean,
+  trimRight?: boolean
+): { content: string; offset: number } {
+  const hasClosingDelimiter =
+    closingDelimiter.length > 0 && tokenContent.endsWith(closingDelimiter);
+  let start = openingDelimiter.length;
+  let end = hasClosingDelimiter
+    ? tokenContent.length - closingDelimiter.length
+    : tokenContent.length;
+
+  if (trimLeft && tokenContent[start] === '-') {
+    start += 1;
+  }
+  if (trimRight && hasClosingDelimiter && tokenContent[end - 1] === '-') {
+    end -= 1;
+  }
+
+  return {
+    content: tokenContent.slice(start, Math.max(start, end)),
+    offset: tokenOffset + start,
+  };
+}
+
+function extractFilterReferencesForHighlighting(
+  content: string
+): Array<{ name: string; start: number; end: number }> {
+  const parserBacked = extractExpressionFilterReferences(content).flatMap((ref) => {
+    const identifier = /^[A-Za-z_][\w-]*/.exec(ref.name)?.[0];
+    if (!identifier) {
+      return [];
+    }
+    const prefix = content.slice(0, ref.start);
+    if (!isTopLevelFilterContext(prefix)) {
+      return [];
+    }
+    return [
+      {
+        name: identifier,
+        start: ref.start,
+        end: ref.start + identifier.length,
+      },
+    ];
+  });
+  if (parserBacked.length > 0) {
+    return parserBacked;
+  }
+
+  // Syntax-highlighting fallback only: core expression parsing does not yet
+  // accept legacy `| filter: arg` syntax, but themes still need the filter name.
+  const refs: Array<{ name: string; start: number; end: number }> = [];
+  let inString: '"' | "'" | null = null;
+  let escaped = false;
+  let bracketDepth = 0;
+  let parenDepth = 0;
+
+  for (let index = 0; index < content.length; index += 1) {
+    const char = content[index];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === '\\') {
+        escaped = true;
+      } else if (char === inString) {
+        inString = null;
+      }
+      continue;
+    }
+
+    if (char === '"' || char === "'") {
+      inString = char;
+      continue;
+    }
+    if (char === '[') {
+      bracketDepth += 1;
+      continue;
+    }
+    if (char === ']') {
+      bracketDepth = Math.max(0, bracketDepth - 1);
+      continue;
+    }
+    if (char === '(') {
+      parenDepth += 1;
+      continue;
+    }
+    if (char === ')') {
+      parenDepth = Math.max(0, parenDepth - 1);
+      continue;
+    }
+
+    if (
+      char !== '|' ||
+      content[index + 1] === '|' ||
+      content[index - 1] === '|' ||
+      bracketDepth > 0 ||
+      parenDepth > 0
+    ) {
+      continue;
+    }
+
+    let cursor = index + 1;
+    while (cursor < content.length && /\s/.test(content[cursor]!)) {
+      cursor += 1;
+    }
+    const start = cursor;
+    if (!/[A-Za-z_]/.test(content[cursor] ?? '')) {
+      continue;
+    }
+    cursor += 1;
+    while (cursor < content.length && /[\w-]/.test(content[cursor]!)) {
+      cursor += 1;
+    }
+    refs.push({
+      name: content.slice(start, cursor),
+      start,
+      end: cursor,
+    });
+  }
+
+  return refs;
+}
+
+function isTopLevelFilterContext(prefix: string): boolean {
+  let inString: '"' | "'" | null = null;
+  let escaped = false;
+  let bracketDepth = 0;
+  let parenDepth = 0;
+
+  for (let index = 0; index < prefix.length; index += 1) {
+    const char = prefix[index];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === '\\') {
+        escaped = true;
+      } else if (char === inString) {
+        inString = null;
+      }
+      continue;
+    }
+
+    if (char === '"' || char === "'") {
+      inString = char;
+      continue;
+    }
+    if (char === '[') {
+      bracketDepth += 1;
+      continue;
+    }
+    if (char === ']') {
+      bracketDepth = Math.max(0, bracketDepth - 1);
+      continue;
+    }
+    if (char === '(') {
+      parenDepth += 1;
+      continue;
+    }
+    if (char === ')') {
+      parenDepth = Math.max(0, parenDepth - 1);
+    }
+  }
+
+  return inString === null && bracketDepth === 0 && parenDepth === 0;
+}
 
 /**
  * Extract semantic tokens from template text
@@ -128,77 +281,75 @@ export function extractSemanticTokens(
 
   if (!text) return tokens;
 
-  // Match template comments
-  const commentPattern = buildBlockPattern(config.commentStart, config.commentEnd);
-  let match: RegExpExecArray | null;
+  const mapper = new LineColumnMapper(text);
+  const templateTokens = tokenize(text, {
+    recoverUnclosedDelimiters: true,
+    delimiters: {
+      statement_start: config.statementStart,
+      statement_end: config.statementEnd,
+      expression_start: config.expressionStart,
+      expression_end: config.expressionEnd,
+      comment_start: config.commentStart,
+      comment_end: config.commentEnd,
+    },
+  });
 
-  commentPattern.lastIndex = 0;
-  while ((match = commentPattern.exec(text)) !== null) {
-    tokens.push({
-      offset: match.index,
-      length: match[0].length,
-      type: SemanticTokenTypes.Comment,
-    });
-  }
-
-  // Match template statements
-  const statementPattern = buildBlockPattern(config.statementStart, config.statementEnd);
-  statementPattern.lastIndex = 0;
-  while ((match = statementPattern.exec(text)) !== null) {
-    tokens.push({
-      offset: match.index,
-      length: match[0].length,
-      type: SemanticTokenTypes.Keyword,
-    });
-
-    // Extract keywords within statement
-    const content = match[0]
-      .slice(config.statementStart.length, -config.statementEnd.length)
-      .trim();
-    const keyword = content.split(/\s+/)[0];
-    if (KEYWORDS.has(keyword)) {
-      const keywordOffset = match.index + config.statementStart.length;
-      tokens.push({
-        offset: keywordOffset,
-        length: keyword.length,
-        type: SemanticTokenTypes.Keyword,
-      });
+  for (const token of templateTokens) {
+    if (token.type === TokenType.TEXT) {
+      continue;
     }
-  }
 
-  // Match template expressions
-  const expressionPattern = buildBlockPattern(config.expressionStart, config.expressionEnd);
-  expressionPattern.lastIndex = 0;
-  while ((match = expressionPattern.exec(text)) !== null) {
+    const tokenOffset = tokenPositionToOffset(mapper, token.start.line, token.start.column);
     tokens.push({
-      offset: match.index,
-      length: match[0].length,
-      type: SemanticTokenTypes.Variable,
+      offset: tokenOffset,
+      length: token.content.length,
+      type:
+        token.type === TokenType.COMMENT
+          ? SemanticTokenTypes.Comment
+          : token.type === TokenType.STATEMENT
+            ? SemanticTokenTypes.Keyword
+            : SemanticTokenTypes.Variable,
     });
 
-    // Extract filters (text after |)
-    const content = match[0].slice(config.expressionStart.length, -config.expressionEnd.length);
-    const parts = content.split('|');
-    if (parts.length > 1) {
-      let filterBaseOffset = match.index + config.expressionStart.length;
-      for (let i = 0; i < parts.length; i++) {
-        if (i > 0) {
-          filterBaseOffset += 1; // Account for the pipe character
+    if (token.type === TokenType.STATEMENT) {
+      const inner = getTokenContentRange(
+        token.content,
+        tokenOffset,
+        token.delimiterStart ?? config.statementStart,
+        token.delimiterEnd ?? config.statementEnd,
+        token.trimLeft,
+        token.trimRight
+      );
+      const keywordMatch = inner.content.match(/[A-Za-z_]\w*/);
+      if (keywordMatch && KEYWORDS.has(keywordMatch[0])) {
+        tokens.push({
+          offset: inner.offset + keywordMatch.index!,
+          length: keywordMatch[0].length,
+          type: SemanticTokenTypes.Keyword,
+        });
+      }
+    }
+
+    if (token.type === TokenType.EXPRESSION) {
+      const inner = getTokenContentRange(
+        token.content,
+        tokenOffset,
+        token.delimiterStart ?? config.expressionStart,
+        token.delimiterEnd ?? config.expressionEnd,
+        token.trimLeft,
+        token.trimRight
+      );
+      for (const filter of extractFilterReferencesForHighlighting(inner.content)) {
+        if (!FILTERS.has(filter.name)) {
+          continue;
         }
-        const filterPart = parts[i].trim();
-        const filterMatch = filterPart.match(/^(\w+)/);
-        if (filterMatch && FILTERS.has(filterMatch[1])) {
-          const trimmedPart = parts[i];
-          const filterStartInPart = trimmedPart.indexOf(filterMatch[1]);
-          const filterOffset = filterBaseOffset + filterStartInPart;
-          tokens.push({
-            offset: filterOffset,
-            length: filterMatch[1].length,
-            type: SemanticTokenTypes.Function,
-            modifiers: [SemanticTokenModifiers.Readonly],
-          });
-        }
-        filterBaseOffset += parts[i].length;
+
+        tokens.push({
+          offset: inner.offset + filter.start,
+          length: filter.name.length,
+          type: SemanticTokenTypes.Function,
+          modifiers: [SemanticTokenModifiers.Readonly],
+        });
       }
     }
   }

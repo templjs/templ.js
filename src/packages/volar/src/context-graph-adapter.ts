@@ -17,14 +17,18 @@ import type {
 } from '@templjs/context-graph';
 import { getSharedSchemaMetadata } from './context-graph-schema.js';
 import {
-  contextGraphDefinitionResolutionTesting,
   decodeJsonPointerSegment,
   findBestPropertyOffset,
-  getPathValueDefinition,
   getPositionForOffset,
-  getSchemaPathDefinition,
   resolvePathDefinitionAcrossRefs,
   resolveRefTargetUri,
+  schemaSourceResolutionTesting,
+} from '@templjs/semantify';
+import {
+  getPathRegistryKeysFromSchema,
+  getPathValueDefinition,
+  getSchemaPathDefinition,
+  isLikelyPathValue,
   toDefinitionTarget,
   type DefinitionResolutionOptions,
   type DefinitionTarget,
@@ -95,8 +99,13 @@ export interface ContextGraphSemanticReadAdapterOptions {
  * These helpers are subject to change or removal without notice.
  */
 export const contextGraphAdapterTesting = {
-  ...contextGraphDefinitionResolutionTesting,
+  ...schemaSourceResolutionTesting,
   ...contextGraphSnapshotTesting,
+  getPathRegistryKeysFromSchema,
+  isLikelyPathValue,
+  getPathValueDefinition,
+  getSchemaPathDefinition,
+  toDefinitionTarget,
 };
 
 export class ContextGraphSemanticReadAdapter {

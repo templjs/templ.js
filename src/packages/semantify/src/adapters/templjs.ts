@@ -18,6 +18,7 @@ import type {
   ProjectionRule,
   SemantifySchemaVersion,
 } from '../model/public-types.js';
+import { findBestPropertyRange } from '../schema-source-resolution.js';
 
 const SEMANTIFY_SCHEMA_VERSION: SemantifySchemaVersion = '1.0.0';
 const TEMPLJS_TEMPLATE_ADAPTER_ID = 'templjs-template';
@@ -36,6 +37,7 @@ export interface TempljsSchemaAdapterInput {
   schema: JSONSchema;
   sourceDocId: string;
   sourceUri?: string;
+  schemaText?: string;
   contextBlock?: SemanticContextBlock;
   adapterVersion?: string;
 }
@@ -120,22 +122,42 @@ function contextBlockProfileId(contextBlock: SemanticContextBlock): string {
   return `schema-${contextBlock}`;
 }
 
+function schemaSourceSpan(
+  schemaText: string | undefined,
+  path: string,
+  pathKind: 'property' | 'value' = 'property',
+  valueToken?: string
+): OffsetRange {
+  if (!schemaText) {
+    return { startOffset: 0, endOffset: 0 };
+  }
+
+  return (
+    findBestPropertyRange(schemaText, path, pathKind, valueToken) ?? {
+      startOffset: 0,
+      endOffset: 0,
+    }
+  );
+}
+
 function walkEnumNodes(
   schema: JSONSchema,
   contextBlock: SemanticContextBlock,
   currentPath: string,
-  nodes: AdapterNode[]
+  nodes: AdapterNode[],
+  schemaText?: string
 ): void {
   if (currentPath && Array.isArray(schema.enum)) {
     for (const value of schema.enum) {
       if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+        const valueToken = String(value);
         nodes.push({
           id: `schema-enum:${contextBlock}:${currentPath}:${String(value)}`,
           kind: 'templjs.schema-enum-value',
-          sourceSpan: { startOffset: 0, endOffset: 0 },
+          sourceSpan: schemaSourceSpan(schemaText, currentPath, 'value', valueToken),
           content: {
             contextBlock,
-            label: String(value),
+            label: valueToken,
             path: currentPath,
             profileId: contextBlockProfileId(contextBlock),
             value,
@@ -150,7 +172,13 @@ function walkEnumNodes(
   }
 
   for (const [key, child] of Object.entries(schema.properties)) {
-    walkEnumNodes(child, contextBlock, currentPath ? `${currentPath}.${key}` : key, nodes);
+    walkEnumNodes(
+      child,
+      contextBlock,
+      currentPath ? `${currentPath}.${key}` : key,
+      nodes,
+      schemaText
+    );
   }
 }
 
@@ -215,7 +243,7 @@ export function createTempljsSchemaAdapterOutput(input: TempljsSchemaAdapterInpu
     nodes.push({
       id: `schema-path:${contextBlock}:${path}`,
       kind: 'templjs.schema-path',
-      sourceSpan: { startOffset: 0, endOffset: 0 },
+      sourceSpan: schemaSourceSpan(input.schemaText, path),
       content: {
         contextBlock,
         description: entry.description,
@@ -230,7 +258,7 @@ export function createTempljsSchemaAdapterOutput(input: TempljsSchemaAdapterInpu
     });
   }
 
-  walkEnumNodes(input.schema, contextBlock, '', nodes);
+  walkEnumNodes(input.schema, contextBlock, '', nodes, input.schemaText);
 
   return {
     schemaVersion: SEMANTIFY_SCHEMA_VERSION,

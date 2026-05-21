@@ -246,6 +246,40 @@ describe('SemanticTokenProvider', () => {
       const funcTokens = tokens.filter((t) => t.type === SemanticTokenTypes.Function);
       expect(funcTokens.length).toBe(0);
     });
+
+    it('should ignore legacy filter separators inside strings, brackets, and calls', () => {
+      const text =
+        '{{ "a|b" | default: "x\\"|y" }} {{ items[name | lower] | join: "," }} {{ call(name | trim) | upper }} {{ value | }}';
+      const tokens = extractSemanticTokens(text);
+
+      const filterNames = tokens
+        .filter((t) => t.type === SemanticTokenTypes.Function)
+        .map((token) => text.slice(token.offset, token.offset + token.length));
+
+      expect(filterNames).toEqual(['default', 'join', 'upper']);
+    });
+
+    it('extracts filters from trim-marker expressions', () => {
+      const text = '{{- value | upper -}}';
+      const tokens = extractSemanticTokens(text);
+
+      const filterNames = tokens
+        .filter((t) => t.type === SemanticTokenTypes.Function)
+        .map((token) => text.slice(token.offset, token.offset + token.length));
+
+      expect(filterNames).toEqual(['upper']);
+    });
+
+    it('keeps parser-backed top-level filters when nested strings contain escapes', () => {
+      const text = '{{ call("a\\\"b") | upper }}';
+      const tokens = extractSemanticTokens(text);
+
+      const filterNames = tokens
+        .filter((t) => t.type === SemanticTokenTypes.Function)
+        .map((token) => text.slice(token.offset, token.offset + token.length));
+
+      expect(filterNames).toEqual(['upper']);
+    });
   });
 
   describe('Complex Templates', () => {
@@ -313,6 +347,15 @@ Content: {{ name | upper }}
       const tokens = extractSemanticTokens(text);
       // Should not throw, might not match unclosed delimiters
       expect(Array.isArray(tokens)).toBe(true);
+    });
+
+    it('should preserve recovered expression content for unclosed filters', () => {
+      const text = '{{ name | upper';
+      const tokens = extractSemanticTokens(text);
+
+      const funcToken = tokens.find((t) => t.type === SemanticTokenTypes.Function);
+      expect(funcToken?.offset).toBe(text.indexOf('upper'));
+      expect(funcToken?.length).toBe('upper'.length);
     });
 
     it('should handle special characters in content', () => {

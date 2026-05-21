@@ -62,6 +62,31 @@ export {
   type TempljsSchemaAdapterInput,
   type TempljsTemplateAdapterInput,
 } from './adapters/templjs.js';
+export {
+  collectTopLevelObjectRangesInArray,
+  decodeJsonPointerSegment,
+  findBestPropertyOffset,
+  findBestPropertyRange,
+  findMatchingBracket,
+  findObjectRangeByPointer,
+  findPropertyMatchInObjectRange,
+  findPropertyViaCombinators,
+  findPropertyViaSchemaStructure,
+  findStringEnd,
+  findTopLevelPropertyInObjectRange,
+  findValueRange,
+  getPositionForOffset,
+  resolvePathDefinitionAcrossRefs,
+  resolveRefTargetUri,
+  schemaSourceResolutionTesting,
+  skipWhitespace,
+  splitPropertyPath,
+  splitSchemaSourceReference,
+  stripJsonQuotes,
+  type ResolvedSchemaPathTarget,
+  type SchemaSourceRange,
+  type SchemaSourceReference,
+} from './schema-source-resolution.js';
 export { semantifyTesting } from './binder/framework.js';
 export { linkReferences } from './linker/index.js';
 export type { LinkReferencesInput, LinkReferencesResult } from './linker/index.js';

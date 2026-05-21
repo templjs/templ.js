@@ -1298,12 +1298,88 @@ describe('context-graph helper branch coverage', () => {
     expect(target).toBeNull();
   });
 
+  it('returns null path-value definitions when no workspace or document root can resolve a relative source', () => {
+    const text = ['---', '$schema: ./missing.json', '---'].join('\n');
+    const offset = text.indexOf('missing.json') + 1;
+
+    const target = contextGraphAdapterTesting.getPathValueDefinition(text, offset, {});
+
+    expect(target).toBeNull();
+  });
+
+  it('resolves content schema aliases from frontmatter key tokens', () => {
+    const target = contextGraphAdapterTesting.getSchemaPathDefinition(
+      ['---', '$content-schema: "https://example.com/content.json"', '---'].join('\n'),
+      16,
+      {}
+    );
+
+    expect(target?.uri).toBe('https://example.com/content.json');
+  });
+
+  it('returns null schema-path definitions when a relative json token cannot be resolved', () => {
+    const text = ['---', '$schema: ./missing.json', '---'].join('\n');
+    const offset = text.indexOf('missing.json') + 1;
+
+    const target = contextGraphAdapterTesting.getSchemaPathDefinition(text, offset, {});
+    expect(target).toBeNull();
+  });
+
   it('returns null schema-path definitions when no token can be extracted', () => {
     const text = ['---', '$schema: ', '---'].join('\n');
     const offset = text.indexOf('$schema:') + '$schema:'.length + 1;
     const target = contextGraphAdapterTesting.getSchemaPathDefinition(text, offset, {});
 
     expect(target).toBeNull();
+  });
+
+  it('resolves content-schema key definitions to existing local schema files', () => {
+    const tempDir = makeTempDir();
+    const schemaPath = path.join(tempDir, 'content.schema.json');
+    writeFileSync(schemaPath, '{"type":"object"}', 'utf8');
+    const text = ['---', '$content-schema: ./content.schema.json', '---'].join('\n');
+    const offset = text.indexOf('$content-schema') + 2;
+
+    const target = contextGraphAdapterTesting.getSchemaPathDefinition(text, offset, {
+      workspaceRoot: tempDir,
+      documentUri: pathToFileURL(path.join(tempDir, 'doc.md.tmpl')).toString(),
+    });
+
+    expect(target?.uri).toBe(pathToFileURL(schemaPath).toString());
+  });
+
+  it('returns null schema-path definitions when the resolved local file is missing', () => {
+    const tempDir = makeTempDir();
+    const text = ['---', '$schema: ./missing.schema.json', '---'].join('\n');
+    const offset = text.indexOf('missing.schema.json') + 1;
+
+    const target = contextGraphAdapterTesting.getSchemaPathDefinition(text, offset, {
+      workspaceRoot: tempDir,
+      documentUri: pathToFileURL(path.join(tempDir, 'doc.md.tmpl')).toString(),
+    });
+
+    expect(target).toBeNull();
+  });
+
+  it('resolves registered path-value definitions to existing local schema files', () => {
+    const tempDir = makeTempDir();
+    const schemaPath = path.join(tempDir, 'data.schema.json');
+    writeFileSync(schemaPath, '{"type":"object"}', 'utf8');
+    const text = ['---', 'schemaPath: ./data.schema.json', '---'].join('\n');
+    const offset = text.indexOf('data.schema.json') + 1;
+
+    const target = contextGraphAdapterTesting.getPathValueDefinition(text, offset, {
+      workspaceRoot: tempDir,
+      documentUri: pathToFileURL(path.join(tempDir, 'doc.md.tmpl')).toString(),
+      schema: {
+        type: 'object',
+        properties: {
+          schemaPath: { type: 'string', format: 'uri-reference' },
+        },
+      },
+    });
+
+    expect(target?.uri).toBe(pathToFileURL(schemaPath).toString());
   });
 
   it('computes line/character positions from offsets', () => {
