@@ -619,11 +619,16 @@ describe('service-plugins position-remap branches', () => {
     ).resolves.toEqual({ uri: 'file:///single-async' });
   });
 
-  it('passes through scalar definition payloads that are not object-like', async () => {
+  it('passes through scalar definition payloads that are not remappable location shapes', async () => {
     const plugin = {
       name: 'mapped-scalar-guard-plugin',
       create: () => ({
-        provideDefinition: vi.fn().mockResolvedValueOnce('not-a-location').mockReturnValueOnce(42),
+        provideDefinition: vi
+          .fn()
+          .mockResolvedValueOnce('not-a-location')
+          .mockResolvedValueOnce({ targetUri: 'file:///schema.json' })
+          .mockReturnValueOnce(42)
+          .mockReturnValueOnce({ uri: 'file:///schema.json' }),
       }),
     };
 
@@ -640,7 +645,13 @@ describe('service-plugins position-remap branches', () => {
     await expect(
       instance.provideDefinition?.(document, { line: 0, character: 0 }, {} as never)
     ).resolves.toBe('not-a-location');
+    await expect(
+      instance.provideDefinition?.(document, { line: 0, character: 0 }, {} as never)
+    ).resolves.toEqual({ targetUri: 'file:///schema.json' });
     expect(instance.provideDefinition?.(document, { line: 0, character: 0 }, {} as never)).toBe(42);
+    expect(instance.provideDefinition?.(document, { line: 0, character: 0 }, {} as never)).toEqual({
+      uri: 'file:///schema.json',
+    });
   });
 
   it('remaps scalar definition responses for sync and async mapped contexts', async () => {
