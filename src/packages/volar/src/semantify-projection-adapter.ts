@@ -12,7 +12,9 @@ export interface SemantifyProjectionSnapshotOptions {
   text: string;
   documentUri?: string;
   schema?: object;
+  schemaText?: string;
   contentSchema?: object;
+  contentSchemaText?: string;
   delimiters?: DelimiterConfigInput;
 }
 
@@ -61,6 +63,7 @@ export function createSemantifyProjectionSnapshot(
           schema: options.schema as JSONSchema,
           sourceDocId,
           sourceUri: options.documentUri,
+          schemaText: options.schemaText,
           contextBlock: 'frontmatter',
         }),
         profile,
@@ -75,6 +78,7 @@ export function createSemantifyProjectionSnapshot(
           schema: (options.contentSchema ?? options.schema) as JSONSchema,
           sourceDocId,
           sourceUri: options.documentUri,
+          schemaText: options.contentSchema ? options.contentSchemaText : options.schemaText,
           contextBlock: 'content',
         }),
         profile,
