@@ -2,12 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import type {
-  GraphOperationError,
-  GraphProvenance,
-  QueryRequest,
-  QueryResponse,
-} from '../src/index.js';
+import type { OperationError, Provenance, QueryRequest, QueryResponse } from '../src/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,7 +55,7 @@ describe('API boundary and contract compatibility', () => {
   });
 
   it('structured error payloads are v1-compatible and serialization-safe', () => {
-    const errorPayload: GraphOperationError = {
+    const errorPayload: OperationError = {
       version: 'v1',
       code: 'provider-failed',
       message: 'provider exploded',
@@ -72,7 +67,7 @@ describe('API boundary and contract compatibility', () => {
   });
 
   it('graph provenance is v1-compatible and serialization-safe', () => {
-    const provenance: GraphProvenance = {
+    const provenance: Provenance = {
       version: 'v1',
       providerId: 'templjs-template',
       providerVersion: '1.0.0',
