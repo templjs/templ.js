@@ -1,5 +1,5 @@
 ---
-'$schema': schemas/work-management/frontmatter/work-item.json
+$schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:136-formatting-orchestration-contract-host-delegation
 title: '136: Formatting Orchestration Contract with Host Delegation'
 summary: Define projection-aware formatting orchestration contracts while permanently keeping actual formatting delegated to host language services.
@@ -11,6 +11,9 @@ status_reason: prioritized
 priority: high
 estimated: 6
 actual: 0
+links:
+  evidence:
+    - '[[record-20260521-221758-136-formatting-orchestration-contract-host-delegation]]'
 ---
 
 ## Goal

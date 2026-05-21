@@ -1,5 +1,5 @@
 ---
-'$schema': schemas/work-management/frontmatter/work-item.json
+$schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:139-final-verification-performance-gate-and-evidence-collation
 title: '139: Final Verification, Performance Gate, and Evidence Collation'
 summary: Execute final deterministic/projection validation, performance checks, and closure-ready evidence collation for the full cutover lane.
@@ -11,6 +11,9 @@ status_reason: prioritized
 priority: high
 estimated: 6
 actual: 0
+links:
+  evidence:
+    - '[[record-20260521-221758-139-final-verification-performance-gate-and-evidence-collation]]'
 ---
 
 ## Goal

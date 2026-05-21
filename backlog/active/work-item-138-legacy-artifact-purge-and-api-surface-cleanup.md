@@ -1,5 +1,5 @@
 ---
-'$schema': schemas/work-management/frontmatter/work-item.json
+$schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:138-legacy-artifact-purge-and-api-surface-cleanup
 title: '138: Legacy Artifact Purge and API Surface Cleanup'
 summary: Remove all Semantify migration artifacts, compatibility shims, and obsolete tests/docs after projection-backed feature cutover.
@@ -11,6 +11,9 @@ status_reason: prioritized
 priority: critical
 estimated: 8
 actual: 0
+links:
+  evidence:
+    - '[[record-20260521-221758-138-legacy-artifact-purge-and-api-surface-cleanup]]'
 ---
 
 ## Goal

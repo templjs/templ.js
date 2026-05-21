@@ -1,5 +1,5 @@
 ---
-'$schema': schemas/work-management/frontmatter/work-item.json
+$schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:131-semantify-projection-full-cutover-epic
 title: '131: Semantify Projection Full Cutover Epic'
 summary: Fully adopt deterministic Semantify projection and provenance as the semantic authority for authoring features and remove all transition artifacts.
@@ -11,6 +11,9 @@ status_reason: prioritized
 priority: critical
 estimated: 32
 actual: 0
+links:
+  evidence:
+    - '[[record-20260521-221758-131-semantify-projection-full-cutover-epic]]'
 ---
 
 ## Goal

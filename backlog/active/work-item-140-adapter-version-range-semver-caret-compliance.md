@@ -1,5 +1,5 @@
 ---
-'$schema': schemas/work-management/frontmatter/work-item.json
+$schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:140-adapter-version-range-semver-caret-compliance
 title: '140: Adapter Version Range Semver Caret Compliance'
 summary: Replace simplified adapterVersionRange caret handling with semver-accurate range validation in Semantify adapter/profile compatibility checks.
@@ -11,6 +11,9 @@ status_reason: prioritized
 priority: high
 estimated: 3
 actual: 0
+links:
+  evidence:
+    - '[[record-20260521-221758-140-adapter-version-range-semver-caret-compliance]]'
 ---
 
 ## Goal

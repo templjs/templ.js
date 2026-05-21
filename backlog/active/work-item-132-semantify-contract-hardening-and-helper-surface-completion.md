@@ -1,5 +1,5 @@
 ---
-'$schema': schemas/work-management/frontmatter/work-item.json
+$schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:132-semantify-contract-hardening-and-helper-surface-completion
 title: '132: Semantify Contract Hardening and Helper Surface Completion'
 summary: Finalize Semantify contract/profile extension coverage and strict validation across all target authoring feature domains.
@@ -11,6 +11,9 @@ status_reason: prioritized
 priority: critical
 estimated: 10
 actual: 0
+links:
+  evidence:
+    - '[[record-20260521-221758-132-semantify-contract-hardening-and-helper-surface-completion]]'
 ---
 
 ## Goal

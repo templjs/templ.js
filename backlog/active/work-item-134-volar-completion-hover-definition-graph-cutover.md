@@ -1,5 +1,5 @@
 ---
-'$schema': schemas/work-management/frontmatter/work-item.json
+$schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:134-volar-completion-hover-definition-graph-cutover
 title: '134: Volar Completion, Hover, and Definition Graph Cutover'
 summary: Remove legacy Semantify intent helpers from Volar and route completion, hover, and definition through projection/profile extension execution only.
@@ -11,6 +11,9 @@ status_reason: prioritized
 priority: critical
 estimated: 10
 actual: 0
+links:
+  evidence:
+    - '[[record-20260521-221758-134-volar-completion-hover-definition-graph-cutover]]'
 ---
 
 ## Goal

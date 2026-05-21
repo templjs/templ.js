@@ -1,5 +1,5 @@
 ---
-'$schema': schemas/work-management/frontmatter/work-item.json
+$schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:137-language-service-server-capability-wiring-finalization
 title: '137: Language-Service and Server Capability Wiring Finalization'
 summary: Finalize plugin and LSP capability wiring so all semantic features execute through projection-backed helper extensions.
@@ -11,6 +11,9 @@ status_reason: prioritized
 priority: high
 estimated: 8
 actual: 0
+links:
+  evidence:
+    - '[[record-20260521-221758-137-language-service-server-capability-wiring-finalization]]'
 ---
 
 ## Goal

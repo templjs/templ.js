@@ -1,5 +1,5 @@
 ---
-'$schema': schemas/work-management/frontmatter/work-item.json
+$schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:135-diagnostics-highlighting-projection-authority-cutover
 title: '135: Diagnostics and Highlighting Projection Authority Cutover'
 summary: Make projection/profile execution authoritative for diagnostics planning and semantic highlighting.
@@ -11,6 +11,9 @@ status_reason: prioritized
 priority: critical
 estimated: 10
 actual: 0
+links:
+  evidence:
+    - '[[record-20260521-221758-135-diagnostics-highlighting-projection-authority-cutover]]'
 ---
 
 ## Goal
