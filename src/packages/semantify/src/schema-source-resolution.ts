@@ -723,7 +723,7 @@ export function resolvePathDefinitionAcrossRefs(
 
       if (index === remainingSegments.length - 1) {
         if (pathKind === 'value' && valueToken) {
-          const quotedValue = `"${valueToken}"`;
+          const quotedValue = JSON.stringify(valueToken);
           const valueIndex = schemaText.indexOf(quotedValue, matched.valueStart);
           if (valueIndex !== -1 && valueIndex < matched.valueEnd) {
             return {

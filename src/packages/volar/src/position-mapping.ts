@@ -113,7 +113,7 @@ export class LineColumnMapper {
   }
 
   /**
-   * Convert (line, code-point column) to UTF-16 byte offset.
+   * Convert (line, code-point column) to UTF-16 code-unit offset.
    *
    * The core tokenizer tracks columns by code points, while language-server
    * offsets are UTF-16 based. This bridge prevents misalignment on astral chars.

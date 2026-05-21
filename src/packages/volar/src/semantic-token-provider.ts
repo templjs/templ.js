@@ -191,7 +191,13 @@ function extractFilterReferencesForHighlighting(
       continue;
     }
 
-    if (char !== '|' || bracketDepth > 0 || parenDepth > 0) {
+    if (
+      char !== '|' ||
+      content[index + 1] === '|' ||
+      content[index - 1] === '|' ||
+      bracketDepth > 0 ||
+      parenDepth > 0
+    ) {
       continue;
     }
 
