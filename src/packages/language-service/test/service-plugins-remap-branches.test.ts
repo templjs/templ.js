@@ -547,6 +547,115 @@ describe('service-plugins position-remap branches', () => {
     ).resolves.toEqual({ uri: 'file:///single-async' });
   });
 
+  it('remaps scalar definition responses for sync and async mapped contexts', async () => {
+    const sourceText = 'alpha{% set x = 1 %}beta';
+    const sourceUri = 'file:///test.yaml.templ';
+    const externalUri = 'file:///schema.json';
+    const plugin = {
+      name: 'mapped-scalar-definition-plugin',
+      create: () => ({
+        provideDefinition: vi
+          .fn()
+          .mockResolvedValueOnce({
+            uri: sourceUri,
+            range: {
+              start: { line: 0, character: 5 },
+              end: { line: 0, character: 9 },
+            },
+          })
+          .mockResolvedValueOnce({
+            targetUri: externalUri,
+            targetRange: {
+              start: { line: 0, character: 5 },
+              end: { line: 0, character: 9 },
+            },
+            targetSelectionRange: {
+              start: { line: 0, character: 5 },
+              end: { line: 0, character: 9 },
+            },
+            originSelectionRange: {
+              start: { line: 0, character: 5 },
+              end: { line: 0, character: 9 },
+            },
+          })
+          .mockReturnValueOnce({
+            uri: sourceUri,
+            range: {
+              start: { line: 0, character: 5 },
+              end: { line: 0, character: 9 },
+            },
+          })
+          .mockReturnValueOnce({
+            targetUri: externalUri,
+            targetRange: {
+              start: { line: 0, character: 5 },
+              end: { line: 0, character: 9 },
+            },
+            targetSelectionRange: {
+              start: { line: 0, character: 5 },
+              end: { line: 0, character: 9 },
+            },
+            originSelectionRange: {
+              start: { line: 0, character: 5 },
+              end: { line: 0, character: 9 },
+            },
+          }),
+      }),
+    };
+
+    const remapped = servicePluginTesting.withPositionRemap(plugin as never, 'templjs-yaml', {
+      log: vi.fn(),
+    } as never);
+    const instance = remapped.create(createContext(sourceText) as never);
+    const document = servicePluginTesting.createTextDocumentLike(
+      'file:///test.yaml.templ',
+      'templjs-yaml',
+      sourceText
+    );
+
+    const asyncLocation = (await instance.provideDefinition?.(
+      document,
+      { line: 0, character: 0 },
+      {} as never
+    )) as { uri: string; range: { start: { character: number } } };
+    expect(asyncLocation.uri).toBe(sourceUri);
+    expect(asyncLocation.range.start.character).toBe(5);
+
+    const asyncLink = (await instance.provideDefinition?.(
+      document,
+      { line: 0, character: 0 },
+      {} as never
+    )) as {
+      targetUri: string;
+      targetRange: { start: { character: number } };
+      originSelectionRange?: { start: { character: number } };
+    };
+    expect(asyncLink.targetUri).toBe(externalUri);
+    expect(asyncLink.targetRange.start.character).toBe(5);
+    expect(asyncLink.originSelectionRange?.start.character).toBe(5);
+
+    const syncLocation = instance.provideDefinition?.(
+      document,
+      { line: 0, character: 0 },
+      {} as never
+    ) as { uri: string; range: { start: { character: number } } };
+    expect(syncLocation.uri).toBe(sourceUri);
+    expect(syncLocation.range.start.character).toBe(5);
+
+    const syncLink = instance.provideDefinition?.(
+      document,
+      { line: 0, character: 0 },
+      {} as never
+    ) as {
+      targetUri: string;
+      targetRange: { start: { character: number } };
+      originSelectionRange?: { start: { character: number } };
+    };
+    expect(syncLink.targetUri).toBe(externalUri);
+    expect(syncLink.targetRange.start.character).toBe(5);
+    expect(syncLink.originSelectionRange?.start.character).toBe(5);
+  });
+
   it('covers sync diagnostics/completion remap branches with mapped contexts', () => {
     const plugin = {
       name: 'mapped-sync-branches-plugin',
