@@ -511,7 +511,7 @@ function resolveActiveSymbolReference(
       return null;
     }
 
-    if (cursorInStatement >= forHeader.aliasStart && cursorInStatement < forHeader.aliasEnd) {
+    if (cursorInStatement >= forHeader.aliasStart && cursorInStatement <= forHeader.aliasEnd) {
       const binding = bindings.find((entry) => entry.name === forHeader.aliasName);
       return {
         kind: 'localBinding',

@@ -120,12 +120,13 @@ export function remapLocation(
   location: Location,
   sourceUri?: string
 ): Location {
+  if (sourceUri && location.uri !== sourceUri) {
+    return location;
+  }
+
   return {
     uri: location.uri,
-    range:
-      sourceUri === undefined || location.uri === sourceUri
-        ? remapRange(rangeMapper, location.range)
-        : location.range,
+    range: remapRange(rangeMapper, location.range),
   };
 }
 
@@ -137,19 +138,17 @@ export function remapLocationLink(
   link: LocationLink,
   sourceUri?: string
 ): LocationLink {
+  const remapTarget = !sourceUri || link.targetUri === sourceUri;
+
   return {
     originSelectionRange: link.originSelectionRange
       ? remapRange(rangeMapper, link.originSelectionRange)
       : undefined,
     targetUri: link.targetUri,
-    targetRange:
-      sourceUri === undefined || link.targetUri === sourceUri
-        ? remapRange(rangeMapper, link.targetRange)
-        : link.targetRange,
-    targetSelectionRange:
-      sourceUri === undefined || link.targetUri === sourceUri
-        ? remapRange(rangeMapper, link.targetSelectionRange)
-        : link.targetSelectionRange,
+    targetRange: remapTarget ? remapRange(rangeMapper, link.targetRange) : link.targetRange,
+    targetSelectionRange: remapTarget
+      ? remapRange(rangeMapper, link.targetSelectionRange)
+      : link.targetSelectionRange,
   };
 }
 

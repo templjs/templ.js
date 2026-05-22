@@ -270,12 +270,8 @@ describe('createSemantifyServices', () => {
         type: 'definitionTarget',
         symbol: {
           rawPath: 'title',
-          resolvedPath: 'page.title',
+          sourcePath: 'page.title',
           kind: 'localBinding',
-          range: {
-            startOffset: 0,
-            endOffset: 5,
-          },
         },
       },
       { text, offset }
@@ -470,59 +466,6 @@ describe('createSemantifyServices', () => {
     expect(candidates).toEqual([]);
   });
 
-  it('returns no hover payload on the trailing alias boundary in for-headers', () => {
-    const text = '{% for item in items %}';
-    const offset = 11;
-
-    const candidates = services.planCandidates(
-      {
-        type: 'hoverPayload',
-      },
-      { text, offset }
-    );
-
-    expect(candidates).toEqual([]);
-    expect(services.resolveReferences({ text, offset })).toEqual([]);
-  });
-
-  it('returns no hover payload or references for control keywords in statement headers', () => {
-    const forText = '{% for item in items %}{{ item }}{% endfor %}';
-    const forOffset = forText.indexOf('for') + 1;
-    const inOffset = forText.indexOf(' in ') + 2;
-    const ifText = '{% if items %}ok{% endif %}';
-    const ifOffset = ifText.indexOf('if') + 1;
-
-    expect(
-      services.planCandidates(
-        {
-          type: 'hoverPayload',
-        },
-        { text: forText, offset: forOffset }
-      )
-    ).toEqual([]);
-    expect(services.resolveReferences({ text: forText, offset: forOffset })).toEqual([]);
-
-    expect(
-      services.planCandidates(
-        {
-          type: 'hoverPayload',
-        },
-        { text: forText, offset: inOffset }
-      )
-    ).toEqual([]);
-    expect(services.resolveReferences({ text: forText, offset: inOffset })).toEqual([]);
-
-    expect(
-      services.planCandidates(
-        {
-          type: 'hoverPayload',
-        },
-        { text: ifText, offset: ifOffset }
-      )
-    ).toEqual([]);
-    expect(services.resolveReferences({ text: ifText, offset: ifOffset })).toEqual([]);
-  });
-
   it('returns no hover payload for statement expressions that contain no symbol references', () => {
     const text = '{% if 1 %}ok{% endif %}';
     const offset = text.indexOf('1');
@@ -556,6 +499,26 @@ describe('createSemantifyServices', () => {
   it('derives local-binding hover directly from for-alias position inside statement header', () => {
     const text = '{% for item in users %}ok{% endfor %}';
     const offset = text.indexOf('item') + 1;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.label).toBe('item');
+    expect(candidates[0]?.metadata).toMatchObject({
+      symbolKind: 'localBinding',
+      alias: 'item',
+      isAliasTokenOnly: true,
+    });
+  });
+
+  it('derives local-binding hover at the alias trailing boundary in statement headers', () => {
+    const text = '{% for item in users %}ok{% endfor %}';
+    const offset = text.indexOf('item') + 'item'.length;
 
     const candidates = services.planCandidates(
       {

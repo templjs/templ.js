@@ -16,8 +16,6 @@ import {
   remapDefinitionResponse,
   remapDiagnosticsResponse,
   remapHoverResponse,
-  remapLocation,
-  remapLocationLink,
 } from './position-remapping-utility.js';
 import { loadSchemaSourceSync, resolveDocumentSchemaSources } from './schema-loading.js';
 import {
@@ -734,12 +732,6 @@ function withPositionRemap(
         }
       };
 
-      const getSourceDocumentUri = (document: {
-        uri: string;
-        languageId: string;
-        getText(): string;
-      }) => getSourceUri(context, document.uri);
-
       return {
         ...instance,
         ...(provideDiagnostics
@@ -848,72 +840,46 @@ function withPositionRemap(
               provideDefinition(document, position, token) {
                 const response = provideDefinition(document, position, token);
                 const rangeMapper = getRangeMapper(document);
+                const sourceUri = getSourceUri(context, document.uri);
                 if (!rangeMapper) {
                   return response;
                 }
 
-                if (isPromiseLike(response)) {
-                  return response.then((definition) => {
-                    if (!definition) {
-                      return definition;
-                    }
-                    if (!Array.isArray(definition)) {
-                      if (!isObjectLike(definition)) {
-                        return definition;
-                      }
-                      if (isLocationLinkLike(definition)) {
-                        return remapLocationLink(
-                          rangeMapper,
-                          definition,
-                          getSourceDocumentUri(document)
-                        ) as typeof definition;
-                      }
-                      if (isLocationLike(definition)) {
-                        return remapLocation(
-                          rangeMapper,
-                          definition,
-                          getSourceDocumentUri(document)
-                        ) as typeof definition;
-                      }
-                      return definition;
-                    }
+                const remapDefinitionResult = <T>(definition: T): T => {
+                  if (!definition) {
+                    return definition;
+                  }
+
+                  if (Array.isArray(definition)) {
                     return remapDefinitionResponse(
                       rangeMapper,
                       definition as unknown as Parameters<typeof remapDefinitionResponse>[1],
-                      getSourceDocumentUri(document)
-                    ) as typeof definition;
+                      sourceUri
+                    ) as T;
+                  }
+
+                  if (typeof definition === 'object') {
+                    const candidate = definition as { targetUri?: unknown; uri?: unknown };
+                    if ('targetUri' in candidate || 'uri' in candidate) {
+                      const remapped = remapDefinitionResponse(
+                        rangeMapper,
+                        [definition] as unknown as Parameters<typeof remapDefinitionResponse>[1],
+                        sourceUri
+                      );
+                      return remapped[0] as T;
+                    }
+                  }
+
+                  return definition;
+                };
+
+                if (isPromiseLike(response)) {
+                  return response.then((definition) => {
+                    return remapDefinitionResult(definition);
                   });
                 }
 
-                if (!response) {
-                  return response;
-                }
-                if (!Array.isArray(response)) {
-                  if (!isObjectLike(response)) {
-                    return response;
-                  }
-                  if (isLocationLinkLike(response)) {
-                    return remapLocationLink(
-                      rangeMapper,
-                      response,
-                      getSourceDocumentUri(document)
-                    ) as typeof response;
-                  }
-                  if (isLocationLike(response)) {
-                    return remapLocation(
-                      rangeMapper,
-                      response,
-                      getSourceDocumentUri(document)
-                    ) as typeof response;
-                  }
-                  return response;
-                }
-
-                return remapDefinitionResponse(
-                  rangeMapper,
-                  response as unknown as Parameters<typeof remapDefinitionResponse>[1],
-                  getSourceDocumentUri(document)
-                ) as typeof response;
+                return remapDefinitionResult(response);
               },
             }
           : {}),
@@ -924,37 +890,6 @@ function withPositionRemap(
 
 function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
   return !!value && typeof (value as { then?: unknown }).then === 'function';
-}
-
-function isObjectLike(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function isPositionLike(value: unknown): value is { line: number; character: number } {
-  return (
-    isObjectLike(value) && typeof value.line === 'number' && typeof value.character === 'number'
-  );
-}
-
-function isRangeLike(value: unknown): value is {
-  start: { line: number; character: number };
-  end: { line: number; character: number };
-} {
-  return isObjectLike(value) && isPositionLike(value.start) && isPositionLike(value.end);
-}
-
-function isLocationLike(value: unknown): value is Parameters<typeof remapLocation>[1] {
-  return isObjectLike(value) && typeof value.uri === 'string' && isRangeLike(value.range);
-}
-
-function isLocationLinkLike(value: unknown): value is Parameters<typeof remapLocationLink>[1] {
-  return (
-    isObjectLike(value) &&
-    typeof value.targetUri === 'string' &&
-    isRangeLike(value.targetRange) &&
-    isRangeLike(value.targetSelectionRange) &&
-    (value.originSelectionRange === undefined || isRangeLike(value.originSelectionRange))
-  );
 }
 
 function createTextDocumentLike(uri: string, languageId: string, text: string) {

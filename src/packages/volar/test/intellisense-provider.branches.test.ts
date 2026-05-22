@@ -254,7 +254,7 @@ describe('IntellisenseProvider branch coverage', () => {
     }
   });
 
-  it('returns null hover and definition on the alias trailing boundary', () => {
+  it('returns alias hover and definition on the alias trailing boundary', () => {
     const provider = new IntellisenseProvider({
       ...emptyAdapter,
       getPathDetails: (_ctx, path) =>
@@ -279,19 +279,18 @@ describe('IntellisenseProvider branch coverage', () => {
     const text = '{% for item in items %}';
     const aliasTrailingBoundary = 11;
 
-    expect(
-      provider.getHover(text, aliasTrailingBoundary, {
-        debugLog: () => {},
-        documentUri: 'file:///doc.md.tmpl',
-      })
-    ).toBeNull();
+    const hover = provider.getHover(text, aliasTrailingBoundary, {
+      debugLog: () => {},
+      documentUri: 'file:///doc.md.tmpl',
+    });
+    expect(hover?.contents).toBe('item: local loop alias');
     expect(
       provider.getDefinition(text, aliasTrailingBoundary, {
         debugLog: () => {},
         schemaUri: 'file:///schema.json',
         documentUri: 'file:///doc.md.tmpl',
-      })
-    ).toBeNull();
+      })?.uri
+    ).toBe('file:///doc.md.tmpl');
   });
 
   it('returns local alias definition when cursor is on for-iterable source variable', () => {
