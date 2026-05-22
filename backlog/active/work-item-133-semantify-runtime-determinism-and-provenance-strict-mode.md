@@ -6,12 +6,14 @@ summary: Enforce deterministic projection output and strict provenance guarantee
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
-status_reason: prioritized
+status: ready-for-review
+status_reason: awaiting-review
 priority: high
 estimated: 8
 actual: 0
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/166
   evidence:
     - '[[record-20260521-221758-133-semantify-runtime-determinism-and-provenance-strict-mode]]'
 ---
@@ -32,11 +34,11 @@ The final cutover depends on deterministic runtime behavior. Any remaining non-d
 
 ## Tasks
 
-- [ ] Add strict-mode projection runtime option and failure diagnostics for non-deterministic or incomplete outputs.
-- [ ] Assert stable ordering for projected nodes/edges/provenance serialization.
-- [ ] Add deterministic snapshot tests that compare repeated runs over fixed fixtures.
-- [ ] Add provenance completeness checks for entities used by completion, hover, definition, diagnostics, and semantic tokens.
-- [ ] Document strict-mode expectations and debugging guidance.
+- [x] Add strict-mode projection runtime option and failure diagnostics for non-deterministic or incomplete outputs.
+- [x] Assert stable ordering for projected nodes/edges/provenance serialization.
+- [x] Add deterministic snapshot tests that compare repeated runs over fixed fixtures.
+- [x] Add provenance completeness checks for entities used by completion, hover, definition, diagnostics, and semantic tokens.
+- [x] Document strict-mode expectations and debugging guidance.
 
 ## Deliverables
 
@@ -46,9 +48,9 @@ The final cutover depends on deterministic runtime behavior. Any remaining non-d
 
 ## Acceptance Criteria
 
-- [ ] Repeated projection runs on fixed fixtures produce byte-stable graph/provenance snapshots.
-- [ ] Strict mode fails fast when required provenance data is missing or malformed.
-- [ ] Determinism tests are part of package validation and block regressions.
+- [x] Repeated projection runs on fixed fixtures produce byte-stable graph/provenance snapshots.
+- [x] Strict mode fails fast when required provenance data is missing or malformed.
+- [x] Determinism tests are part of package validation and block regressions.
 
 ## Relationships
 

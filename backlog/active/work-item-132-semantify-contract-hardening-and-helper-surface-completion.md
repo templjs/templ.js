@@ -6,12 +6,14 @@ summary: Finalize Semantify contract/profile extension coverage and strict valid
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
-status_reason: prioritized
+status: ready-for-review
+status_reason: awaiting-review
 priority: critical
 estimated: 10
 actual: 0
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/163
   evidence:
     - '[[record-20260521-221758-132-semantify-contract-hardening-and-helper-surface-completion]]'
 ---
@@ -33,11 +35,11 @@ Existing profile helpers cover only part of the feature surface. Final cutover r
 
 ## Tasks
 
-- [ ] Extend helper extension kinds/types to include `semantic-token-provider` and `formatting-orchestrator`.
-- [ ] Add strict validation for adapter/profile compatibility, required fields, and unsupported helper capabilities.
-- [ ] Define and validate mandatory provenance attributes for nodes/edges that feed completion/hover/definition/highlighting/diagnostics.
-- [ ] Add typed contract tests for helper extension registration and invocation eligibility.
-- [ ] Update Semantify README and public type docs to projection-only contract language.
+- [x] Extend helper extension kinds/types to include `semantic-token-provider` and `formatting-orchestrator`.
+- [x] Add strict validation for adapter/profile compatibility, required fields, and unsupported helper capabilities.
+- [x] Define and validate mandatory provenance attributes for nodes/edges that feed completion/hover/definition/highlighting/diagnostics.
+- [x] Add typed contract tests for helper extension registration and invocation eligibility.
+- [x] Update Semantify README and public type docs to projection-only contract language.
 
 ## Deliverables
 
@@ -47,14 +49,14 @@ Existing profile helpers cover only part of the feature surface. Final cutover r
 
 ## Acceptance Criteria
 
-- [ ] Helper extension contract includes `candidate-provider`, `definition-resolver`, `hover-renderer`, `diagnostic-planner`, `semantic-token-provider`, and `formatting-orchestrator`.
-- [ ] Invalid contract combinations fail deterministically with actionable diagnostics.
-- [ ] Provenance requirements for feature-critical projection entities are explicit and test-enforced.
-- [ ] Documentation no longer describes legacy compatibility APIs as active integration guidance.
+- [x] Helper extension contract includes `candidate-provider`, `definition-resolver`, `hover-renderer`, `diagnostic-planner`, `semantic-token-provider`, and `formatting-orchestrator`.
+- [x] Invalid contract combinations fail deterministically with actionable diagnostics.
+- [x] Provenance requirements for feature-critical projection entities are explicit and test-enforced.
+- [x] Documentation no longer describes legacy compatibility APIs as active integration guidance.
 
 ## Relationships
 
-- `depends_on`: [[work-item-131-semantify-projection-full-cutover-epic]]
+- `related`: [[work-item-131-semantify-projection-full-cutover-epic]]
 
 ## Validation
 

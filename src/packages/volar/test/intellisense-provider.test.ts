@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { IntellisenseProvider, type SemanticReadAdapter } from '../src/intellisense-provider.js';
-import type { SemantifyServices } from '@templjs/semantify';
 
 const sampleSchema = {
   type: 'object',
@@ -80,7 +79,7 @@ describe('IntellisenseProvider', () => {
     expect(items.some((item) => item.label === 'user')).toBe(true);
   });
 
-  it('falls back to adapter alias hover when semantify hover metadata is invalid', () => {
+  it('returns adapter-backed alias hover', () => {
     const text = '{% for item in users %}{{ item }}{% endfor %}';
     const offset = text.indexOf('{{ item }}') + 4;
 
@@ -97,29 +96,13 @@ describe('IntellisenseProvider', () => {
       }),
     };
 
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({ regions: [], bindings: [] }),
-      resolveReferences: () => [],
-      planCandidates: () => [
-        {
-          label: 'item',
-          kind: 'variable',
-          detail: 'local loop alias',
-          metadata: {
-            // Intentionally malformed to force adapter fallback.
-            alias: 'item',
-          },
-        },
-      ],
-    };
-
-    const providerWithFallback = new IntellisenseProvider(mockAdapter, mockSemantify);
+    const providerWithFallback = new IntellisenseProvider(mockAdapter);
     const hover = providerWithFallback.getHover(text, offset, { schema: sampleSchema });
 
-    expect(hover?.contents).toBe('item: local loop alias');
+    expect(hover?.contents).toBe('item: local template variable');
   });
 
-  it('falls back to adapter alias definition when semantify definition metadata is invalid', () => {
+  it('returns adapter-backed alias definition', () => {
     const text = '{% for item in users %}{{ item }}{% endfor %}';
     const offset = text.indexOf('{{ item }}') + 4;
     const declarationStartOffset = text.indexOf('item in');
@@ -137,22 +120,7 @@ describe('IntellisenseProvider', () => {
       }),
     };
 
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({ regions: [], bindings: [] }),
-      resolveReferences: () => [],
-      planCandidates: () => [
-        {
-          label: 'item',
-          kind: 'variable',
-          metadata: {
-            // Intentionally malformed to force adapter fallback.
-            alias: 'item',
-          },
-        },
-      ],
-    };
-
-    const providerWithFallback = new IntellisenseProvider(mockAdapter, mockSemantify);
+    const providerWithFallback = new IntellisenseProvider(mockAdapter);
     const definition = providerWithFallback.getDefinition(text, offset, {
       schema: sampleSchema,
       documentUri: 'file:///workspace/project.md.tpl',
@@ -165,49 +133,13 @@ describe('IntellisenseProvider', () => {
     });
   });
 
-  it('dedupes local symbol candidates by nearest startOffset and coerces unknown kinds', () => {
-    const text = '{{ item }}';
-    const offset = text.indexOf('item') + 2;
+  it('includes in-scope aliases in symbol completions', () => {
+    const text = '{% for item in users %}{{ it }}{% endfor %}';
+    const offset = text.indexOf('it }}') + 2;
 
-    const mockAdapter: SemanticReadAdapter = {
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: () => null,
-    };
+    const items = provider.getCompletions(text, offset, { schema: sampleSchema });
 
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({ regions: [], bindings: [] }),
-      resolveReferences: () => [],
-      planCandidates: (intent) => {
-        if (intent.type !== 'symbolCandidates') {
-          return [];
-        }
-
-        return [
-          {
-            label: 'item',
-            kind: 'custom-kind',
-            metadata: { startOffset: 2 },
-          },
-          {
-            label: 'item',
-            kind: 'custom-kind',
-            metadata: { startOffset: 12 },
-          },
-        ];
-      },
-    };
-
-    const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
-    const items = providerWithSemantify.getCompletions(text, offset, { schema: sampleSchema });
-
-    expect(items).toHaveLength(1);
-    expect(items[0]?.label).toBe('item');
-    expect(items[0]?.kind).toBe('variable');
+    expect(items.some((item) => item.label === 'item' && item.kind === 'variable')).toBe(true);
   });
 
   it('allows injecting a semantic read adapter for isolation', () => {
@@ -244,50 +176,11 @@ describe('IntellisenseProvider', () => {
     expect(items.some((item) => item.kind === 'filter')).toBe(true);
   });
 
-  it('handles empty and non-signature filter candidates without mutating details', () => {
+  it('returns filter completions from filter signatures', () => {
     const text = '{{ user.name | no }}';
     const offset = text.indexOf('no') + 2;
 
-    const mockAdapter: SemanticReadAdapter = {
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: () => null,
-    };
-
-    let firstCall = true;
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({ regions: [], bindings: [] }),
-      resolveReferences: () => [],
-      planCandidates: (intent) => {
-        if (intent.type !== 'filterCandidates') {
-          return [];
-        }
-
-        if (firstCall) {
-          firstCall = false;
-          return [];
-        }
-
-        return [
-          { label: 'noop', kind: 'variable' },
-          { label: 'nosig', kind: 'filter' },
-        ];
-      },
-    };
-
-    const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
-
-    const emptyItems = providerWithSemantify.getCompletions(text, offset, {
-      schema: sampleSchema,
-      customFilters: [],
-    });
-    expect(emptyItems).toEqual([]);
-
-    const items = providerWithSemantify.getCompletions(text, offset, {
+    const items = provider.getCompletions(text, offset, {
       schema: sampleSchema,
       customFilters: [
         {
@@ -299,10 +192,9 @@ describe('IntellisenseProvider', () => {
       ],
     });
 
-    expect(items.some((item) => item.label === 'noop' && item.kind === 'variable')).toBe(true);
-    const noSig = items.find((item) => item.label === 'nosig');
-    expect(noSig?.kind).toBe('filter');
-    expect(noSig?.detail).toBeUndefined();
+    const known = items.find((item) => item.label === 'known');
+    expect(known?.kind).toBe('filter');
+    expect(known?.detail).toBe('string');
   });
 
   it('provides keyword completions in statements', () => {
@@ -330,6 +222,25 @@ describe('IntellisenseProvider', () => {
     expect(items.some((item) => item.label === 'custom')).toBe(true);
   });
 
+  it('prefers custom filters over built-ins with the same name', () => {
+    const items = provider.getCompletions('{{ user.name | up }}', 17, {
+      schema: sampleSchema,
+      customFilters: [
+        {
+          name: 'upper',
+          description: 'Custom upper override',
+          returnType: 'string',
+          parameters: [{ name: 'locale', type: 'string', description: 'Locale tag' }],
+        },
+      ],
+    });
+
+    expect(items.filter((item) => item.label === 'upper')).toHaveLength(1);
+    const upper = items.find((item) => item.label === 'upper');
+    expect(upper?.detail).toBe('string');
+    expect(upper?.documentation).toContain('Custom upper override');
+  });
+
   it('supports custom keywords', () => {
     const items = provider.getCompletions('{% cu %}', 5, {
       customKeywords: ['custom'],
@@ -342,52 +253,18 @@ describe('IntellisenseProvider', () => {
     expect(hover?.contents).toContain('user');
   });
 
-  it('uses semantify hoverPayload for local alias hover when adapter alias resolution is unavailable', () => {
+  it('returns alias hover when adapter can resolve local alias declaration', () => {
     const text = '{% for item in users %}{{ item }}{% endfor %}';
     const offset = text.indexOf('{{ item }}') + 4;
 
-    const mockAdapter: SemanticReadAdapter = {
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: () => null,
-    };
+    const hover = provider.getHover(text, offset, { schema: sampleSchema });
 
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({ regions: [], bindings: [] }),
-      resolveReferences: () => [],
-      planCandidates: (intent) => {
-        if (intent.type !== 'hoverPayload') {
-          return [];
-        }
-
-        return [
-          {
-            label: 'item',
-            kind: 'variable',
-            detail: 'local loop alias',
-            metadata: {
-              alias: 'item',
-              isAliasTokenOnly: true,
-              declarationStartOffset: text.indexOf('item in'),
-              declarationEndOffset: text.indexOf('item in') + 'item'.length,
-            },
-          },
-        ];
-      },
-    };
-
-    const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
-    const hover = providerWithSemantify.getHover(text, offset, { schema: sampleSchema });
-
-    expect(hover?.contents).toBe('item: local loop alias');
+    expect(hover?.contents).toBe('item: local template variable');
   });
 
   it('returns hover info for filters', () => {
-    const hover = provider.getHover('{{ user.name | upper }}', 20, {
+    const text = '{{ user.name | upper }}';
+    const hover = provider.getHover(text, text.indexOf('upper') + 2, {
       schema: sampleSchema,
     });
     expect(hover?.contents).toContain('upper');
@@ -450,46 +327,12 @@ describe('IntellisenseProvider', () => {
     expect(def?.path).toBe('user.name');
   });
 
-  it('uses semantify definitionTarget for local alias definitions when adapter alias resolution is unavailable', () => {
+  it('returns local alias definition when adapter can resolve local alias declaration', () => {
     const text = '{% for item in users %}{{ item }}{% endfor %}';
     const offset = text.indexOf('{{ item }}') + 4;
     const declarationStartOffset = text.indexOf('item in');
 
-    const mockAdapter: SemanticReadAdapter = {
-      resolveScopedPath: (_text, basePath) => basePath,
-      getChildCompletions: () => [],
-      getEnumValueCompletions: () => [],
-      getPathDetails: () => null,
-      resolvePathDefinition: () => null,
-      resolveDocumentDefinition: () => null,
-      resolveLocalAliasDefinition: () => null,
-    };
-
-    const mockSemantify: SemantifyServices = {
-      resolveContext: () => ({ regions: [], bindings: [] }),
-      resolveReferences: () => [],
-      planCandidates: (intent) => {
-        if (intent.type !== 'definitionTarget') {
-          return [];
-        }
-
-        return [
-          {
-            label: 'item',
-            kind: 'variable',
-            metadata: {
-              alias: 'item',
-              isAliasTokenOnly: true,
-              declarationStartOffset,
-              declarationEndOffset: declarationStartOffset + 'item'.length,
-            },
-          },
-        ];
-      },
-    };
-
-    const providerWithSemantify = new IntellisenseProvider(mockAdapter, mockSemantify);
-    const definition = providerWithSemantify.getDefinition(text, offset, {
+    const definition = provider.getDefinition(text, offset, {
       schema: sampleSchema,
       documentUri: 'file:///workspace/project.md.tpl',
     });
@@ -539,7 +382,7 @@ describe('IntellisenseProvider', () => {
     expect(items.some((item) => item.kind === 'keyword')).toBe(true);
   });
 
-  it('provides semantify-backed filter completions with custom delimiters', () => {
+  it('provides filter completions with custom delimiters', () => {
     const text = '<% if user.name | up %>';
     const offset = text.indexOf('up') + 'up'.length;
 
@@ -646,7 +489,8 @@ describe('IntellisenseProvider', () => {
   });
 
   it('returns hover info for custom filter', () => {
-    const hover = provider.getHover('{{ user.name | custom }}', 22, {
+    const text = '{{ user.name | custom }}';
+    const hover = provider.getHover(text, text.indexOf('custom') + 2, {
       customFilters: [
         {
           name: 'custom',
@@ -1091,7 +935,7 @@ describe('IntellisenseProvider', () => {
       documentUri: 'file:///workspace/project.md.tpl',
     });
 
-    expect(hover?.contents).toBe('item: local loop alias');
+    expect(hover?.contents).toBe('item: local template variable');
   });
 
   it('returns path hover for non-token local paths in statement expressions', () => {
@@ -1307,7 +1151,8 @@ describe('IntellisenseProvider', () => {
   });
 
   it('uses core signature metadata for filter hover descriptions', () => {
-    const hover = provider.getHover('{{ user.name | upper }}', 20, {
+    const text = '{{ user.name | upper }}';
+    const hover = provider.getHover(text, text.indexOf('upper') + 2, {
       schema: sampleSchema,
     });
 

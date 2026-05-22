@@ -73,56 +73,30 @@ describe('IntellisenseProvider branch coverage', () => {
     expect(hover).toBeNull();
   });
 
-  it('returns hover detail for variable candidate without explicit symbol metadata', () => {
+  it('returns hover detail for resolved variable path details', () => {
     const text = '{{ user.name }}';
     const offset = text.indexOf('user') + 2;
 
-    const provider = new IntellisenseProvider(emptyAdapter, {
-      resolveContext: () => ({ regions: [], bindings: [] }),
-      resolveReferences: () => [],
-      planCandidates: (intent) => {
-        if (intent.type !== 'hoverPayload') {
-          return [];
-        }
-
-        return [
-          {
-            label: 'user.name',
-            kind: 'variable',
-            detail: 'string',
-            metadata: {},
-          },
-        ];
-      },
+    const provider = new IntellisenseProvider({
+      ...emptyAdapter,
+      getPathDetails: (_context, path) =>
+        path === 'user.name'
+          ? {
+              path,
+              type: 'string',
+            }
+          : null,
     });
 
     const hover = provider.getHover(text, offset, { debugLog: () => {} });
     expect(hover?.contents).toBe('user.name: string');
   });
 
-  it('returns null hover when semantify candidate metadata cannot be resolved', () => {
+  it('returns null hover when path details cannot be resolved', () => {
     const text = '{{ user.name }}';
     const offset = text.indexOf('user') + 2;
 
-    const provider = new IntellisenseProvider(emptyAdapter, {
-      resolveContext: () => ({ regions: [], bindings: [] }),
-      resolveReferences: () => [],
-      planCandidates: (intent) => {
-        if (intent.type !== 'hoverPayload') {
-          return [];
-        }
-
-        return [
-          {
-            label: 'user.name',
-            kind: 'variable',
-            metadata: {
-              symbolKind: 'unsupported',
-            },
-          },
-        ];
-      },
-    });
+    const provider = new IntellisenseProvider(emptyAdapter);
 
     expect(provider.getHover(text, offset, { debugLog: () => {} })).toBeNull();
   });
