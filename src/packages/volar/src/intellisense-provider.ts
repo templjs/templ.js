@@ -1164,7 +1164,7 @@ export class IntellisenseProvider {
         localAlias &&
         (localAlias.isAliasTokenOnly || (preferAliasSegmentHover && cursorInAliasSegment))
       ) {
-        return { contents: `${localAlias.alias}: local loop alias` };
+        return { contents: `${localAlias.alias}: local template variable` };
       }
 
       const hover = getHoverDetailsForPath(hoverPath);

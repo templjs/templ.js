@@ -99,7 +99,7 @@ describe('IntellisenseProvider', () => {
     const providerWithFallback = new IntellisenseProvider(mockAdapter);
     const hover = providerWithFallback.getHover(text, offset, { schema: sampleSchema });
 
-    expect(hover?.contents).toBe('item: local loop alias');
+    expect(hover?.contents).toBe('item: local template variable');
   });
 
   it('returns adapter-backed alias definition', () => {
@@ -240,7 +240,7 @@ describe('IntellisenseProvider', () => {
 
     const hover = provider.getHover(text, offset, { schema: sampleSchema });
 
-    expect(hover?.contents).toBe('item: local loop alias');
+    expect(hover?.contents).toBe('item: local template variable');
   });
 
   it('returns hover info for filters', () => {
@@ -916,7 +916,7 @@ describe('IntellisenseProvider', () => {
       documentUri: 'file:///workspace/project.md.tpl',
     });
 
-    expect(hover?.contents).toBe('item: local loop alias');
+    expect(hover?.contents).toBe('item: local template variable');
   });
 
   it('returns path hover for non-token local paths in statement expressions', () => {
@@ -978,7 +978,7 @@ describe('IntellisenseProvider', () => {
       documentUri: 'file:///workspace/project.md.tpl',
     });
 
-    expect(hover?.contents).toBe('scope: local loop alias');
+    expect(hover?.contents).toBe('scope: local template variable');
   });
 
   it('returns schema hover for set-statement expression paths', () => {
