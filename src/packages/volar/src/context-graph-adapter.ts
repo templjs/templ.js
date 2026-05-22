@@ -213,11 +213,9 @@ export class ContextGraphSemanticReadAdapter {
 
         const profileId = asNonEmptyString(node.attributes?.profileId) ?? node.profileId;
         const path = asString(node.attributes?.path) ?? '';
-        const compatibilityKind =
-          node.kind === 'templjs.schema-path' ? 'schema-path' : 'schema-enum-value';
         const value = node.attributes?.value ?? node.attributes?.label ?? '';
         const id =
-          compatibilityKind === 'schema-path'
+          node.kind === 'templjs.schema-path'
             ? `${profileId}:schema-path:${path}`
             : `${profileId}:schema-enum:${path}:${String(value)}`;
 
@@ -226,12 +224,8 @@ export class ContextGraphSemanticReadAdapter {
             ...node,
             id,
             profileId,
-            kind: compatibilityKind,
-            attributes: {
-              ...(node.attributes ?? {}),
-              projectedSemanticKind: node.kind,
-              projectionProfileId: node.profileId,
-            },
+            kind: node.kind,
+            attributes: node.attributes,
           },
         ];
       }),
@@ -319,7 +313,7 @@ export class ContextGraphSemanticReadAdapter {
         version: 'v1',
         nodes: {
           profileIds: [contextProfileId],
-          kind: 'schema-path',
+          kind: 'templjs.schema-path',
           attributeEquals: {
             path,
             operation: context.operation,
@@ -408,7 +402,7 @@ export class ContextGraphSemanticReadAdapter {
         version: 'v1',
         nodes: {
           profileIds: [contextProfileId],
-          kind: 'schema-path',
+          kind: 'templjs.schema-path',
           attributeEquals: attributes,
         },
       },
@@ -435,7 +429,7 @@ export class ContextGraphSemanticReadAdapter {
         version: 'v1',
         nodes: {
           profileIds: [contextProfileId],
-          kind: 'schema-enum-value',
+          kind: 'templjs.schema-enum-value',
           attributeEquals: {
             path,
             operation: context.operation,

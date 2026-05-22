@@ -10,7 +10,7 @@ status: in-progress
 status_reason: legacy-api-removal-underway
 priority: critical
 estimated: 8
-actual: 2
+actual: 3
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/173
@@ -35,9 +35,9 @@ Cutover quality requires explicit removal, not just deprecation. Mixed-path arti
 ## Tasks
 
 - [x] Remove legacy compatibility APIs from Semantify source and public exports.
-- [ ] Remove compatibility fallback code paths in Volar/language-service.
+- [x] Remove compatibility fallback code paths in Volar/language-service.
 - [x] Remove tests that validate legacy behavior contracts.
-- [ ] Update README/ADR/docs to final-state projection-only architecture guidance.
+- [x] Update README/ADR/docs to final-state projection-only architecture guidance.
 - [ ] Run full repo validation after removal and resolve breakages.
 
 ## Deliverables
@@ -50,6 +50,8 @@ Cutover quality requires explicit removal, not just deprecation. Mixed-path arti
 
 - 2026-05-22: Removed Semantify compatibility API surface (`createSemantifyServices`, `SemantifyServices`) from public exports and deleted legacy binder compatibility implementation.
 - 2026-05-22: Removed obsolete Semantify framework compatibility tests and validated package/build/frontmatter checks for this cleanup slice.
+- 2026-05-22: Removed Volar schema-kind compatibility remapping so projected semantic kinds (`templjs.schema-path`, `templjs.schema-enum-value`) flow directly through snapshot/query paths and tests.
+- 2026-05-22: Updated `docs/templjs-volar-target-architecture.md` to final-state guidance (removed staged migration/transitional runbook sections) and validated docs/frontmatter lint.
 
 ## Acceptance Criteria
 

@@ -145,7 +145,7 @@ export function buildPathNodes(contextBlock: SemanticContextBlock, schema?: obje
     nodes.push({
       id: `${profileId}:schema-path:${path}`,
       profileId,
-      kind: 'schema-path',
+      kind: 'templjs.schema-path',
       attributes: {
         path,
         parentPath: getParentPath(path),
@@ -171,7 +171,7 @@ export function buildPathNodes(contextBlock: SemanticContextBlock, schema?: obje
           nodes.push({
             id: `${profileId}:schema-enum:${currentPath}:${String(value)}`,
             profileId,
-            kind: 'schema-enum-value',
+            kind: 'templjs.schema-enum-value',
             attributes: {
               path: currentPath,
               value,
