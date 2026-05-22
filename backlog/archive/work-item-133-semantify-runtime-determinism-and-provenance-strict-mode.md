@@ -5,12 +5,13 @@ title: '133: Semantify Runtime Determinism and Provenance Strict Mode'
 summary: Enforce deterministic projection output and strict provenance guarantees for all feature-critical semantic entities.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: awaiting-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 8
 actual: 0
+completed_date: '2026-05-22'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/166

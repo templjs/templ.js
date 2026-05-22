@@ -5,12 +5,13 @@ title: '132: Semantify Contract Hardening and Helper Surface Completion'
 summary: Finalize Semantify contract/profile extension coverage and strict validation across all target authoring feature domains.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: awaiting-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: critical
 estimated: 10
 actual: 0
+completed_date: '2026-05-22'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/163
