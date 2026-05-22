@@ -5,6 +5,7 @@ import type { ServicePluginOrchestrationOptions } from './service-plugin-contrac
 import {
   getConfiguredPrettierHostLanguages,
   getResolvedAdapterRuntime,
+  resolveFormattingOrchestrationContract,
 } from './runtime-manifest.js';
 
 export type PrettierAdapterRuntimePlan = {
@@ -59,5 +60,30 @@ export function createPrettierHostAdapter(
   return {
     ...basePlugin,
     name: 'templjs-prettier-host',
+    create(context) {
+      const instance = basePlugin.create(context);
+      const formattingProvider = instance.provideDocumentFormattingEdits?.bind(instance);
+
+      if (!formattingProvider) {
+        return instance;
+      }
+
+      return {
+        ...instance,
+        provideDocumentFormattingEdits(...args: Parameters<typeof formattingProvider>) {
+          const document = args[0];
+          const contract = resolveFormattingOrchestrationContract();
+          options.onFormattingOrchestration?.({
+            ...contract,
+            adapterId: 'templjs-prettier-host',
+            documentUri: document.uri,
+            delegatedLanguageId: document.languageId,
+            configuredHostLanguages: [...plan.languages],
+          });
+
+          return formattingProvider(...args);
+        },
+      };
+    },
   };
 }
