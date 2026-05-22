@@ -468,6 +468,19 @@ describe('authoring transport delegation', () => {
   });
 
   it('delegates semantic token full/range requests to language service', async () => {
+    initialize.mockResolvedValueOnce({
+      capabilities: {
+        semanticTokensProvider: {
+          full: true,
+          range: true,
+          legend: {
+            tokenTypes: ['keyword', 'variable'],
+            tokenModifiers: ['readonly'],
+          },
+        },
+      },
+    });
+
     const semanticTokens = { data: [0, 0, 4, 0, 0] };
 
     const languageService = {
@@ -503,7 +516,14 @@ describe('authoring transport delegation', () => {
       'textDocument/semanticTokens/range',
       expect.any(Function)
     );
-    expect(init.capabilities.semanticTokensProvider).toBeDefined();
+    expect(init.capabilities.semanticTokensProvider).toEqual({
+      full: true,
+      range: true,
+      legend: {
+        tokenTypes: ['keyword', 'variable'],
+        tokenModifiers: ['readonly'],
+      },
+    });
 
     const fullHandler = onRequest.mock.calls.find(
       (call) => call[0] === 'textDocument/semanticTokens/full'

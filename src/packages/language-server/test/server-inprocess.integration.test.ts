@@ -225,6 +225,19 @@ describe('language-server-inprocess-authoring', () => {
   });
 
   it('supports semantic token full and range requests via delegated handlers', async () => {
+    initialize.mockResolvedValueOnce({
+      capabilities: {
+        semanticTokensProvider: {
+          full: true,
+          range: true,
+          legend: {
+            tokenTypes: ['keyword'],
+            tokenModifiers: ['readonly'],
+          },
+        },
+      },
+    });
+
     const semanticTokens = { data: [0, 0, 3, 0, 0] };
     const languageService = {
       getCompletionItems: vi.fn(async () => ({ isIncomplete: false, items: [] })),
@@ -249,7 +262,14 @@ describe('language-server-inprocess-authoring', () => {
     }>;
     const init = await initializeHandler({ rootUri: 'file:///workspace' });
 
-    expect(init.capabilities.semanticTokensProvider).toBeDefined();
+    expect(init.capabilities.semanticTokensProvider).toEqual({
+      full: true,
+      range: true,
+      legend: {
+        tokenTypes: ['keyword'],
+        tokenModifiers: ['readonly'],
+      },
+    });
 
     const fullHandler = onRequest.mock.calls.find(
       (call) => call[0] === 'textDocument/semanticTokens/full'
@@ -290,5 +310,74 @@ describe('language-server-inprocess-authoring', () => {
     ).resolves.toEqual(semanticTokens);
 
     expect(languageService.getSemanticTokens).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns null for semantic token handlers when language service has no semantic token API', async () => {
+    initialize.mockResolvedValueOnce({
+      capabilities: {
+        semanticTokensProvider: {
+          full: true,
+          range: true,
+          legend: {
+            tokenTypes: ['keyword'],
+            tokenModifiers: ['readonly'],
+          },
+        },
+      },
+    });
+
+    const languageService = {
+      getCompletionItems: vi.fn(async () => ({ isIncomplete: false, items: [] })),
+      getHover: vi.fn(async () => null),
+      getDefinition: vi.fn(async () => null),
+      getDocumentFormattingEdits: vi.fn(async () => []),
+    };
+
+    getLanguageService.mockResolvedValue(languageService);
+
+    await import('../src/index.ts');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (
+      params: unknown
+    ) => Promise<unknown>;
+    await initializeHandler({ rootUri: 'file:///workspace' });
+
+    const fullHandler = onRequest.mock.calls.find(
+      (call) => call[0] === 'textDocument/semanticTokens/full'
+    )?.[1] as (request: { textDocument: { uri: string } }, token: unknown) => Promise<unknown>;
+    const rangeHandler = onRequest.mock.calls.find(
+      (call) => call[0] === 'textDocument/semanticTokens/range'
+    )?.[1] as (
+      request: {
+        textDocument: { uri: string };
+        range: {
+          start: { line: number; character: number };
+          end: { line: number; character: number };
+        };
+      },
+      token: unknown
+    ) => Promise<unknown>;
+
+    await expect(
+      fullHandler(
+        {
+          textDocument: { uri: 'file:///workspace/sample.md.tmpl' },
+        },
+        {}
+      )
+    ).resolves.toBeNull();
+
+    await expect(
+      rangeHandler(
+        {
+          textDocument: { uri: 'file:///workspace/sample.md.tmpl' },
+          range: {
+            start: { line: 0, character: 0 },
+            end: { line: 0, character: 10 },
+          },
+        },
+        {}
+      )
+    ).resolves.toBeNull();
   });
 });

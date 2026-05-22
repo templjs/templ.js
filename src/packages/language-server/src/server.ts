@@ -366,7 +366,7 @@ connection.onInitialize(async (params) => {
       )) as SemanticTokenLanguageService;
       if (typeof languageService.getSemanticTokens !== 'function') {
         trace(`[authoring] semanticTokens/full unavailable uri=${uri}`, 'verbose');
-        return;
+        return null;
       }
 
       return await languageService.getSemanticTokens(
@@ -386,7 +386,7 @@ connection.onInitialize(async (params) => {
       )) as SemanticTokenLanguageService;
       if (typeof languageService.getSemanticTokens !== 'function') {
         trace(`[authoring] semanticTokens/range unavailable uri=${uri}`, 'verbose');
-        return;
+        return null;
       }
 
       return await languageService.getSemanticTokens(
@@ -446,18 +446,7 @@ connection.onInitialize(async (params) => {
       },
       hoverProvider: true,
       definitionProvider: true,
-      semanticTokensProvider:
-        initialized?.capabilities?.semanticTokensProvider ??
-        (supportsSemanticTokenRequests
-          ? {
-              full: true,
-              range: true,
-              legend: {
-                tokenTypes: [],
-                tokenModifiers: [],
-              },
-            }
-          : undefined),
+      semanticTokensProvider: initialized?.capabilities?.semanticTokensProvider,
       documentFormattingProvider: supportsDocumentFormatting,
     },
   };
