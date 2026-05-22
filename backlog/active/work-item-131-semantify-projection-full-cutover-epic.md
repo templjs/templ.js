@@ -6,8 +6,8 @@ summary: Fully adopt deterministic Semantify projection and provenance as the se
 type: work-item
 subtype: epic
 lifecycle: active
-status: ready
-status_reason: prioritized
+status: in-progress
+status_reason: child-lane-complete-awaiting-automation-closeout
 priority: critical
 estimated: 32
 actual: 0
@@ -42,31 +42,31 @@ This epic supersedes the archived migration sequence by enforcing a strict final
 
 ## Tasks
 
-- [ ] Execute `WI-132` through `WI-139` in the defined phase order.
-- [ ] Enforce the dependency graph and parallel lane boundaries in this epic.
-- [ ] Ensure each child item contributes direct evidence toward final legacy removal.
-- [ ] Ensure full validation matrix passes before closing this epic.
-- [ ] Handoff final evidence collation and closure automation inputs without manual archive shortcuts.
+- [x] Execute `WI-132` through `WI-139` in the defined phase order.
+- [x] Enforce the dependency graph and parallel lane boundaries in this epic.
+- [x] Ensure each child item contributes direct evidence toward final legacy removal.
+- [x] Ensure full validation matrix passes before closing this epic.
+- [x] Handoff final evidence collation and closure automation inputs without manual archive shortcuts.
 
 ## Acceptance Criteria
 
-- [ ] `WI-132` through `WI-139` are completed with acceptance criteria checked.
-- [ ] No source or tests reference legacy Semantify compatibility surfaces (`createSemantifyServices`, `resolveContext`, `resolveReferences`, `planCandidates`).
-- [ ] Hover, definition, completion, diagnostics, and semantic highlighting execute through projection/profile extensions and provenance-backed graph reads.
-- [ ] Formatting behavior remains host delegated and respects workspace formatter configuration while using semantic orchestration hooks only.
-- [ ] Determinism and reproducibility gates pass for projection output under fixed inputs.
-- [ ] Repo-level validation matrix succeeds (`lint:frontmatter`, `type-check`, `test`, `build`).
+- [x] `WI-132` through `WI-139` are completed with acceptance criteria checked.
+- [x] No source or tests reference legacy Semantify compatibility surfaces (`createSemantifyServices`, `resolveContext`, `resolveReferences`, `planCandidates`).
+- [x] Hover, definition, completion, diagnostics, and semantic highlighting execute through projection/profile extensions and provenance-backed graph reads.
+- [x] Formatting behavior remains host delegated and respects workspace formatter configuration while using semantic orchestration hooks only.
+- [x] Determinism and reproducibility gates pass for projection output under fixed inputs.
+- [x] Repo-level validation matrix succeeds (`lint:frontmatter`, `type-check`, `test`, `build`).
 
 ## Child Tasks
 
-- [ ] [[work-item-132-semantify-contract-hardening-and-helper-surface-completion]]
-- [ ] [[work-item-133-semantify-runtime-determinism-and-provenance-strict-mode]]
-- [ ] [[work-item-134-volar-completion-hover-definition-graph-cutover]]
-- [ ] [[work-item-135-diagnostics-highlighting-projection-authority-cutover]]
-- [ ] [[work-item-136-formatting-orchestration-contract-host-delegation]]
-- [ ] [[work-item-137-language-service-server-capability-wiring-finalization]]
-- [ ] [[work-item-138-legacy-artifact-purge-and-api-surface-cleanup]]
-- [ ] [[work-item-139-final-verification-performance-gate-and-evidence-collation]]
+- [x] [[work-item-132-semantify-contract-hardening-and-helper-surface-completion]]
+- [x] [[work-item-133-semantify-runtime-determinism-and-provenance-strict-mode]]
+- [x] [[work-item-134-volar-completion-hover-definition-graph-cutover]]
+- [x] [[work-item-135-diagnostics-highlighting-projection-authority-cutover]]
+- [x] [[work-item-136-formatting-orchestration-contract-host-delegation]]
+- [x] [[work-item-137-language-service-server-capability-wiring-finalization]]
+- [x] [[work-item-138-legacy-artifact-purge-and-api-surface-cleanup]]
+- [x] [[work-item-139-final-verification-performance-gate-and-evidence-collation]]
 
 ## Relationships
 

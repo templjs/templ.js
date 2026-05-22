@@ -239,6 +239,101 @@ describe('SemantifyProjectionRuntime', () => {
     ).toBe(true);
   });
 
+  it('rejects versions below caret minimum even when major versions match', () => {
+    const result = projectSemanticGraph({
+      adapterOutput,
+      profile: {
+        ...profile,
+        defaultAdapters: [
+          {
+            adapterId: 'test-adapter',
+            adapterVersionRange: '^1.2.0',
+            sourceNodeKinds: ['test.symbol'],
+          },
+        ],
+      },
+    });
+
+    expect(
+      result.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('does not satisfy profile adapterVersionRange')
+      )
+    ).toBe(true);
+  });
+
+  it('enforces zero-major caret semantics for adapter version ranges', () => {
+    const zeroMajorMismatch = projectSemanticGraph({
+      adapterOutput: {
+        ...adapterOutput,
+        adapterVersion: '0.10.0',
+      },
+      profile: {
+        ...profile,
+        defaultAdapters: [
+          {
+            adapterId: 'test-adapter',
+            adapterVersionRange: '^0.9.0',
+            sourceNodeKinds: ['test.symbol'],
+          },
+        ],
+      },
+    });
+
+    expect(
+      zeroMajorMismatch.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('does not satisfy profile adapterVersionRange')
+      )
+    ).toBe(true);
+
+    const zeroMajorMatch = projectSemanticGraph({
+      adapterOutput: {
+        ...adapterOutput,
+        adapterVersion: '0.9.5',
+      },
+      profile: {
+        ...profile,
+        defaultAdapters: [
+          {
+            adapterId: 'test-adapter',
+            adapterVersionRange: '^0.9.0',
+            sourceNodeKinds: ['test.symbol'],
+          },
+        ],
+      },
+    });
+
+    expect(
+      zeroMajorMatch.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('does not satisfy profile adapterVersionRange')
+      )
+    ).toBe(false);
+  });
+
+  it('rejects prerelease adapter versions unless range explicitly includes prereleases', () => {
+    const result = projectSemanticGraph({
+      adapterOutput: {
+        ...adapterOutput,
+        adapterVersion: '1.2.0-beta.1',
+      },
+      profile: {
+        ...profile,
+        defaultAdapters: [
+          {
+            adapterId: 'test-adapter',
+            adapterVersionRange: '^1.2.0',
+            sourceNodeKinds: ['test.symbol'],
+          },
+        ],
+      },
+    });
+
+    expect(
+      result.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('does not satisfy profile adapterVersionRange')
+      )
+    ).toBe(true);
+  });
+
   it('accepts exact adapter version matches in adapter manifests', () => {
     const result = projectSemanticGraph({
       adapterOutput,
@@ -273,6 +368,53 @@ describe('SemantifyProjectionRuntime', () => {
           {
             adapterId: 'test-adapter',
             adapterVersionRange: '',
+            sourceNodeKinds: ['test.symbol'],
+          },
+        ],
+      },
+    });
+
+    expect(
+      result.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('does not satisfy profile adapterVersionRange')
+      )
+    ).toBe(true);
+  });
+
+  it('reports invalid adapter versions that are not valid semver strings', () => {
+    const result = projectSemanticGraph({
+      adapterOutput: {
+        ...adapterOutput,
+        adapterVersion: 'not-a-semver',
+      },
+      profile: {
+        ...profile,
+        defaultAdapters: [
+          {
+            adapterId: 'test-adapter',
+            adapterVersionRange: '^1.0.0',
+            sourceNodeKinds: ['test.symbol'],
+          },
+        ],
+      },
+    });
+
+    expect(
+      result.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('does not satisfy profile adapterVersionRange')
+      )
+    ).toBe(true);
+  });
+
+  it('reports invalid adapter version ranges that semver cannot parse', () => {
+    const result = projectSemanticGraph({
+      adapterOutput,
+      profile: {
+        ...profile,
+        defaultAdapters: [
+          {
+            adapterId: 'test-adapter',
+            adapterVersionRange: '[invalid-range',
             sourceNodeKinds: ['test.symbol'],
           },
         ],
