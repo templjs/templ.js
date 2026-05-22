@@ -54,6 +54,12 @@ const contentSchema = {
 };
 
 describe('DiagnosticProvider', () => {
+  it('tags templjs diagnostics with diagnostic-planner source by default', () => {
+    const diagnostics = collectDiagnostics('{{ unknown.value }}', { schema: sampleSchema });
+
+    expect(diagnostics[0]?.source).toBe('templjs.authoring.diagnostics');
+  });
+
   it('reports missing closing end tag', () => {
     const diagnostics = collectDiagnostics('{% if user.name %}\nHello', {
       schema: sampleSchema,
