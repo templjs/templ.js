@@ -1387,6 +1387,34 @@ export class IntellisenseProvider {
     }
 
     if (!expression && statement) {
+      const rawInner = text
+        .slice(statement.start, statement.end)
+        .slice(delimiters.statementStart.length, -delimiters.statementEnd.length);
+      const statementContent = rawInner.trim();
+      const statementOffset =
+        statement.start +
+        delimiters.statementStart.length +
+        (rawInner.indexOf(statementContent) >= 0 ? rawInner.indexOf(statementContent) : 0);
+      const cursorInStatement = offset - statementOffset;
+      const forHeaderMatch = parseForHeader(statementContent);
+      if (forHeaderMatch) {
+        const inAliasToken =
+          cursorInStatement >= forHeaderMatch.aliasStart &&
+          cursorInStatement < forHeaderMatch.aliasEnd;
+        const iterableStart = Math.max(
+          forHeaderMatch.iterableStart,
+          statementContent.lastIndexOf(forHeaderMatch.iterableExpression)
+        );
+        const iterableEnd = iterableStart + forHeaderMatch.iterableExpression.length;
+
+        if (
+          !inAliasToken &&
+          (cursorInStatement < iterableStart || cursorInStatement >= iterableEnd)
+        ) {
+          return null;
+        }
+      }
+
       const hover = getSemantifyHoverResult();
       if (!hover) {
         options?.debugLog?.(
@@ -1604,9 +1632,14 @@ export class IntellisenseProvider {
     const forHeaderMatch = parseForHeader(statementContent);
     if (forHeaderMatch) {
       const { aliasName, aliasStart, aliasEnd, iterableExpression, iterableStart } = forHeaderMatch;
-      const cursorInIterable = cursorInStatement - iterableStart;
+      const normalizedIterableStart = Math.max(
+        iterableStart,
+        statementContent.lastIndexOf(iterableExpression)
+      );
+      const iterableEnd = normalizedIterableStart + iterableExpression.length;
+      const cursorInIterable = cursorInStatement - normalizedIterableStart;
 
-      if (cursorInStatement >= aliasStart && cursorInStatement <= aliasEnd) {
+      if (cursorInStatement >= aliasStart && cursorInStatement < aliasEnd) {
         if (options?.documentUri) {
           const declarationStart = statementOffset + aliasStart;
           const declarationEnd = declarationStart + aliasName.length;
@@ -1622,6 +1655,10 @@ export class IntellisenseProvider {
           };
         }
 
+        return null;
+      }
+
+      if (cursorInStatement < normalizedIterableStart || cursorInStatement >= iterableEnd) {
         return null;
       }
 

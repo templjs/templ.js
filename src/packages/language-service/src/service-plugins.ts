@@ -840,36 +840,46 @@ function withPositionRemap(
               provideDefinition(document, position, token) {
                 const response = provideDefinition(document, position, token);
                 const rangeMapper = getRangeMapper(document);
+                const sourceUri = getSourceUri(context, document.uri);
                 if (!rangeMapper) {
                   return response;
                 }
 
-                if (isPromiseLike(response)) {
-                  return response.then((definition) => {
-                    if (!definition) {
-                      return definition;
-                    }
-                    if (!Array.isArray(definition)) {
-                      return definition;
-                    }
+                const remapDefinitionResult = <T>(definition: T): T => {
+                  if (!definition) {
+                    return definition;
+                  }
+
+                  if (Array.isArray(definition)) {
                     return remapDefinitionResponse(
                       rangeMapper,
-                      definition as unknown as Parameters<typeof remapDefinitionResponse>[1]
-                    ) as typeof definition;
+                      definition as unknown as Parameters<typeof remapDefinitionResponse>[1],
+                      sourceUri
+                    ) as T;
+                  }
+
+                  if (typeof definition === 'object') {
+                    const candidate = definition as { targetUri?: unknown; uri?: unknown };
+                    if ('targetUri' in candidate || 'uri' in candidate) {
+                      const remapped = remapDefinitionResponse(
+                        rangeMapper,
+                        [definition] as unknown as Parameters<typeof remapDefinitionResponse>[1],
+                        sourceUri
+                      );
+                      return remapped[0] as T;
+                    }
+                  }
+
+                  return definition;
+                };
+
+                if (isPromiseLike(response)) {
+                  return response.then((definition) => {
+                    return remapDefinitionResult(definition);
                   });
                 }
 
-                if (!response) {
-                  return response;
-                }
-                if (!Array.isArray(response)) {
-                  return response;
-                }
-
-                return remapDefinitionResponse(
-                  rangeMapper,
-                  response as unknown as Parameters<typeof remapDefinitionResponse>[1]
-                ) as typeof response;
+                return remapDefinitionResult(response);
               },
             }
           : {}),
