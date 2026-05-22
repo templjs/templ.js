@@ -6,12 +6,14 @@ summary: Make projection/profile execution authoritative for diagnostics plannin
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
-status_reason: prioritized
+status: in-progress
+status_reason: implementation-underway
 priority: critical
 estimated: 10
 actual: 0
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/170
   evidence:
     - '[[record-20260521-221758-135-diagnostics-highlighting-projection-authority-cutover]]'
 ---
@@ -43,6 +45,12 @@ Diagnostics and semantic-token behavior currently span mixed authority paths. Fi
 - Projection-backed semantic token authority.
 - Projection-backed diagnostics planning flow.
 - Integration tests for highlighting and diagnostics remap correctness.
+
+## Progress Notes
+
+- 2026-05-22: Removed legacy semantic-token fallback scanning path so parser-backed filter extraction is authoritative.
+- 2026-05-22: Wired diagnostic source attribution through the `diagnostic-planner` helper metadata (`templjs.authoring.diagnostics`) and preserved base diagnostic remapping behavior.
+- 2026-05-22: Added targeted branch-coverage tests in Volar to satisfy pre-push coverage gates for diagnostics, semantic token handling, and service-plugin mapping branches.
 
 ## Acceptance Criteria
 
