@@ -525,7 +525,7 @@ function getFilterNameAtOffset(
   options?: { allowSingleFallback?: boolean }
 ): string | null {
   const refs = extractExpressionFilterReferences(content);
-  const activeRef = refs.find((ref) => offsetInContent >= ref.start && offsetInContent <= ref.end);
+  const activeRef = refs.find((ref) => offsetInContent >= ref.start && offsetInContent < ref.end);
   if (activeRef) {
     return activeRef.name;
   }
