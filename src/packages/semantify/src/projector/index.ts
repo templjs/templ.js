@@ -608,6 +608,12 @@ function collectStrictModeDiagnostics(input: {
         message: `Strict mode requires provenance for node ${node.id}.`,
         sourceNodeKind: node.kind,
       });
+    } else if (node.provenance.targetId !== node.id) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Strict mode requires node provenance targetId ${node.provenance.targetId} to match node id ${node.id}.`,
+        sourceNodeKind: node.kind,
+      });
     }
   }
 
@@ -625,6 +631,11 @@ function collectStrictModeDiagnostics(input: {
       diagnostics.push({
         severity: 'error',
         message: `Strict mode requires provenance for edge ${edge.id}.`,
+      });
+    } else if (edge.provenance.targetId !== edge.id) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Strict mode requires edge provenance targetId ${edge.provenance.targetId} to match edge id ${edge.id}.`,
       });
     }
   }

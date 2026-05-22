@@ -829,4 +829,97 @@ describe('SemantifyProjectionRuntime', () => {
       )
     ).toBe(true);
   });
+
+  it('reports strict-mode diagnostics when inline provenance target ids are swapped', () => {
+    const diagnostics = semantifyProjectionTesting.collectStrictModeDiagnostics({
+      nodes: [
+        {
+          id: 'node-a',
+          profileId: 'profile',
+          kind: 'kind-a',
+          attributes: {},
+          provenance: {
+            version: 'v1',
+            providerId: 'provider',
+            providerVersion: '1.0.0',
+            sourceDocId: 'doc',
+            projectionRuleId: 'rule',
+            targetId: 'edge-a',
+            sourceSpan: { startOffset: 0, endOffset: 1 },
+            attributes: {
+              profileVersion: '1.0.0',
+              sourceNodeKind: 'kind-a',
+            },
+            confidence: 'definite',
+          },
+        },
+      ] as never,
+      edges: [
+        {
+          id: 'edge-a',
+          profileId: 'profile',
+          from: 'node-a',
+          to: 'node-a',
+          kind: 'edge-kind',
+          attributes: {},
+          provenance: {
+            version: 'v1',
+            providerId: 'provider',
+            providerVersion: '1.0.0',
+            sourceDocId: 'doc',
+            projectionRuleId: 'rule',
+            targetId: 'node-a',
+            sourceSpan: { startOffset: 0, endOffset: 1 },
+            attributes: {
+              profileVersion: '1.0.0',
+              sourceNodeKind: 'kind-a',
+            },
+            confidence: 'definite',
+          },
+        },
+      ] as never,
+      provenance: [
+        {
+          version: 'v1',
+          providerId: 'provider',
+          providerVersion: '1.0.0',
+          sourceDocId: 'doc',
+          projectionRuleId: 'rule',
+          targetId: 'node-a',
+          sourceSpan: { startOffset: 0, endOffset: 1 },
+          attributes: {
+            profileVersion: '1.0.0',
+            sourceNodeKind: 'kind-a',
+          },
+          confidence: 'definite',
+        },
+        {
+          version: 'v1',
+          providerId: 'provider',
+          providerVersion: '1.0.0',
+          sourceDocId: 'doc',
+          projectionRuleId: 'rule',
+          targetId: 'edge-a',
+          sourceSpan: { startOffset: 0, endOffset: 1 },
+          attributes: {
+            profileVersion: '1.0.0',
+            sourceNodeKind: 'kind-a',
+          },
+          confidence: 'definite',
+        },
+      ] as never,
+    });
+
+    const messages = diagnostics.map((diagnostic) => diagnostic.message);
+    expect(
+      messages.some((message) =>
+        message.includes('node provenance targetId edge-a to match node id node-a')
+      )
+    ).toBe(true);
+    expect(
+      messages.some((message) =>
+        message.includes('edge provenance targetId node-a to match edge id edge-a')
+      )
+    ).toBe(true);
+  });
 });
