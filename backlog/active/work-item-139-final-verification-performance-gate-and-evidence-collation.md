@@ -6,12 +6,14 @@ summary: Execute final deterministic/projection validation, performance checks, 
 type: work-item
 subtype: task
 lifecycle: active
-status: in-progress
-status_reason: validation-complete-awaiting-pr-link
+status: ready-for-review
+status_reason: validation-and-evidence-complete
 priority: high
 estimated: 6
 actual: 4
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/177
   evidence:
     - '[[record-20260521-221758-139-final-verification-performance-gate-and-evidence-collation]]'
 ---
