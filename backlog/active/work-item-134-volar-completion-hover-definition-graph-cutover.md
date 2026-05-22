@@ -10,7 +10,7 @@ status: ready-for-review
 status_reason: implementation-merged-awaiting-automation-finalization
 priority: critical
 estimated: 10
-actual: 0
+actual: 3
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/167
