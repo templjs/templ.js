@@ -55,10 +55,6 @@ Existing profile helpers cover only part of the feature surface. Final cutover r
 - [x] Provenance requirements for feature-critical projection entities are explicit and test-enforced.
 - [x] Documentation no longer describes legacy compatibility APIs as active integration guidance.
 
-## Relationships
-
-- `related`: [[work-item-131-semantify-projection-full-cutover-epic]]
-
 ## Validation
 
 ```bash
