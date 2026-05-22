@@ -516,6 +516,26 @@ describe('createSemantifyServices', () => {
     });
   });
 
+  it('derives local-binding hover at the alias trailing boundary in statement headers', () => {
+    const text = '{% for item in users %}ok{% endfor %}';
+    const offset = text.indexOf('item') + 'item'.length;
+
+    const candidates = services.planCandidates(
+      {
+        type: 'hoverPayload',
+      },
+      { text, offset }
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.label).toBe('item');
+    expect(candidates[0]?.metadata).toMatchObject({
+      symbolKind: 'localBinding',
+      alias: 'item',
+      isAliasTokenOnly: true,
+    });
+  });
+
   it('prefers root alias hover detail for iterable expression symbols in for-headers', () => {
     const text = '{% set users = data.users %}{% for item in users.list %}{{ item }}{% endfor %}';
     const offset = text.indexOf('users.list') + 1;

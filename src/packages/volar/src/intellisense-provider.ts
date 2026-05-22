@@ -1400,11 +1400,8 @@ export class IntellisenseProvider {
       if (forHeaderMatch) {
         const inAliasToken =
           cursorInStatement >= forHeaderMatch.aliasStart &&
-          cursorInStatement < forHeaderMatch.aliasEnd;
-        const iterableStart = Math.max(
-          forHeaderMatch.iterableStart,
-          statementContent.lastIndexOf(forHeaderMatch.iterableExpression)
-        );
+          cursorInStatement <= forHeaderMatch.aliasEnd;
+        const iterableStart = forHeaderMatch.iterableStart;
         const iterableEnd = iterableStart + forHeaderMatch.iterableExpression.length;
 
         if (
@@ -1632,14 +1629,10 @@ export class IntellisenseProvider {
     const forHeaderMatch = parseForHeader(statementContent);
     if (forHeaderMatch) {
       const { aliasName, aliasStart, aliasEnd, iterableExpression, iterableStart } = forHeaderMatch;
-      const normalizedIterableStart = Math.max(
-        iterableStart,
-        statementContent.lastIndexOf(iterableExpression)
-      );
-      const iterableEnd = normalizedIterableStart + iterableExpression.length;
-      const cursorInIterable = cursorInStatement - normalizedIterableStart;
+      const iterableEnd = iterableStart + iterableExpression.length;
+      const cursorInIterable = cursorInStatement - iterableStart;
 
-      if (cursorInStatement >= aliasStart && cursorInStatement < aliasEnd) {
+      if (cursorInStatement >= aliasStart && cursorInStatement <= aliasEnd) {
         if (options?.documentUri) {
           const declarationStart = statementOffset + aliasStart;
           const declarationEnd = declarationStart + aliasName.length;
@@ -1658,7 +1651,7 @@ export class IntellisenseProvider {
         return null;
       }
 
-      if (cursorInStatement < normalizedIterableStart || cursorInStatement >= iterableEnd) {
+      if (cursorInStatement < iterableStart || cursorInStatement >= iterableEnd) {
         return null;
       }
 
