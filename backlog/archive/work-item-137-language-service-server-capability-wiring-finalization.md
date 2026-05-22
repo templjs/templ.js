@@ -5,12 +5,13 @@ title: '137: Language-Service and Server Capability Wiring Finalization'
 summary: Finalize plugin and LSP capability wiring so all semantic features execute through projection-backed helper extensions.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: draft-pr-open-validation-passed
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 8
 actual: 2
+completed_date: '2026-05-22'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/172

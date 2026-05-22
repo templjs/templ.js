@@ -5,12 +5,13 @@ title: '135: Diagnostics and Highlighting Projection Authority Cutover'
 summary: Make projection/profile execution authoritative for diagnostics planning and semantic highlighting.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: merged-pr-awaiting-automation
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: critical
 estimated: 10
 actual: 3
+completed_date: '2026-05-22'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/170
