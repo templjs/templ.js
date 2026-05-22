@@ -6,11 +6,11 @@ summary: Replace simplified adapterVersionRange caret handling with semver-accur
 type: work-item
 subtype: bug
 lifecycle: active
-status: ready
-status_reason: prioritized
+status: in-progress
+status_reason: implementation-complete-awaiting-pr-link
 priority: high
 estimated: 3
-actual: 0
+actual: 2
 links:
   evidence:
     - '[[record-20260521-221758-140-adapter-version-range-semver-caret-compliance]]'
@@ -34,9 +34,9 @@ Tracking moved from remote issue `#164` into local backlog work management for e
 
 ## Tasks
 
-- [ ] Replace ad-hoc `adapterVersionRange` comparison logic with semver-accurate range checks.
-- [ ] Add tests covering `^1.2.0`, `^0.9.0`, exact versions, and non-matching ranges.
-- [ ] Verify compatibility diagnostics include adapter id, actual version, and expected range.
+- [x] Replace ad-hoc `adapterVersionRange` comparison logic with semver-accurate range checks.
+- [x] Add tests covering `^1.2.0`, `^0.9.0`, exact versions, and non-matching ranges.
+- [x] Verify compatibility diagnostics include adapter id, actual version, and expected range.
 
 ## Deliverables
 
@@ -44,11 +44,17 @@ Tracking moved from remote issue `#164` into local backlog work management for e
 - Regression tests for semver range behavior.
 - Evidence of passing Semantify package tests.
 
+## Progress Notes
+
+- 2026-05-22: Replaced adapter/profile version compatibility checks with semver range evaluation (`semver.satisfies`) while preserving actionable mismatch diagnostics.
+- 2026-05-22: Added regression tests for caret floor handling (`^1.2.0` vs `1.0.0`) and zero-major caret semantics (`^0.9.0` rejects `0.10.0`, accepts `0.9.5`).
+- 2026-05-22: Validation passed for `pnpm --filter @templjs/semantify test` and `pnpm --filter @templjs/semantify build`.
+
 ## Acceptance Criteria
 
-- [ ] `adapterVersionRange` checks match semver expectations for caret and exact ranges.
-- [ ] Prior false-positive compatibility cases now fail deterministically.
-- [ ] Semantify tests pass with new range-behavior coverage.
+- [x] `adapterVersionRange` checks match semver expectations for caret and exact ranges.
+- [x] Prior false-positive compatibility cases now fail deterministically.
+- [x] Semantify tests pass with new range-behavior coverage.
 
 ## Relationships
 

@@ -31,6 +31,10 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@templjs/context-graph": "workspace:*",
-    "@templjs/core": "workspace:*"
+    "@templjs/core": "workspace:*",
+    "semver": "^7.6.3"
+  },
+  "devDependencies": {
+    "@types/semver": "^7.5.8"
   }
 }

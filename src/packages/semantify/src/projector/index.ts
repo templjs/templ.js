@@ -17,6 +17,7 @@ import type {
   TypedProjectionRule,
 } from '../model/public-types.js';
 import type { JsonObject, JsonValue } from '@templjs/context-graph';
+import { satisfies, valid } from 'semver';
 
 const SEMANTIFY_SCHEMA_VERSION: SemantifySchemaVersion = '1.0.0';
 const GRAPH_CONTRACT_VERSION = 'v1' as const;
@@ -404,17 +405,18 @@ function validateAdapterProfileCompatibility(
       return false;
     }
 
-    if (range.startsWith('^')) {
-      const expectedMajor = Number.parseInt(range.slice(1).split('.')[0] ?? '', 10);
-      const actualMajor = Number.parseInt(version.split('.')[0] ?? '', 10);
-      return (
-        Number.isFinite(expectedMajor) &&
-        Number.isFinite(actualMajor) &&
-        expectedMajor === actualMajor
-      );
+    const validVersion = valid(version);
+    if (!validVersion) {
+      return false;
     }
 
-    return range === version;
+    try {
+      return satisfies(validVersion, range, {
+        includePrerelease: true,
+      });
+    } catch {
+      return false;
+    }
   })();
 
   if (!isVersionCompatible) {

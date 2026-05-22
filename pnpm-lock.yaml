@@ -290,6 +290,13 @@ importers:
       '@templjs/core':
         specifier: workspace:*
         version: link:../core
+      semver:
+        specifier: ^7.6.3
+        version: 7.7.4
+    devDependencies:
+      '@types/semver':
+        specifier: ^7.5.8
+        version: 7.7.1
 
   src/packages/volar:
     dependencies:
@@ -3160,6 +3167,10 @@ packages:
 
   /@types/sarif@2.1.7:
     resolution: {integrity: sha512-kRz0VEkJqWLf1LLVN4pT1cg1Z9wAuvI6L97V3m2f5B76Tg8d413ddvLBPTEHAZJlnn4XSvu0FkZtViCQGVyrXQ==}
+    dev: true
+
+  /@types/semver@7.7.1:
+    resolution: {integrity: sha512-FmgJfu+MOcQ370SD0ev7EI8TlCAfKYU+B4m5T3yXc1CiRN94g/SZPtsCkk506aUDtlMnFZvasDwHHUcZUEaYuA==}
     dev: true
 
   /@types/unist@3.0.3:
