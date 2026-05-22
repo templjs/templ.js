@@ -411,9 +411,7 @@ function validateAdapterProfileCompatibility(
     }
 
     try {
-      return satisfies(validVersion, range, {
-        includePrerelease: true,
-      });
+      return satisfies(validVersion, range);
     } catch {
       return false;
     }

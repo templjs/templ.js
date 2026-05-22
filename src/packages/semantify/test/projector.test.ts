@@ -309,6 +309,31 @@ describe('SemantifyProjectionRuntime', () => {
     ).toBe(false);
   });
 
+  it('rejects prerelease adapter versions unless range explicitly includes prereleases', () => {
+    const result = projectSemanticGraph({
+      adapterOutput: {
+        ...adapterOutput,
+        adapterVersion: '1.2.0-beta.1',
+      },
+      profile: {
+        ...profile,
+        defaultAdapters: [
+          {
+            adapterId: 'test-adapter',
+            adapterVersionRange: '^1.2.0',
+            sourceNodeKinds: ['test.symbol'],
+          },
+        ],
+      },
+    });
+
+    expect(
+      result.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('does not satisfy profile adapterVersionRange')
+      )
+    ).toBe(true);
+  });
+
   it('accepts exact adapter version matches in adapter manifests', () => {
     const result = projectSemanticGraph({
       adapterOutput,
