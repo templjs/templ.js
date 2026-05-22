@@ -6,12 +6,14 @@ summary: Remove all Semantify migration artifacts, compatibility shims, and obso
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
-status_reason: prioritized
+status: in-progress
+status_reason: legacy-api-removal-underway
 priority: critical
 estimated: 8
-actual: 0
+actual: 2
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/173
   evidence:
     - '[[record-20260521-221758-138-legacy-artifact-purge-and-api-surface-cleanup]]'
 ---
@@ -32,9 +34,9 @@ Cutover quality requires explicit removal, not just deprecation. Mixed-path arti
 
 ## Tasks
 
-- [ ] Remove legacy compatibility APIs from Semantify source and public exports.
+- [x] Remove legacy compatibility APIs from Semantify source and public exports.
 - [ ] Remove compatibility fallback code paths in Volar/language-service.
-- [ ] Remove tests that validate legacy behavior contracts.
+- [x] Remove tests that validate legacy behavior contracts.
 - [ ] Update README/ADR/docs to final-state projection-only architecture guidance.
 - [ ] Run full repo validation after removal and resolve breakages.
 
@@ -43,6 +45,11 @@ Cutover quality requires explicit removal, not just deprecation. Mixed-path arti
 - Projection-only API surface and source tree.
 - Updated docs with no migration/transition framing.
 - Cleaned tests aligned to final architecture.
+
+## Progress Notes
+
+- 2026-05-22: Removed Semantify compatibility API surface (`createSemantifyServices`, `SemantifyServices`) from public exports and deleted legacy binder compatibility implementation.
+- 2026-05-22: Removed obsolete Semantify framework compatibility tests and validated package/build/frontmatter checks for this cleanup slice.
 
 ## Acceptance Criteria
 
