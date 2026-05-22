@@ -187,6 +187,49 @@ describe('TempljsServicePlugin', () => {
 
       expect(hover).toBeNull();
     });
+
+    it('omits range when provider hover has no range', () => {
+      const stubProvider = {
+        getCompletions: vi.fn().mockReturnValue([]),
+        getHover: vi.fn().mockReturnValue({ contents: 'hover text' }),
+        getDefinition: vi.fn().mockReturnValue(null),
+      } as unknown as IntellisenseProvider;
+      const plugin = new TempljsServicePlugin(stubProvider);
+
+      const hover = plugin.getHover('{{ user.name }}', 4, {
+        schema: sampleSchema,
+      });
+
+      expect(hover).toEqual({
+        contents: {
+          kind: 'markdown',
+          value: 'hover text',
+        },
+      });
+      expect(hover).not.toHaveProperty('range');
+    });
+
+    it('preserves provider range when hover includes one', () => {
+      const stubRange = {
+        start: { line: 1, character: 2 },
+        end: { line: 1, character: 6 },
+      };
+      const stubProvider = {
+        getCompletions: vi.fn().mockReturnValue([]),
+        getHover: vi.fn().mockReturnValue({
+          contents: 'hover text',
+          range: stubRange,
+        }),
+        getDefinition: vi.fn().mockReturnValue(null),
+      } as unknown as IntellisenseProvider;
+      const plugin = new TempljsServicePlugin(stubProvider);
+
+      const hover = plugin.getHover('{{ user.name }}', 4, {
+        schema: sampleSchema,
+      });
+
+      expect(hover?.range).toEqual(stubRange);
+    });
   });
 
   describe('getDefinition', () => {
@@ -246,19 +289,27 @@ describe('TempljsServicePlugin', () => {
     });
 
     it('returns a concrete definition range when available', () => {
-      const plugin = new TempljsServicePlugin();
-      const text = '{{ user.name }}';
-      const offset = text.indexOf('user');
+      const explicitRange = {
+        start: { line: 2, character: 3 },
+        end: { line: 2, character: 9 },
+      };
+      const stubProvider = {
+        getCompletions: vi.fn().mockReturnValue([]),
+        getHover: vi.fn().mockReturnValue(null),
+        getDefinition: vi.fn().mockReturnValue({
+          uri: 'file:///schema.json',
+          range: explicitRange,
+        }),
+      } as unknown as IntellisenseProvider;
+      const plugin = new TempljsServicePlugin(stubProvider);
 
-      const definition = plugin.getDefinition(text, offset, {
+      const definition = plugin.getDefinition('{{ user.name }}', 4, {
         schema: sampleSchema,
         schemaUri: 'file:///schema.json',
       });
 
-      if (definition) {
-        expect(definition.range.start.line).toBeGreaterThanOrEqual(0);
-        expect(definition.range.start.character).toBeGreaterThanOrEqual(0);
-      }
+      expect(definition).not.toBeNull();
+      expect(definition?.range).toEqual(explicitRange);
     });
 
     it('handles for-loop alias scope in definition', () => {
