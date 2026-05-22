@@ -9,10 +9,29 @@ import {
   listAdapterRuntimeEntries,
 } from './adapter-registry.js';
 
+const FORMATTING_ORCHESTRATOR_CONTRACT = {
+  helperExtensionId: 'templjs.authoring.formatting',
+  consumesSemanticKinds: ['templjs.binding', 'templjs.schema-path', 'templjs.semantic-zone'],
+} as const;
+
+export type FormattingOrchestrationContract = {
+  helperExtensionId: string;
+  consumesSemanticKinds: string[];
+  source: 'manifest';
+};
+
 export function getConfiguredPrettierHostLanguages(
   options: ServicePluginOrchestrationOptions
 ): string[] {
   return getConfiguredFormattingHostLanguages(options);
+}
+
+export function resolveFormattingOrchestrationContract(): FormattingOrchestrationContract {
+  return {
+    helperExtensionId: FORMATTING_ORCHESTRATOR_CONTRACT.helperExtensionId,
+    consumesSemanticKinds: [...FORMATTING_ORCHESTRATOR_CONTRACT.consumesSemanticKinds],
+    source: 'manifest',
+  };
 }
 
 export function resolveAdapterRuntimeManifest(

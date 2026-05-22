@@ -264,6 +264,16 @@ describe('language-service service-plugins coverage branches', () => {
     ).toBeUndefined();
   });
 
+  it('resolves deterministic formatting orchestration contract metadata', async () => {
+    const { servicePluginTesting } = await import('../src/index.ts');
+
+    expect(servicePluginTesting.resolveFormattingOrchestrationContract()).toEqual({
+      helperExtensionId: 'templjs.authoring.formatting',
+      consumesSemanticKinds: ['templjs.binding', 'templjs.schema-path', 'templjs.semantic-zone'],
+      source: 'manifest',
+    });
+  });
+
   it('skips yaml diagnostics for templjs source documents and keeps unclosed fenced ranges', async () => {
     const { servicePluginTesting } = await import('../src/index.ts');
     const yamlPlugin = servicePluginTesting.createYamlHostDiagnosticsAdapter({} as never);
