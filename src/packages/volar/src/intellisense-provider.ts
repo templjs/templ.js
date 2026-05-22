@@ -1119,14 +1119,14 @@ export class IntellisenseProvider {
         getVariablePathPrefixAtOffset(content, relativeOffset) ?? variablePath;
 
       const activeRef = extractExpressionVariableReferences(content).find(
-        (ref) => relativeOffset >= ref.start && relativeOffset <= ref.end
+        (ref) => relativeOffset >= ref.start && relativeOffset < ref.end
       );
       let segmentRange: { start: number; end: number } | null = null;
       let cursorInAliasSegment = false;
       if (activeRef) {
         const relativeInRef = Math.max(
           0,
-          Math.min(relativeOffset - activeRef.start, activeRef.path.length)
+          Math.min(relativeOffset - activeRef.start, Math.max(0, activeRef.path.length - 1))
         );
         const segments = splitPathSegments(activeRef.path);
         let cursor = 0;
