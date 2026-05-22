@@ -52,7 +52,7 @@ describe('ContextGraphSemanticReadAdapter', () => {
     const request = {
       version: 'v1' as const,
       nodes: {
-        kind: 'schema-path' as const,
+        kind: 'templjs.schema-path' as const,
       },
     };
     const first = adapter.query(options, request);
@@ -113,7 +113,7 @@ describe('ContextGraphSemanticReadAdapter', () => {
       {
         version: 'v1',
         nodes: {
-          kind: 'schema-path',
+          kind: 'templjs.schema-path',
           attributeEquals: {
             operation: 'completion',
             contextBlock: 'frontmatter',
@@ -135,7 +135,7 @@ describe('ContextGraphSemanticReadAdapter', () => {
       {
         version: 'v1',
         nodes: {
-          kind: 'schema-path',
+          kind: 'templjs.schema-path',
           attributeEquals: {
             operation: 'hover',
             contextBlock: 'frontmatter',

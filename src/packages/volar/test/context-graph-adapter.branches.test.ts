@@ -720,7 +720,7 @@ describe('ContextGraphSemanticReadAdapter branch coverage', () => {
       {
         version: 'v1',
         nodes: {
-          kind: 'schema-path',
+          kind: 'templjs.schema-path',
         },
       }
     );
@@ -924,7 +924,7 @@ describe('ContextGraphSemanticReadAdapter branch coverage', () => {
       {
         version: 'v1',
         nodes: {
-          kind: 'schema-enum-value',
+          kind: 'templjs.schema-enum-value',
         },
       },
       {
@@ -1800,7 +1800,7 @@ describe('context-graph helper branch coverage', () => {
       },
       {
         version: 'v1',
-        nodes: { kind: 'schema-path' },
+        nodes: { kind: 'templjs.schema-path' },
       },
       {
         operation: 'completion',
@@ -1820,7 +1820,7 @@ describe('context-graph helper branch coverage', () => {
         {
           id: 'x',
           profileId: 'content.body',
-          kind: 'schema-path',
+          kind: 'templjs.schema-path',
           attributes: {
             type: 123,
             description: false,
@@ -1849,7 +1849,7 @@ describe('context-graph helper branch coverage', () => {
         {
           id: 'x',
           profileId: 'content.body',
-          kind: 'schema-path',
+          kind: 'templjs.schema-path',
           attributes: {
             label: 'title',
             type: 999,
@@ -1879,7 +1879,7 @@ describe('context-graph helper branch coverage', () => {
         {
           id: 'x',
           profileId: 'content.body',
-          kind: 'schema-enum-value',
+          kind: 'templjs.schema-enum-value',
           attributes: {},
         },
       ],

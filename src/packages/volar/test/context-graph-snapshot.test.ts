@@ -109,8 +109,8 @@ describe('context-graph-snapshot helpers', () => {
     };
 
     const nodes = buildPathNodes('content', schema);
-    expect(nodes.some((node) => node.kind === 'schema-path')).toBe(true);
-    expect(nodes.some((node) => node.kind === 'schema-enum-value')).toBe(true);
+    expect(nodes.some((node) => node.kind === 'templjs.schema-path')).toBe(true);
+    expect(nodes.some((node) => node.kind === 'templjs.schema-enum-value')).toBe(true);
 
     const snapshot = {
       version: 'v1' as const,
@@ -122,7 +122,7 @@ describe('context-graph-snapshot helpers', () => {
     const filtered = filterNodes(snapshot, {
       version: 'v1',
       nodes: {
-        kind: 'schema-path',
+        kind: 'templjs.schema-path',
         profileIds: [nodes[0]?.profileId ?? 'none'],
         attributeEquals: { contextBlock: 'content' },
       },
@@ -131,7 +131,7 @@ describe('context-graph-snapshot helpers', () => {
 
     const response = querySnapshot(snapshot, {
       version: 'v1',
-      nodes: { kind: 'schema-path' },
+      nodes: { kind: 'templjs.schema-path' },
     });
     expect(response.revision).toBe(4);
     expect(response.edges).toEqual([]);
