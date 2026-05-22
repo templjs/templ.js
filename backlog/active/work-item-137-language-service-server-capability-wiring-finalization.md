@@ -6,11 +6,11 @@ summary: Finalize plugin and LSP capability wiring so all semantic features exec
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
-status_reason: prioritized
+status: in-progress
+status_reason: implementation-verified-awaiting-pr
 priority: high
 estimated: 8
-actual: 0
+actual: 2
 links:
   evidence:
     - '[[record-20260521-221758-137-language-service-server-capability-wiring-finalization]]'
@@ -32,21 +32,27 @@ Feature providers currently have partial capability registration and mixed imple
 
 ## Tasks
 
-- [ ] Register and wire semantic-token capabilities in language-service plugin registry and server handlers.
-- [ ] Ensure completion, hover, definition, diagnostics, highlighting, and formatting orchestration flow through projection-backed extension contracts.
-- [ ] Remove residual transport-layer semantic policy leakage.
-- [ ] Add and stabilize in-process integration tests across all feature handlers.
+- [x] Register and wire semantic-token capabilities in language-service plugin registry and server handlers.
+- [x] Ensure completion, hover, definition, diagnostics, highlighting, and formatting orchestration flow through projection-backed extension contracts.
+- [x] Remove residual transport-layer semantic policy leakage.
+- [x] Add and stabilize in-process integration tests across all feature handlers.
 
 ## Deliverables
 
 - Updated plugin and server wiring for full feature set.
 - End-to-end integration coverage for all targeted authoring capabilities.
 
+## Progress Notes
+
+- 2026-05-22: Added language-server semantic token request delegation for `textDocument/semanticTokens/full` and `textDocument/semanticTokens/range`, forwarding directly to Volar language-service semantic token APIs.
+- 2026-05-22: Added bootstrap/in-process integration tests for semantic token full/range routing and validated handler coverage for completion, hover, definition, formatting, and semantic tokens.
+- 2026-05-22: Validation passed: `pnpm --filter @templjs/language-service test` and `pnpm --filter @templjs/language-server test`.
+
 ## Acceptance Criteria
 
-- [ ] All targeted feature handlers are registered and functional through projection-backed execution.
-- [ ] Language-service and server maintain transport-only ownership boundaries.
-- [ ] In-process integration suite passes for completion, hover, definition, diagnostics, highlighting, and formatting.
+- [x] All targeted feature handlers are registered and functional through projection-backed execution.
+- [x] Language-service and server maintain transport-only ownership boundaries.
+- [x] In-process integration suite passes for completion, hover, definition, diagnostics, highlighting, and formatting.
 
 ## Relationships
 

@@ -14,6 +14,7 @@ const onNotification = vi.fn();
 const onCompletion = vi.fn();
 const onHover = vi.fn();
 const onDefinition = vi.fn();
+const onRequest = vi.fn();
 const onDocumentFormatting = vi.fn();
 const sendDiagnostics = vi.fn();
 const consoleLog = vi.fn();
@@ -56,6 +57,7 @@ vi.mock('@volar/language-server/node', () => ({
     onCompletion,
     onHover,
     onDefinition,
+    onRequest,
     ...(connectionSupportsFormatting ? { onDocumentFormatting } : {}),
     sendDiagnostics,
     console: {
@@ -105,6 +107,7 @@ describe('language-server-bootstrap', () => {
     onCompletion.mockClear();
     onHover.mockClear();
     onDefinition.mockClear();
+    onRequest.mockClear();
     onDocumentFormatting.mockClear();
     sendDiagnostics.mockClear();
     consoleLog.mockClear();
@@ -462,6 +465,110 @@ describe('authoring transport delegation', () => {
     expect(languageService.getHover).toHaveBeenCalledTimes(1);
     expect(languageService.getDefinition).toHaveBeenCalledTimes(1);
     expect(languageService.getDocumentFormattingEdits).toHaveBeenCalledTimes(1);
+  });
+
+  it('delegates semantic token full/range requests to language service', async () => {
+    const semanticTokens = { data: [0, 0, 4, 0, 0] };
+
+    const languageService = {
+      getCompletionItems: vi.fn(async () => ({ isIncomplete: false, items: [] })),
+      getHover: vi.fn(async () => null),
+      getDefinition: vi.fn(async () => null),
+      getDocumentFormattingEdits: vi.fn(async () => []),
+      getSemanticTokens: vi.fn(async () => semanticTokens),
+      semanticTokenLegend: {
+        tokenTypes: ['keyword', 'variable'],
+        tokenModifiers: ['readonly'],
+      },
+    };
+
+    getLanguageService.mockResolvedValue(languageService);
+
+    await import('../src/index.ts');
+
+    const initializeHandler = onInitialize.mock.calls[0][0] as (params: unknown) => Promise<{
+      capabilities: {
+        semanticTokensProvider?: {
+          legend?: { tokenTypes: string[]; tokenModifiers: string[] };
+        };
+      };
+    }>;
+    const init = await initializeHandler({ rootUri: 'file:///workspace' });
+
+    expect(onRequest).toHaveBeenCalledWith(
+      'textDocument/semanticTokens/full',
+      expect.any(Function)
+    );
+    expect(onRequest).toHaveBeenCalledWith(
+      'textDocument/semanticTokens/range',
+      expect.any(Function)
+    );
+    expect(init.capabilities.semanticTokensProvider).toBeDefined();
+
+    const fullHandler = onRequest.mock.calls.find(
+      (call) => call[0] === 'textDocument/semanticTokens/full'
+    )?.[1] as (request: { textDocument: { uri: string } }, token: unknown) => Promise<unknown>;
+    const rangeHandler = onRequest.mock.calls.find(
+      (call) => call[0] === 'textDocument/semanticTokens/range'
+    )?.[1] as (
+      request: {
+        textDocument: { uri: string };
+        range: {
+          start: { line: number; character: number };
+          end: { line: number; character: number };
+        };
+      },
+      token: unknown
+    ) => Promise<unknown>;
+
+    await expect(
+      fullHandler(
+        {
+          textDocument: { uri: 'file:///workspace/doc.md.tpl' },
+        },
+        {}
+      )
+    ).resolves.toEqual(semanticTokens);
+
+    await expect(
+      rangeHandler(
+        {
+          textDocument: { uri: 'file:///workspace/doc.md.tpl' },
+          range: {
+            start: { line: 0, character: 0 },
+            end: { line: 0, character: 5 },
+          },
+        },
+        {}
+      )
+    ).resolves.toEqual(semanticTokens);
+
+    expect(languageService.getSemanticTokens).toHaveBeenCalledTimes(2);
+    expect(languageService.getSemanticTokens).toHaveBeenNthCalledWith(
+      1,
+      URI.parse('file:///workspace/doc.md.tpl'),
+      undefined,
+      {
+        tokenTypes: ['keyword', 'variable'],
+        tokenModifiers: ['readonly'],
+      },
+      undefined,
+      {}
+    );
+    expect(languageService.getSemanticTokens).toHaveBeenNthCalledWith(
+      2,
+      URI.parse('file:///workspace/doc.md.tpl'),
+      {
+        start: { line: 0, character: 0 },
+        end: { line: 0, character: 5 },
+      },
+      {
+        tokenTypes: ['keyword', 'variable'],
+        tokenModifiers: ['readonly'],
+      },
+      undefined,
+      {}
+    );
   });
 });
 

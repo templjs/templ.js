@@ -6,11 +6,11 @@ summary: Make projection/profile execution authoritative for diagnostics plannin
 type: work-item
 subtype: task
 lifecycle: active
-status: in-progress
-status_reason: implementation-underway
+status: ready-for-review
+status_reason: merged-pr-awaiting-automation
 priority: critical
 estimated: 10
-actual: 0
+actual: 3
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/170
@@ -34,11 +34,11 @@ Diagnostics and semantic-token behavior currently span mixed authority paths. Fi
 
 ## Tasks
 
-- [ ] Implement `semantic-token-provider` helper extension execution and integrate with Volar semantic token provider.
-- [ ] Ensure semantic token classification is sourced from projected graph/provenance entities.
-- [ ] Route diagnostics planning through `diagnostic-planner` helper contracts.
-- [ ] Preserve language-service transport remapping boundaries while removing semantic fallback policy from transport layers.
-- [ ] Add integration tests for nested virtual-code remapping and zone-sensitive token/diagnostic behavior.
+- [x] Implement `semantic-token-provider` helper extension execution and integrate with Volar semantic token provider.
+- [x] Ensure semantic token classification is sourced from projected graph/provenance entities.
+- [x] Route diagnostics planning through `diagnostic-planner` helper contracts.
+- [x] Preserve language-service transport remapping boundaries while removing semantic fallback policy from transport layers.
+- [x] Add integration tests for nested virtual-code remapping and zone-sensitive token/diagnostic behavior.
 
 ## Deliverables
 
@@ -51,12 +51,13 @@ Diagnostics and semantic-token behavior currently span mixed authority paths. Fi
 - 2026-05-22: Removed legacy semantic-token fallback scanning path so parser-backed filter extraction is authoritative.
 - 2026-05-22: Wired diagnostic source attribution through the `diagnostic-planner` helper metadata (`templjs.authoring.diagnostics`) and preserved base diagnostic remapping behavior.
 - 2026-05-22: Added targeted branch-coverage tests in Volar to satisfy pre-push coverage gates for diagnostics, semantic token handling, and service-plugin mapping branches.
+- 2026-05-22: PR #170 merged to `staging` (`88d46e340f47a032dbdf33e011c4c254d4e4f9b5`) with scope and validation complete; queued for backlog automation closure/archive.
 
 ## Acceptance Criteria
 
-- [ ] Semantic highlighting is driven by projected graph/provenance + helper extensions only.
-- [ ] Diagnostics planning no longer depends on legacy Semantify compatibility semantics.
-- [ ] Integration tests cover template/frontmatter and host remap scenarios with stable output.
+- [x] Semantic highlighting is driven by projected graph/provenance + helper extensions only.
+- [x] Diagnostics planning no longer depends on legacy Semantify compatibility semantics.
+- [x] Integration tests cover template/frontmatter and host remap scenarios with stable output.
 
 ## Relationships
 
