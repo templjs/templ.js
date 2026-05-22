@@ -12,6 +12,8 @@ priority: critical
 estimated: 8
 actual: 2
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/173
   evidence:
     - '[[record-20260521-221758-138-legacy-artifact-purge-and-api-surface-cleanup]]'
 ---
