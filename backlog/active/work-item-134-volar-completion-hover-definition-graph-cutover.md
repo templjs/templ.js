@@ -6,11 +6,15 @@ summary: Remove legacy Semantify intent helpers from Volar and route completion,
 type: work-item
 subtype: task
 lifecycle: active
-status: in-progress
+status: ready-for-review
+status_reason: implementation-merged-awaiting-automation-finalization
 priority: critical
 estimated: 10
-actual: 0
+actual: 3
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/167
+    - https://github.com/templjs/templ.js/pull/169
   evidence:
     - '[[record-20260521-221758-134-volar-completion-hover-definition-graph-cutover]]'
 ---
@@ -21,7 +25,7 @@ Cut Volar read paths over to projected graph and profile helper extensions for c
 
 ## Background
 
-`intellisense-provider` still consumes `createSemantifyServices` and `planCandidates` for key authoring behaviors. Final-state architecture requires graph/provenance + helper extensions as the sole semantic source.
+`intellisense-provider` now routes completion, hover, and definition through projection/context-graph read adapters without legacy Semantify intent helper calls. Remaining work-item updates track verification and workflow finalization.
 
 ## Scope
 
@@ -31,12 +35,12 @@ Cut Volar read paths over to projected graph and profile helper extensions for c
 
 ## Tasks
 
-- [ ] Remove `createSemantifyServices` usage and direct `planCandidates` calls from Volar intellisense provider.
-- [ ] Implement graph-based candidate planning via profile helper extension execution.
-- [ ] Implement graph/provenance-based hover payload rendering.
-- [ ] Implement graph/provenance-based definition target resolution.
-- [ ] Remove compatibility fallback branches tied to legacy Semantify service semantics.
-- [ ] Expand integration coverage for aliases, scoped paths, frontmatter/content zones, and filter contexts.
+- [x] Remove `createSemantifyServices` usage and direct `planCandidates` calls from Volar intellisense provider.
+- [x] Implement graph-based candidate planning via profile helper extension execution.
+- [x] Implement graph/provenance-based hover payload rendering.
+- [x] Implement graph/provenance-based definition target resolution.
+- [x] Remove compatibility fallback branches tied to legacy Semantify service semantics.
+- [x] Expand integration coverage for aliases, scoped paths, frontmatter/content zones, and filter contexts.
 
 ## Deliverables
 
@@ -45,9 +49,9 @@ Cut Volar read paths over to projected graph and profile helper extensions for c
 
 ## Acceptance Criteria
 
-- [ ] No Volar source path invokes `createSemantifyServices`, `resolveContext`, `resolveReferences`, or `planCandidates`.
-- [ ] Completion, hover, and definition flow through projection graph plus helper-extension contracts only.
-- [ ] Integration tests verify parity and range correctness across mixed semantic zones.
+- [x] No Volar source path invokes `createSemantifyServices`, `resolveContext`, `resolveReferences`, or `planCandidates`.
+- [x] Completion, hover, and definition flow through projection graph plus helper-extension contracts only.
+- [x] Integration tests verify parity and range correctness across mixed semantic zones.
 
 ## Relationships
 
