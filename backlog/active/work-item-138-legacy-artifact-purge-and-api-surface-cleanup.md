@@ -6,11 +6,11 @@ summary: Remove all Semantify migration artifacts, compatibility shims, and obso
 type: work-item
 subtype: task
 lifecycle: active
-status: in-progress
-status_reason: legacy-api-removal-underway
+status: ready-for-review
+status_reason: final-validation-matrix-passed
 priority: critical
 estimated: 8
-actual: 3
+actual: 4
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/173
@@ -38,7 +38,7 @@ Cutover quality requires explicit removal, not just deprecation. Mixed-path arti
 - [x] Remove compatibility fallback code paths in Volar/language-service.
 - [x] Remove tests that validate legacy behavior contracts.
 - [x] Update README/ADR/docs to final-state projection-only architecture guidance.
-- [ ] Run full repo validation after removal and resolve breakages.
+- [x] Run full repo validation after removal and resolve breakages.
 
 ## Deliverables
 
@@ -52,12 +52,13 @@ Cutover quality requires explicit removal, not just deprecation. Mixed-path arti
 - 2026-05-22: Removed obsolete Semantify framework compatibility tests and validated package/build/frontmatter checks for this cleanup slice.
 - 2026-05-22: Removed Volar schema-kind compatibility remapping so projected semantic kinds (`templjs.schema-path`, `templjs.schema-enum-value`) flow directly through snapshot/query paths and tests.
 - 2026-05-22: Updated `docs/templjs-volar-target-architecture.md` to final-state guidance (removed staged migration/transitional runbook sections) and validated docs/frontmatter lint.
+- 2026-05-22: Completed full repo validation matrix in Node 24 worktree (`pnpm run lint:frontmatter`, `pnpm run type-check`, `pnpm run test`, `pnpm run build`) with all commands passing.
 
 ## Acceptance Criteria
 
-- [ ] No source/test/doc reference remains for legacy Semantify compatibility APIs.
-- [ ] Public Semantify exports are projection/profile contract focused.
-- [ ] Build, type-check, and tests pass with legacy paths removed.
+- [x] No source/test/doc reference remains for legacy Semantify compatibility APIs.
+- [x] Public Semantify exports are projection/profile contract focused.
+- [x] Build, type-check, and tests pass with legacy paths removed.
 
 ## Relationships
 
