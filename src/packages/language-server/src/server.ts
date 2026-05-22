@@ -102,6 +102,41 @@ const TEMPLJS_COMPLETION_TRIGGER_CHARACTERS = [
   ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
 ] as const;
 
+type SemanticTokensLegend = {
+  tokenTypes: string[];
+  tokenModifiers: string[];
+};
+
+type SemanticTokenLanguageService = {
+  getSemanticTokens?: (
+    uri: URI,
+    range:
+      | { start: { line: number; character: number }; end: { line: number; character: number } }
+      | undefined,
+    legend: SemanticTokensLegend,
+    reportProgress?: (tokens: unknown) => void,
+    token?: unknown
+  ) => Promise<unknown>;
+  semanticTokenLegend?: SemanticTokensLegend;
+};
+
+function resolveSemanticTokenLegend(
+  languageService: SemanticTokenLanguageService
+): SemanticTokensLegend {
+  const legend = languageService.semanticTokenLegend;
+  if (legend && Array.isArray(legend.tokenTypes) && Array.isArray(legend.tokenModifiers)) {
+    return {
+      tokenTypes: [...legend.tokenTypes],
+      tokenModifiers: [...legend.tokenModifiers],
+    };
+  }
+
+  return {
+    tokenTypes: [],
+    tokenModifiers: [],
+  };
+}
+
 // Trace semantics used by trace(message, level):
 // - Default level is 'messages', so trace(...) emits when trace mode is not 'off'.
 // - 'messages' level always emits unless serverTraceMode is 'off'.
@@ -305,6 +340,67 @@ connection.onInitialize(async (params) => {
     return await languageService!.getDefinition(URI.parse(uri), request.position, token);
   });
 
+  const semanticTokensConnection = connection as unknown as {
+    onRequest?: (
+      method: string,
+      handler: (
+        request: {
+          textDocument: { uri: string };
+          range?: {
+            start: { line: number; character: number };
+            end: { line: number; character: number };
+          };
+        },
+        token: unknown
+      ) => Promise<unknown>
+    ) => void;
+  };
+  const registerRequest = semanticTokensConnection.onRequest;
+  const supportsSemanticTokenRequests = typeof registerRequest === 'function';
+  if (supportsSemanticTokenRequests) {
+    registerRequest('textDocument/semanticTokens/full', async (request, token) => {
+      const uri = request.textDocument.uri;
+      trace(`[authoring] semanticTokens/full uri=${uri}`, 'verbose');
+      const languageService = (await server.project.getLanguageService(
+        URI.parse(uri)
+      )) as SemanticTokenLanguageService;
+      if (typeof languageService.getSemanticTokens !== 'function') {
+        trace(`[authoring] semanticTokens/full unavailable uri=${uri}`, 'verbose');
+        return null;
+      }
+
+      return await languageService.getSemanticTokens(
+        URI.parse(uri),
+        undefined,
+        resolveSemanticTokenLegend(languageService),
+        undefined,
+        token
+      );
+    });
+
+    registerRequest('textDocument/semanticTokens/range', async (request, token) => {
+      const uri = request.textDocument.uri;
+      trace(`[authoring] semanticTokens/range uri=${uri}`, 'verbose');
+      const languageService = (await server.project.getLanguageService(
+        URI.parse(uri)
+      )) as SemanticTokenLanguageService;
+      if (typeof languageService.getSemanticTokens !== 'function') {
+        trace(`[authoring] semanticTokens/range unavailable uri=${uri}`, 'verbose');
+        return null;
+      }
+
+      return await languageService.getSemanticTokens(
+        URI.parse(uri),
+        request.range,
+        resolveSemanticTokenLegend(languageService),
+        undefined,
+        token
+      );
+    });
+  } else {
+    trace('[authoring] semantic token request handlers unavailable on connection', 'verbose');
+  }
+
   const formattingConnection = connection as unknown as {
     onDocumentFormatting?: (
       handler: (
@@ -350,6 +446,7 @@ connection.onInitialize(async (params) => {
       },
       hoverProvider: true,
       definitionProvider: true,
+      semanticTokensProvider: initialized?.capabilities?.semanticTokensProvider,
       documentFormattingProvider: supportsDocumentFormatting,
     },
   };

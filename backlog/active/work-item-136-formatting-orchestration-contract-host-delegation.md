@@ -10,7 +10,7 @@ status: in-progress
 status_reason: implementation-underway
 priority: high
 estimated: 6
-actual: 0
+actual: 2
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/171
@@ -50,6 +50,8 @@ You selected permanent host delegation for formatting to preserve consistency wi
 
 - 2026-05-22: Added deterministic formatting orchestration contract metadata resolver in language-service runtime-manifest APIs and exported it for integration/use in orchestration plumbing.
 - 2026-05-22: Added language-service regression coverage to assert the resolved orchestration contract metadata shape while preserving host-delegated formatting behavior.
+- 2026-05-22: PR #171 merged to `staging` (`9ca17277370d47723194a76054565bc5d64e1209`) delivering runtime-manifest contract surface and regression coverage for contract metadata.
+- 2026-05-22: Verified completion state is partial; remaining scope is formatting-path orchestration hook integration, explicit workspace-authority behavior assertions, and documentation updates.
 
 ## Acceptance Criteria
 
