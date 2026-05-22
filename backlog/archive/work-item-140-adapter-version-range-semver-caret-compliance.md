@@ -5,12 +5,13 @@ title: '140: Adapter Version Range Semver Caret Compliance'
 summary: Replace simplified adapterVersionRange caret handling with semver-accurate range validation in Semantify adapter/profile compatibility checks.
 type: work-item
 subtype: bug
-lifecycle: active
-status: ready-for-review
-status_reason: implementation-and-validation-complete
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 3
 actual: 2
+completed_date: '2026-05-22'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/178
