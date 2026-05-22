@@ -242,6 +242,14 @@ Current repository expectations:
 - Context-graph payloads must remain JSON-compatible and must not leak Volar,
   TypeScript, VS Code, or validator implementation types.
 
+## Formatting Boundary
+
+- Formatting edit generation remains host delegated through host adapters (for example,
+  `templjs-prettier-host`) and must follow workspace formatter selection/settings.
+- Semantic orchestration for formatting is limited to deterministic handoff metadata,
+  currently represented by the `templjs.authoring.formatting` helper-extension contract.
+- Semantify core must not encode formatter-specific policy, style rules, or edit logic.
+
 ## Validation
 
 Documentation linting:

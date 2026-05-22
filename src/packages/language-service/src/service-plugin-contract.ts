@@ -8,6 +8,16 @@ export type ServicePluginRuntimePlanningContext = {
   initializationOptions?: ServerInitializationOptions;
 };
 
+export type FormattingOrchestrationEvent = {
+  helperExtensionId: string;
+  consumesSemanticKinds: string[];
+  source: 'manifest';
+  adapterId: 'templjs-prettier-host';
+  documentUri: string;
+  delegatedLanguageId: string;
+  configuredHostLanguages: string[];
+};
+
 export type ServicePluginOrchestrationOptions = {
   getIntellisenseOptions?: (sourceUri: string, sourceText: string) => IntellisenseOptions;
   getDiagnosticOptions?: (sourceUri: string, sourceText: string) => DiagnosticOptions;
@@ -15,5 +25,6 @@ export type ServicePluginOrchestrationOptions = {
   initializationOptions?: ServerInitializationOptions;
   schemaCache?: Map<string, unknown>;
   loadSchemaUrlSync?: (url: string) => string | object | undefined;
+  onFormattingOrchestration?: (event: FormattingOrchestrationEvent) => void;
   log?: (message: string) => void;
 };
