@@ -418,10 +418,7 @@ export function createMarkdownHostDiagnosticsAdapter(
       }
       return {
         ...instance,
-        provideDiagnostics(
-          document: { uri: string; languageId: string; getText(): string },
-          token: unknown
-        ) {
+        provideDiagnostics(document, token) {
           const result = provideDiagnostics.call(instance, document as never, token as never);
           if (result == null) return result;
           const td = TextDocument.create(document.uri, document.languageId, 1, document.getText());
@@ -433,7 +430,7 @@ export function createMarkdownHostDiagnosticsAdapter(
           }
           return fix(result as DiagnosticLike[]);
         },
-      };
+      } as typeof instance;
     },
   };
 }
