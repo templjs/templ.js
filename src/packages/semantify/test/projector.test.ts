@@ -356,6 +356,53 @@ describe('SemantifyProjectionRuntime', () => {
     ).toBe(true);
   });
 
+  it('reports invalid adapter versions that are not valid semver strings', () => {
+    const result = projectSemanticGraph({
+      adapterOutput: {
+        ...adapterOutput,
+        adapterVersion: 'not-a-semver',
+      },
+      profile: {
+        ...profile,
+        defaultAdapters: [
+          {
+            adapterId: 'test-adapter',
+            adapterVersionRange: '^1.0.0',
+            sourceNodeKinds: ['test.symbol'],
+          },
+        ],
+      },
+    });
+
+    expect(
+      result.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('does not satisfy profile adapterVersionRange')
+      )
+    ).toBe(true);
+  });
+
+  it('reports invalid adapter version ranges that semver cannot parse', () => {
+    const result = projectSemanticGraph({
+      adapterOutput,
+      profile: {
+        ...profile,
+        defaultAdapters: [
+          {
+            adapterId: 'test-adapter',
+            adapterVersionRange: '[invalid-range',
+            sourceNodeKinds: ['test.symbol'],
+          },
+        ],
+      },
+    });
+
+    expect(
+      result.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('does not satisfy profile adapterVersionRange')
+      )
+    ).toBe(true);
+  });
+
   it('enforces provenance requirements for helper-consumed semantic kinds', () => {
     const runtime = createProjectionRuntime({
       rules: [
