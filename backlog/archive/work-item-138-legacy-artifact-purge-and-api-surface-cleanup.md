@@ -5,12 +5,13 @@ title: '138: Legacy Artifact Purge and API Surface Cleanup'
 summary: Remove all Semantify migration artifacts, compatibility shims, and obsolete tests/docs after projection-backed feature cutover.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: final-validation-matrix-passed
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: critical
 estimated: 8
 actual: 4
+completed_date: '2026-05-22'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/173
