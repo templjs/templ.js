@@ -21,10 +21,12 @@ const DIAGNOSTIC_PLANNER_SOURCE =
   )?.id ?? 'templjs.authoring.diagnostics';
 
 export function collectDiagnostics(text: string, options?: DiagnosticOptions): DiagnosticItem[] {
-  const diagnostics = collectTemplateDiagnostics(text, options).map((diagnostic) => ({
-    ...diagnostic,
-    source: diagnostic.source ?? DIAGNOSTIC_PLANNER_SOURCE,
-  }));
+  const diagnostics = collectTemplateDiagnostics(text, options).map<DiagnosticItem>(
+    (diagnostic) => ({
+      ...diagnostic,
+      source: diagnostic.source ?? DIAGNOSTIC_PLANNER_SOURCE,
+    })
+  );
 
   if (options?.baseDiagnostics?.length) {
     const delimiters = resolveDelimiters(options.delimiters);
