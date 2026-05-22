@@ -840,6 +840,12 @@ describe('intellisense helper branch coverage', () => {
     expect(intellisenseTesting.getVariablePathPrefixAtOffset('???', 1)).toBeNull();
   });
 
+  it('does not keep the previous variable active after its exclusive end when multiple refs exist', () => {
+    expect(
+      intellisenseTesting.getVariablePathPrefixAtOffset('user.name other.value', 9)
+    ).toBeNull();
+  });
+
   it('resolves nested frontmatter key paths and value token extraction', () => {
     const text = ['title: root', 'meta:', '  author: alice'].join('\n');
     const offset = text.lastIndexOf('alice') + 2;

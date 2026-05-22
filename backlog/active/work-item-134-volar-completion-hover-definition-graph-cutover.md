@@ -6,8 +6,7 @@ summary: Remove legacy Semantify intent helpers from Volar and route completion,
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
-status_reason: prioritized
+status: in-progress
 priority: critical
 estimated: 10
 actual: 0

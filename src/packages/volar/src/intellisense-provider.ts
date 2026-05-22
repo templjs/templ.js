@@ -485,7 +485,7 @@ function splitPathSegments(path: string): string[] {
 
 function getVariablePathPrefixAtOffset(content: string, offsetInContent: number): string | null {
   const refs = extractExpressionVariableReferences(content);
-  const activeRef = refs.find((ref) => offsetInContent >= ref.start && offsetInContent <= ref.end);
+  const activeRef = refs.find((ref) => offsetInContent >= ref.start && offsetInContent < ref.end);
   const targetRef = activeRef ?? (refs.length === 1 ? refs[0] : null);
   if (!targetRef) {
     return null;
