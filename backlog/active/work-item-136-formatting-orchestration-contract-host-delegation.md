@@ -6,12 +6,14 @@ summary: Define projection-aware formatting orchestration contracts while perman
 type: work-item
 subtype: task
 lifecycle: active
-status: ready
-status_reason: prioritized
+status: in-progress
+status_reason: implementation-underway
 priority: high
 estimated: 6
 actual: 0
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/171
   evidence:
     - '[[record-20260521-221758-136-formatting-orchestration-contract-host-delegation]]'
 ---
@@ -32,8 +34,8 @@ You selected permanent host delegation for formatting to preserve consistency wi
 
 ## Tasks
 
-- [ ] Add `formatting-orchestrator` helper extension contract and runtime invocation boundaries.
-- [ ] Define deterministic semantic context payload for formatting orchestration.
+- [x] Add `formatting-orchestrator` helper extension contract and runtime invocation boundaries.
+- [x] Define deterministic semantic context payload for formatting orchestration.
 - [ ] Integrate orchestration hooks in language-service formatting path without moving formatting policy into Semantify core.
 - [ ] Add tests proving workspace formatter settings remain authoritative.
 - [ ] Document permanent host-delegation policy and semantic orchestration responsibilities.
@@ -43,6 +45,11 @@ You selected permanent host delegation for formatting to preserve consistency wi
 - Formatting orchestration helper contract and adapters.
 - Tests verifying host delegation behavior under semantic orchestration.
 - Updated docs clarifying boundary ownership.
+
+## Progress Notes
+
+- 2026-05-22: Added deterministic formatting orchestration contract metadata resolver in language-service runtime-manifest APIs and exported it for integration/use in orchestration plumbing.
+- 2026-05-22: Added language-service regression coverage to assert the resolved orchestration contract metadata shape while preserving host-delegated formatting behavior.
 
 ## Acceptance Criteria
 
