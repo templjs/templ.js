@@ -14,6 +14,7 @@ actual: 0
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/167
+    - https://github.com/templjs/templ.js/pull/169
   evidence:
     - '[[record-20260521-221758-134-volar-completion-hover-definition-graph-cutover]]'
 ---
