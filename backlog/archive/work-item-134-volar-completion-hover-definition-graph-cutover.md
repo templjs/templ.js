@@ -5,12 +5,13 @@ title: '134: Volar Completion, Hover, and Definition Graph Cutover'
 summary: Remove legacy Semantify intent helpers from Volar and route completion, hover, and definition through projection/profile extension execution only.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: implementation-merged-awaiting-automation-finalization
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: critical
 estimated: 10
 actual: 3
+completed_date: '2026-05-22'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/167
