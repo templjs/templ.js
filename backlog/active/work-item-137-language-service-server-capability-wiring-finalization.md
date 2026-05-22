@@ -6,12 +6,14 @@ summary: Finalize plugin and LSP capability wiring so all semantic features exec
 type: work-item
 subtype: task
 lifecycle: active
-status: in-progress
-status_reason: implementation-verified-awaiting-pr
+status: ready-for-review
+status_reason: draft-pr-open-validation-passed
 priority: high
 estimated: 8
 actual: 2
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/172
   evidence:
     - '[[record-20260521-221758-137-language-service-server-capability-wiring-finalization]]'
 ---
