@@ -528,13 +528,176 @@ function compareEdges(left: SemanticGraphEdge, right: SemanticGraphEdge): number
   );
 }
 
+function compareProvenance(left: SemanticGraphProvenance, right: SemanticGraphProvenance): number {
+  return (
+    left.targetId.localeCompare(right.targetId) ||
+    stableSerialize(left).localeCompare(stableSerialize(right))
+  );
+}
+
+function collectStrictModeDiagnostics(input: {
+  nodes: SemanticGraphNode[];
+  edges: SemanticGraphEdge[];
+  provenance: SemanticGraphProvenance[];
+}): ProjectionDiagnostic[] {
+  const diagnostics: ProjectionDiagnostic[] = [];
+  const nodeIds = new Set<string>();
+  const edgeIds = new Set<string>();
+  const provenanceTargetIds = new Set<string>();
+  const entityIds = new Set<string>();
+
+  for (let index = 1; index < input.nodes.length; index += 1) {
+    if (
+      compareNodes(
+        input.nodes[index - 1] as SemanticGraphNode,
+        input.nodes[index] as SemanticGraphNode
+      ) > 0
+    ) {
+      diagnostics.push({
+        severity: 'error',
+        message: 'Strict mode requires graph nodes to be deterministically sorted.',
+      });
+      break;
+    }
+  }
+
+  for (let index = 1; index < input.edges.length; index += 1) {
+    if (
+      compareEdges(
+        input.edges[index - 1] as SemanticGraphEdge,
+        input.edges[index] as SemanticGraphEdge
+      ) > 0
+    ) {
+      diagnostics.push({
+        severity: 'error',
+        message: 'Strict mode requires graph edges to be deterministically sorted.',
+      });
+      break;
+    }
+  }
+
+  for (let index = 1; index < input.provenance.length; index += 1) {
+    if (
+      compareProvenance(
+        input.provenance[index - 1] as SemanticGraphProvenance,
+        input.provenance[index] as SemanticGraphProvenance
+      ) > 0
+    ) {
+      diagnostics.push({
+        severity: 'error',
+        message: 'Strict mode requires provenance to be deterministically sorted by target id.',
+      });
+      break;
+    }
+  }
+
+  for (const node of input.nodes) {
+    entityIds.add(node.id);
+    if (nodeIds.has(node.id)) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Strict mode detected duplicate node id ${node.id}.`,
+        sourceNodeKind: node.kind,
+      });
+    }
+    nodeIds.add(node.id);
+
+    if (!node.provenance) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Strict mode requires provenance for node ${node.id}.`,
+        sourceNodeKind: node.kind,
+      });
+    } else if (node.provenance.targetId !== node.id) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Strict mode requires node provenance targetId ${node.provenance.targetId} to match node id ${node.id}.`,
+        sourceNodeKind: node.kind,
+      });
+    }
+  }
+
+  for (const edge of input.edges) {
+    entityIds.add(edge.id);
+    if (edgeIds.has(edge.id)) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Strict mode detected duplicate edge id ${edge.id}.`,
+      });
+    }
+    edgeIds.add(edge.id);
+
+    if (!edge.provenance) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Strict mode requires provenance for edge ${edge.id}.`,
+      });
+    } else if (edge.provenance.targetId !== edge.id) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Strict mode requires edge provenance targetId ${edge.provenance.targetId} to match edge id ${edge.id}.`,
+      });
+    }
+  }
+
+  for (const item of input.provenance) {
+    if (provenanceTargetIds.has(item.targetId)) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Strict mode detected duplicate provenance target ${item.targetId}.`,
+      });
+    }
+    provenanceTargetIds.add(item.targetId);
+
+    if (!entityIds.has(item.targetId)) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Strict mode found provenance target ${item.targetId} with no matching graph entity.`,
+      });
+    }
+
+    if (!item.providerId || !item.providerVersion || !item.sourceDocId || !item.projectionRuleId) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Strict mode requires providerId, providerVersion, sourceDocId, and projectionRuleId for provenance target ${item.targetId}.`,
+      });
+    }
+
+    if (!item.sourceSpan || item.sourceSpan.endOffset < item.sourceSpan.startOffset) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Strict mode requires a valid sourceSpan for provenance target ${item.targetId}.`,
+      });
+    }
+
+    if (!item.attributes?.profileVersion || !item.attributes?.sourceNodeKind) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Strict mode requires provenance attributes profileVersion and sourceNodeKind for target ${item.targetId}.`,
+      });
+    }
+  }
+
+  if (provenanceTargetIds.size !== entityIds.size) {
+    diagnostics.push({
+      severity: 'error',
+      message: `Strict mode requires provenance coverage for every graph entity (entities=${entityIds.size}, provenance=${provenanceTargetIds.size}).`,
+    });
+  }
+
+  return diagnostics;
+}
+
 export class SemantifyProjectionRuntime {
   private readonly rules = new Map<string, TypedProjectionRule>();
+
+  private readonly strictMode: boolean;
 
   constructor(options: ProjectionRuntimeOptions = {}) {
     for (const rule of options.rules ?? []) {
       this.rules.set(rule.ruleId, rule);
     }
+    this.strictMode = options.strictMode ?? false;
   }
 
   project(input: ProjectionRuntimeInput): ProjectionResult {
@@ -587,9 +750,24 @@ export class SemantifyProjectionRuntime {
       ...edges
         .map((edge) => edge.provenance)
         .filter((item): item is SemanticGraphProvenance => !!item),
-    ].sort((left, right) => left.targetId.localeCompare(right.targetId));
+    ].sort(compareProvenance);
 
     diagnostics.push(...validateProvenanceContracts(input.profile, nodes));
+
+    if (this.strictMode) {
+      const strictDiagnostics = collectStrictModeDiagnostics({ nodes, edges, provenance });
+      diagnostics.push(...strictDiagnostics);
+      const strictErrors = strictDiagnostics.filter(
+        (diagnostic) => diagnostic.severity === 'error'
+      );
+      if (strictErrors.length > 0) {
+        throw new Error(
+          `Semantify strict mode validation failed: ${strictErrors
+            .map((diagnostic) => diagnostic.message)
+            .join(' | ')}`
+        );
+      }
+    }
 
     return {
       schemaVersion: SEMANTIFY_SCHEMA_VERSION,
@@ -621,4 +799,5 @@ export function projectSemanticGraph(
 export const semantifyProjectionTesting = {
   stableSerialize,
   toJsonObject,
+  collectStrictModeDiagnostics,
 };

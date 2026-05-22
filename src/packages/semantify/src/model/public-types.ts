@@ -280,6 +280,7 @@ export interface ProjectionRuntimeInput {
 
 export interface ProjectionRuntimeOptions {
   rules?: TypedProjectionRule[];
+  strictMode?: boolean;
 }
 
 export type ProjectionJsonObject = JsonObject;
