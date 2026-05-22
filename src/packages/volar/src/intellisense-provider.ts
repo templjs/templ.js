@@ -420,6 +420,23 @@ function resolveFilterSignature(filters: FilterSignature[], name: string): Filte
   return filters.find((filter) => filter.name === name) ?? null;
 }
 
+function mergeFilterSignatures(
+  defaults: FilterSignature[],
+  custom: FilterSignature[]
+): FilterSignature[] {
+  const merged = new Map<string, FilterSignature>();
+
+  for (const filter of defaults) {
+    merged.set(filter.name, filter);
+  }
+
+  for (const filter of custom) {
+    merged.set(filter.name, filter);
+  }
+
+  return Array.from(merged.values());
+}
+
 function normalizeExpression(text: string, delimiters: IntellisenseDelimiters): string {
   const trimmed = text.trim();
   if (
@@ -887,7 +904,7 @@ export class IntellisenseProvider {
       schemaUri: options?.schemaUri,
       contentSchemaUri: options?.contentSchemaUri,
     };
-    const filters = [...getDefaultFilters(), ...(options?.customFilters ?? [])];
+    const filters = mergeFilterSignatures(getDefaultFilters(), options?.customFilters ?? []);
     const keywords = [...DEFAULT_KEYWORDS, ...(options?.customKeywords ?? [])];
 
     const scopeResolver = createScopedPathResolver(
@@ -1046,7 +1063,7 @@ export class IntellisenseProvider {
       offset,
       delimiters
     );
-    const filters = [...getDefaultFilters(), ...(options?.customFilters ?? [])];
+    const filters = mergeFilterSignatures(getDefaultFilters(), options?.customFilters ?? []);
 
     const getHoverDetailsForPath = (rawPath: string): HoverInfo | null => {
       const resolvedPath = resolveHoverPath(rawPath);
@@ -1508,7 +1525,7 @@ export class IntellisenseProvider {
 
       const cursorInIterable = cursorInStatement - iterableStart;
 
-      if (cursorInIterable >= 0) {
+      if (cursorInIterable >= 0 && cursorInIterable <= iterableExpression.length) {
         if (
           iterableExpression.indexOf('|') >= 0 &&
           cursorInIterable >= iterableExpression.indexOf('|')
@@ -1611,7 +1628,7 @@ export class IntellisenseProvider {
     const match = content.match(/\|\s*([A-Za-z_][\w]*)\s*\(/);
     if (!match) return null;
 
-    const filters = [...getDefaultFilters(), ...(options?.customFilters ?? [])];
+    const filters = mergeFilterSignatures(getDefaultFilters(), options?.customFilters ?? []);
     const signature = resolveFilterSignature(filters, match[1]);
     if (!signature) return null;
 

@@ -222,6 +222,25 @@ describe('IntellisenseProvider', () => {
     expect(items.some((item) => item.label === 'custom')).toBe(true);
   });
 
+  it('prefers custom filters over built-ins with the same name', () => {
+    const items = provider.getCompletions('{{ user.name | up }}', 17, {
+      schema: sampleSchema,
+      customFilters: [
+        {
+          name: 'upper',
+          description: 'Custom upper override',
+          returnType: 'string',
+          parameters: [{ name: 'locale', type: 'string', description: 'Locale tag' }],
+        },
+      ],
+    });
+
+    expect(items.filter((item) => item.label === 'upper')).toHaveLength(1);
+    const upper = items.find((item) => item.label === 'upper');
+    expect(upper?.detail).toBe('string');
+    expect(upper?.documentation).toContain('Custom upper override');
+  });
+
   it('supports custom keywords', () => {
     const items = provider.getCompletions('{% cu %}', 5, {
       customKeywords: ['custom'],
