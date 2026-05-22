@@ -5,12 +5,13 @@ title: '139: Final Verification, Performance Gate, and Evidence Collation'
 summary: Execute final deterministic/projection validation, performance checks, and closure-ready evidence collation for the full cutover lane.
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: validation-and-evidence-complete
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 6
 actual: 4
+completed_date: '2026-05-22'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/177
