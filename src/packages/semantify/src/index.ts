@@ -1,5 +1,3 @@
-import { createSemantifyServices } from './binder/framework.js';
-
 export type {
   AdapterDiagnostic,
   AdapterId,
@@ -38,7 +36,6 @@ export type {
   SemanticGraphSnapshot,
   SemanticContext,
   SemanticContextResolverInput,
-  SemantifyServices,
   SemantifySchemaVersion,
   SemanticRegion,
   SemanticKindDefinition,
@@ -48,7 +45,6 @@ export type {
   TypedProjectionRule,
 } from './model/public-types.js';
 
-export { createSemantifyServices };
 export {
   SemantifyProjectionRuntime,
   createProjectionRuntime,
@@ -87,6 +83,5 @@ export {
   type SchemaSourceRange,
   type SchemaSourceReference,
 } from './schema-source-resolution.js';
-export { semantifyTesting } from './binder/framework.js';
 export { linkReferences } from './linker/index.js';
 export type { LinkReferencesInput, LinkReferencesResult } from './linker/index.js';

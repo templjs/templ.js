@@ -108,12 +108,6 @@ export interface SemanticContext {
   metadata?: Record<string, unknown>;
 }
 
-export interface SemantifyServices {
-  resolveContext(input: SemanticContextResolverInput): SemanticContext;
-  resolveReferences(input: SemanticContextResolverInput): SymbolRef[];
-  planCandidates(intent: QueryIntent, input: SemanticContextResolverInput): CandidateItem[];
-}
-
 export type AdapterId = string;
 export type ProfileDefinitionId = string;
 export type ProjectionRuleId = string;
