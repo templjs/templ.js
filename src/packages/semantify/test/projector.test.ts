@@ -239,6 +239,53 @@ describe('SemantifyProjectionRuntime', () => {
     ).toBe(true);
   });
 
+  it('accepts exact adapter version matches in adapter manifests', () => {
+    const result = projectSemanticGraph({
+      adapterOutput,
+      profile: {
+        ...profile,
+        defaultAdapters: [
+          {
+            adapterId: 'test-adapter',
+            adapterVersionRange: '1.0.0',
+            sourceNodeKinds: ['test.symbol'],
+          },
+        ],
+      },
+    });
+
+    expect(
+      result.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('does not satisfy profile adapterVersionRange')
+      )
+    ).toBe(false);
+  });
+
+  it('reports invalid adapter version ranges when range or version is empty', () => {
+    const result = projectSemanticGraph({
+      adapterOutput: {
+        ...adapterOutput,
+        adapterVersion: '',
+      },
+      profile: {
+        ...profile,
+        defaultAdapters: [
+          {
+            adapterId: 'test-adapter',
+            adapterVersionRange: '',
+            sourceNodeKinds: ['test.symbol'],
+          },
+        ],
+      },
+    });
+
+    expect(
+      result.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes('does not satisfy profile adapterVersionRange')
+      )
+    ).toBe(true);
+  });
+
   it('enforces provenance requirements for helper-consumed semantic kinds', () => {
     const runtime = createProjectionRuntime({
       rules: [
@@ -647,5 +694,139 @@ describe('SemantifyProjectionRuntime', () => {
     expect(() => runtime.project({ adapterOutput, profile })).toThrowError(
       /missing or malformed|requires provenance/i
     );
+  });
+
+  it('reports strict-mode diagnostic violations for deterministic ordering and provenance integrity', () => {
+    const diagnostics = semantifyProjectionTesting.collectStrictModeDiagnostics({
+      nodes: [
+        {
+          id: 'z-node',
+          profileId: 'profile',
+          kind: 'kind-a',
+          attributes: {},
+        },
+        {
+          id: 'a-node',
+          profileId: 'profile',
+          kind: 'kind-a',
+          attributes: {},
+          provenance: {
+            version: 'v1',
+            providerId: '',
+            providerVersion: '',
+            sourceDocId: '',
+            projectionRuleId: '',
+            targetId: 'a-node',
+            sourceSpan: { startOffset: 9, endOffset: 4 },
+            attributes: {},
+            confidence: 'definite',
+          },
+        },
+      ] as never,
+      edges: [
+        {
+          id: 'z-edge',
+          profileId: 'profile',
+          from: 'b',
+          to: 'a',
+          kind: 'edge-kind',
+          attributes: {},
+        },
+        {
+          id: 'a-edge',
+          profileId: 'profile',
+          from: 'a',
+          to: 'b',
+          kind: 'edge-kind',
+          attributes: {},
+          provenance: {
+            version: 'v1',
+            providerId: 'provider',
+            providerVersion: '1.0.0',
+            sourceDocId: 'doc',
+            projectionRuleId: 'rule',
+            targetId: 'orphan-target',
+            sourceSpan: { startOffset: 1, endOffset: 2 },
+            attributes: {
+              profileVersion: '1.0.0',
+              sourceNodeKind: 'kind-a',
+            },
+            confidence: 'definite',
+          },
+        },
+      ] as never,
+      provenance: [
+        {
+          version: 'v1',
+          providerId: 'provider',
+          providerVersion: '1.0.0',
+          sourceDocId: 'doc',
+          projectionRuleId: 'rule',
+          targetId: 'z-edge',
+          sourceSpan: { startOffset: 0, endOffset: 1 },
+          attributes: {
+            profileVersion: '1.0.0',
+            sourceNodeKind: 'kind-a',
+          },
+          confidence: 'definite',
+        },
+        {
+          version: 'v1',
+          providerId: '',
+          providerVersion: '',
+          sourceDocId: '',
+          projectionRuleId: '',
+          targetId: 'orphan-target',
+          sourceSpan: { startOffset: 4, endOffset: 1 },
+          attributes: {},
+          confidence: 'definite',
+        },
+        {
+          version: 'v1',
+          providerId: 'provider',
+          providerVersion: '1.0.0',
+          sourceDocId: 'doc',
+          projectionRuleId: 'rule',
+          targetId: 'a-edge',
+          sourceSpan: { startOffset: 0, endOffset: 1 },
+          attributes: {
+            profileVersion: '1.0.0',
+            sourceNodeKind: 'kind-a',
+          },
+          confidence: 'definite',
+        },
+        {
+          version: 'v1',
+          providerId: 'provider',
+          providerVersion: '1.0.0',
+          sourceDocId: 'doc',
+          projectionRuleId: 'rule',
+          targetId: 'a-edge',
+          sourceSpan: { startOffset: 0, endOffset: 1 },
+          attributes: {
+            profileVersion: '1.0.0',
+            sourceNodeKind: 'kind-a',
+          },
+          confidence: 'definite',
+        },
+      ] as never,
+    });
+
+    const messages = diagnostics.map((diagnostic) => diagnostic.message);
+    expect(messages.some((message) => message.includes('deterministically sorted'))).toBe(true);
+    expect(messages.some((message) => message.includes('duplicate provenance target'))).toBe(true);
+    expect(messages.some((message) => message.includes('with no matching graph entity'))).toBe(
+      true
+    );
+    expect(messages.some((message) => message.includes('requires providerId'))).toBe(true);
+    expect(messages.some((message) => message.includes('requires a valid sourceSpan'))).toBe(true);
+    expect(messages.some((message) => message.includes('requires provenance attributes'))).toBe(
+      true
+    );
+    expect(
+      messages.some((message) =>
+        message.includes('requires provenance coverage for every graph entity')
+      )
+    ).toBe(true);
   });
 });

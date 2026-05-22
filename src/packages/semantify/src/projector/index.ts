@@ -788,4 +788,5 @@ export function projectSemanticGraph(
 export const semantifyProjectionTesting = {
   stableSerialize,
   toJsonObject,
+  collectStrictModeDiagnostics,
 };
