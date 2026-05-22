@@ -6,12 +6,14 @@ summary: Replace simplified adapterVersionRange caret handling with semver-accur
 type: work-item
 subtype: bug
 lifecycle: active
-status: in-progress
-status_reason: implementation-complete-awaiting-pr-link
+status: ready-for-review
+status_reason: implementation-and-validation-complete
 priority: high
 estimated: 3
 actual: 2
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/178
   evidence:
     - '[[record-20260521-221758-140-adapter-version-range-semver-caret-compliance]]'
 ---
