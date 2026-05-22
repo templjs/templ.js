@@ -73,6 +73,10 @@ export {
   type HostAdapterPluginRegistryKey,
 } from './host-adapter-plugin-registry.js';
 
-export { getResolvedAdapterRuntime, resolveAdapterRuntimeManifest } from './runtime-manifest.js';
+export {
+  getResolvedAdapterRuntime,
+  resolveAdapterRuntimeManifest,
+  resolveFormattingOrchestrationContract,
+} from './runtime-manifest.js';
 export type DocumentSchemaConfig = import('./schema-loading.js').SchemaPatternConfig;
 export type SchemaPatterns = Record<string, import('./schema-loading.js').SchemaPatternConfig>;

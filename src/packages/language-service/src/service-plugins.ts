@@ -42,6 +42,7 @@ import {
 import type { ServicePluginOrchestrationOptions } from './service-plugin-contract.js';
 import {
   getConfiguredPrettierHostLanguages,
+  resolveFormattingOrchestrationContract,
   resolveAdapterRuntimeManifest,
 } from './runtime-manifest.js';
 
@@ -1170,6 +1171,7 @@ export const servicePluginTesting = {
   planMarkdownlintAdapterRuntime,
   planMarkdownAdapterRuntime,
   getConfiguredPrettierHostLanguages,
+  resolveFormattingOrchestrationContract,
   resolveAdapterRuntimeManifest,
 };
 /* v8 ignore stop */
