@@ -1604,12 +1604,9 @@ export class IntellisenseProvider {
     const forHeaderMatch = parseForHeader(statementContent);
     if (forHeaderMatch) {
       const { aliasName, aliasStart, aliasEnd, iterableExpression, iterableStart } = forHeaderMatch;
+      const cursorInIterable = cursorInStatement - iterableStart;
 
-      if (cursorInStatement < aliasStart) {
-        return null;
-      }
-
-      if (cursorInStatement >= aliasStart && cursorInStatement < aliasEnd) {
+      if (cursorInStatement >= aliasStart && cursorInStatement <= aliasEnd) {
         if (options?.documentUri) {
           const declarationStart = statementOffset + aliasStart;
           const declarationEnd = declarationStart + aliasName.length;
@@ -1627,12 +1624,6 @@ export class IntellisenseProvider {
 
         return null;
       }
-
-      if (cursorInStatement < iterableStart) {
-        return null;
-      }
-
-      const cursorInIterable = cursorInStatement - iterableStart;
 
       if (cursorInIterable >= 0) {
         if (

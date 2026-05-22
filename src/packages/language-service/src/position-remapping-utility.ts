@@ -115,41 +115,24 @@ export function remapHover(rangeMapper: RangeMapper, hover: Hover): Hover {
 /**
  * Remaps location range
  */
-export function remapLocation(
-  rangeMapper: RangeMapper,
-  location: Location,
-  sourceUri?: string
-): Location {
+export function remapLocation(rangeMapper: RangeMapper, location: Location): Location {
   return {
     uri: location.uri,
-    range:
-      sourceUri === undefined || location.uri === sourceUri
-        ? remapRange(rangeMapper, location.range)
-        : location.range,
+    range: remapRange(rangeMapper, location.range),
   };
 }
 
 /**
  * Remaps location link ranges
  */
-export function remapLocationLink(
-  rangeMapper: RangeMapper,
-  link: LocationLink,
-  sourceUri?: string
-): LocationLink {
+export function remapLocationLink(rangeMapper: RangeMapper, link: LocationLink): LocationLink {
   return {
     originSelectionRange: link.originSelectionRange
       ? remapRange(rangeMapper, link.originSelectionRange)
       : undefined,
     targetUri: link.targetUri,
-    targetRange:
-      sourceUri === undefined || link.targetUri === sourceUri
-        ? remapRange(rangeMapper, link.targetRange)
-        : link.targetRange,
-    targetSelectionRange:
-      sourceUri === undefined || link.targetUri === sourceUri
-        ? remapRange(rangeMapper, link.targetSelectionRange)
-        : link.targetSelectionRange,
+    targetRange: remapRange(rangeMapper, link.targetRange),
+    targetSelectionRange: remapRange(rangeMapper, link.targetSelectionRange),
   };
 }
 
@@ -185,8 +168,7 @@ export function remapHoverResponse(rangeMapper: RangeMapper, hover: Hover): Hove
 
 export function remapDefinitionResponse(
   rangeMapper: RangeMapper,
-  definition: Location[] | LocationLink[],
-  sourceUri?: string
+  definition: Location[] | LocationLink[]
 ): Location[] | LocationLink[] {
   if (definition.length === 0) {
     return definition;
@@ -194,14 +176,10 @@ export function remapDefinitionResponse(
 
   const first = definition[0];
   if (first && 'targetUri' in first) {
-    return (definition as LocationLink[]).map((link) =>
-      remapLocationLink(rangeMapper, link, sourceUri)
-    );
+    return (definition as LocationLink[]).map((link) => remapLocationLink(rangeMapper, link));
   }
 
-  return (definition as Location[]).map((location) =>
-    remapLocation(rangeMapper, location, sourceUri)
-  );
+  return (definition as Location[]).map((location) => remapLocation(rangeMapper, location));
 }
 
 export function remapCompletionResponse(

@@ -4,11 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import type {
-  Diagnostic,
-  LanguageServiceContext,
-  LanguageServicePlugin,
-} from '@volar/language-service';
+import type { LanguageServiceContext, LanguageServicePlugin } from '@volar/language-service';
 import { create as createVolarMarkdownServicePlugin } from 'volar-service-markdown';
 import { cleanTemplateContent } from '@templjs/volar';
 import { URI } from 'vscode-uri';
@@ -429,13 +425,13 @@ export function createMarkdownHostDiagnosticsAdapter(
           const result = provideDiagnostics.call(instance, document as never, token as never);
           if (result == null) return result;
           const td = TextDocument.create(document.uri, document.languageId, 1, document.getText());
-          const fix = (items: Diagnostic[]) => fixLinkRefDiagnosticRanges(items, td);
+          const fix = (items: DiagnosticLike[]) => fixLinkRefDiagnosticRanges(items, td);
           if (typeof (result as { then?: unknown }).then === 'function') {
-            return (result as Promise<Diagnostic[] | null | undefined>).then((items) =>
+            return (result as Promise<DiagnosticLike[] | null | undefined>).then((items) =>
               items ? fix(items) : items
             );
           }
-          return fix(result as Diagnostic[]);
+          return fix(result as DiagnosticLike[]);
         },
       };
     },
@@ -446,6 +442,13 @@ const LINK_NO_SUCH_REFERENCE = 'link.no-such-reference';
 const MAX_SCAN_DISTANCE = 64;
 
 type Position = { line: number; character: number };
+type Range = { start: Position; end: Position };
+type DiagnosticLike = {
+  code?: string | number;
+  range: Range;
+  data?: unknown;
+  [key: string]: unknown;
+};
 type TextDocumentLike = {
   getText(): string;
   offsetAt(pos: Position): number;
@@ -461,9 +464,9 @@ type TextDocumentLike = {
  * the range accordingly, giving the source-map a chance to land on the correct column.
  */
 function fixLinkRefDiagnosticRanges(
-  diagnostics: Diagnostic[],
+  diagnostics: DiagnosticLike[],
   document: TextDocumentLike
-): Diagnostic[] {
+): DiagnosticLike[] {
   return diagnostics.map((diag) => {
     if (diag.code !== LINK_NO_SUCH_REFERENCE) return diag;
     const ref = (diag.data as Record<string, unknown> | undefined)?.ref;
