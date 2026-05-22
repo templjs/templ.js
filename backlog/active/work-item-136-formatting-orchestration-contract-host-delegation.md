@@ -6,14 +6,15 @@ summary: Define projection-aware formatting orchestration contracts while perman
 type: work-item
 subtype: task
 lifecycle: active
-status: in-progress
-status_reason: implementation-underway
+status: ready-for-review
+status_reason: implementation-complete-awaiting-review
 priority: high
 estimated: 6
 actual: 3
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/171
+    - https://github.com/templjs/templ.js/pull/175
   evidence:
     - '[[record-20260521-221758-136-formatting-orchestration-contract-host-delegation]]'
 ---
