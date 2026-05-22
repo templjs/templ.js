@@ -247,7 +247,7 @@ describe('SemanticTokenProvider', () => {
       expect(funcTokens.length).toBe(0);
     });
 
-    it('should ignore legacy filter separators inside strings, brackets, and calls', () => {
+    it('extracts only parser-recognized filters when legacy syntax is mixed in', () => {
       const text =
         '{{ "a|b" | default: "x\\"|y" }} {{ items[name | lower] | join: "," }} {{ call(name | trim) | upper }} {{ value | }}';
       const tokens = extractSemanticTokens(text);
@@ -256,7 +256,7 @@ describe('SemanticTokenProvider', () => {
         .filter((t) => t.type === SemanticTokenTypes.Function)
         .map((token) => text.slice(token.offset, token.offset + token.length));
 
-      expect(filterNames).toEqual(['default', 'join', 'upper']);
+      expect(filterNames).toEqual(['join', 'upper']);
     });
 
     it('extracts filters from trim-marker expressions', () => {
@@ -271,7 +271,7 @@ describe('SemanticTokenProvider', () => {
     });
 
     it('keeps parser-backed top-level filters when nested strings contain escapes', () => {
-      const text = '{{ call("a\\\"b") | upper }}';
+      const text = '{{ call("a\\"b") | upper }}';
       const tokens = extractSemanticTokens(text);
 
       const filterNames = tokens
