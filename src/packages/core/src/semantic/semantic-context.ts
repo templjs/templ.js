@@ -51,9 +51,11 @@ export interface SemanticDefinitionResult {
   };
 }
 
-export interface SemanticDiagnosticResult {
+export type DiagnosticSeverity = 1 | 2 | 3 | 4;
+
+export interface SemanticDiagnosticRecord {
   message: string;
-  severity: number;
+  severity: DiagnosticSeverity;
   range: {
     start: { line: number; character: number };
     end: { line: number; character: number };
@@ -71,7 +73,7 @@ export interface SemanticResponse {
   completionItems?: SemanticCompletionItem[];
   hover?: SemanticHoverResult | null;
   definition?: SemanticDefinitionResult | null;
-  diagnostics?: SemanticDiagnosticResult[];
+  diagnostics?: SemanticDiagnosticRecord[];
 }
 
 /**

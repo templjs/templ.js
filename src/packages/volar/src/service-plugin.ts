@@ -22,7 +22,7 @@ export interface ServicePluginDiagnosticOptions {
     commentStart?: string;
     commentEnd?: string;
   };
-  baseDiagnostics?: LSPDiagnostic[];
+  baseSyntaxDiagnostics?: LSPDiagnostic[];
 }
 
 export interface LSPDiagnostic {
@@ -163,7 +163,7 @@ export class TempljsServicePlugin {
       contentSchema: options?.contentSchema,
       customFilters: options?.customFilters,
       delimiters: options?.delimiters,
-      baseDiagnostics: options?.baseDiagnostics,
+      baseSyntaxDiagnostics: options?.baseSyntaxDiagnostics,
     });
 
     return diagnostics.map((diagnostic) => ({

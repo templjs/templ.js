@@ -2,7 +2,7 @@ import type {
   AdapterNode,
   AdapterOutput,
   ProfileHelperExtension,
-  ProjectionDiagnostic,
+  SemanticDiagnosticRecord,
   ProjectionEntity,
   ProjectionResult,
   ProjectionRule,
@@ -219,8 +219,8 @@ function createRuleContext(input: {
   };
 }
 
-function validateAdapterOutput(adapterOutput: AdapterOutput): ProjectionDiagnostic[] {
-  const diagnostics: ProjectionDiagnostic[] = [];
+function validateAdapterOutput(adapterOutput: AdapterOutput): SemanticDiagnosticRecord[] {
+  const diagnostics: SemanticDiagnosticRecord[] = [];
 
   if (adapterOutput.schemaVersion !== SEMANTIFY_SCHEMA_VERSION) {
     diagnostics.push({
@@ -245,8 +245,8 @@ function validateAdapterOutput(adapterOutput: AdapterOutput): ProjectionDiagnost
   return diagnostics;
 }
 
-function validateProfileDefinition(profile: ProfileDefinition): ProjectionDiagnostic[] {
-  const diagnostics: ProjectionDiagnostic[] = [];
+function validateProfileDefinition(profile: ProfileDefinition): SemanticDiagnosticRecord[] {
+  const diagnostics: SemanticDiagnosticRecord[] = [];
 
   if (profile.schemaVersion !== SEMANTIFY_SCHEMA_VERSION) {
     diagnostics.push({
@@ -323,8 +323,8 @@ function validateHelperExtension(
   profile: ProfileDefinition,
   helper: ProfileHelperExtension,
   semanticKinds: Set<string>
-): ProjectionDiagnostic[] {
-  const diagnostics: ProjectionDiagnostic[] = [];
+): SemanticDiagnosticRecord[] {
+  const diagnostics: SemanticDiagnosticRecord[] = [];
 
   if (helper.schemaVersion !== SEMANTIFY_SCHEMA_VERSION) {
     diagnostics.push({
@@ -378,8 +378,8 @@ function validateHelperExtension(
 function validateAdapterProfileCompatibility(
   adapterOutput: AdapterOutput,
   profile: ProfileDefinition
-): ProjectionDiagnostic[] {
-  const diagnostics: ProjectionDiagnostic[] = [];
+): SemanticDiagnosticRecord[] {
+  const diagnostics: SemanticDiagnosticRecord[] = [];
   const adapterManifest = profile.defaultAdapters?.find(
     (entry) => entry.adapterId === adapterOutput.adapterId
   );
@@ -443,8 +443,8 @@ function validateAdapterProfileCompatibility(
 function validateProvenanceContracts(
   profile: ProfileDefinition,
   nodes: SemanticGraphNode[]
-): ProjectionDiagnostic[] {
-  const diagnostics: ProjectionDiagnostic[] = [];
+): SemanticDiagnosticRecord[] {
+  const diagnostics: SemanticDiagnosticRecord[] = [];
   const helpers = profile.helperExtensions ?? [];
 
   for (const helper of helpers) {
@@ -539,8 +539,8 @@ function collectStrictModeDiagnostics(input: {
   nodes: SemanticGraphNode[];
   edges: SemanticGraphEdge[];
   provenance: SemanticGraphProvenance[];
-}): ProjectionDiagnostic[] {
-  const diagnostics: ProjectionDiagnostic[] = [];
+}): SemanticDiagnosticRecord[] {
+  const diagnostics: SemanticDiagnosticRecord[] = [];
   const nodeIds = new Set<string>();
   const edgeIds = new Set<string>();
   const provenanceTargetIds = new Set<string>();

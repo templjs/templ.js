@@ -180,6 +180,41 @@ describe('DiagnosticProvider', () => {
     expect(diagnostics.some((diag) => diag.code === 'templjs.unexpectedClosing')).toBe(false);
   });
 
+  it('does not flag shadowed nested loop aliases as undefined in malformed templates', () => {
+    const text = [
+      '---',
+      '"$schema": "./example.schema.json"',
+      '"invalid": bar: [{% if %}foo ]',
+      '---',
+      '',
+      '# Title',
+      '{{ ti }}',
+      '[broken ref][missing-ref]',
+      '[local file](./does-not-exist.md)',
+      '[fragment](./does-not-exist.md#section)',
+      '',
+      '## Subtitle',
+      '{%- for item in items %}',
+      '{% for item in item.name %}',
+      '{{ item }}',
+      '{% endfor %}',
+      '{% endfor -%}',
+      '{% set collection = ["a", "b", "c"] -%}',
+      '{% for test in collection -%}',
+      '',
+      '{{ test }}',
+    ].join('\n');
+
+    const diagnostics = collectDiagnostics(text, { schema: sampleSchema });
+    const itemUndefinedDiagnostics = diagnostics.filter(
+      (diag) =>
+        diag.code === 'templjs.undefinedVariable' &&
+        diag.message.includes('Variable "item" not found in schema')
+    );
+
+    expect(itemUndefinedDiagnostics).toHaveLength(0);
+  });
+
   it('reports invalid if statement with whitespace-control marker', () => {
     const diagnostics = collectDiagnostics('{%- if -%}', { schema: sampleSchema });
     expect(diagnostics.some((diag) => diag.code === 'templjs.invalidStatement')).toBe(true);
@@ -719,7 +754,7 @@ describe('DiagnosticProvider', () => {
 
   it('includes remapped base diagnostics when provided', () => {
     const diagnostics = collectDiagnostics('Hello {{ user.name }}', {
-      baseDiagnostics: [
+      baseSyntaxDiagnostics: [
         {
           message: 'Base markdown error',
           range: {

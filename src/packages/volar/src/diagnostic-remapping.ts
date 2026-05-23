@@ -1,13 +1,13 @@
-import type { DiagnosticItem, TemplateDelimiters } from './diagnostic-types.js';
+import type { SemanticDiagnosticRecord, TemplateDelimiters } from './diagnostic-types.js';
 import { RangeMapper, generatePositionMappings } from './position-mapping.js';
 import { buildBlockPattern, DEFAULT_DELIMITERS } from './template-delimiters.js';
 
 export function remapDiagnosticsToOriginal(
   original: string,
-  baseDiagnostics: DiagnosticItem[],
+  baseSyntaxDiagnostics: SemanticDiagnosticRecord[],
   delimiters: TemplateDelimiters = DEFAULT_DELIMITERS
-): DiagnosticItem[] {
-  if (baseDiagnostics.length === 0) return [];
+): SemanticDiagnosticRecord[] {
+  if (baseSyntaxDiagnostics.length === 0) return [];
 
   const templateRegex = buildBlockPattern(delimiters.statementStart, delimiters.statementEnd);
   const expressionRegex = buildBlockPattern(delimiters.expressionStart, delimiters.expressionEnd);
@@ -21,7 +21,7 @@ export function remapDiagnosticsToOriginal(
   const { cleaned, mappings } = generatePositionMappings(original, combinedRegex);
   const rangeMapper = new RangeMapper(original, cleaned, mappings);
 
-  return baseDiagnostics.map((diagnostic) => {
+  return baseSyntaxDiagnostics.map((diagnostic) => {
     const mapped = rangeMapper.cleanedRangeToOriginal(
       diagnostic.range.start.line,
       diagnostic.range.start.character,
