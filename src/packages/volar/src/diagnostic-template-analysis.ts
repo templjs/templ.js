@@ -205,7 +205,8 @@ function isDirectLocalTemplateReference(
 ): boolean {
   const resolvedDelimiters = resolveDelimiters(delimiters);
   const rawRootSegment = rawPath.split('.')[0];
-  const rawRoot = rawRootSegment.replace(/\[.*$/, '');
+  const bracketIndex = rawRootSegment.indexOf('[');
+  const rawRoot = bracketIndex >= 0 ? rawRootSegment.slice(0, bracketIndex) : rawRootSegment;
   const isDirectReference = rawPath === rawRoot && rawRoot.length > 0;
   if (!isDirectReference) {
     return false;
