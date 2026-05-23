@@ -6,15 +6,18 @@ summary: Align host-language union and fallback naming across core and language-
 assignee: copilot
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: awaiting-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: medium
 estimated: 6
 actual: 1
+completed_date: '2026-05-23'
+commits:
+  54f5eb345909b6a5dda12c50ee2a9ae7f4263c9f: 'feat: normalize host-language fallback to plaintext (WI-144)'
 links:
   pull_requests:
-    - 'https://github.com/templjs/templ.js/pull/183'
+    - https://github.com/templjs/templ.js/pull/183
   evidence:
     - '[[record-20260523-044941-144-unify-host-language-terminology-and-fallback]]'
 ---
