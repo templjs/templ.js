@@ -15,10 +15,10 @@ export type {
   TemplateDelimiters,
 } from './diagnostic-types.js';
 
-const DIAGNOSTIC_PLANNER_SOURCE =
+const DIAGNOSTIC_PROVIDER_SOURCE =
   createTempljsAuthoringProfile().helperExtensions?.find(
-    (helper) => helper.kind === 'diagnostic-planner'
-  )?.id ?? 'templjs.authoring.diagnostics';
+    (helper) => helper.kind === 'diagnostic-provider'
+  )?.id ?? 'templjs.authoring.diagnostic-provider';
 
 export function collectDiagnostics(
   text: string,
@@ -27,7 +27,7 @@ export function collectDiagnostics(
   const diagnostics = collectTemplateDiagnostics(text, options).map<SemanticDiagnosticRecord>(
     (diagnostic) => ({
       ...diagnostic,
-      source: diagnostic.source ?? DIAGNOSTIC_PLANNER_SOURCE,
+      source: diagnostic.source ?? DIAGNOSTIC_PROVIDER_SOURCE,
     })
   );
 

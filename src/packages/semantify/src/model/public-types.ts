@@ -172,7 +172,7 @@ export type ProfileHelperExtensionKind =
   | 'candidate-provider'
   | 'definition-resolver'
   | 'hover-renderer'
-  | 'diagnostic-planner'
+  | 'diagnostic-provider'
   | 'semantic-token-provider'
   | 'formatting-orchestrator';
 
