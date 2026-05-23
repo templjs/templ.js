@@ -6,12 +6,15 @@ summary: Define and implement deterministic semantic diagnostics mapping from sy
 assignee: copilot
 type: work-item
 subtype: task
-lifecycle: active
-status: in-progress
-status_reason: implementation-complete-awaiting-pr
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 12
 actual: 10
+completed_date: '2026-05-23'
+commits:
+  dfe299a068e534599ee93ceb9f2320ad9cb4566b: 'feat(core): profile-map syntax diagnostics into semantic records'
 links:
   pull_requests:
     - https://github.com/templjs/templ.js/pull/185
