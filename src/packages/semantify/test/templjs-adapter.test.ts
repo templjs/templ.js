@@ -143,7 +143,7 @@ describe('TemplJS adapters and authoring profile', () => {
     const adapterOutput = createTempljsSchemaAdapterOutput({
       sourceDocId: 'file:///nested.schema.json',
       sourceUri: 'file:///nested.schema.json',
-      contextBlock: 'frontmatter',
+      zoneSegment: 'metadata',
       adapterVersion: '2.0.0',
       schema: {
         type: 'object',
@@ -165,7 +165,7 @@ describe('TemplJS adapters and authoring profile', () => {
 
     expect(adapterOutput.adapterVersion).toBe('2.0.0');
     expect(adapterOutput.sourceUri).toBe('file:///nested.schema.json');
-    expect(schemaPathNode?.content.profileId).toBe('schema-frontmatter');
+    expect(schemaPathNode?.content.profileId).toBe('schema-metadata');
     expect(enumNodes.map((node) => node.content.value).sort()).toEqual(['Ada', 'Grace']);
   });
 

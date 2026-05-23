@@ -1,7 +1,7 @@
 import {
   extractTemplateBindings,
   getTemplateBindingsAtOffset,
-  type SemanticContextBlock,
+  type SemanticZoneSegment,
   type SemanticOperation,
   type SemanticZone,
   type TemplateBinding,
@@ -54,7 +54,8 @@ export type {
 
 export interface SemanticQueryContext {
   operation: SemanticOperation;
-  contextBlock?: SemanticContextBlock;
+  zoneSegment?: SemanticZoneSegment;
+  contextBlock?: 'frontmatter' | 'content';
   semanticZone?: SemanticZone;
   profileId?: string;
   documentUri?: string;
@@ -594,11 +595,18 @@ export class ContextGraphSemanticReadAdapter {
       return snapshot;
     }
 
+    const resolvedZoneSegment =
+      context.zoneSegment ??
+      context.semanticZone?.segment ??
+      (context.contextBlock === 'frontmatter' ? 'metadata' : 'content');
+    const legacyContextBlock = resolvedZoneSegment === 'metadata' ? 'frontmatter' : 'content';
+
     const contextAttributes: Record<string, JsonPrimitive> = {
       operation: context.operation,
       profileId: resolveProfileId(context),
       zoneKind: resolveZoneKind(context),
-      contextBlock: context.contextBlock ?? context.semanticZone?.legacyContextBlock ?? 'content',
+      zoneSegment: resolvedZoneSegment,
+      contextBlock: legacyContextBlock,
     };
     if (context.documentUri) {
       contextAttributes.documentUri = context.documentUri;

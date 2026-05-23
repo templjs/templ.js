@@ -68,16 +68,16 @@ describe('context-graph-snapshot helpers', () => {
     expect(
       resolveProfileId({
         operation: 'completion',
-        semanticZone: { profileId: 'zone-profile', kind: 'metadata', segment: 'frontmatter' },
+        semanticZone: { profileId: 'zone-profile', kind: 'metadata', segment: 'metadata' },
       } as never)
     ).toBe('zone-profile');
 
     expect(resolveZoneKind({ operation: 'hover', contextBlock: 'frontmatter' })).toBe('metadata');
-    expect(resolveZoneKind({ operation: 'hover', contextBlock: 'content' })).toBe('body');
+    expect(resolveZoneKind({ operation: 'hover', contextBlock: 'content' })).toBe('content');
     expect(
       resolveZoneKind({
         operation: 'hover',
-        semanticZone: { profileId: 'zone', kind: 'metadata', segment: 'frontmatter' },
+        semanticZone: { profileId: 'zone', kind: 'metadata', segment: 'metadata' },
       } as never)
     ).toBe('metadata');
 

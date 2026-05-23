@@ -56,10 +56,10 @@ export {
   getFrontmatterSchemaReferenceAtOffset,
   getTokenAtOffset,
   isOffsetInFrontmatter,
-  resolveSemanticContextBlock,
   resolveSemanticHostLanguage,
   resolveSemanticZone,
   resolveSemanticZoneByHostLanguage,
+  resolveSemanticZoneSegment,
   toSemanticZone,
 } from './semantic/semantic-context.js';
 export {

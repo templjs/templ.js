@@ -1,4 +1,4 @@
-import { getSemanticProfileId, type SemanticContextBlock } from '@templjs/core';
+import { getSemanticProfileId, type SemanticZoneSegment } from '@templjs/core';
 import type {
   Node,
   Snapshot,
@@ -101,17 +101,15 @@ export function getLabel(path: string): string {
 }
 
 export function resolveProfileId(context: SemanticQueryContext): string {
-  return (
-    context.semanticZone?.profileId ??
-    context.profileId ??
-    getSemanticProfileId(context.contextBlock ?? 'content')
-  );
+  const zoneSegment =
+    context.zoneSegment ?? (context.contextBlock === 'frontmatter' ? 'metadata' : 'content');
+  return context.semanticZone?.profileId ?? context.profileId ?? getSemanticProfileId(zoneSegment);
 }
 
-export function resolveZoneKind(context: SemanticQueryContext): 'metadata' | 'body' {
-  return (
-    context.semanticZone?.kind ?? (context.contextBlock === 'frontmatter' ? 'metadata' : 'body')
-  );
+export function resolveZoneKind(context: SemanticQueryContext): 'metadata' | 'content' {
+  const zoneSegment =
+    context.zoneSegment ?? (context.contextBlock === 'frontmatter' ? 'metadata' : 'content');
+  return context.semanticZone?.kind ?? (zoneSegment === 'metadata' ? 'metadata' : 'content');
 }
 
 export function resolveSchemaUriForContext(
@@ -131,12 +129,13 @@ export function asNonEmptyString(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
-export function buildPathNodes(contextBlock: SemanticContextBlock, schema?: object): Node[] {
+export function buildPathNodes(zoneSegment: SemanticZoneSegment, schema?: object): Node[] {
   if (!schema) {
     return [];
   }
 
-  const profileId = getSemanticProfileId(contextBlock);
+  const profileId = getSemanticProfileId(zoneSegment);
+  const contextBlock = zoneSegment === 'metadata' ? 'frontmatter' : 'content';
 
   const metadata = getSharedSchemaMetadata(schema);
   const nodes: Node[] = [];
@@ -152,6 +151,7 @@ export function buildPathNodes(contextBlock: SemanticContextBlock, schema?: obje
         label: getLabel(path),
         type: entry.type,
         description: entry.description ?? '',
+        zoneSegment,
         contextBlock,
         isTopLevel: getParentPath(path) === '',
         isDirectProperty: !path.includes('.') && !path.includes('['),
@@ -176,6 +176,7 @@ export function buildPathNodes(contextBlock: SemanticContextBlock, schema?: obje
               path: currentPath,
               value,
               label: String(value),
+              zoneSegment,
               contextBlock,
             },
           });

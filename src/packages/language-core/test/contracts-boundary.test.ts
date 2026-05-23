@@ -28,7 +28,7 @@ describe('language-core contract boundary', () => {
         {
           id: 'zone-1',
           kind: 'content',
-          contextBlock: 'content',
+          segment: 'content',
           startOffset: 0,
           endOffset: 12,
         },
