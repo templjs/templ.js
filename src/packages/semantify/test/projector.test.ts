@@ -639,6 +639,7 @@ describe('SemantifyProjectionRuntime', () => {
         {
           severity: 2,
           message: 'adapter warning',
+          phase: 'semantic',
         },
       ],
       nodes: [
@@ -714,6 +715,12 @@ describe('SemantifyProjectionRuntime', () => {
     expect(result.diagnostics.some((diagnostic) => diagnostic.message === 'adapter warning')).toBe(
       true
     );
+    const adapterWarning = result.diagnostics.find(
+      (diagnostic) => diagnostic.message === 'adapter warning'
+    );
+    expect(adapterWarning?.phase).toBe('semantic');
+    expect(adapterWarning?.origin).toBe('syntax');
+    expect(adapterWarning?.adapterId).toBe('mixed-adapter');
     expect(result.provenance.every((item) => item.sourceUri === 'file:///mixed.tpl')).toBe(true);
     expect(result.provenance.some((item) => item.sourceLoc?.line === 1)).toBe(true);
     expect(result.provenance.some((item) => item.confidence === 'inferred')).toBe(true);
@@ -970,6 +977,8 @@ describe('SemantifyProjectionRuntime', () => {
         message.includes('requires provenance coverage for every graph entity')
       )
     ).toBe(true);
+    expect(diagnostics.every((diagnostic) => diagnostic.phase === 'projection')).toBe(true);
+    expect(diagnostics.every((diagnostic) => diagnostic.origin === 'runtime')).toBe(true);
   });
 
   it('reports strict-mode diagnostics when inline provenance target ids are swapped', () => {

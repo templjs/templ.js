@@ -537,6 +537,18 @@ function compareProvenance(left: SemanticGraphProvenance, right: SemanticGraphPr
   );
 }
 
+function mapSyntaxDiagnosticsToSemantic(adapterOutput: AdapterOutput): SemanticDiagnosticRecord[] {
+  return (adapterOutput.diagnostics ?? []).map((diagnostic) => ({
+    severity: diagnostic.severity,
+    message: diagnostic.message,
+    phase: diagnostic.phase ?? 'parse',
+    origin: 'syntax',
+    adapterId: adapterOutput.adapterId,
+    ...(diagnostic.span ? { span: diagnostic.span } : {}),
+    ...(diagnostic.metadata ? { metadata: diagnostic.metadata } : {}),
+  }));
+}
+
 function collectStrictModeDiagnostics(input: {
   nodes: SemanticGraphNode[];
   edges: SemanticGraphEdge[];
@@ -687,7 +699,11 @@ function collectStrictModeDiagnostics(input: {
     });
   }
 
-  return diagnostics;
+  return diagnostics.map((diagnostic) => ({
+    ...diagnostic,
+    phase: diagnostic.phase ?? 'projection',
+    origin: diagnostic.origin ?? 'runtime',
+  }));
 }
 
 export class SemantifyProjectionRuntime {
@@ -707,7 +723,7 @@ export class SemantifyProjectionRuntime {
       ...validateAdapterOutput(input.adapterOutput),
       ...validateProfileDefinition(input.profile),
       ...validateAdapterProfileCompatibility(input.adapterOutput, input.profile),
-      ...(input.adapterOutput.diagnostics ?? []),
+      ...mapSyntaxDiagnosticsToSemantic(input.adapterOutput),
     ];
     const nodes: SemanticGraphNode[] = [];
     const edges: SemanticGraphEdge[] = [];

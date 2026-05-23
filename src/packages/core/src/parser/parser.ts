@@ -20,6 +20,7 @@ import type {
   FunctionCallNode,
   ErrorNode,
   ParseResult,
+  ParseDiagnosticPhase,
   ParseError,
 } from './types.js';
 import { parseExpressionWithPriorityList } from './parsers.js';
@@ -151,7 +152,7 @@ export class TemplateParser {
     const conditionMatch = content.match(/^if\s+(.+?)$/is);
     if (!conditionMatch) {
       this.addError(
-        'syntax',
+        'lexical',
         'Invalid if statement',
         startToken.start,
         'Did you forget to close the {% if %} block with {% endif %}?'
@@ -194,7 +195,7 @@ export class TemplateParser {
     } else {
       // Missing endif: emit recovery error
       this.addError(
-        'recovery',
+        'parse',
         'Unclosed if block: missing {% endif %}',
         endToken?.start || (body.length > 0 ? body[body.length - 1].end : startToken.end),
         'Did you forget to close the {% if %} block with {% endif %}?'
@@ -225,7 +226,7 @@ export class TemplateParser {
 
     if (!match) {
       this.addError(
-        'syntax',
+        'lexical',
         'Invalid for statement syntax',
         startToken.start,
         'Did you forget to close the {% for %} block with {% endfor %}?'
@@ -252,7 +253,7 @@ export class TemplateParser {
     } else {
       // Missing endfor: emit recovery error
       this.addError(
-        'recovery',
+        'parse',
         'Unclosed for block: missing {% endfor %}',
         endToken?.start || (body.length > 0 ? body[body.length - 1].end : startToken.end),
         'Did you forget to close the {% for %} block with {% endfor %}?'
@@ -283,7 +284,7 @@ export class TemplateParser {
 
     if (!match) {
       this.addError(
-        'syntax',
+        'lexical',
         'Invalid set statement syntax',
         startToken.start,
         'Check your {% set %} statement syntax. Example: {% set x = value %}'
@@ -320,7 +321,7 @@ export class TemplateParser {
 
     if (!match) {
       this.addError(
-        'syntax',
+        'lexical',
         'Invalid block statement syntax',
         startToken.start,
         'Did you forget to close the {% block %} with {% endblock %}?'
@@ -344,7 +345,7 @@ export class TemplateParser {
     } else {
       // Missing endblock: emit recovery error
       this.addError(
-        'recovery',
+        'parse',
         'Unclosed block: missing {% endblock %}',
         endToken?.start || (body.length > 0 ? body[body.length - 1].end : startToken.end),
         'Did you forget to close the {% block %} with {% endblock %}?'
@@ -841,7 +842,7 @@ export class TemplateParser {
    */
   private parseErrorStatement(message: string): ErrorNode {
     const token = this.advance();
-    this.addError('syntax', message, token.start, 'Check the statement syntax or delimiters.');
+    this.addError('lexical', message, token.start, 'Check the statement syntax or delimiters.');
     return {
       type: 'error',
       message,
@@ -922,7 +923,7 @@ export class TemplateParser {
    * Add an error to the errors list
    */
   private addError(
-    type: 'syntax' | 'recovery' | 'validation',
+    type: ParseDiagnosticPhase,
     message: string,
     location: { line: number; column: number },
     suggestion?: string

@@ -115,14 +115,14 @@ describe('core entrypoint', () => {
   it('validates correct template syntax', () => {
     const result = validateTemplate('Hello {{name}}!');
     expect(result.valid).toBe(true);
-    expect(result.errors).toBeUndefined();
+    expect(result.syntaxDiagnostics).toEqual([]);
   });
 
   it('detects invalid template syntax', () => {
     const result = validateTemplate('{{unclosed');
     expect(result.valid).toBe(false);
-    expect(result.errors).toBeDefined();
-    expect(result.errors?.length).toBeGreaterThan(0);
+    expect(result.syntaxDiagnostics.length).toBeGreaterThan(0);
+    expect(result.syntaxDiagnostics[0]?.phase).toBe('lexical');
   });
 
   it('default export maps public API functions', () => {

@@ -106,7 +106,9 @@ export async function validateCommand(
   try {
     const templateContent = readFileSync(templatePath, 'utf-8');
     const templateValidation = validateTemplate(templateContent);
-    const errors = [...(templateValidation.errors ?? [])];
+    const errors = templateValidation.syntaxDiagnostics.map(
+      (diagnostic) => `${diagnostic.phase}: ${diagnostic.message}`
+    );
 
     if (inputPath && !schemaPath) {
       throw new Error('Schema path is required when validating input data (pass --schema)');

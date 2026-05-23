@@ -112,6 +112,8 @@ export type AdapterId = string;
 export type ProfileDefinitionId = string;
 export type ProjectionRuleId = string;
 export type DiagnosticSeverity = 1 | 2 | 3 | 4;
+export type DiagnosticPhase = 'lexical' | 'parse' | 'semantic' | 'projection';
+export type DiagnosticOrigin = 'syntax' | 'runtime';
 
 export interface AdapterNode {
   id?: string;
@@ -125,6 +127,8 @@ export interface AdapterNode {
 export interface SyntaxDiagnosticRecord {
   severity: DiagnosticSeverity;
   message: string;
+  phase?: Exclude<DiagnosticPhase, 'projection'>;
+  origin?: Exclude<DiagnosticOrigin, 'runtime'>;
   span?: OffsetRange;
   metadata?: Record<string, unknown>;
 }
@@ -213,6 +217,8 @@ export interface ProfileDefinition {
 export interface SemanticDiagnosticRecord {
   severity: DiagnosticSeverity;
   message: string;
+  phase?: DiagnosticPhase;
+  origin?: DiagnosticOrigin;
   adapterId?: AdapterId;
   projectionRuleId?: ProjectionRuleId;
   sourceNodeKind?: string;

@@ -6,12 +6,12 @@ summary: Define and implement deterministic semantic diagnostics mapping from sy
 assignee: copilot
 type: work-item
 subtype: task
-lifecycle: draft
-status: proposed
-status_reason: needs-triage
+lifecycle: active
+status: in-progress
+status_reason: implementation-complete-awaiting-pr
 priority: high
 estimated: 12
-actual: 0
+actual: 10
 links:
   evidence:
     - '[[record-20260523-044941-145-profile-map-semantic-diagnostics-to-syntax-diagnostics]]'
@@ -35,27 +35,27 @@ Create a clearly defined semantic diagnostics layer that is profile-mapped to sy
 
 ## File-by-File Rename Checklist
 
-- [ ] [src/packages/core/src/parser/types.ts](src/packages/core/src/parser/types.ts)
+- [x] [src/packages/core/src/parser/types.ts](src/packages/core/src/parser/types.ts)
   - `ParseError.type` -> `ParseDiagnosticPhase`
   - phase literals `syntax` and `recovery` and `validation` -> `lexical` and `parse` and `semantic`
-- [ ] [src/packages/core/src/index.ts](src/packages/core/src/index.ts)
+- [x] [src/packages/core/src/index.ts](src/packages/core/src/index.ts)
   - `validateTemplate` return `errors: string[]` -> `syntaxDiagnostics: SyntaxDiagnosticRecord[]`
-- [ ] [src/packages/semantify/src/projector/index.ts](src/packages/semantify/src/projector/index.ts)
+- [x] [src/packages/semantify/src/projector/index.ts](src/packages/semantify/src/projector/index.ts)
   - normalize adapter output diagnostics to `SyntaxDiagnosticRecord`
   - emit runtime strict diagnostics as `SemanticDiagnosticRecord` with phase `projection` and origin `runtime`
-- [ ] [src/packages/volar/src/diagnostic-provider.ts](src/packages/volar/src/diagnostic-provider.ts)
+- [x] [src/packages/volar/src/diagnostic-provider.ts](src/packages/volar/src/diagnostic-provider.ts)
   - consume syntax diagnostics and emit semantic diagnostics under canonical record contract
-- [ ] [src/packages/volar/src/diagnostic-remapping.ts](src/packages/volar/src/diagnostic-remapping.ts)
+- [x] [src/packages/volar/src/diagnostic-remapping.ts](src/packages/volar/src/diagnostic-remapping.ts)
   - remapping signatures `DiagnosticItem` -> `SemanticDiagnosticRecord`
 
 ## Tasks
 
-- [ ] Define canonical parse diagnostic phase values.
-- [ ] Refactor core `validateTemplate` output contract.
-- [ ] Implement profile-level mapping of syntax diagnostics to semantic diagnostics.
-- [ ] Refactor volar diagnostic remapping and provider signatures.
-- [ ] Update tests for phase, origin, and severity mapping semantics.
-- [ ] Remove transitional string-based diagnostic pathways.
+- [x] Define canonical parse diagnostic phase values.
+- [x] Refactor core `validateTemplate` output contract.
+- [x] Implement profile-level mapping of syntax diagnostics to semantic diagnostics.
+- [x] Refactor volar diagnostic remapping and provider signatures.
+- [x] Update tests for phase, origin, and severity mapping semantics.
+- [x] Remove transitional string-based diagnostic pathways.
 
 ## Deliverables
 
@@ -65,10 +65,10 @@ Create a clearly defined semantic diagnostics layer that is profile-mapped to sy
 
 ## Acceptance Criteria
 
-- [ ] Core `validateTemplate` returns structured syntax diagnostics.
-- [ ] Semantify projector emits semantic diagnostics with phase and origin metadata.
-- [ ] Volar consumes canonical semantic diagnostics without shape translation drift.
-- [ ] Tests pass for parser, projector, and diagnostics provider flows.
+- [x] Core `validateTemplate` returns structured syntax diagnostics.
+- [x] Semantify projector emits semantic diagnostics with phase and origin metadata.
+- [x] Volar consumes canonical semantic diagnostics without shape translation drift.
+- [x] Tests pass for parser, projector, and diagnostics provider flows.
 
 ## Testing Strategy
 
