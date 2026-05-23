@@ -1,6 +1,6 @@
 ---
-# yaml-language-server: $schema=../../schemas/work-management/frontmatter/work-item.json
-id: wi-131
+$schema: schemas/work-management/frontmatter/work-item.json
+id: work-item:131-semantify-projection-full-cutover-epic
 title: '131: Semantify Projection Full Cutover Epic'
 summary: Fully adopt deterministic Semantify projection and provenance as the semantic authority for authoring features and remove all transition artifacts.
 type: work-item

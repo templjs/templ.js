@@ -193,10 +193,9 @@ function isPathValidInContext(resolvedPath: string, validator: SchemaValidator):
 }
 
 /**
- * Returns true if the root segment of `resolvedPath` matches a locally
- * declared template binding (for-alias, set-variable, etc.) in scope at
- * `offset`.  When true, schema validation should be skipped because the path
- * points into a runtime-only variable that is not described by the schema.
+ * Returns true only when `rawPath` is a direct (non-dotted, non-indexed)
+ * reference to a locally declared template binding (for-alias, set-variable,
+ * etc.) in scope at `offset`. Nested paths continue through schema validation.
  */
 function isDirectLocalTemplateReference(
   text: string,

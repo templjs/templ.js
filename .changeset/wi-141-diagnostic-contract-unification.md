@@ -1,8 +1,8 @@
 ---
-'@templjs/core': patch
-'@templjs/semantify': patch
-'@templjs/volar': patch
-'@templjs/language-service': patch
+'@templjs/core': minor
+'@templjs/semantify': minor
+'@templjs/volar': minor
+'@templjs/language-service': minor
 ---
 
 <!-- markdownlint-disable MD041 -->
