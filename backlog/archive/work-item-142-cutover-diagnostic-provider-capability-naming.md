@@ -6,12 +6,13 @@ summary: Replace diagnostic planner terminology with diagnostic provider termino
 assignee: copilot
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: awaiting-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 6
 actual: 0
+completed_date: '2026-05-23'
 links:
   evidence:
     - '[[record-20260523-044941-142-cutover-diagnostic-provider-capability-naming]]'
