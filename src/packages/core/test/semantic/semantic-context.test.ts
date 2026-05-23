@@ -349,8 +349,8 @@ describe('semantic-context core helpers', () => {
     expect(resolveSemanticHostLanguage('file:///workspace/config.templ.toml')).toBe('toml');
     expect(resolveSemanticHostLanguage('file:///workspace/layout.xml.templ')).toBe('xml');
     expect(resolveSemanticHostLanguage('file:///workspace/layout.templ.xml')).toBe('xml');
-    expect(resolveSemanticHostLanguage(undefined)).toBe('unknown');
-    expect(resolveSemanticHostLanguage('file:///workspace/file.templ')).toBe('unknown');
+    expect(resolveSemanticHostLanguage(undefined)).toBe('plaintext');
+    expect(resolveSemanticHostLanguage('file:///workspace/file.templ')).toBe('plaintext');
   });
 
   it('detects host language from tmpl document URI', () => {
@@ -367,7 +367,7 @@ describe('semantic-context core helpers', () => {
     expect(resolveSemanticHostLanguage('file:///workspace/config.tmpl.toml')).toBe('toml');
     expect(resolveSemanticHostLanguage('file:///workspace/layout.xml.tmpl')).toBe('xml');
     expect(resolveSemanticHostLanguage('file:///workspace/layout.tmpl.xml')).toBe('xml');
-    expect(resolveSemanticHostLanguage('file:///workspace/file.tmpl')).toBe('unknown');
+    expect(resolveSemanticHostLanguage('file:///workspace/file.tmpl')).toBe('plaintext');
   });
 
   it('detects host language from tpl document URI', () => {
@@ -384,7 +384,7 @@ describe('semantic-context core helpers', () => {
     expect(resolveSemanticHostLanguage('file:///workspace/config.tpl.toml')).toBe('toml');
     expect(resolveSemanticHostLanguage('file:///workspace/layout.xml.tpl')).toBe('xml');
     expect(resolveSemanticHostLanguage('file:///workspace/layout.tpl.xml')).toBe('xml');
-    expect(resolveSemanticHostLanguage('file:///workspace/file.tpl')).toBe('unknown');
+    expect(resolveSemanticHostLanguage('file:///workspace/file.tpl')).toBe('plaintext');
   });
 
   it('uses host language to resolve semantic zone with markdown compatibility', () => {

@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type {
+  TempljsHostLanguage,
   TempljsLanguageServerInitializationOptions,
   TempljsVirtualDocumentMetadata,
 } from '../src/index.js';
@@ -10,7 +11,29 @@ function toJson(value: unknown): string {
   return JSON.stringify(value);
 }
 
+type Assert<T extends true> = T;
+type IsEqual<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+
+type CanonicalHostLanguage = 'markdown' | 'json' | 'yaml' | 'html' | 'toml' | 'xml' | 'plaintext';
+
+type _HostLanguageParity = Assert<IsEqual<TempljsHostLanguage, CanonicalHostLanguage>>;
+
 describe('language-core contract boundary', () => {
+  it('uses plaintext as the canonical host-language fallback', () => {
+    const supportedHostLanguages = [
+      'markdown',
+      'json',
+      'yaml',
+      'html',
+      'toml',
+      'xml',
+      'plaintext',
+    ] as const satisfies readonly TempljsHostLanguage[];
+
+    expect(supportedHostLanguages).toContain('plaintext');
+  });
+
   it('exports JSON-compatible contract shapes', () => {
     const metadata: TempljsVirtualDocumentMetadata = {
       snapshotId: 'snapshot-1',

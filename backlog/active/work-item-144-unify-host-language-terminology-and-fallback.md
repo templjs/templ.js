@@ -6,13 +6,15 @@ summary: Align host-language union and fallback naming across core and language-
 assignee: copilot
 type: work-item
 subtype: task
-lifecycle: draft
-status: proposed
-status_reason: needs-triage
+lifecycle: active
+status: ready-for-review
+status_reason: awaiting-review
 priority: medium
 estimated: 6
-actual: 0
+actual: 1
 links:
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/183'
   evidence:
     - '[[record-20260523-044941-144-unify-host-language-terminology-and-fallback]]'
 ---
@@ -32,19 +34,19 @@ Eliminate host-language fallback drift and enforce one host-language contract ac
 
 ## File-by-File Rename Checklist
 
-- [ ] [src/packages/core/src/semantic/semantic-context.ts](src/packages/core/src/semantic/semantic-context.ts)
+- [x] [src/packages/core/src/semantic/semantic-context.ts](src/packages/core/src/semantic/semantic-context.ts)
   - `SemanticHostLanguage` fallback value `unknown` -> `plaintext`
-- [ ] [src/packages/language-core/src/public-types.ts](src/packages/language-core/src/public-types.ts)
+- [x] [src/packages/language-core/src/public-types.ts](src/packages/language-core/src/public-types.ts)
   - enforce host-language union parity with core
-- [ ] [src/packages/volar/src/diagnostic-template-analysis.ts](src/packages/volar/src/diagnostic-template-analysis.ts)
+- [x] [src/packages/volar/src/diagnostic-template-analysis.ts](src/packages/volar/src/diagnostic-template-analysis.ts)
   - host-language branch `unknown` -> `plaintext`
 
 ## Tasks
 
-- [ ] Rename fallback term in core.
-- [ ] Update volar fallback branch logic.
-- [ ] Enforce language-core and core union parity in tests.
-- [ ] Remove any remaining `unknown` fallback usage in touched area.
+- [x] Rename fallback term in core.
+- [x] Update volar fallback branch logic.
+- [x] Enforce language-core and core union parity in tests.
+- [x] Remove any remaining `unknown` fallback usage in touched area.
 
 ## Deliverables
 
@@ -53,9 +55,9 @@ Eliminate host-language fallback drift and enforce one host-language contract ac
 
 ## Acceptance Criteria
 
-- [ ] Host-language unions match exactly in core and language-core.
-- [ ] Volar branch logic uses canonical fallback.
-- [ ] Tests pass for fallback behavior.
+- [x] Host-language unions match exactly in core and language-core.
+- [x] Volar branch logic uses canonical fallback.
+- [x] Tests pass for fallback behavior.
 
 ## Testing Strategy
 

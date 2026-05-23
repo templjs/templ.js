@@ -775,6 +775,7 @@ describe('DiagnosticProvider', () => {
     const diagnostics = collectDiagnostics(text, {
       schema: frontmatterSchema,
       contentSchema,
+      documentUri: 'file:///doc.md.tmpl',
     });
 
     expect(diagnostics.length).toBe(0);

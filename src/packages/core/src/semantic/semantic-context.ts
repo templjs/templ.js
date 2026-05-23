@@ -8,7 +8,7 @@ export type SemanticHostLanguage =
   | 'toml'
   | 'html'
   | 'xml'
-  | 'unknown';
+  | 'plaintext';
 
 export interface SemanticZone {
   kind: SemanticZoneKind;
@@ -467,11 +467,11 @@ export function resolveSemanticZone(text: string, offset: number): SemanticZone 
  *
  * @param documentUri - Optional document URI or path
  * @returns `SemanticHostLanguage` string (`"markdown"`, `"json"`, etc.)
- *   or `"unknown"` if no recognised extension is found
+ *   or `"plaintext"` if no recognised extension is found
  */
 export function resolveSemanticHostLanguage(documentUri?: string): SemanticHostLanguage {
   if (!documentUri) {
-    return 'unknown';
+    return 'plaintext';
   }
 
   const normalized = documentUri.toLowerCase();
@@ -543,7 +543,7 @@ export function resolveSemanticHostLanguage(documentUri?: string): SemanticHostL
     return 'xml';
   }
 
-  return 'unknown';
+  return 'plaintext';
 }
 
 /**
