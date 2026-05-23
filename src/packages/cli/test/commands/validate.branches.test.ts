@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 async function loadValidateModule(options?: {
   readFileSyncImpl?: (path: string) => string;
-  validateTemplateImpl?: (template: string) => { errors?: string[] };
+  validateTemplateImpl?: (template: string) => {
+    syntaxDiagnostics: Array<{ phase: 'lexical' | 'parse' | 'semantic'; message: string }>;
+  };
   schemaValidatorFactory?: new (schema?: unknown) => {
     isCompiled: boolean;
     compilationError?: string;
@@ -31,7 +33,7 @@ async function loadValidateModule(options?: {
   }));
 
   vi.doMock('@templjs/core', () => ({
-    validateTemplate: vi.fn(options?.validateTemplateImpl ?? (() => ({ errors: [] }))),
+    validateTemplate: vi.fn(options?.validateTemplateImpl ?? (() => ({ syntaxDiagnostics: [] }))),
     SchemaValidator:
       options?.schemaValidatorFactory ??
       class {
@@ -55,7 +57,9 @@ async function loadValidateModule(options?: {
 
 async function loadValidateCommand(options?: {
   readFileSyncImpl?: (path: string) => string;
-  validateTemplateImpl?: (template: string) => { errors?: string[] };
+  validateTemplateImpl?: (template: string) => {
+    syntaxDiagnostics: Array<{ phase: 'lexical' | 'parse' | 'semantic'; message: string }>;
+  };
   schemaValidatorFactory?: new (schema?: unknown) => {
     isCompiled: boolean;
     compilationError?: string;

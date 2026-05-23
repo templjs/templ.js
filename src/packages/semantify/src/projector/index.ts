@@ -244,7 +244,7 @@ function validateAdapterOutput(adapterOutput: AdapterOutput): SemanticDiagnostic
     }
   }
 
-  return diagnostics;
+  return diagnostics.map(normalizeSemanticDiagnostic);
 }
 
 function validateProfileDefinition(profile: ProfileDefinition): SemanticDiagnosticRecord[] {
@@ -318,7 +318,7 @@ function validateProfileDefinition(profile: ProfileDefinition): SemanticDiagnost
     diagnostics.push(...validateHelperExtension(profile, helper, semanticKinds));
   }
 
-  return diagnostics;
+  return diagnostics.map(normalizeSemanticDiagnostic);
 }
 
 function validateHelperExtension(
@@ -537,6 +537,66 @@ function compareProvenance(left: SemanticGraphProvenance, right: SemanticGraphPr
   );
 }
 
+function normalizeSyntaxDiagnosticPhase(phase: unknown): {
+  phase: 'lexical' | 'parse' | 'semantic';
+  invalidPhase?: unknown;
+} {
+  if (phase === 'lexical' || phase === 'parse' || phase === 'semantic') {
+    return { phase };
+  }
+  if (phase === undefined) {
+    return { phase: 'parse' };
+  }
+  return {
+    phase: 'parse',
+    invalidPhase: phase,
+  };
+}
+
+function asMetadataRecord(value: unknown): Record<string, unknown> | undefined {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return undefined;
+}
+
+function mapSyntaxDiagnosticsToSemantic(adapterOutput: AdapterOutput): SemanticDiagnosticRecord[] {
+  return (adapterOutput.diagnostics ?? []).map((diagnostic) => {
+    const normalizedPhase = normalizeSyntaxDiagnosticPhase(diagnostic?.phase);
+    const metadata = asMetadataRecord(diagnostic?.metadata);
+    const normalizedMetadata =
+      normalizedPhase.invalidPhase === undefined
+        ? metadata
+        : {
+            ...(metadata ?? {}),
+            invalidPhase: normalizedPhase.invalidPhase,
+          };
+
+    return {
+      severity: diagnostic?.severity ?? DIAGNOSTIC_SEVERITY_ERROR,
+      message:
+        typeof diagnostic?.message === 'string' && diagnostic.message.length > 0
+          ? diagnostic.message
+          : 'Adapter emitted malformed syntax diagnostic.',
+      phase: normalizedPhase.phase,
+      origin: 'syntax',
+      adapterId: adapterOutput.adapterId,
+      ...(diagnostic?.span ? { span: diagnostic.span } : {}),
+      ...(normalizedMetadata ? { metadata: normalizedMetadata } : {}),
+    };
+  });
+}
+
+function normalizeSemanticDiagnostic(
+  diagnostic: SemanticDiagnosticRecord
+): SemanticDiagnosticRecord {
+  return {
+    ...diagnostic,
+    phase: diagnostic.phase ?? 'projection',
+    origin: diagnostic.origin ?? 'runtime',
+  };
+}
+
 function collectStrictModeDiagnostics(input: {
   nodes: SemanticGraphNode[];
   edges: SemanticGraphEdge[];
@@ -687,7 +747,7 @@ function collectStrictModeDiagnostics(input: {
     });
   }
 
-  return diagnostics;
+  return diagnostics.map(normalizeSemanticDiagnostic);
 }
 
 export class SemantifyProjectionRuntime {
@@ -704,10 +764,12 @@ export class SemantifyProjectionRuntime {
 
   project(input: ProjectionRuntimeInput): ProjectionResult {
     const diagnostics = [
-      ...validateAdapterOutput(input.adapterOutput),
-      ...validateProfileDefinition(input.profile),
-      ...validateAdapterProfileCompatibility(input.adapterOutput, input.profile),
-      ...(input.adapterOutput.diagnostics ?? []),
+      ...validateAdapterOutput(input.adapterOutput).map(normalizeSemanticDiagnostic),
+      ...validateProfileDefinition(input.profile).map(normalizeSemanticDiagnostic),
+      ...validateAdapterProfileCompatibility(input.adapterOutput, input.profile).map(
+        normalizeSemanticDiagnostic
+      ),
+      ...mapSyntaxDiagnosticsToSemantic(input.adapterOutput),
     ];
     const nodes: SemanticGraphNode[] = [];
     const edges: SemanticGraphEdge[] = [];
@@ -754,7 +816,9 @@ export class SemantifyProjectionRuntime {
         .filter((item): item is SemanticGraphProvenance => !!item),
     ].sort(compareProvenance);
 
-    diagnostics.push(...validateProvenanceContracts(input.profile, nodes));
+    diagnostics.push(
+      ...validateProvenanceContracts(input.profile, nodes).map(normalizeSemanticDiagnostic)
+    );
 
     if (this.strictMode) {
       const strictDiagnostics = collectStrictModeDiagnostics({ nodes, edges, provenance });

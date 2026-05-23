@@ -252,11 +252,13 @@ export interface ParseResult {
   errors: ParseError[];
 }
 
+export type ParseDiagnosticPhase = 'lexical' | 'parse' | 'semantic';
+
 /**
  * Parse error with location information
  */
 export interface ParseError {
-  type: 'syntax' | 'recovery' | 'validation';
+  type: ParseDiagnosticPhase;
   message: string;
   location: Position;
   suggestion?: string;

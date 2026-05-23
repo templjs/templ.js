@@ -639,6 +639,7 @@ describe('SemantifyProjectionRuntime', () => {
         {
           severity: 2,
           message: 'adapter warning',
+          phase: 'semantic',
         },
       ],
       nodes: [
@@ -714,9 +715,63 @@ describe('SemantifyProjectionRuntime', () => {
     expect(result.diagnostics.some((diagnostic) => diagnostic.message === 'adapter warning')).toBe(
       true
     );
+    const adapterWarning = result.diagnostics.find(
+      (diagnostic) => diagnostic.message === 'adapter warning'
+    );
+    expect(adapterWarning?.phase).toBe('semantic');
+    expect(adapterWarning?.origin).toBe('syntax');
+    expect(adapterWarning?.adapterId).toBe('mixed-adapter');
     expect(result.provenance.every((item) => item.sourceUri === 'file:///mixed.tpl')).toBe(true);
     expect(result.provenance.some((item) => item.sourceLoc?.line === 1)).toBe(true);
     expect(result.provenance.some((item) => item.confidence === 'inferred')).toBe(true);
+  });
+
+  it('normalizes malformed adapter diagnostics without throwing', () => {
+    const adapterOutputWithMalformedDiagnostics: AdapterOutput = {
+      ...adapterOutput,
+      diagnostics: [
+        {
+          severity: 2,
+          message: 'missing phase defaults to parse',
+        },
+        {
+          severity: 2,
+          message: 'invalid phase is preserved in metadata',
+          phase: 'mystery' as never,
+          metadata: { source: 'adapter' },
+        },
+        {
+          message: '',
+          metadata: [] as never,
+        },
+      ],
+    };
+
+    const result = createProjectionRuntime().project({
+      adapterOutput: adapterOutputWithMalformedDiagnostics,
+      profile,
+    });
+
+    const missingPhaseDiagnostic = result.diagnostics.find(
+      (diagnostic) => diagnostic.message === 'missing phase defaults to parse'
+    );
+    expect(missingPhaseDiagnostic?.phase).toBe('parse');
+
+    const invalidPhaseDiagnostic = result.diagnostics.find(
+      (diagnostic) => diagnostic.message === 'invalid phase is preserved in metadata'
+    );
+    expect(invalidPhaseDiagnostic?.phase).toBe('parse');
+    expect(invalidPhaseDiagnostic?.metadata).toMatchObject({
+      source: 'adapter',
+      invalidPhase: 'mystery',
+    });
+
+    const malformedDiagnostic = result.diagnostics.find(
+      (diagnostic) => diagnostic.message === 'Adapter emitted malformed syntax diagnostic.'
+    );
+    expect(malformedDiagnostic?.severity).toBe(1);
+    expect(malformedDiagnostic?.origin).toBe('syntax');
+    expect(malformedDiagnostic?.metadata).toBeUndefined();
   });
 
   it('serializes undefined values to null fallback in stable serialization helper', () => {
@@ -970,6 +1025,8 @@ describe('SemantifyProjectionRuntime', () => {
         message.includes('requires provenance coverage for every graph entity')
       )
     ).toBe(true);
+    expect(diagnostics.every((diagnostic) => diagnostic.phase === 'projection')).toBe(true);
+    expect(diagnostics.every((diagnostic) => diagnostic.origin === 'runtime')).toBe(true);
   });
 
   it('reports strict-mode diagnostics when inline provenance target ids are swapped', () => {

@@ -96,7 +96,9 @@ export { isHighlightablePosition, UNKNOWN_POSITION } from './renderer/evaluators
 import { QueryEngine } from './query-engine/query-engine.js';
 import type { FunctionSignature } from './query-engine/types.js';
 import { tokenize } from './lexer/lexer.js';
+import type { Position } from './lexer/types.js';
 import { parse } from './parser/parser.js';
+import type { ParseDiagnosticPhase } from './parser/types.js';
 import { render } from './renderer/renderer.js';
 import { extractTemplateBindings } from './semantic/template-scopes.js';
 import { extractExpressionFilterReferences } from './semantic/expression-references.js';
@@ -255,12 +257,25 @@ export function renderTemplate(
   }
 }
 
+export interface SyntaxDiagnosticRecord {
+  phase: ParseDiagnosticPhase;
+  severity: 1 | 2 | 3 | 4;
+  message: string;
+  location?: Position;
+  source: 'templjs.core';
+}
+
+export interface ValidateTemplateResult {
+  valid: boolean;
+  syntaxDiagnostics: SyntaxDiagnosticRecord[];
+}
+
 /**
- * Validate a template string for syntax errors
- * @param template - Template string to validate
- * @returns Validation result with valid flag and any errors
+ * Validate a template string for syntax errors.
+ * @param template - Template string to validate.
+ * @returns Validation result with structured syntax diagnostics.
  */
-export function validateTemplate(template: string): { valid: boolean; errors?: string[] } {
+export function validateTemplate(template: string): ValidateTemplateResult {
   try {
     // Tokenize the template
     const tokens = tokenize(template);
@@ -272,7 +287,13 @@ export function validateTemplate(template: string): { valid: boolean; errors?: s
     if (parseResult.errors && parseResult.errors.length > 0) {
       return {
         valid: false,
-        errors: parseResult.errors.map((err) => `${err.type}: ${err.message}`),
+        syntaxDiagnostics: parseResult.errors.map((err) => ({
+          phase: err.type,
+          severity: 1,
+          message: err.message,
+          location: err.location,
+          source: 'templjs.core',
+        })),
       };
     }
 
@@ -280,15 +301,29 @@ export function validateTemplate(template: string): { valid: boolean; errors?: s
     if (!parseResult.ast) {
       return {
         valid: false,
-        errors: ['Failed to generate AST from template'],
+        syntaxDiagnostics: [
+          {
+            phase: 'parse',
+            severity: 1,
+            message: 'Failed to generate AST from template',
+            source: 'templjs.core',
+          },
+        ],
       };
     }
 
-    return { valid: true };
+    return { valid: true, syntaxDiagnostics: [] };
   } catch (error) {
     return {
       valid: false,
-      errors: [error instanceof Error ? error.message : String(error)],
+      syntaxDiagnostics: [
+        {
+          phase: 'lexical',
+          severity: 1,
+          message: error instanceof Error ? error.message : String(error),
+          source: 'templjs.core',
+        },
+      ],
     };
   }
 }
