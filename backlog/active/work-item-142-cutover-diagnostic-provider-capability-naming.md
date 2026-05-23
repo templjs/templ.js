@@ -6,15 +6,12 @@ summary: Replace diagnostic planner terminology with diagnostic provider termino
 assignee: copilot
 type: work-item
 subtype: task
-lifecycle: inactive
-status: closed
-status_reason: completed
+lifecycle: active
+status: ready-for-review
+status_reason: awaiting-review
 priority: high
 estimated: 6
 actual: 0
-completed_date: '2026-05-23'
-commits:
-  8a9b4087146b2e855e08803fc822889cab1be992: 'WI-142: Cut Over Diagnostic Provider Capability Naming'
 links:
   evidence:
     - '[[record-20260523-044941-142-cutover-diagnostic-provider-capability-naming]]'
@@ -38,24 +35,24 @@ Replace planner terminology with provider terminology for diagnostic helper capa
 
 ## File-by-File Rename Checklist
 
-- [ ] [src/packages/semantify/src/model/public-types.ts](src/packages/semantify/src/model/public-types.ts)
+- [x] [src/packages/semantify/src/model/public-types.ts](src/packages/semantify/src/model/public-types.ts)
   - `ProfileHelperExtensionKind` value `diagnostic-planner` -> `diagnostic-provider`
-- [ ] [src/packages/semantify/src/adapters/templjs.ts](src/packages/semantify/src/adapters/templjs.ts)
+- [x] [src/packages/semantify/src/adapters/templjs.ts](src/packages/semantify/src/adapters/templjs.ts)
   - helper kind `diagnostic-planner` -> `diagnostic-provider`
   - helper id `templjs.authoring.diagnostics` -> `templjs.authoring.diagnostic-provider`
-- [ ] [src/packages/semantify/src/projector/index.ts](src/packages/semantify/src/projector/index.ts)
+- [x] [src/packages/semantify/src/projector/index.ts](src/packages/semantify/src/projector/index.ts)
   - `VALID_HELPER_KINDS` member `diagnostic-planner` -> `diagnostic-provider`
-- [ ] [src/packages/volar/src/diagnostic-provider.ts](src/packages/volar/src/diagnostic-provider.ts)
+- [x] [src/packages/volar/src/diagnostic-provider.ts](src/packages/volar/src/diagnostic-provider.ts)
   - `DIAGNOSTIC_PLANNER_SOURCE` -> `DIAGNOSTIC_PROVIDER_SOURCE`
   - helper lookup kind `diagnostic-planner` -> `diagnostic-provider`
 
 ## Tasks
 
-- [ ] Rename helper extension kind value.
-- [ ] Rename profile helper id.
-- [ ] Rename provider lookup constants and references.
-- [ ] Update tests asserting helper kind and source id values.
-- [ ] Remove all planner wording from touched files.
+- [x] Rename helper extension kind value.
+- [x] Rename profile helper id.
+- [x] Rename provider lookup constants and references.
+- [x] Update tests asserting helper kind and source id values.
+- [x] Remove all planner wording from touched files.
 
 ## Deliverables
 
@@ -64,9 +61,9 @@ Replace planner terminology with provider terminology for diagnostic helper capa
 
 ## Acceptance Criteria
 
-- [ ] No `diagnostic-planner` tokens remain in code or tests in touched paths.
-- [ ] Profile helper metadata resolves with `diagnostic-provider` kind only.
-- [ ] Affected tests pass.
+- [x] No `diagnostic-planner` tokens remain in code or tests in touched paths.
+- [x] Profile helper metadata resolves with `diagnostic-provider` kind only.
+- [x] Affected tests pass.
 
 ## Testing Strategy
 
