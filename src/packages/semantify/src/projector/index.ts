@@ -541,7 +541,7 @@ function normalizeSyntaxDiagnosticPhase(phase: unknown): 'lexical' | 'parse' | '
   if (phase === 'lexical' || phase === 'parse' || phase === 'semantic') {
     return phase;
   }
-  return 'parse';
+  return 'semantic';
 }
 
 function mapSyntaxDiagnosticsToSemantic(adapterOutput: AdapterOutput): SemanticDiagnosticRecord[] {
@@ -554,6 +554,16 @@ function mapSyntaxDiagnosticsToSemantic(adapterOutput: AdapterOutput): SemanticD
     ...(diagnostic.span ? { span: diagnostic.span } : {}),
     ...(diagnostic.metadata ? { metadata: diagnostic.metadata } : {}),
   }));
+}
+
+function normalizeSemanticDiagnostic(
+  diagnostic: SemanticDiagnosticRecord
+): SemanticDiagnosticRecord {
+  return {
+    ...diagnostic,
+    phase: diagnostic.phase ?? 'projection',
+    origin: diagnostic.origin ?? 'runtime',
+  };
 }
 
 function collectStrictModeDiagnostics(input: {
@@ -706,11 +716,7 @@ function collectStrictModeDiagnostics(input: {
     });
   }
 
-  return diagnostics.map((diagnostic) => ({
-    ...diagnostic,
-    phase: diagnostic.phase ?? 'projection',
-    origin: diagnostic.origin ?? 'runtime',
-  }));
+  return diagnostics.map(normalizeSemanticDiagnostic);
 }
 
 export class SemantifyProjectionRuntime {
@@ -802,7 +808,7 @@ export class SemantifyProjectionRuntime {
         nodes,
         edges,
       },
-      diagnostics,
+      diagnostics: diagnostics.map(normalizeSemanticDiagnostic),
       provenance,
     };
   }

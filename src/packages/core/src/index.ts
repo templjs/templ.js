@@ -257,11 +257,6 @@ export function renderTemplate(
   }
 }
 
-/**
- * Validate a template string for syntax errors
- * @param template - Template string to validate
- * @returns Validation result with structured syntax diagnostics
- */
 export interface SyntaxDiagnosticRecord {
   phase: ParseDiagnosticPhase;
   severity: 1 | 2 | 3 | 4;
@@ -275,6 +270,11 @@ export interface ValidateTemplateResult {
   syntaxDiagnostics: SyntaxDiagnosticRecord[];
 }
 
+/**
+ * Validate a template string for syntax errors.
+ * @param template - Template string to validate.
+ * @returns Validation result with structured syntax diagnostics.
+ */
 export function validateTemplate(template: string): ValidateTemplateResult {
   try {
     // Tokenize the template
