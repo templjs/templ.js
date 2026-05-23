@@ -13,6 +13,8 @@ priority: high
 estimated: 12
 actual: 10
 links:
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/185
   evidence:
     - '[[record-20260523-044941-145-profile-map-semantic-diagnostics-to-syntax-diagnostics]]'
 ---
