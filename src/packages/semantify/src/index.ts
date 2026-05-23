@@ -1,5 +1,6 @@
 export type {
-  AdapterDiagnostic,
+  DiagnosticSeverity,
+  SemanticDiagnosticRecord,
   AdapterId,
   AdapterNode,
   AdapterOutput,
@@ -11,8 +12,7 @@ export type {
   ProfileDefinitionId,
   ProfileHelperExtension,
   ProfileHelperExtensionKind,
-  ProjectionDiagnostic,
-  ProjectionDiagnosticSeverity,
+  SyntaxDiagnosticRecord,
   ProjectionEntity,
   ProjectionJsonObject,
   ProjectionJsonPrimitive,

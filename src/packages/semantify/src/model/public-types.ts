@@ -111,7 +111,7 @@ export interface SemanticContext {
 export type AdapterId = string;
 export type ProfileDefinitionId = string;
 export type ProjectionRuleId = string;
-export type ProjectionDiagnosticSeverity = 'info' | 'warning' | 'error';
+export type DiagnosticSeverity = 1 | 2 | 3 | 4;
 
 export interface AdapterNode {
   id?: string;
@@ -122,8 +122,8 @@ export interface AdapterNode {
   metadata?: Record<string, unknown>;
 }
 
-export interface AdapterDiagnostic {
-  severity: ProjectionDiagnosticSeverity;
+export interface SyntaxDiagnosticRecord {
+  severity: DiagnosticSeverity;
   message: string;
   span?: OffsetRange;
   metadata?: Record<string, unknown>;
@@ -136,7 +136,7 @@ export interface AdapterOutput {
   sourceDocId: string;
   sourceUri?: string;
   nodes: AdapterNode[];
-  diagnostics?: AdapterDiagnostic[];
+  diagnostics?: SyntaxDiagnosticRecord[];
   metadata?: Record<string, unknown>;
 }
 
@@ -210,8 +210,8 @@ export interface ProfileDefinition {
   metadata?: Record<string, unknown>;
 }
 
-export interface ProjectionDiagnostic {
-  severity: ProjectionDiagnosticSeverity;
+export interface SemanticDiagnosticRecord {
+  severity: DiagnosticSeverity;
   message: string;
   adapterId?: AdapterId;
   projectionRuleId?: ProjectionRuleId;
@@ -228,7 +228,7 @@ export type SemanticGraphProvenance = Provenance;
 export interface ProjectionResult {
   schemaVersion: SemantifySchemaVersion;
   graph: SemanticGraphSnapshot;
-  diagnostics: ProjectionDiagnostic[];
+  diagnostics: SemanticDiagnosticRecord[];
   provenance: SemanticGraphProvenance[];
   metadata?: Record<string, unknown>;
 }

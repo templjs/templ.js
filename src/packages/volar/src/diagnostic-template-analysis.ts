@@ -24,9 +24,9 @@ import {
 } from './expression-analysis.js';
 import {
   DiagnosticSeverity,
-  type DiagnosticItem,
   type DiagnosticOptions,
   type DiagnosticRange,
+  type SemanticDiagnosticRecord,
   type TemplateDelimiters,
 } from './diagnostic-types.js';
 
@@ -193,21 +193,27 @@ function isPathValidInContext(resolvedPath: string, validator: SchemaValidator):
 }
 
 /**
- * Returns true if the root segment of `resolvedPath` matches a locally
- * declared template binding (for-alias, set-variable, etc.) in scope at
- * `offset`.  When true, schema validation should be skipped because the path
- * points into a runtime-only variable that is not described by the schema.
+ * Returns true only when `rawPath` is a direct (non-dotted, non-indexed)
+ * reference to a locally declared template binding (for-alias, set-variable,
+ * etc.) in scope at `offset`. Nested paths continue through schema validation.
  */
-function isLocalTemplateBinding(
+function isDirectLocalTemplateReference(
   text: string,
-  resolvedPath: string,
+  rawPath: string,
   offset: number,
   delimiters?: Partial<TemplateDelimiters>
 ): boolean {
-  const rootSegment = resolvedPath.split('.')[0];
-  const root = rootSegment.replace(/\[.*$/, '');
-  const bindings = getInScopeTemplateBindings(text, offset, delimiters);
-  return bindings.some((b) => b.name === root);
+  const resolvedDelimiters = resolveDelimiters(delimiters);
+  const rawRootSegment = rawPath.split('.')[0];
+  const bracketIndex = rawRootSegment.indexOf('[');
+  const rawRoot = bracketIndex >= 0 ? rawRootSegment.slice(0, bracketIndex) : rawRootSegment;
+  const isDirectReference = rawPath === rawRoot && rawRoot.length > 0;
+  if (!isDirectReference) {
+    return false;
+  }
+
+  const bindings = getInScopeTemplateBindings(text, offset, resolvedDelimiters);
+  return bindings.some((b) => b.name === rawRoot);
 }
 
 /**
@@ -257,9 +263,9 @@ function findUnclosedDelimiters(
 export function collectTemplateDiagnostics(
   text: string,
   options?: DiagnosticOptions
-): DiagnosticItem[] {
+): SemanticDiagnosticRecord[] {
   const delimiters = getDelimiters(options);
-  const diagnostics: DiagnosticItem[] = [];
+  const diagnostics: SemanticDiagnosticRecord[] = [];
   const mapper = new LineColumnMapper(text);
   const frontmatterValidator = options?.schema ? new SchemaValidator(options.schema) : null;
   const contentValidator = options?.contentSchema
@@ -365,6 +371,10 @@ export function collectTemplateDiagnostics(
         const iterableStart = parsedForHeader !== null ? parsedForHeader.iterableStart : 0;
         const filterRefs = extractFilters(iterableExpression);
         for (const ref of extractVariableReferences(iterableExpression)) {
+          if (isDirectLocalTemplateReference(text, ref.path, block.start, options?.delimiters)) {
+            continue;
+          }
+
           const overlapsFilter = filterRefs.some(
             (filterRef) => ref.start >= filterRef.start && ref.end <= filterRef.end
           );
@@ -375,9 +385,6 @@ export function collectTemplateDiagnostics(
           const scopedPath = resolveScopedPath(ref.path, block.start, forScopes);
           const result = validator.validateQueryPath(scopedPath);
           if (!result.valid) {
-            if (isLocalTemplateBinding(text, scopedPath, block.start, options?.delimiters)) {
-              continue;
-            }
             const offsetBase = contentStartOffset + (iterableStart >= 0 ? iterableStart : 0);
             diagnostics.push({
               message: `Variable "${ref.path}" not found in schema`,
@@ -402,11 +409,12 @@ export function collectTemplateDiagnostics(
         const expressionPart = statementExpression.expression;
         const expressionPartStart = statementExpression.startOffset;
         for (const ref of extractVariableReferences(expressionPart)) {
+          if (isDirectLocalTemplateReference(text, ref.path, block.start, options?.delimiters)) {
+            continue;
+          }
+
           const scopedPath = resolveScopedPath(ref.path, block.start, forScopes);
           if (!isPathValidInContext(scopedPath, validator)) {
-            if (isLocalTemplateBinding(text, scopedPath, block.start, options?.delimiters)) {
-              continue;
-            }
             const result = validator.validateQueryPath(scopedPath);
             diagnostics.push({
               message: `Variable "${ref.path}" not found in schema`,
@@ -506,11 +514,12 @@ export function collectTemplateDiagnostics(
     const validator = getValidatorForOffset(block.start);
     if (validator) {
       for (const ref of extractVariableReferences(content)) {
+        if (isDirectLocalTemplateReference(text, ref.path, block.start, options?.delimiters)) {
+          continue;
+        }
+
         const scopedPath = resolveScopedPath(ref.path, block.start, forScopes);
         if (!isPathValidInContext(scopedPath, validator)) {
-          if (isLocalTemplateBinding(text, scopedPath, block.start, options?.delimiters)) {
-            continue;
-          }
           const result = validator.validateQueryPath(scopedPath);
           diagnostics.push({
             message: `Variable "${ref.path}" not found in schema`,

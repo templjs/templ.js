@@ -7,7 +7,7 @@ type: work-item
 subtype: epic
 lifecycle: active
 status: in-progress
-status_reason: child-lane-complete-awaiting-automation-closeout
+status_reason: implementation
 priority: critical
 estimated: 32
 actual: 0

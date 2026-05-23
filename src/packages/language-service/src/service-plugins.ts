@@ -3,10 +3,10 @@ import { URI } from 'vscode-uri';
 import {
   collectDiagnostics,
   TempljsServicePlugin,
-  type DiagnosticItem,
   type DiagnosticOptions,
   type IntellisenseOptions,
   type LSPCompletionItem,
+  type SemanticDiagnosticRecord,
 } from '@templjs/volar';
 import { pathToFileURL } from 'url';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -957,7 +957,7 @@ function createTempljsDiagnosticsPlugin(options: PluginOptions): LanguageService
             options.log?.(
               `[templjs-diag-plugin] collected count=${diagnostics.length} sourceUri=${route.sourceUri}`
             );
-            return diagnostics.map((d: DiagnosticItem) => ({
+            return diagnostics.map((d: SemanticDiagnosticRecord) => ({
               message: d.message,
               severity: toDiagnosticSeverity(d.severity),
               range: d.range,
@@ -1028,7 +1028,7 @@ function createTempljsMarkdownDiagnosticsPlugin(options: PluginOptions): Languag
               `[templjs-markdown-diag-plugin] collected templjs=${isolatedTempljsDiagnostics.length} sourceUri=${route.sourceUri}`
             );
             return [
-              ...isolatedTempljsDiagnostics.map((d: DiagnosticItem) => ({
+              ...isolatedTempljsDiagnostics.map((d: SemanticDiagnosticRecord) => ({
                 message: d.message,
                 severity: toDiagnosticSeverity(d.severity),
                 range: d.range,

@@ -5,6 +5,7 @@ export enum DiagnosticSeverity {
   Error = 1,
   Warning = 2,
   Information = 3,
+  Hint = 4,
 }
 
 export interface DiagnosticPosition {
@@ -17,7 +18,7 @@ export interface DiagnosticRange {
   end: DiagnosticPosition;
 }
 
-export interface DiagnosticItem {
+export interface SemanticDiagnosticRecord {
   message: string;
   range: DiagnosticRange;
   severity: DiagnosticSeverity;
@@ -34,5 +35,5 @@ export interface DiagnosticOptions {
   contentSchema?: JSONSchema;
   customFilters?: string[];
   delimiters?: Partial<TemplateDelimiters>;
-  baseDiagnostics?: DiagnosticItem[];
+  baseSyntaxDiagnostics?: SemanticDiagnosticRecord[];
 }
