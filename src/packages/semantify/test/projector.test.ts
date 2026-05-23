@@ -726,6 +726,54 @@ describe('SemantifyProjectionRuntime', () => {
     expect(result.provenance.some((item) => item.confidence === 'inferred')).toBe(true);
   });
 
+  it('normalizes malformed adapter diagnostics without throwing', () => {
+    const adapterOutputWithMalformedDiagnostics: AdapterOutput = {
+      ...adapterOutput,
+      diagnostics: [
+        {
+          severity: 2,
+          message: 'missing phase defaults to parse',
+        },
+        {
+          severity: 2,
+          message: 'invalid phase is preserved in metadata',
+          phase: 'mystery' as never,
+          metadata: { source: 'adapter' },
+        },
+        {
+          message: '',
+          metadata: [] as never,
+        },
+      ],
+    };
+
+    const result = createProjectionRuntime().project({
+      adapterOutput: adapterOutputWithMalformedDiagnostics,
+      profile,
+    });
+
+    const missingPhaseDiagnostic = result.diagnostics.find(
+      (diagnostic) => diagnostic.message === 'missing phase defaults to parse'
+    );
+    expect(missingPhaseDiagnostic?.phase).toBe('parse');
+
+    const invalidPhaseDiagnostic = result.diagnostics.find(
+      (diagnostic) => diagnostic.message === 'invalid phase is preserved in metadata'
+    );
+    expect(invalidPhaseDiagnostic?.phase).toBe('parse');
+    expect(invalidPhaseDiagnostic?.metadata).toMatchObject({
+      source: 'adapter',
+      invalidPhase: 'mystery',
+    });
+
+    const malformedDiagnostic = result.diagnostics.find(
+      (diagnostic) => diagnostic.message === 'Adapter emitted malformed syntax diagnostic.'
+    );
+    expect(malformedDiagnostic?.severity).toBe(1);
+    expect(malformedDiagnostic?.origin).toBe('syntax');
+    expect(malformedDiagnostic?.metadata).toBeUndefined();
+  });
+
   it('serializes undefined values to null fallback in stable serialization helper', () => {
     expect(semantifyProjectionTesting.stableSerialize(undefined)).toBe('null');
   });
