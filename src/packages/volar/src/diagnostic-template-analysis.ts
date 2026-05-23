@@ -4,7 +4,6 @@ import {
   parseTemplateForHeader,
   resolveSemanticHostLanguage,
   resolveSemanticZoneByHostLanguage,
-  resolveSemanticZone,
   SchemaValidator,
   tokenize,
   TokenType,
@@ -275,10 +274,7 @@ export function collectTemplateDiagnostics(
 
   const getValidatorForOffset = (offset: number): SchemaValidator | null => {
     const hostLanguage = resolveSemanticHostLanguage(options?.documentUri);
-    const semanticZone =
-      hostLanguage === 'plaintext'
-        ? resolveSemanticZone(text, offset)
-        : resolveSemanticZoneByHostLanguage(text, offset, hostLanguage);
+    const semanticZone = resolveSemanticZoneByHostLanguage(text, offset, hostLanguage);
     if (semanticZone.kind === 'metadata') {
       return frontmatterValidator;
     }
