@@ -244,7 +244,7 @@ function validateAdapterOutput(adapterOutput: AdapterOutput): SemanticDiagnostic
     }
   }
 
-  return diagnostics;
+  return diagnostics.map(normalizeSemanticDiagnostic);
 }
 
 function validateProfileDefinition(profile: ProfileDefinition): SemanticDiagnosticRecord[] {
@@ -318,7 +318,7 @@ function validateProfileDefinition(profile: ProfileDefinition): SemanticDiagnost
     diagnostics.push(...validateHelperExtension(profile, helper, semanticKinds));
   }
 
-  return diagnostics;
+  return diagnostics.map(normalizeSemanticDiagnostic);
 }
 
 function validateHelperExtension(
@@ -537,7 +537,9 @@ function compareProvenance(left: SemanticGraphProvenance, right: SemanticGraphPr
   );
 }
 
-function normalizeSyntaxDiagnosticPhase(phase: unknown): 'lexical' | 'parse' | 'semantic' {
+function normalizeSyntaxDiagnosticPhase(
+  phase: string | undefined
+): 'lexical' | 'parse' | 'semantic' {
   if (phase === 'lexical' || phase === 'parse' || phase === 'semantic') {
     return phase;
   }
@@ -548,7 +550,7 @@ function mapSyntaxDiagnosticsToSemantic(adapterOutput: AdapterOutput): SemanticD
   return (adapterOutput.diagnostics ?? []).map((diagnostic) => ({
     severity: diagnostic.severity,
     message: diagnostic.message,
-    phase: normalizeSyntaxDiagnosticPhase((diagnostic as { phase?: unknown }).phase),
+    phase: normalizeSyntaxDiagnosticPhase(diagnostic.phase),
     origin: 'syntax',
     adapterId: adapterOutput.adapterId,
     ...(diagnostic.span ? { span: diagnostic.span } : {}),
@@ -733,9 +735,11 @@ export class SemantifyProjectionRuntime {
 
   project(input: ProjectionRuntimeInput): ProjectionResult {
     const diagnostics = [
-      ...validateAdapterOutput(input.adapterOutput),
-      ...validateProfileDefinition(input.profile),
-      ...validateAdapterProfileCompatibility(input.adapterOutput, input.profile),
+      ...validateAdapterOutput(input.adapterOutput).map(normalizeSemanticDiagnostic),
+      ...validateProfileDefinition(input.profile).map(normalizeSemanticDiagnostic),
+      ...validateAdapterProfileCompatibility(input.adapterOutput, input.profile).map(
+        normalizeSemanticDiagnostic
+      ),
       ...mapSyntaxDiagnosticsToSemantic(input.adapterOutput),
     ];
     const nodes: SemanticGraphNode[] = [];
@@ -783,7 +787,9 @@ export class SemantifyProjectionRuntime {
         .filter((item): item is SemanticGraphProvenance => !!item),
     ].sort(compareProvenance);
 
-    diagnostics.push(...validateProvenanceContracts(input.profile, nodes));
+    diagnostics.push(
+      ...validateProvenanceContracts(input.profile, nodes).map(normalizeSemanticDiagnostic)
+    );
 
     if (this.strictMode) {
       const strictDiagnostics = collectStrictModeDiagnostics({ nodes, edges, provenance });
@@ -808,7 +814,7 @@ export class SemantifyProjectionRuntime {
         nodes,
         edges,
       },
-      diagnostics: diagnostics.map(normalizeSemanticDiagnostic),
+      diagnostics,
       provenance,
     };
   }
