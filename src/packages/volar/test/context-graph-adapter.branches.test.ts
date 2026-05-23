@@ -1808,7 +1808,7 @@ describe('context-graph helper branch coverage', () => {
     );
 
     expect(response.nodes.length).toBeGreaterThan(0);
-    expect(response.nodes[0]?.attributes?.zoneKind).toBe('body');
+    expect(response.nodes[0]?.attributes?.zoneKind).toBe('content');
   });
 
   it('maps non-string path details attributes to undefined', () => {

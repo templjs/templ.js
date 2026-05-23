@@ -6,7 +6,7 @@ import {
   type DelimiterConfig,
   type JSONSchema,
   type LexerOptions,
-  type SemanticContextBlock,
+  type SemanticZoneSegment,
   type TemplateBinding,
 } from '@templjs/core';
 import type {
@@ -38,7 +38,8 @@ export interface TempljsSchemaAdapterInput {
   sourceDocId: string;
   sourceUri?: string;
   schemaText?: string;
-  contextBlock?: SemanticContextBlock;
+  zoneSegment?: SemanticZoneSegment;
+  contextBlock?: 'frontmatter' | 'content';
   adapterVersion?: string;
 }
 
@@ -118,8 +119,8 @@ function getLabel(path: string): string {
   return label.replace(/\[[^\]]+\]/g, '');
 }
 
-function contextBlockProfileId(contextBlock: SemanticContextBlock): string {
-  return `schema-${contextBlock}`;
+function zoneSegmentProfileId(zoneSegment: SemanticZoneSegment): string {
+  return `schema-${zoneSegment}`;
 }
 
 function schemaSourceSpan(
@@ -142,7 +143,7 @@ function schemaSourceSpan(
 
 function walkEnumNodes(
   schema: JSONSchema,
-  contextBlock: SemanticContextBlock,
+  zoneSegment: SemanticZoneSegment,
   currentPath: string,
   nodes: AdapterNode[],
   schemaText?: string
@@ -152,14 +153,14 @@ function walkEnumNodes(
       if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
         const valueToken = String(value);
         nodes.push({
-          id: `schema-enum:${contextBlock}:${currentPath}:${String(value)}`,
+          id: `schema-enum:${zoneSegment}:${currentPath}:${String(value)}`,
           kind: 'templjs.schema-enum-value',
           sourceSpan: schemaSourceSpan(schemaText, currentPath, 'value', valueToken),
           content: {
-            contextBlock,
+            zoneSegment,
             label: valueToken,
             path: currentPath,
-            profileId: contextBlockProfileId(contextBlock),
+            profileId: zoneSegmentProfileId(zoneSegment),
             value,
           },
         });
@@ -174,7 +175,7 @@ function walkEnumNodes(
   for (const [key, child] of Object.entries(schema.properties)) {
     walkEnumNodes(
       child,
-      contextBlock,
+      zoneSegment,
       currentPath ? `${currentPath}.${key}` : key,
       nodes,
       schemaText
@@ -213,11 +214,11 @@ export function createTempljsTemplateAdapterOutput(
   const zone = resolveSemanticZone(input.text, 0);
 
   nodes.push({
-    id: `zone:${zone.legacyContextBlock}`,
+    id: `zone:${zone.segment}`,
     kind: 'templjs.semantic-zone',
     sourceSpan: { startOffset: 0, endOffset: input.text.length },
     content: {
-      contextBlock: zone.legacyContextBlock,
+      zoneSegment: zone.segment,
       profileId: zone.profileId,
       zoneKind: zone.kind,
     },
@@ -234,31 +235,32 @@ export function createTempljsTemplateAdapterOutput(
 }
 
 export function createTempljsSchemaAdapterOutput(input: TempljsSchemaAdapterInput): AdapterOutput {
-  const contextBlock = input.contextBlock ?? 'content';
+  const zoneSegment =
+    input.zoneSegment ?? (input.contextBlock === 'frontmatter' ? 'metadata' : 'content');
   const validator = new SchemaValidator(input.schema);
   const metadata = validator.getMetadata();
   const nodes: AdapterNode[] = [];
 
   for (const [path, entry] of Object.entries(metadata)) {
     nodes.push({
-      id: `schema-path:${contextBlock}:${path}`,
+      id: `schema-path:${zoneSegment}:${path}`,
       kind: 'templjs.schema-path',
       sourceSpan: schemaSourceSpan(input.schemaText, path),
       content: {
-        contextBlock,
+        zoneSegment,
         description: entry.description,
         isDirectProperty: !path.includes('.') && !path.includes('['),
         isTopLevel: getParentPath(path) === '',
         label: getLabel(path),
         parentPath: getParentPath(path),
         path,
-        profileId: contextBlockProfileId(contextBlock),
+        profileId: zoneSegmentProfileId(zoneSegment),
         type: entry.type,
       },
     });
   }
 
-  walkEnumNodes(input.schema, contextBlock, '', nodes, input.schemaText);
+  walkEnumNodes(input.schema, zoneSegment, '', nodes, input.schemaText);
 
   return {
     schemaVersion: SEMANTIFY_SCHEMA_VERSION,

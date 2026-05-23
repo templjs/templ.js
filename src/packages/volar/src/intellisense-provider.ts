@@ -233,7 +233,7 @@ function buildSemanticQueryContext(
   const position = getPositionForOffset(text, offset);
   return {
     operation,
-    contextBlock: semanticZone.legacyContextBlock,
+    zoneSegment: semanticZone.segment,
     semanticZone,
     documentUri,
     offset,
@@ -890,7 +890,7 @@ export class IntellisenseProvider {
       true
     );
     const semanticZone = resolveSemanticQueryZone(text, offset, options?.documentUri);
-    const contextBlock = semanticZone.legacyContextBlock;
+    const zoneSegment = semanticZone.segment;
     const completionContext = buildSemanticQueryContext(
       text,
       offset,
@@ -989,7 +989,7 @@ export class IntellisenseProvider {
       return dedupedStatementExpressionCompletions;
     }
 
-    if (contextBlock === 'frontmatter') {
+    if (zoneSegment === 'metadata') {
       const context = getFrontmatterContext(text, offset);
 
       if (context.inValue && context.path) {
@@ -1043,7 +1043,7 @@ export class IntellisenseProvider {
           false
         );
     const semanticZone = resolveSemanticQueryZone(text, offset, options?.documentUri);
-    const contextBlock = semanticZone.legacyContextBlock;
+    const zoneSegment = semanticZone.segment;
     const hoverContext = buildSemanticQueryContext(
       text,
       offset,
@@ -1215,7 +1215,7 @@ export class IntellisenseProvider {
     };
 
     if (!expression && !statement) {
-      if (contextBlock !== 'frontmatter') {
+      if (zoneSegment !== 'metadata') {
         options?.debugLog?.(
           '[intellisense] hover miss: outside expression and frontmatter',
           'messages'
@@ -1328,7 +1328,7 @@ export class IntellisenseProvider {
         );
 
     const semanticZone = resolveSemanticQueryZone(text, offset, options?.documentUri);
-    const contextBlock = semanticZone.legacyContextBlock;
+    const zoneSegment = semanticZone.segment;
 
     const definitionContext = buildSemanticQueryContext(
       text,
@@ -1392,7 +1392,7 @@ export class IntellisenseProvider {
         return documentDefinition;
       }
 
-      if (contextBlock !== 'frontmatter') {
+      if (zoneSegment !== 'metadata') {
         options?.debugLog?.(
           '[intellisense] definition miss: outside expression/statement/frontmatter',
           'messages'

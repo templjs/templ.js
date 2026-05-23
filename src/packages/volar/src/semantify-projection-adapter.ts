@@ -64,7 +64,7 @@ export function createSemantifyProjectionSnapshot(
           sourceDocId,
           sourceUri: options.documentUri,
           schemaText: options.schemaText,
-          contextBlock: 'frontmatter',
+          zoneSegment: 'metadata',
         }),
         profile,
       }).graph
@@ -79,7 +79,7 @@ export function createSemantifyProjectionSnapshot(
           sourceDocId,
           sourceUri: options.documentUri,
           schemaText: options.contentSchema ? options.contentSchemaText : options.schemaText,
-          contextBlock: 'content',
+          zoneSegment: 'content',
         }),
         profile,
       }).graph

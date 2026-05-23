@@ -12,8 +12,8 @@ export type TempljsDocumentSnapshotId = string;
 
 export interface TempljsSemanticZoneRef {
   id: string;
-  kind: 'frontmatter' | 'content' | 'template';
-  contextBlock: 'frontmatter' | 'content';
+  kind: 'metadata' | 'content' | 'template';
+  segment: 'metadata' | 'content';
   startOffset: number;
   endOffset: number;
 }

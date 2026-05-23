@@ -8,7 +8,7 @@ import {
   getTokenAtOffset,
   isOffsetInFrontmatter,
   resolveSemanticHostLanguage,
-  resolveSemanticContextBlock,
+  resolveSemanticZoneSegment,
   resolveSemanticZone,
   resolveSemanticZoneByHostLanguage,
   toSemanticZone,
@@ -17,7 +17,7 @@ import {
 } from '../../src/index.js';
 
 describe('semantic-context core helpers', () => {
-  it('resolves frontmatter/content context blocks from location and aliases', () => {
+  it('resolves metadata/content zone segments from location and aliases', () => {
     const text = [
       '---',
       '$schema: ./frontmatter.json',
@@ -31,9 +31,9 @@ describe('semantic-context core helpers', () => {
     const contentAliasOffset = text.indexOf('$content_schema') + 3;
     const bodyOffset = text.indexOf('contentData') + 2;
 
-    expect(resolveSemanticContextBlock(text, frontmatterOffset)).toBe('frontmatter');
-    expect(resolveSemanticContextBlock(text, contentAliasOffset)).toBe('content');
-    expect(resolveSemanticContextBlock(text, bodyOffset)).toBe('content');
+    expect(resolveSemanticZoneSegment(text, frontmatterOffset)).toBe('metadata');
+    expect(resolveSemanticZoneSegment(text, contentAliasOffset)).toBe('content');
+    expect(resolveSemanticZoneSegment(text, bodyOffset)).toBe('content');
   });
 
   it('extracts schema aliases from frontmatter without Volar helpers', () => {
@@ -260,14 +260,14 @@ describe('semantic-context core helpers', () => {
     const text = ['---', 'reference: $content-schema', '---', 'body'].join('\n');
     const tokenOffset = text.indexOf('$content-schema') + 3;
 
-    expect(resolveSemanticContextBlock(text, tokenOffset)).toBe('content');
+    expect(resolveSemanticZoneSegment(text, tokenOffset)).toBe('content');
   });
 
   it('keeps semantic request/response contracts serializable for all operations', () => {
     const request: SemanticRequest = {
       version: 'v1',
       operation: 'diagnostics',
-      contextBlock: 'content',
+      segment: 'content',
       location: {
         documentUri: 'file:///workspace/doc.md.tpl',
         line: 16,
@@ -280,7 +280,7 @@ describe('semantic-context core helpers', () => {
       version: 'v1',
       revision: 2,
       operation: 'diagnostics',
-      contextBlock: 'content',
+      segment: 'content',
       diagnostics: [
         {
           message: 'Variable "foo" not found in schema',
@@ -300,19 +300,19 @@ describe('semantic-context core helpers', () => {
   });
 
   it('maps legacy context blocks to generic semantic zones', () => {
-    expect(getSemanticProfileId('frontmatter')).toBe('schema-frontmatter');
+    expect(getSemanticProfileId('metadata')).toBe('schema-metadata');
     expect(getSemanticProfileId('content')).toBe('schema-content');
 
-    expect(toSemanticZone('frontmatter')).toEqual({
+    expect(toSemanticZone('metadata')).toEqual({
       kind: 'metadata',
-      profileId: 'schema-frontmatter',
-      legacyContextBlock: 'frontmatter',
+      profileId: 'schema-metadata',
+      segment: 'metadata',
     });
 
     expect(toSemanticZone('content')).toEqual({
-      kind: 'body',
+      kind: 'content',
       profileId: 'schema-content',
-      legacyContextBlock: 'content',
+      segment: 'content',
     });
   });
 
@@ -326,13 +326,13 @@ describe('semantic-context core helpers', () => {
 
     expect(resolveSemanticZone(text, metadataOffset)).toEqual({
       kind: 'metadata',
-      profileId: 'schema-frontmatter',
-      legacyContextBlock: 'frontmatter',
+      profileId: 'schema-metadata',
+      segment: 'metadata',
     });
     expect(resolveSemanticZone(text, bodyOffset)).toEqual({
-      kind: 'body',
+      kind: 'content',
       profileId: 'schema-content',
-      legacyContextBlock: 'content',
+      segment: 'content',
     });
   });
 
@@ -393,13 +393,13 @@ describe('semantic-context core helpers', () => {
 
     expect(resolveSemanticZoneByHostLanguage(text, metadataOffset, 'markdown')).toEqual({
       kind: 'metadata',
-      profileId: 'schema-frontmatter',
-      legacyContextBlock: 'frontmatter',
+      profileId: 'schema-metadata',
+      segment: 'metadata',
     });
     expect(resolveSemanticZoneByHostLanguage(text, metadataOffset, 'yaml')).toEqual({
-      kind: 'body',
+      kind: 'content',
       profileId: 'schema-content',
-      legacyContextBlock: 'content',
+      segment: 'content',
     });
   });
 });

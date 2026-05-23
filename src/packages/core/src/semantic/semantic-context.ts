@@ -1,6 +1,6 @@
 export type SemanticOperation = 'completion' | 'hover' | 'definition' | 'diagnostics';
-export type SemanticContextBlock = 'frontmatter' | 'content';
-export type SemanticZoneKind = 'metadata' | 'body';
+export type SemanticZoneSegment = 'metadata' | 'content';
+export type SemanticZoneKind = 'metadata' | 'content';
 export type SemanticHostLanguage =
   | 'markdown'
   | 'yaml'
@@ -13,7 +13,7 @@ export type SemanticHostLanguage =
 export interface SemanticZone {
   kind: SemanticZoneKind;
   profileId: string;
-  legacyContextBlock: SemanticContextBlock;
+  segment: SemanticZoneSegment;
 }
 
 export interface SemanticLocation {
@@ -27,7 +27,7 @@ export interface SemanticRequest {
   version: 'v1';
   operation: SemanticOperation;
   location: SemanticLocation;
-  contextBlock: SemanticContextBlock;
+  segment: SemanticZoneSegment;
   zone?: SemanticZone;
 }
 
@@ -68,7 +68,7 @@ export interface SemanticResponse {
   version: 'v1';
   revision: number;
   operation: SemanticOperation;
-  contextBlock: SemanticContextBlock;
+  segment: SemanticZoneSegment;
   zone?: SemanticZone;
   completionItems?: SemanticCompletionItem[];
   hover?: SemanticHoverResult | null;
@@ -77,26 +77,26 @@ export interface SemanticResponse {
 }
 
 /**
- * Derive a stable schema profile ID from a semantic context block name.
+ * Derive a stable schema profile ID from a semantic zone segment name.
  *
- * @param contextBlock - `"frontmatter"` or `"content"`
- * @returns Profile ID string (e.g. `"schema-frontmatter"`)
+ * @param segment - `"metadata"` or `"content"`
+ * @returns Profile ID string (e.g. `"schema-metadata"`)
  */
-export function getSemanticProfileId(contextBlock: SemanticContextBlock): string {
-  return `schema-${contextBlock}`;
+export function getSemanticProfileId(segment: SemanticZoneSegment): string {
+  return `schema-${segment}`;
 }
 
 /**
- * Convert a semantic context block into a structured `SemanticZone`.
+ * Convert a semantic zone segment into a structured `SemanticZone`.
  *
- * @param contextBlock - `"frontmatter"` or `"content"`
- * @returns `SemanticZone` with `kind`, `profileId`, and legacy block name
+ * @param segment - `"metadata"` or `"content"`
+ * @returns `SemanticZone` with canonicalized segment metadata
  */
-export function toSemanticZone(contextBlock: SemanticContextBlock): SemanticZone {
+export function toSemanticZone(segment: SemanticZoneSegment): SemanticZone {
   return {
-    kind: contextBlock === 'frontmatter' ? 'metadata' : 'body',
-    profileId: getSemanticProfileId(contextBlock),
-    legacyContextBlock: contextBlock,
+    kind: segment,
+    profileId: getSemanticProfileId(segment),
+    segment,
   };
 }
 
@@ -399,13 +399,13 @@ export function getFrontmatterKeyValueAtOffset(
 }
 
 /**
- * Determine which semantic block surrounds the given offset.
+ * Determine which semantic zone segment surrounds the given offset.
  *
  * @param text - Full document text
  * @param offset - Zero-based character offset to classify
- * @returns `"frontmatter"` when offset is inside the YAML block, `"content"` otherwise
+ * @returns `"metadata"` when offset is inside metadata block, `"content"` otherwise
  */
-export function resolveSemanticContextBlock(text: string, offset: number): SemanticContextBlock {
+export function resolveSemanticZoneSegment(text: string, offset: number): SemanticZoneSegment {
   if (!isOffsetInFrontmatter(text, offset)) {
     return 'content';
   }
@@ -437,20 +437,20 @@ export function resolveSemanticContextBlock(text: string, offset: number): Seman
     return 'content';
   }
 
-  return 'frontmatter';
+  return 'metadata';
 }
 
 /**
  * Resolve the full `SemanticZone` for the given offset.
  *
- * Convenience wrapper around `resolveSemanticContextBlock` + `toSemanticZone`.
+ * Convenience wrapper around `resolveSemanticZoneSegment` + `toSemanticZone`.
  *
  * @param text - Full document text
  * @param offset - Zero-based character offset
  * @returns `SemanticZone` describing the zone at that offset
  */
 export function resolveSemanticZone(text: string, offset: number): SemanticZone {
-  return toSemanticZone(resolveSemanticContextBlock(text, offset));
+  return toSemanticZone(resolveSemanticZoneSegment(text, offset));
 }
 
 /**
