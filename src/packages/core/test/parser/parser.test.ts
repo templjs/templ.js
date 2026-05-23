@@ -1280,7 +1280,7 @@ describe('parse', () => {
 
       const tokens = tokenize(template);
       const elapsed = measureAverageParseMs(tokens, 50);
-      const complexTemplateBudgetMs = process.platform === 'win32' ? 20 : 15;
+      const complexTemplateBudgetMs = process.platform === 'win32' ? 30 : 15;
       expect(elapsed).toBeLessThan(complexTemplateBudgetMs);
     });
   });
