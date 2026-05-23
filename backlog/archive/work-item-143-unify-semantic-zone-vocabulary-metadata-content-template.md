@@ -6,12 +6,15 @@ summary: Standardize semantic zone terminology across core, language-core, seman
 assignee: copilot
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: awaiting-review
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 10
 actual: 0
+completed_date: '2026-05-23'
+commits:
+  b1684038df458e47ebd4cb3f9fb6d8402516e5fb: 'feat: unify semantic zone vocabulary to metadata/content/template'
 links:
   evidence:
     - '[[record-20260523-044941-143-unify-semantic-zone-vocabulary-metadata-content-template]]'
