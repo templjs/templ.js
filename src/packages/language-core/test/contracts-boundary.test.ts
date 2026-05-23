@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type {
+  TempljsHostLanguage,
   TempljsLanguageServerInitializationOptions,
   TempljsVirtualDocumentMetadata,
 } from '../src/index.js';
@@ -11,6 +12,18 @@ function toJson(value: unknown): string {
 }
 
 describe('language-core contract boundary', () => {
+  it('uses plaintext as the canonical host-language fallback', () => {
+    const supportedHostLanguages = [
+      'markdown',
+      'json',
+      'yaml',
+      'html',
+      'plaintext',
+    ] as const satisfies TempljsHostLanguage[];
+
+    expect(supportedHostLanguages).toContain('plaintext');
+  });
+
   it('exports JSON-compatible contract shapes', () => {
     const metadata: TempljsVirtualDocumentMetadata = {
       snapshotId: 'snapshot-1',

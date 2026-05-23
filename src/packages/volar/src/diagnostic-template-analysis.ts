@@ -276,7 +276,7 @@ export function collectTemplateDiagnostics(
   const getValidatorForOffset = (offset: number): SchemaValidator | null => {
     const hostLanguage = resolveSemanticHostLanguage(options?.documentUri);
     const semanticZone =
-      hostLanguage === 'unknown'
+      hostLanguage === 'plaintext'
         ? resolveSemanticZone(text, offset)
         : resolveSemanticZoneByHostLanguage(text, offset, hostLanguage);
     if (semanticZone.kind === 'metadata') {
