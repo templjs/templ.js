@@ -110,7 +110,7 @@ describe('TemplJS adapters and authoring profile', () => {
     expect(profile.helperExtensions?.map((helper) => helper.kind).sort()).toEqual([
       'candidate-provider',
       'definition-resolver',
-      'diagnostic-planner',
+      'diagnostic-provider',
       'formatting-orchestrator',
       'hover-renderer',
       'semantic-token-provider',

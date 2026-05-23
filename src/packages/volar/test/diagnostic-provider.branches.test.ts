@@ -6,7 +6,7 @@ afterEach(() => {
 });
 
 describe('DiagnosticProvider branch coverage', () => {
-  it('falls back to default source when diagnostic-planner helper is not declared', async () => {
+  it('falls back to default source when diagnostic-provider helper is not declared', async () => {
     vi.doMock('@templjs/semantify', () => ({
       createTempljsAuthoringProfile: () => ({
         helperExtensions: [],
@@ -22,6 +22,6 @@ describe('DiagnosticProvider branch coverage', () => {
     });
 
     expect(diagnostics.length).toBeGreaterThan(0);
-    expect(diagnostics[0]?.source).toBe('templjs.authoring.diagnostics');
+    expect(diagnostics[0]?.source).toBe('templjs.authoring.diagnostic-provider');
   });
 });
