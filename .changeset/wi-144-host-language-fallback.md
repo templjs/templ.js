@@ -1,5 +1,6 @@
 ---
 '@templjs/core': major
+'@templjs/language-core': patch
 '@templjs/volar': patch
 ---
 

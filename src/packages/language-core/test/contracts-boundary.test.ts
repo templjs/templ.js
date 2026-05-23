@@ -11,6 +11,14 @@ function toJson(value: unknown): string {
   return JSON.stringify(value);
 }
 
+type Assert<T extends true> = T;
+type IsEqual<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+
+type CanonicalHostLanguage = 'markdown' | 'json' | 'yaml' | 'html' | 'toml' | 'xml' | 'plaintext';
+
+type _HostLanguageParity = Assert<IsEqual<TempljsHostLanguage, CanonicalHostLanguage>>;
+
 describe('language-core contract boundary', () => {
   it('uses plaintext as the canonical host-language fallback', () => {
     const supportedHostLanguages = [
@@ -18,8 +26,10 @@ describe('language-core contract boundary', () => {
       'json',
       'yaml',
       'html',
+      'toml',
+      'xml',
       'plaintext',
-    ] as const satisfies TempljsHostLanguage[];
+    ] as const satisfies readonly TempljsHostLanguage[];
 
     expect(supportedHostLanguages).toContain('plaintext');
   });

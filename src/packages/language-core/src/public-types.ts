@@ -1,6 +1,13 @@
 export type TempljsSourceFileKind = 'template' | 'partial' | 'fragment';
 
-export type TempljsHostLanguage = 'markdown' | 'json' | 'yaml' | 'html' | 'plaintext';
+export type TempljsHostLanguage =
+  | 'markdown'
+  | 'json'
+  | 'yaml'
+  | 'html'
+  | 'toml'
+  | 'xml'
+  | 'plaintext';
 
 export type TempljsGeneratedCodePurpose =
   | 'host-delegation'
