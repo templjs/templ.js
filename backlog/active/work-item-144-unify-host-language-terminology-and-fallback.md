@@ -3,6 +3,7 @@ $schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:144-unify-host-language-terminology-and-fallback
 title: '144: Unify Host Language Terminology and Fallback'
 summary: Align host-language union and fallback naming across core and language-core
+assignee: copilot
 type: work-item
 subtype: task
 lifecycle: draft
@@ -11,7 +12,9 @@ status_reason: needs-triage
 priority: medium
 estimated: 6
 actual: 0
-assignee: copilot
+links:
+  evidence:
+    - '[[record-20260523-044941-144-unify-host-language-terminology-and-fallback]]'
 ---
 
 ## Goal

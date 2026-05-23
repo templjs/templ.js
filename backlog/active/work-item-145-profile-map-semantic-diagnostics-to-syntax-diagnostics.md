@@ -3,6 +3,7 @@ $schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:145-profile-map-semantic-diagnostics-to-syntax-diagnostics
 title: '145: Profile-Map Semantic Diagnostics to Syntax Diagnostics'
 summary: Define and implement deterministic semantic diagnostics mapping from syntax-layer diagnostics
+assignee: copilot
 type: work-item
 subtype: task
 lifecycle: draft
@@ -11,7 +12,9 @@ status_reason: needs-triage
 priority: high
 estimated: 12
 actual: 0
-assignee: copilot
+links:
+  evidence:
+    - '[[record-20260523-044941-145-profile-map-semantic-diagnostics-to-syntax-diagnostics]]'
 ---
 
 ## Goal

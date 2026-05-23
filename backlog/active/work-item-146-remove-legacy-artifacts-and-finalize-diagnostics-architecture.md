@@ -3,6 +3,7 @@ $schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:146-remove-legacy-artifacts-and-finalize-diagnostics-architecture
 title: '146: Remove Legacy Artifacts and Finalize Diagnostics Architecture'
 summary: Remove all migration and legacy naming artifacts and document the final diagnostics architecture
+assignee: copilot
 type: work-item
 subtype: task
 lifecycle: draft
@@ -11,7 +12,9 @@ status_reason: needs-triage
 priority: high
 estimated: 8
 actual: 0
-assignee: copilot
+links:
+  evidence:
+    - '[[record-20260523-044941-146-remove-legacy-artifacts-and-finalize-diagnostics-architecture]]'
 ---
 
 ## Goal

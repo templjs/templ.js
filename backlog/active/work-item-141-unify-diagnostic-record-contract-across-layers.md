@@ -3,6 +3,7 @@ $schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:141-unify-diagnostic-record-contract-across-layers
 title: '141: Unify Diagnostic Record Contract Across Layers'
 summary: Establish one canonical diagnostic record contract across syntax, semantic, and editor surfaces
+assignee: copilot
 type: work-item
 subtype: task
 lifecycle: draft
@@ -11,7 +12,9 @@ status_reason: needs-triage
 priority: high
 estimated: 10
 actual: 0
-assignee: copilot
+links:
+  evidence:
+    - '[[record-20260523-044941-141-unify-diagnostic-record-contract-across-layers]]'
 ---
 
 ## Goal

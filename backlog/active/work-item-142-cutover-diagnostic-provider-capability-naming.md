@@ -3,6 +3,7 @@ $schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:142-cutover-diagnostic-provider-capability-naming
 title: '142: Cut Over Diagnostic Provider Capability Naming'
 summary: Replace diagnostic planner terminology with diagnostic provider terminology everywhere
+assignee: copilot
 type: work-item
 subtype: task
 lifecycle: draft
@@ -11,7 +12,9 @@ status_reason: needs-triage
 priority: high
 estimated: 6
 actual: 0
-assignee: copilot
+links:
+  evidence:
+    - '[[record-20260523-044941-142-cutover-diagnostic-provider-capability-naming]]'
 ---
 
 ## Goal

@@ -3,6 +3,7 @@ $schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:143-unify-semantic-zone-vocabulary-metadata-content-template
 title: '143: Unify Semantic Zone Vocabulary to Metadata Content Template'
 summary: Standardize semantic zone terminology across core, language-core, semantify adapters, and volar
+assignee: copilot
 type: work-item
 subtype: task
 lifecycle: draft
@@ -11,7 +12,9 @@ status_reason: needs-triage
 priority: high
 estimated: 10
 actual: 0
-assignee: copilot
+links:
+  evidence:
+    - '[[record-20260523-044941-143-unify-semantic-zone-vocabulary-metadata-content-template]]'
 ---
 
 ## Goal
