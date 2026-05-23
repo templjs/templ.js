@@ -1,6 +1,7 @@
 import type {
   AdapterNode,
   AdapterOutput,
+  DiagnosticSeverity,
   ProfileHelperExtension,
   SemanticDiagnosticRecord,
   ProjectionEntity,
@@ -21,6 +22,7 @@ import { satisfies, valid } from 'semver';
 
 const SEMANTIFY_SCHEMA_VERSION: SemantifySchemaVersion = '1.0.0';
 const GRAPH_CONTRACT_VERSION = 'v1' as const;
+const DIAGNOSTIC_SEVERITY_ERROR: DiagnosticSeverity = 1;
 const VALID_HELPER_KINDS = new Set([
   'candidate-provider',
   'definition-resolver',
@@ -224,7 +226,7 @@ function validateAdapterOutput(adapterOutput: AdapterOutput): SemanticDiagnostic
 
   if (adapterOutput.schemaVersion !== SEMANTIFY_SCHEMA_VERSION) {
     diagnostics.push({
-      severity: 'error',
+      severity: DIAGNOSTIC_SEVERITY_ERROR,
       message: `Unsupported adapter schema version: ${adapterOutput.schemaVersion}`,
       adapterId: adapterOutput.adapterId,
     });
@@ -233,7 +235,7 @@ function validateAdapterOutput(adapterOutput: AdapterOutput): SemanticDiagnostic
   for (const node of adapterOutput.nodes) {
     if (node.sourceSpan.endOffset < node.sourceSpan.startOffset) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Adapter node ${node.kind} has an invalid source span.`,
         adapterId: adapterOutput.adapterId,
         sourceNodeKind: node.kind,
@@ -250,7 +252,7 @@ function validateProfileDefinition(profile: ProfileDefinition): SemanticDiagnost
 
   if (profile.schemaVersion !== SEMANTIFY_SCHEMA_VERSION) {
     diagnostics.push({
-      severity: 'error',
+      severity: DIAGNOSTIC_SEVERITY_ERROR,
       message: `Unsupported profile schema version: ${profile.schemaVersion}`,
     });
   }
@@ -259,7 +261,7 @@ function validateProfileDefinition(profile: ProfileDefinition): SemanticDiagnost
   for (const semanticKind of profile.semanticKinds) {
     if (!semanticKind.kind) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: 'Profile semantic kinds must include a non-empty kind value.',
       });
       continue;
@@ -267,7 +269,7 @@ function validateProfileDefinition(profile: ProfileDefinition): SemanticDiagnost
 
     if (semanticKinds.has(semanticKind.kind)) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Duplicate semantic kind definition: ${semanticKind.kind}`,
       });
       continue;
@@ -280,7 +282,7 @@ function validateProfileDefinition(profile: ProfileDefinition): SemanticDiagnost
   for (const rule of profile.projectionRules) {
     if (rule.schemaVersion !== SEMANTIFY_SCHEMA_VERSION) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Projection rule ${rule.id} has unsupported schema version ${rule.schemaVersion}.`,
         projectionRuleId: rule.id,
       });
@@ -288,7 +290,7 @@ function validateProfileDefinition(profile: ProfileDefinition): SemanticDiagnost
 
     if (!rule.transformationSteps.length) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Projection rule ${rule.id} must declare at least one transformation step.`,
         projectionRuleId: rule.id,
       });
@@ -296,7 +298,7 @@ function validateProfileDefinition(profile: ProfileDefinition): SemanticDiagnost
 
     if (ruleIds.has(rule.id)) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Duplicate projection rule id: ${rule.id}`,
         projectionRuleId: rule.id,
       });
@@ -305,7 +307,7 @@ function validateProfileDefinition(profile: ProfileDefinition): SemanticDiagnost
 
     if (!semanticKinds.has(rule.targetSemanticKind)) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Projection rule ${rule.id} targets unknown semantic kind ${rule.targetSemanticKind}.`,
         projectionRuleId: rule.id,
       });
@@ -328,21 +330,21 @@ function validateHelperExtension(
 
   if (helper.schemaVersion !== SEMANTIFY_SCHEMA_VERSION) {
     diagnostics.push({
-      severity: 'error',
+      severity: DIAGNOSTIC_SEVERITY_ERROR,
       message: `Helper extension ${helper.id} has unsupported schema version ${helper.schemaVersion}.`,
     });
   }
 
   if (!VALID_HELPER_KINDS.has(helper.kind)) {
     diagnostics.push({
-      severity: 'error',
+      severity: DIAGNOSTIC_SEVERITY_ERROR,
       message: `Helper extension ${helper.id} has unsupported kind ${String(helper.kind)}.`,
     });
   }
 
   if (!helper.consumesSemanticKinds.length) {
     diagnostics.push({
-      severity: 'error',
+      severity: DIAGNOSTIC_SEVERITY_ERROR,
       message: `Helper extension ${helper.id} must consume at least one semantic kind.`,
     });
   }
@@ -350,7 +352,7 @@ function validateHelperExtension(
   for (const kind of helper.consumesSemanticKinds) {
     if (!semanticKinds.has(kind)) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Helper extension ${helper.id} consumes unknown semantic kind ${kind}.`,
       });
     }
@@ -365,7 +367,7 @@ function validateHelperExtension(
     for (const consumedKind of helper.consumesSemanticKinds) {
       if (!profileKinds.has(consumedKind)) {
         diagnostics.push({
-          severity: 'error',
+          severity: DIAGNOSTIC_SEVERITY_ERROR,
           message: `Helper extension ${helper.id} declares provenance requirements for unknown semantic kind ${consumedKind}.`,
         });
       }
@@ -386,7 +388,7 @@ function validateAdapterProfileCompatibility(
 
   if (profile.defaultAdapters?.length && !adapterManifest) {
     diagnostics.push({
-      severity: 'error',
+      severity: DIAGNOSTIC_SEVERITY_ERROR,
       message: `Profile ${profile.id} does not declare adapter ${adapterOutput.adapterId} in defaultAdapters.`,
       adapterId: adapterOutput.adapterId,
     });
@@ -419,7 +421,7 @@ function validateAdapterProfileCompatibility(
 
   if (!isVersionCompatible) {
     diagnostics.push({
-      severity: 'error',
+      severity: DIAGNOSTIC_SEVERITY_ERROR,
       message: `Adapter ${adapterOutput.adapterId} version ${adapterOutput.adapterVersion} does not satisfy profile adapterVersionRange ${adapterManifest.adapterVersionRange}.`,
       adapterId: adapterOutput.adapterId,
     });
@@ -429,7 +431,7 @@ function validateAdapterProfileCompatibility(
   for (const node of adapterOutput.nodes) {
     if (!allowedNodeKinds.has(node.kind)) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Adapter node kind ${node.kind} is not allowed by profile adapter manifest for ${adapterOutput.adapterId}.`,
         adapterId: adapterOutput.adapterId,
         sourceNodeKind: node.kind,
@@ -460,7 +462,7 @@ function validateProvenanceContracts(
 
       if (!node.provenance) {
         diagnostics.push({
-          severity: 'error',
+          severity: DIAGNOSTIC_SEVERITY_ERROR,
           message: `Node ${node.id} (${node.kind}) consumed by helper ${helper.id} is missing provenance.`,
           sourceNodeKind: node.kind,
         });
@@ -469,7 +471,7 @@ function validateProvenanceContracts(
 
       if (requiresSourceSpan && !node.provenance.sourceSpan) {
         diagnostics.push({
-          severity: 'error',
+          severity: DIAGNOSTIC_SEVERITY_ERROR,
           message: `Node ${node.id} (${node.kind}) consumed by helper ${helper.id} is missing provenance sourceSpan.`,
           sourceNodeKind: node.kind,
         });
@@ -477,7 +479,7 @@ function validateProvenanceContracts(
 
       if (requiresProfileVersion && !node.provenance.attributes?.profileVersion) {
         diagnostics.push({
-          severity: 'error',
+          severity: DIAGNOSTIC_SEVERITY_ERROR,
           message: `Node ${node.id} (${node.kind}) consumed by helper ${helper.id} is missing provenance attribute profileVersion.`,
           sourceNodeKind: node.kind,
         });
@@ -485,7 +487,7 @@ function validateProvenanceContracts(
 
       if (requiresSourceNodeKind && !node.provenance.attributes?.sourceNodeKind) {
         diagnostics.push({
-          severity: 'error',
+          severity: DIAGNOSTIC_SEVERITY_ERROR,
           message: `Node ${node.id} (${node.kind}) consumed by helper ${helper.id} is missing provenance attribute sourceNodeKind.`,
           sourceNodeKind: node.kind,
         });
@@ -554,7 +556,7 @@ function collectStrictModeDiagnostics(input: {
       ) > 0
     ) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: 'Strict mode requires graph nodes to be deterministically sorted.',
       });
       break;
@@ -569,7 +571,7 @@ function collectStrictModeDiagnostics(input: {
       ) > 0
     ) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: 'Strict mode requires graph edges to be deterministically sorted.',
       });
       break;
@@ -584,7 +586,7 @@ function collectStrictModeDiagnostics(input: {
       ) > 0
     ) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: 'Strict mode requires provenance to be deterministically sorted by target id.',
       });
       break;
@@ -595,7 +597,7 @@ function collectStrictModeDiagnostics(input: {
     entityIds.add(node.id);
     if (nodeIds.has(node.id)) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Strict mode detected duplicate node id ${node.id}.`,
         sourceNodeKind: node.kind,
       });
@@ -604,13 +606,13 @@ function collectStrictModeDiagnostics(input: {
 
     if (!node.provenance) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Strict mode requires provenance for node ${node.id}.`,
         sourceNodeKind: node.kind,
       });
     } else if (node.provenance.targetId !== node.id) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Strict mode requires node provenance targetId ${node.provenance.targetId} to match node id ${node.id}.`,
         sourceNodeKind: node.kind,
       });
@@ -621,7 +623,7 @@ function collectStrictModeDiagnostics(input: {
     entityIds.add(edge.id);
     if (edgeIds.has(edge.id)) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Strict mode detected duplicate edge id ${edge.id}.`,
       });
     }
@@ -629,12 +631,12 @@ function collectStrictModeDiagnostics(input: {
 
     if (!edge.provenance) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Strict mode requires provenance for edge ${edge.id}.`,
       });
     } else if (edge.provenance.targetId !== edge.id) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Strict mode requires edge provenance targetId ${edge.provenance.targetId} to match edge id ${edge.id}.`,
       });
     }
@@ -643,7 +645,7 @@ function collectStrictModeDiagnostics(input: {
   for (const item of input.provenance) {
     if (provenanceTargetIds.has(item.targetId)) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Strict mode detected duplicate provenance target ${item.targetId}.`,
       });
     }
@@ -651,28 +653,28 @@ function collectStrictModeDiagnostics(input: {
 
     if (!entityIds.has(item.targetId)) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Strict mode found provenance target ${item.targetId} with no matching graph entity.`,
       });
     }
 
     if (!item.providerId || !item.providerVersion || !item.sourceDocId || !item.projectionRuleId) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Strict mode requires providerId, providerVersion, sourceDocId, and projectionRuleId for provenance target ${item.targetId}.`,
       });
     }
 
     if (!item.sourceSpan || item.sourceSpan.endOffset < item.sourceSpan.startOffset) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Strict mode requires a valid sourceSpan for provenance target ${item.targetId}.`,
       });
     }
 
     if (!item.attributes?.profileVersion || !item.attributes?.sourceNodeKind) {
       diagnostics.push({
-        severity: 'error',
+        severity: DIAGNOSTIC_SEVERITY_ERROR,
         message: `Strict mode requires provenance attributes profileVersion and sourceNodeKind for target ${item.targetId}.`,
       });
     }
@@ -680,7 +682,7 @@ function collectStrictModeDiagnostics(input: {
 
   if (provenanceTargetIds.size !== entityIds.size) {
     diagnostics.push({
-      severity: 'error',
+      severity: DIAGNOSTIC_SEVERITY_ERROR,
       message: `Strict mode requires provenance coverage for every graph entity (entities=${entityIds.size}, provenance=${provenanceTargetIds.size}).`,
     });
   }
@@ -758,7 +760,7 @@ export class SemantifyProjectionRuntime {
       const strictDiagnostics = collectStrictModeDiagnostics({ nodes, edges, provenance });
       diagnostics.push(...strictDiagnostics);
       const strictErrors = strictDiagnostics.filter(
-        (diagnostic) => diagnostic.severity === 'error'
+        (diagnostic) => diagnostic.severity === DIAGNOSTIC_SEVERITY_ERROR
       );
       if (strictErrors.length > 0) {
         throw new Error(

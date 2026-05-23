@@ -580,7 +580,7 @@ describe('SemantifyProjectionRuntime', () => {
 
     expect(result.diagnostics).toEqual([
       expect.objectContaining({
-        severity: 'error',
+        severity: 1,
         sourceNodeKind: 'test.symbol',
       }),
     ]);
@@ -637,7 +637,7 @@ describe('SemantifyProjectionRuntime', () => {
       sourceUri: 'file:///mixed.tpl',
       diagnostics: [
         {
-          severity: 'warning',
+          severity: 2,
           message: 'adapter warning',
         },
       ],

@@ -111,7 +111,7 @@ export interface SemanticContext {
 export type AdapterId = string;
 export type ProfileDefinitionId = string;
 export type ProjectionRuleId = string;
-export type DiagnosticSeverity = 'info' | 'warning' | 'error';
+export type DiagnosticSeverity = 1 | 2 | 3 | 4;
 
 export interface AdapterNode {
   id?: string;
