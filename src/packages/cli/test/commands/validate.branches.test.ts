@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 async function loadValidateModule(options?: {
   readFileSyncImpl?: (path: string) => string;
   validateTemplateImpl?: (template: string) => {
-    syntaxDiagnostics?: Array<{ phase?: string; message: string }>;
+    syntaxDiagnostics: Array<{ phase: 'lexical' | 'parse' | 'semantic'; message: string }>;
   };
   schemaValidatorFactory?: new (schema?: unknown) => {
     isCompiled: boolean;
@@ -58,7 +58,7 @@ async function loadValidateModule(options?: {
 async function loadValidateCommand(options?: {
   readFileSyncImpl?: (path: string) => string;
   validateTemplateImpl?: (template: string) => {
-    syntaxDiagnostics?: Array<{ phase?: string; message: string }>;
+    syntaxDiagnostics: Array<{ phase: 'lexical' | 'parse' | 'semantic'; message: string }>;
   };
   schemaValidatorFactory?: new (schema?: unknown) => {
     isCompiled: boolean;

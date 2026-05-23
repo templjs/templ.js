@@ -537,11 +537,18 @@ function compareProvenance(left: SemanticGraphProvenance, right: SemanticGraphPr
   );
 }
 
+function normalizeSyntaxDiagnosticPhase(phase: unknown): 'lexical' | 'parse' | 'semantic' {
+  if (phase === 'lexical' || phase === 'parse' || phase === 'semantic') {
+    return phase;
+  }
+  return 'parse';
+}
+
 function mapSyntaxDiagnosticsToSemantic(adapterOutput: AdapterOutput): SemanticDiagnosticRecord[] {
   return (adapterOutput.diagnostics ?? []).map((diagnostic) => ({
     severity: diagnostic.severity,
     message: diagnostic.message,
-    phase: diagnostic.phase ?? 'parse',
+    phase: normalizeSyntaxDiagnosticPhase((diagnostic as { phase?: unknown }).phase),
     origin: 'syntax',
     adapterId: adapterOutput.adapterId,
     ...(diagnostic.span ? { span: diagnostic.span } : {}),
