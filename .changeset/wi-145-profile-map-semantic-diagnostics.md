@@ -1,7 +1,7 @@
 ---
 '@templjs/core': major
 '@templjs/semantify': patch
-'@templjs/cli': patch
+'@templjs/cli': major
 ---
 
 <!-- markdownlint-disable MD041 -->

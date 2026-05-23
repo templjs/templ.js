@@ -537,25 +537,54 @@ function compareProvenance(left: SemanticGraphProvenance, right: SemanticGraphPr
   );
 }
 
-function normalizeSyntaxDiagnosticPhase(
-  phase: string | undefined
-): 'lexical' | 'parse' | 'semantic' {
+function normalizeSyntaxDiagnosticPhase(phase: unknown): {
+  phase: 'lexical' | 'parse' | 'semantic';
+  invalidPhase?: unknown;
+} {
   if (phase === 'lexical' || phase === 'parse' || phase === 'semantic') {
-    return phase;
+    return { phase };
   }
-  return 'semantic';
+  if (phase === undefined) {
+    return { phase: 'parse' };
+  }
+  return {
+    phase: 'parse',
+    invalidPhase: phase,
+  };
+}
+
+function asMetadataRecord(value: unknown): Record<string, unknown> | undefined {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return undefined;
 }
 
 function mapSyntaxDiagnosticsToSemantic(adapterOutput: AdapterOutput): SemanticDiagnosticRecord[] {
-  return (adapterOutput.diagnostics ?? []).map((diagnostic) => ({
-    severity: diagnostic.severity,
-    message: diagnostic.message,
-    phase: normalizeSyntaxDiagnosticPhase(diagnostic.phase),
-    origin: 'syntax',
-    adapterId: adapterOutput.adapterId,
-    ...(diagnostic.span ? { span: diagnostic.span } : {}),
-    ...(diagnostic.metadata ? { metadata: diagnostic.metadata } : {}),
-  }));
+  return (adapterOutput.diagnostics ?? []).map((diagnostic) => {
+    const normalizedPhase = normalizeSyntaxDiagnosticPhase(diagnostic?.phase);
+    const metadata = asMetadataRecord(diagnostic?.metadata);
+    const normalizedMetadata =
+      normalizedPhase.invalidPhase === undefined
+        ? metadata
+        : {
+            ...(metadata ?? {}),
+            invalidPhase: normalizedPhase.invalidPhase,
+          };
+
+    return {
+      severity: diagnostic?.severity ?? DIAGNOSTIC_SEVERITY_ERROR,
+      message:
+        typeof diagnostic?.message === 'string' && diagnostic.message.length > 0
+          ? diagnostic.message
+          : 'Adapter emitted malformed syntax diagnostic.',
+      phase: normalizedPhase.phase,
+      origin: 'syntax',
+      adapterId: adapterOutput.adapterId,
+      ...(diagnostic?.span ? { span: diagnostic.span } : {}),
+      ...(normalizedMetadata ? { metadata: normalizedMetadata } : {}),
+    };
+  });
 }
 
 function normalizeSemanticDiagnostic(
