@@ -3,6 +3,8 @@
 '@templjs/volar': minor
 ---
 
+<!-- markdownlint-disable MD041 -->
+
 # WI-142 Diagnostic Provider Capability Naming
 
 Cut over diagnostic helper capability naming from planner terminology to provider terminology.

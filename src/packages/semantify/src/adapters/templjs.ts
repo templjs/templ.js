@@ -350,7 +350,7 @@ export function createTempljsAuthoringProfile(): ProfileDefinition {
         id: 'templjs.authoring.diagnostic-provider',
         kind: 'diagnostic-provider',
         consumesSemanticKinds: ['templjs.binding', 'templjs.schema-path'],
-        description: 'Language-service diagnostic planner over projected TemplJS authoring facts.',
+        description: 'Language-service diagnostic provider over projected TemplJS authoring facts.',
       },
       {
         schemaVersion: SEMANTIFY_SCHEMA_VERSION,
