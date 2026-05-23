@@ -6,15 +6,17 @@ summary: Standardize semantic zone terminology across core, language-core, seman
 assignee: copilot
 type: work-item
 subtype: task
-lifecycle: draft
-status: proposed
-status_reason: needs-triage
+lifecycle: active
+status: ready-for-review
+status_reason: awaiting-review
 priority: high
 estimated: 10
 actual: 0
 links:
   evidence:
     - '[[record-20260523-044941-143-unify-semantic-zone-vocabulary-metadata-content-template]]'
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/181
 ---
 
 ## Goal
@@ -29,26 +31,26 @@ Use one semantic zone vocabulary everywhere with values `metadata`, `content`, a
 
 ## File-by-File Rename Checklist
 
-- [ ] [src/packages/core/src/semantic/semantic-context.ts](src/packages/core/src/semantic/semantic-context.ts)
+- [x] [src/packages/core/src/semantic/semantic-context.ts](src/packages/core/src/semantic/semantic-context.ts)
   - `SemanticContextBlock` -> `SemanticZoneSegment`
   - `SemanticZoneKind` values `metadata` and `body` -> `metadata` and `content`
   - `legacyContextBlock` -> `segment`
-- [ ] [src/packages/language-core/src/public-types.ts](src/packages/language-core/src/public-types.ts)
+- [x] [src/packages/language-core/src/public-types.ts](src/packages/language-core/src/public-types.ts)
   - `TempljsSemanticZoneRef.contextBlock` -> `TempljsSemanticZoneRef.segment`
   - `TempljsSemanticZoneRef.kind` values `frontmatter` and `content` and `template` -> `metadata` and `content` and `template`
-- [ ] [src/packages/volar/src/diagnostic-template-analysis.ts](src/packages/volar/src/diagnostic-template-analysis.ts)
+- [x] [src/packages/volar/src/diagnostic-template-analysis.ts](src/packages/volar/src/diagnostic-template-analysis.ts)
   - semantic zone gates aligned to `metadata` and `content`
-- [ ] [src/packages/volar/src/semantify-projection-adapter.ts](src/packages/volar/src/semantify-projection-adapter.ts)
+- [x] [src/packages/volar/src/semantify-projection-adapter.ts](src/packages/volar/src/semantify-projection-adapter.ts)
   - schema adapter option `contextBlock` -> `zoneSegment`
   - values `frontmatter` and `content` -> `metadata` and `content`
 
 ## Tasks
 
-- [ ] Rename core zone and segment symbols.
-- [ ] Rename language-core zone reference symbols and values.
-- [ ] Update volar consumers and adapters.
-- [ ] Update tests and fixtures to match `metadata` and `content` and `template` values.
-- [ ] Remove retired zone vocabulary tokens.
+- [x] Rename core zone and segment symbols.
+- [x] Rename language-core zone reference symbols and values.
+- [x] Update volar consumers and adapters.
+- [x] Update tests and fixtures to match `metadata` and `content` and `template` values.
+- [x] Remove retired zone vocabulary tokens.
 
 ## Deliverables
 
@@ -57,9 +59,9 @@ Use one semantic zone vocabulary everywhere with values `metadata`, `content`, a
 
 ## Acceptance Criteria
 
-- [ ] No `frontmatter` or `body` legacy zone values remain in touched contracts.
-- [ ] All touched layer contracts use `metadata` and `content` and `template` values.
-- [ ] Tests pass with updated zone value assertions.
+- [x] No `frontmatter` or `body` legacy zone values remain in touched contracts.
+- [x] All touched layer contracts use `metadata` and `content` and `template` values.
+- [x] Tests pass with updated zone value assertions.
 
 ## Testing Strategy
 
