@@ -248,7 +248,7 @@ function resolveSemanticQueryZone(
   documentUri?: string
 ): NonNullable<SemanticQueryContext['semanticZone']> {
   const hostLanguage = resolveSemanticHostLanguage(documentUri);
-  if (hostLanguage === 'unknown') {
+  if (hostLanguage === 'plaintext') {
     return resolveSemanticZone(text, offset);
   }
 
