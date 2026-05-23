@@ -6,15 +6,20 @@ summary: Replace diagnostic planner terminology with diagnostic provider termino
 assignee: copilot
 type: work-item
 subtype: task
-lifecycle: draft
-status: proposed
-status_reason: needs-triage
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 6
 actual: 0
+completed_date: '2026-05-23'
+commits:
+  8a9b4087146b2e855e08803fc822889cab1be992: 'WI-142: Cut Over Diagnostic Provider Capability Naming'
 links:
   evidence:
     - '[[record-20260523-044941-142-cutover-diagnostic-provider-capability-naming]]'
+  pull_requests:
+    - https://github.com/templjs/templ.js/pull/180
 ---
 
 ## Goal
