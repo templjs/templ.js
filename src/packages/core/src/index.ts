@@ -52,7 +52,7 @@ export {
   detectFrontmatterRange,
   getSemanticProfileId,
   getFrontmatterKeyValueAtOffset,
-  getFrontmatterSchemaAliases,
+  getFrontmatterSchemaSources,
   getFrontmatterSchemaReferenceAtOffset,
   getTokenAtOffset,
   isOffsetInFrontmatter,

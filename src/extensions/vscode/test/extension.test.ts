@@ -47,7 +47,7 @@ const activeTextEditor = {
       scheme: 'file',
       toString: () => 'file:///workspace/backlog/054_bug_no_schema_aware_authoring.md',
     },
-    getText: () => '---\n$templ-schema: .templjs/root.json\n---\n{{ user.name }}',
+    getText: () => '---\n$schema: .templjs/root.json\n---\n{{ user.name }}',
   },
 };
 const createFileSystemWatcher = vi.fn(() => ({
@@ -250,7 +250,7 @@ describe('extension-activation', () => {
     activeTextEditor.document.uri.toString = () =>
       'file:///workspace/backlog/054_bug_no_schema_aware_authoring.md';
     activeTextEditor.document.getText = () =>
-      '---\n$templ-schema: .templjs/root.json\n---\n{{ user.name }}';
+      '---\n$schema: .templjs/root.json\n---\n{{ user.name }}';
     registerCommand.mockClear();
     showInformationMessage.mockClear();
     showErrorMessage.mockClear();
@@ -484,7 +484,7 @@ describe('extension-activation', () => {
     });
     expect(clientOptions.initializationOptions.documentContext).toEqual({
       uri: 'file:///workspace/backlog/054_bug_no_schema_aware_authoring.md',
-      content: '---\n$templ-schema: .templjs/root.json\n---\n{{ user.name }}',
+      content: '---\n$schema: .templjs/root.json\n---\n{{ user.name }}',
     });
   });
 

@@ -3,7 +3,7 @@ import {
   detectFrontmatterRange,
   getFrontmatterKeyValueAtOffset,
   getFrontmatterSchemaReferenceAtOffset,
-  getFrontmatterSchemaAliases,
+  getFrontmatterSchemaSources,
   getSemanticProfileId,
   getTokenAtOffset,
   isOffsetInFrontmatter,
@@ -17,18 +17,18 @@ import {
 } from '../../src/index.js';
 
 describe('semantic-context core helpers', () => {
-  it('resolves metadata/content zone segments from location and aliases', () => {
+  it('resolves metadata/content zone segments from location and canonical schema keys', () => {
     const text = [
       '---',
       '$schema: ./frontmatter.json',
-      '$content_schema: ./content.json',
+      '$content-schema: ./content.json',
       'type: project',
       '---',
       '{{ contentData.heading }}',
     ].join('\n');
 
     const frontmatterOffset = text.indexOf('type:') + 1;
-    const contentAliasOffset = text.indexOf('$content_schema') + 3;
+    const contentAliasOffset = text.indexOf('$content-schema') + 3;
     const bodyOffset = text.indexOf('contentData') + 2;
 
     expect(resolveSemanticZoneSegment(text, frontmatterOffset)).toBe('metadata');
@@ -36,52 +36,52 @@ describe('semantic-context core helpers', () => {
     expect(resolveSemanticZoneSegment(text, bodyOffset)).toBe('content');
   });
 
-  it('extracts schema aliases from frontmatter without Volar helpers', () => {
+  it('extracts schema sources from frontmatter without Volar helpers', () => {
     const text = [
       '---',
-      '$templ-schema: ./frontmatter.json',
+      '$schema: ./frontmatter.json',
       '$content-schema: ./content.json',
       '---',
       'body',
     ].join('\n');
 
-    const aliases = getFrontmatterSchemaAliases(text);
-    expect(aliases.templSchema).toBe('./frontmatter.json');
-    expect(aliases.contentSchema).toBe('./content.json');
+    const sources = getFrontmatterSchemaSources(text);
+    expect(sources.schemaPath).toBe('./frontmatter.json');
+    expect(sources.contentSchemaPath).toBe('./content.json');
   });
 
-  it('preserves schema fragments in frontmatter aliases', () => {
+  it('preserves schema fragments in frontmatter schema sources', () => {
     const text = [
       '---',
       '$schema: ./frontmatter.json#/$defs/workItem',
-      '$content_schema: "./content.json#/$defs/body" # fixture comment',
+      '$content-schema: "./content.json#/$defs/body" # fixture comment',
       '---',
       'body',
     ].join('\n');
 
-    const aliases = getFrontmatterSchemaAliases(text);
+    const sources = getFrontmatterSchemaSources(text);
 
-    expect(aliases.templSchema).toBe('./frontmatter.json#/$defs/workItem');
-    expect(aliases.contentSchema).toBe('./content.json#/$defs/body');
+    expect(sources.schemaPath).toBe('./frontmatter.json#/$defs/workItem');
+    expect(sources.contentSchemaPath).toBe('./content.json#/$defs/body');
   });
 
-  it('detects frontmatter and schema aliases with CRLF line endings', () => {
+  it('detects frontmatter and schema sources with CRLF line endings', () => {
     const text = [
       '---',
       '$schema: ./frontmatter-crlf.json',
-      '$content_schema: ./content-crlf.json',
+      '$content-schema: ./content-crlf.json',
       '---',
       'body',
     ].join('\r\n');
 
     const range = detectFrontmatterRange(text);
-    const aliases = getFrontmatterSchemaAliases(text);
+    const sources = getFrontmatterSchemaSources(text);
 
     expect(range).toBeDefined();
     expect(range?.start).toBe(0);
     expect(range?.end ?? 0).toBeGreaterThan(0);
-    expect(aliases.templSchema).toBe('./frontmatter-crlf.json');
-    expect(aliases.contentSchema).toBe('./content-crlf.json');
+    expect(sources.schemaPath).toBe('./frontmatter-crlf.json');
+    expect(sources.contentSchemaPath).toBe('./content-crlf.json');
   });
 
   it('resolves schema key/value references at offsets with CRLF line endings', () => {
@@ -101,12 +101,12 @@ describe('semantic-context core helpers', () => {
   it('resolves schema references with fragments and trailing comments', () => {
     const text = [
       '---',
-      '$content_schema: ./content.json#/$defs/body # benchmark fixture',
+      '$content-schema: ./content.json#/$defs/body # benchmark fixture',
       '---',
       'body',
     ].join('\n');
 
-    const keyOffset = text.indexOf('$content_schema') + 3;
+    const keyOffset = text.indexOf('$content-schema') + 3;
     const valueOffset = text.indexOf('./content.json#/$defs/body') + 10;
 
     expect(getFrontmatterSchemaReferenceAtOffset(text, keyOffset)).toEqual({
@@ -147,7 +147,7 @@ describe('semantic-context core helpers', () => {
 
     expect(detectFrontmatterRange(text)).toBeUndefined();
     expect(isOffsetInFrontmatter(text, 0)).toBe(false);
-    expect(getFrontmatterSchemaAliases(text)).toEqual({});
+    expect(getFrontmatterSchemaSources(text)).toEqual({});
     expect(getFrontmatterSchemaReferenceAtOffset(text, 999)).toBeNull();
     expect(getFrontmatterKeyValueAtOffset(text, -1)).toBeNull();
     expect(getTokenAtOffset(text, -1)).toBeUndefined();
@@ -158,7 +158,7 @@ describe('semantic-context core helpers', () => {
     const text = ['---', '$schema: ./frontmatter.json', 'title: Example'].join('\n');
 
     expect(detectFrontmatterRange(text)).toBeUndefined();
-    expect(getFrontmatterSchemaAliases(text)).toEqual({});
+    expect(getFrontmatterSchemaSources(text)).toEqual({});
     expect(getFrontmatterSchemaReferenceAtOffset(text, text.indexOf('$schema') + 2)).toBeNull();
   });
 
@@ -191,35 +191,35 @@ describe('semantic-context core helpers', () => {
     expect(detectFrontmatterRange(text)).toBeUndefined();
   });
 
-  it('extracts quoted schema aliases and ignores unrelated frontmatter keys', () => {
+  it('extracts quoted schema sources and ignores unrelated frontmatter keys', () => {
     const text = [
       '---',
       '"$schema": "./quoted-frontmatter.json"',
-      "'$content_schema': './quoted-content.json'",
+      "'$content-schema': './quoted-content.json'",
       'title: Example',
       '---',
     ].join('\n');
 
-    expect(getFrontmatterSchemaAliases(text)).toEqual({
-      templSchema: './quoted-frontmatter.json',
-      contentSchema: './quoted-content.json',
+    expect(getFrontmatterSchemaSources(text)).toEqual({
+      schemaPath: './quoted-frontmatter.json',
+      contentSchemaPath: './quoted-content.json',
     });
     expect(getFrontmatterSchemaReferenceAtOffset(text, text.indexOf('title:') + 2)).toBeNull();
   });
 
-  it('prefers the first matching schema aliases and ignores empty values', () => {
+  it('prefers the first matching schema sources and ignores empty values', () => {
     const text = [
       '---',
       '$schema: ./first.json',
       '$schema: ./second.json',
       '$content-schema: ',
-      '$content_schema: ./content.json',
+      '$content-schema: ./content.json',
       '---',
     ].join('\n');
 
-    expect(getFrontmatterSchemaAliases(text)).toEqual({
-      templSchema: './first.json',
-      contentSchema: './content.json',
+    expect(getFrontmatterSchemaSources(text)).toEqual({
+      schemaPath: './first.json',
+      contentSchemaPath: './content.json',
     });
   });
 
@@ -256,7 +256,7 @@ describe('semantic-context core helpers', () => {
     expect(getFrontmatterKeyValueAtOffset(text, emptyValueOffset)).toBeNull();
   });
 
-  it('falls back to token-based alias detection for content schema references', () => {
+  it('falls back to token-based detection for content schema references', () => {
     const text = ['---', 'reference: $content-schema', '---', 'body'].join('\n');
     const tokenOffset = text.indexOf('$content-schema') + 3;
 

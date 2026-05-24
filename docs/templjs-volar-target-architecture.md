@@ -236,8 +236,7 @@ Current repository expectations:
 ## Public Surface Expectations
 
 - Public semantic kinds should use projection-native namespaces (for example,
-  `templjs.schema-path`, `templjs.schema-enum-value`) without legacy compatibility
-  remapping.
+  `templjs.schema-path`, `templjs.schema-enum-value`) using canonical names only.
 - Semantify public exports should remain projection/profile contract focused.
 - Context-graph payloads must remain JSON-compatible and must not leak Volar,
   TypeScript, VS Code, or validator implementation types.
@@ -277,8 +276,7 @@ Required verification scenarios:
 ## Maintenance Rules
 
 - Keep semantic policy in shared semantic packages, not transport clients.
-- Avoid introducing migration or compatibility fallback guidance in this architecture doc.
 - Prefer additive ADR updates for future architectural changes rather than reintroducing
-  phased migration runbooks here.
+  compatibility guidance in this architecture doc.
 
 {% endraw %}

@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { minimatch } from 'minimatch';
-import { getFrontmatterSchemaAliases } from '@templjs/core';
+import { getFrontmatterSchemaSources } from '@templjs/core';
 import type { AdapterRuntimeMap } from './adapter-runtime-contract.js';
 import {
   resolveSchemaFilePath,
@@ -597,32 +597,32 @@ function parseRootObject(content: string): Record<string, unknown> | undefined {
 }
 
 function extractRootPropertySchemas(content: string): {
-  templSchema?: string;
-  contentSchema?: string;
+  schemaPath?: string;
+  contentSchemaPath?: string;
 } {
-  const fromFrontmatter = getFrontmatterSchemaAliases(content);
+  const fromFrontmatter = getFrontmatterSchemaSources(content);
   const fromYamlDirective = parseYamlLanguageServerSchemaDirective(content);
   const fromLooseSchemaProperty = parseLooseSchemaProperty(content);
   const parsedRootObject = parseRootObject(content);
 
-  const templSchema =
+  const schemaPath =
     fromYamlDirective ??
     fromLooseSchemaProperty ??
-    fromFrontmatter.templSchema ??
-    getSchemaValueFromRecord(parsedRootObject, ['$templ-schema', '$schema']);
-  const contentSchema =
-    fromFrontmatter.contentSchema ??
-    getSchemaValueFromRecord(parsedRootObject, ['$content-schema', '$content_schema']);
+    fromFrontmatter.schemaPath ??
+    getSchemaValueFromRecord(parsedRootObject, ['$schema']);
+  const contentSchemaPath =
+    fromFrontmatter.contentSchemaPath ??
+    getSchemaValueFromRecord(parsedRootObject, ['$content-schema']);
 
-  return { templSchema, contentSchema };
+  return { schemaPath, contentSchemaPath };
 }
 
 export function extractDocumentSchemaKey(content: string): string {
   const inline = parseInlineSchemaDirectives(content);
   const root = extractRootPropertySchemas(content);
   return [
-    inline.schemaPath ?? root.templSchema ?? '',
-    inline.contentSchemaPath ?? root.contentSchema ?? '',
+    inline.schemaPath ?? root.schemaPath ?? '',
+    inline.contentSchemaPath ?? root.contentSchemaPath ?? '',
   ].join('\0');
 }
 
@@ -669,12 +669,12 @@ export function resolveDocumentSchemaSources(params: InitializeParamsLike): {
 
   const rootSchemas = documentContent
     ? extractRootPropertySchemas(documentContent)
-    : { templSchema: undefined, contentSchema: undefined };
+    : { schemaPath: undefined, contentSchemaPath: undefined };
 
   return {
-    schemaPath: inlineSchemas.schemaPath ?? rootSchemas.templSchema ?? settingSchemaPath,
+    schemaPath: inlineSchemas.schemaPath ?? rootSchemas.schemaPath ?? settingSchemaPath,
     contentSchemaPath:
-      inlineSchemas.contentSchemaPath ?? rootSchemas.contentSchema ?? settingContentSchemaPath,
+      inlineSchemas.contentSchemaPath ?? rootSchemas.contentSchemaPath ?? settingContentSchemaPath,
   };
 }
 

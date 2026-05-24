@@ -9,7 +9,7 @@ title: Core and CLI API Reference
 
 ## Status
 
-⚠️ **Public APIs are stabilizing**: Core rendering and query APIs are under active refinement. Expect minor changes in method signatures and return types through Phase 4 completion. See [migration plan](../migration-plan.md) for phase tracking.
+The APIs documented here are the canonical public surface for the current release train.
 
 {% raw %}
 
@@ -92,7 +92,7 @@ Extracts scope-relevant variable bindings for semantic tooling.
 
 ## ADRs
 
-- [ADR 001: Language Migration](./adr/001-language-migration.md)
+- [ADR 010: Diagnostics Terminology and Canonical Schema Sources](./adr/010-diagnostics-terminology-and-canonical-schema-sources.md)
 - [ADR 002: Parser Selection](./adr/002-parser-selection.md)
 - [ADR 003: VS Code Architecture](./adr/003-vscode-architecture.md)
 - [ADR 006: Testing Strategy](./adr/006-testing.md)
