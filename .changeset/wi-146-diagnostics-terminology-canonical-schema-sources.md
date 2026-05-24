@@ -1,5 +1,5 @@
 ---
-'@templjs/core': patch
+'@templjs/core': minor
 '@templjs/language-service': patch
 '@templjs/volar': patch
 'vscode-templjs': patch

@@ -412,11 +412,7 @@ export function resolveSemanticZoneSegment(text: string, offset: number): Semant
       .replace(/^['"]|['"]$/g, '')
       .replace(/[:\s]+$/g, '')
       .trim();
-    return (
-      normalized === '$content-schema' ||
-      normalized === 'content-schema' ||
-      normalized === 'content_schema'
-    );
+    return normalized === '$content-schema' || normalized === 'content-schema';
   };
 
   const keyValue = getFrontmatterKeyValueAtOffset(text, offset);
