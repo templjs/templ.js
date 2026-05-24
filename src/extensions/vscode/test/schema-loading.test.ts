@@ -706,7 +706,7 @@ describe('schema-loading', () => {
     const inlineContent = [
       '---',
       '$schema: .templjs/root-frontmatter.json',
-      '$content_schema: .templjs/root-content.json',
+      '$content-schema: .templjs/root-content.json',
       '---',
       '{{# schema: .templjs/inline-frontmatter.json }}',
       '{{# content-schema: .templjs/inline-content.json }}',
@@ -719,7 +719,7 @@ describe('schema-loading', () => {
       extractDocumentSchemaKey(
         JSON.stringify({
           $schema: ' .templjs/root-object-frontmatter.json ',
-          $content_schema: ' .templjs/root-object-content.json ',
+          '$content-schema': ' .templjs/root-object-content.json ',
         })
       )
     ).toBe('.templjs/root-object-frontmatter.json\0.templjs/root-object-content.json');
@@ -746,7 +746,7 @@ describe('schema-loading', () => {
     const inlineContent = [
       '---',
       '$schema: .templjs/root-frontmatter.json',
-      '$content_schema: .templjs/root-content.json',
+      '$content-schema: .templjs/root-content.json',
       '---',
       '{{# schema: .templjs/inline-frontmatter.json }}',
       '{{# content-schema: .templjs/inline-content.json }}',

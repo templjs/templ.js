@@ -53,7 +53,7 @@ This extension uses Volar language server to provide IDE features:
 Schema precedence is resolved per document as:
 
 1. Inline directives (`{{# schema: ... }}` / `{{# content-schema: ... }}`)
-2. Root/frontmatter aliases (`$templ-schema`, `$content-schema`)
+2. Root/frontmatter keys (`$schema`, `$content-schema`)
 3. Workspace settings (`templjs.schemas`, `templjs.schemaPath`, `templjs.contentSchemaPath`)
 
 Schema paths can be local file paths or HTTPS URLs. URL schemas support fragment references (for example `https://example.com/schema.json#/$defs/item`) and are cached in-memory by source URL for the current extension host session.
@@ -67,7 +67,7 @@ templjs uses the first workspace folder as its schema resolution root for relati
 ## Schema Troubleshooting
 
 - **Schema appears ignored**:
-  - Confirm precedence order. Inline directives override root aliases and settings.
+  - Confirm precedence order. Inline directives override root keys and settings.
   - Verify the schema path is reachable and resolves from the active workspace root.
 - **URL schema not loading**:
   - Use `https://` URLs and verify remote access from your environment.

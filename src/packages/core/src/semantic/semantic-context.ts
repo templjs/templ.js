@@ -219,7 +219,7 @@ export function getTokenAtOffset(
   return { token, start, end };
 }
 
-function matchFrontmatterSchemaAlias(line: string):
+function matchFrontmatterSchemaEntry(line: string):
   | {
       prefix: string;
       key: string;
@@ -229,7 +229,7 @@ function matchFrontmatterSchemaAlias(line: string):
     }
   | undefined {
   const match = line.match(
-    /^(\s*["']?)(\$schema|\$templ-schema|\$content-schema|\$content_schema)(["']?\s*:\s*)(?:"([^"\r\n]+)"|'([^'\r\n]+)'|([^\r\n]+?)(?=\s+#|$))/
+    /^(\s*["']?)(\$schema|\$content-schema)(["']?\s*:\s*)(?:"([^"\r\n]+)"|'([^'\r\n]+)'|([^\r\n]+?)(?=\s+#|$))/
   );
   if (!match) {
     return undefined;
@@ -256,18 +256,14 @@ function matchFrontmatterSchemaAlias(line: string):
 }
 
 /**
- * Read known schema alias keys from YAML frontmatter.
- *
- * Supported aliases:
- * - templ schema: `$schema`, `$templ-schema`
- * - content schema: `$content-schema`, `$content_schema`
+ * Read canonical schema source keys from YAML frontmatter.
  *
  * @param text - Full document text
  * @returns Object with discovered schema URI values (if present)
  */
-export function getFrontmatterSchemaAliases(text: string): {
-  templSchema?: string;
-  contentSchema?: string;
+export function getFrontmatterSchemaSources(text: string): {
+  schemaPath?: string;
+  contentSchemaPath?: string;
 } {
   const range = detectFrontmatterRange(text);
   if (!range) {
@@ -275,40 +271,37 @@ export function getFrontmatterSchemaAliases(text: string): {
   }
 
   const frontmatterText = text.slice(range.start, range.end);
-  let templSchema: string | undefined;
-  let contentSchema: string | undefined;
+  let schemaPath: string | undefined;
+  let contentSchemaPath: string | undefined;
 
   for (const line of frontmatterText.split(/\r?\n/)) {
-    const alias = matchFrontmatterSchemaAlias(line);
-    if (!alias) {
+    const entry = matchFrontmatterSchemaEntry(line);
+    if (!entry) {
       continue;
     }
 
-    if ((alias.key === '$schema' || alias.key === '$templ-schema') && templSchema === undefined) {
-      templSchema = alias.value;
+    if (entry.key === '$schema' && schemaPath === undefined) {
+      schemaPath = entry.value;
     }
 
-    if (
-      (alias.key === '$content-schema' || alias.key === '$content_schema') &&
-      contentSchema === undefined
-    ) {
-      contentSchema = alias.value;
+    if (entry.key === '$content-schema' && contentSchemaPath === undefined) {
+      contentSchemaPath = entry.value;
     }
   }
 
   return {
-    templSchema,
-    contentSchema,
+    schemaPath,
+    contentSchemaPath,
   };
 }
 
 /**
- * Resolve a schema URI reference when the cursor is on a frontmatter schema
- * key or value token.
+ * Resolve a schema URI reference when the cursor is on a canonical frontmatter
+ * schema key or value token.
  *
  * @param text - Full document text
  * @param offset - Zero-based character offset
- * @returns `{ value }` when offset targets a schema alias key/value, else `null`
+ * @returns `{ value }` when offset targets a schema key/value, else `null`
  */
 export function getFrontmatterSchemaReferenceAtOffset(
   text: string,
@@ -334,9 +327,9 @@ export function getFrontmatterSchemaReferenceAtOffset(
       break;
     }
     const line = rawLine.replace(/\r?\n$/, '');
-    const alias = matchFrontmatterSchemaAlias(line);
-    if (alias) {
-      const { prefix, key, value, valueOffset } = alias;
+    const entry = matchFrontmatterSchemaEntry(line);
+    if (entry) {
+      const { prefix, key, value, valueOffset } = entry;
       const keyStart = lineStart + prefix.length;
       const keyEnd = keyStart + key.length;
       const valueStart = lineStart + valueOffset;
@@ -419,12 +412,7 @@ export function resolveSemanticZoneSegment(text: string, offset: number): Semant
       .replace(/^['"]|['"]$/g, '')
       .replace(/[:\s]+$/g, '')
       .trim();
-    return (
-      normalized === '$content-schema' ||
-      normalized === '$content_schema' ||
-      normalized === 'content-schema' ||
-      normalized === 'content_schema'
-    );
+    return normalized === '$content-schema' || normalized === 'content-schema';
   };
 
   const keyValue = getFrontmatterKeyValueAtOffset(text, offset);

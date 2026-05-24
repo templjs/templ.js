@@ -847,7 +847,7 @@ describe('ContextGraphSemanticReadAdapter branch coverage', () => {
     expect(target?.uri).toBe(pathToFileURL(schemaPath).toString());
   });
 
-  it('resolves content schema aliases to URLs in frontmatter definitions', () => {
+  it('resolves content schema keys to URLs in frontmatter definitions', () => {
     const adapter = createContextGraphSemanticReadAdapter();
     const text = ['---', '$content-schema: https://example.com/content.json', '---'].join('\n');
     const offset = text.indexOf('content.json') + 2;
@@ -1307,7 +1307,7 @@ describe('context-graph helper branch coverage', () => {
     expect(target).toBeNull();
   });
 
-  it('resolves content schema aliases from frontmatter key tokens', () => {
+  it('resolves content schema keys from frontmatter key tokens', () => {
     const target = contextGraphAdapterTesting.getSchemaPathDefinition(
       ['---', '$content-schema: "https://example.com/content.json"', '---'].join('\n'),
       16,

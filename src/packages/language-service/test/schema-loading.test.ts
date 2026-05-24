@@ -52,7 +52,7 @@ describe('language-service schema-loading coverage branches', () => {
           uri: 'file:///workspace/backlog/item.md.templ',
           content: [
             '---',
-            '$templ-schema: .templjs/inline-frontmatter.json',
+            '$schema: .templjs/inline-frontmatter.json',
             '$content-schema: .templjs/inline-content.json',
             '---',
             '{"$schema":".templjs/root-frontmatter.json","$content-schema":".templjs/root-content.json"}',
@@ -108,7 +108,7 @@ describe('language-service schema-loading coverage branches', () => {
         initializationOptions: {
           documentContext: {
             uri: 'file:///workspace/data.json.templ',
-            content: '{"$schema":".templjs/root.json","$content_schema":".templjs/content.json"}',
+            content: '{"$schema":".templjs/root.json","$content-schema":".templjs/content.json"}',
           },
         },
       })

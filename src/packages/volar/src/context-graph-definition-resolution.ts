@@ -1,6 +1,5 @@
 import {
   getFrontmatterKeyValueAtOffset,
-  getFrontmatterSchemaAliases,
   getFrontmatterSchemaReferenceAtOffset,
   getTokenAtOffset,
   isOffsetInFrontmatter,
@@ -126,9 +125,7 @@ export function getPathValueDefinition(
 
   const registryKeys = new Set<string>([
     '$schema',
-    '$templ-schema',
     '$content-schema',
-    '$content_schema',
     ...getPathRegistryKeysFromSchema(options.schema),
     ...getPathRegistryKeysFromSchema(options.contentSchema),
   ]);
@@ -179,24 +176,6 @@ export function getSchemaPathDefinition(
     token = tokenRef.token;
   }
 
-  const keyToSchemaValue = (key: string): string | undefined => {
-    const trimmedKey = key.replace(/^"|"$/g, '');
-    if (
-      trimmedKey === '$schema' ||
-      trimmedKey === '$templ-schema' ||
-      trimmedKey === '$content_schema' ||
-      trimmedKey === '$content-schema'
-    ) {
-      const extracted = getFrontmatterSchemaAliases(text);
-      if (trimmedKey === '$schema' || trimmedKey === '$templ-schema') {
-        return extracted.templSchema;
-      }
-      return extracted.contentSchema;
-    }
-    return undefined;
-  };
-
-  token = keyToSchemaValue(token) ?? token;
   if (!token.includes('.json') && !token.startsWith('http://') && !token.startsWith('https://')) {
     return null;
   }
