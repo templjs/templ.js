@@ -495,7 +495,11 @@ export class ContextGraphSemanticReadAdapter {
     text: string,
     binding: TemplateBinding
   ): { sourceExpression: string; sourceExpressionStartOffset: number } | null {
-    if (binding.declarationStartOffset === undefined || !binding.sourceExpression) {
+    if (
+      binding.declarationStartOffset === undefined ||
+      binding.declarationEndOffset === undefined ||
+      !binding.sourceExpression
+    ) {
       return null;
     }
 
@@ -513,10 +517,29 @@ export class ContextGraphSemanticReadAdapter {
       return null;
     }
 
-    const relativeDeclarationOffset = Math.max(0, binding.declarationStartOffset - rawInnerStart);
+    const relativeDeclarationEnd = Math.max(0, binding.declarationEndOffset - rawInnerStart);
+    let expressionSearchStart = relativeDeclarationEnd;
+
+    if (binding.kind === 'set-variable') {
+      const assignmentIndex = rawInner.indexOf('=', relativeDeclarationEnd);
+      if (assignmentIndex !== -1) {
+        expressionSearchStart = assignmentIndex + 1;
+      }
+    } else if (binding.kind === 'for-alias' || binding.kind === 'for-value-alias') {
+      const inKeywordMatch = /\bin\b/.exec(rawInner.slice(relativeDeclarationEnd));
+      if (inKeywordMatch) {
+        expressionSearchStart =
+          relativeDeclarationEnd + inKeywordMatch.index + inKeywordMatch[0].length;
+      }
+    }
+
+    while (expressionSearchStart < rawInner.length && /\s/.test(rawInner[expressionSearchStart])) {
+      expressionSearchStart += 1;
+    }
+
     const expressionIndexFromDeclaration = rawInner.indexOf(
       sourceExpression,
-      relativeDeclarationOffset
+      expressionSearchStart
     );
     const expressionIndex =
       expressionIndexFromDeclaration >= 0
