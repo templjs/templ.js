@@ -178,11 +178,19 @@ describe('scope-resolution', () => {
     ]);
   });
 
-  it('returns empty inferred completions when root binding is not a set-variable', () => {
+  it('returns empty inferred completions when root binding source expression is not object-literal', () => {
     const text = '{% for item in items %}{{ item. }}{% endfor %}';
     const offset = text.indexOf('item.') + 'item.'.length;
 
     expect(getInferredLocalPropertyCompletions(text, offset, 'item')).toEqual([]);
+  });
+
+  it('returns inferred completions for single-alias for bindings with object-literal iterables', () => {
+    const text =
+      '{% for item in { name: "Ada", meta: { city: "London" } } %}{{ item. }}{% endfor %}';
+    const offset = text.indexOf('item.') + 'item.'.length;
+
+    expect(getInferredLocalPropertyCompletions(text, offset, 'item')).toEqual(['meta', 'name']);
   });
 
   it('returns empty inferred completions when set expression is not an object literal', () => {

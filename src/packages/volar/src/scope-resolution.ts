@@ -434,7 +434,13 @@ export function getInferredLocalPropertyCompletions(
 
   const [root, ...memberPath] = segments;
   const bindings = getInScopeTemplateBindings(text, offset, delimiters);
-  const binding = bindings.find((entry) => entry.name === root && entry.kind === 'set-variable');
+  const binding = bindings.find(
+    (entry) =>
+      entry.name === root &&
+      (entry.kind === 'set-variable' ||
+        entry.kind === 'for-alias' ||
+        entry.kind === 'for-value-alias')
+  );
   if (!binding) {
     return [];
   }

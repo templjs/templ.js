@@ -405,7 +405,7 @@ function collectObjectLiteralPaths(expression: string, prefix = ''): string[] {
   return paths;
 }
 
-function inferPathsFromSetExpression(sourceExpression?: string): string[] | undefined {
+function inferPathsFromSourceExpression(sourceExpression?: string): string[] | undefined {
   if (!sourceExpression) {
     return undefined;
   }
@@ -735,6 +735,7 @@ function collectBindingsFallback(template: string): TemplateBinding[] {
     names: Array<{ name: string; kind: TemplateBindingKind }>;
     sourcePath?: string;
     sourceExpression: string;
+    inferredPaths?: string[];
     scopeStartOffset: number;
     declarationOffsets: Record<string, { start: number; end: number } | undefined>;
   };
@@ -761,6 +762,7 @@ function collectBindingsFallback(template: string): TemplateBinding[] {
     if (forStatement) {
       const sourceExpression = forStatement.sourceExpression;
       const sourcePath = normalizePathFromExpression(sourceExpression);
+      const inferredPaths = inferPathsFromSourceExpression(sourceExpression);
 
       const names = forStatement.names.map((nameInfo) => ({
         name: nameInfo.name,
@@ -778,6 +780,7 @@ function collectBindingsFallback(template: string): TemplateBinding[] {
         names,
         sourcePath: sourcePath ?? undefined,
         sourceExpression,
+        inferredPaths,
         scopeStartOffset: statementEnd + endDelimiter.length,
         declarationOffsets,
       });
@@ -798,7 +801,7 @@ function collectBindingsFallback(template: string): TemplateBinding[] {
         name: setStatement.name,
         sourceExpression: setStatement.sourceExpression,
         sourcePath: normalizePathFromExpression(setStatement.sourceExpression) ?? undefined,
-        inferredPaths: inferPathsFromSetExpression(setStatement.sourceExpression),
+        inferredPaths: inferPathsFromSourceExpression(setStatement.sourceExpression),
         scopeStartOffset: statementEnd + endDelimiter.length,
         scopeEndOffset: template.length,
         declarationStartOffset: declarationOffset.start,
@@ -814,11 +817,16 @@ function collectBindingsFallback(template: string): TemplateBinding[] {
       if (openLoop) {
         for (const nameInfo of openLoop.names) {
           const declaration = openLoop.declarationOffsets[nameInfo.name];
+          const inferredPaths =
+            openLoop.names.length === 1 || nameInfo.kind === 'for-value-alias'
+              ? openLoop.inferredPaths
+              : undefined;
           bindings.push({
             kind: nameInfo.kind,
             name: nameInfo.name,
             sourcePath: openLoop.sourcePath,
             sourceExpression: openLoop.sourceExpression,
+            inferredPaths,
             scopeStartOffset: openLoop.scopeStartOffset,
             scopeEndOffset: statementStart,
             declarationStartOffset: declaration?.start,
@@ -835,11 +843,16 @@ function collectBindingsFallback(template: string): TemplateBinding[] {
     const openLoop = stack.pop()!;
     for (const nameInfo of openLoop.names) {
       const declaration = openLoop.declarationOffsets[nameInfo.name];
+      const inferredPaths =
+        openLoop.names.length === 1 || nameInfo.kind === 'for-value-alias'
+          ? openLoop.inferredPaths
+          : undefined;
       bindings.push({
         kind: nameInfo.kind,
         name: nameInfo.name,
         sourcePath: openLoop.sourcePath,
         sourceExpression: openLoop.sourceExpression,
+        inferredPaths,
         scopeStartOffset: openLoop.scopeStartOffset,
         scopeEndOffset: template.length,
         declarationStartOffset: declaration?.start,
@@ -868,8 +881,9 @@ function collectBindings(
       const sourcePath = expressionToPath(node.iterable);
       const sourceExpression =
         getForSourceExpression(template, node, statementEnd) ?? sourcePath ?? '';
+      const inferredPaths = inferPathsFromSourceExpression(sourceExpression);
 
-      if (sourcePath) {
+      if (sourcePath || inferredPaths?.length) {
         const declarations = getForDeclarationOffsets(template, node, statementEnd);
         const nodeStart = positionToOffset(template, node.start.line, node.start.column);
         const openingTagEnd = template.indexOf(statementEnd, nodeStart);
@@ -890,11 +904,14 @@ function collectBindings(
 
         for (const nameInfo of names) {
           const declaration = declarations.find((entry) => entry.name === nameInfo.name);
+          const bindingInferredPaths =
+            names.length === 1 || nameInfo.kind === 'for-value-alias' ? inferredPaths : undefined;
           bindings.push({
             kind: nameInfo.kind,
             name: nameInfo.name,
             sourcePath,
             sourceExpression,
+            inferredPaths: bindingInferredPaths,
             scopeStartOffset,
             scopeEndOffset,
             declarationStartOffset: declaration?.start,
@@ -923,7 +940,7 @@ function collectBindings(
         name: node.name,
         sourcePath,
         sourceExpression,
-        inferredPaths: inferPathsFromSetExpression(sourceExpression),
+        inferredPaths: inferPathsFromSourceExpression(sourceExpression),
         scopeStartOffset,
         scopeEndOffset: scopeBoundary,
         declarationStartOffset: declaration?.start,

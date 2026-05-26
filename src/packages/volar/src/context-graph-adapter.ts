@@ -491,11 +491,11 @@ export class ContextGraphSemanticReadAdapter {
   }
 
   /* c8 ignore start */
-  private parseSetExpressionAtBinding(
+  private parseBindingSourceExpressionAtBinding(
     text: string,
     binding: TemplateBinding
   ): { sourceExpression: string; sourceExpressionStartOffset: number } | null {
-    if (binding.declarationStartOffset === undefined) {
+    if (binding.declarationStartOffset === undefined || !binding.sourceExpression) {
       return null;
     }
 
@@ -508,57 +508,25 @@ export class ContextGraphSemanticReadAdapter {
     const rawInnerStart = statementStart + '{%'.length;
     const rawInner = text.slice(rawInnerStart, statementEnd);
 
-    let cursor = 0;
-    while (cursor < rawInner.length && /\s/.test(rawInner[cursor])) {
-      cursor += 1;
-    }
-    if (rawInner[cursor] === '-') {
-      cursor += 1;
-      while (cursor < rawInner.length && /\s/.test(rawInner[cursor])) {
-        cursor += 1;
-      }
-    }
-
-    if (!rawInner.startsWith('set', cursor)) {
-      return null;
-    }
-    cursor += 3;
-    while (cursor < rawInner.length && /\s/.test(rawInner[cursor])) {
-      cursor += 1;
-    }
-
-    const nameStart = cursor;
-    if (!/[A-Za-z_]/.test(rawInner[nameStart] ?? '')) {
-      return null;
-    }
-    cursor += 1;
-    while (cursor < rawInner.length && /[A-Za-z0-9_]/.test(rawInner[cursor])) {
-      cursor += 1;
-    }
-    const name = rawInner.slice(nameStart, cursor);
-    if (name !== binding.name) {
-      return null;
-    }
-
-    while (cursor < rawInner.length && /\s/.test(rawInner[cursor])) {
-      cursor += 1;
-    }
-    if (rawInner[cursor] !== '=') {
-      return null;
-    }
-    cursor += 1;
-    while (cursor < rawInner.length && /\s/.test(rawInner[cursor])) {
-      cursor += 1;
-    }
-
-    const sourceExpressionStartOffset = rawInnerStart + cursor;
-    const sourceExpression = rawInner
-      .slice(cursor)
-      .trimEnd()
-      .replace(/\s*-\s*$/, '');
+    const sourceExpression = binding.sourceExpression.trim();
     if (!sourceExpression) {
       return null;
     }
+
+    const relativeDeclarationOffset = Math.max(0, binding.declarationStartOffset - rawInnerStart);
+    const expressionIndexFromDeclaration = rawInner.indexOf(
+      sourceExpression,
+      relativeDeclarationOffset
+    );
+    const expressionIndex =
+      expressionIndexFromDeclaration >= 0
+        ? expressionIndexFromDeclaration
+        : rawInner.indexOf(sourceExpression);
+    if (expressionIndex === -1) {
+      return null;
+    }
+
+    const sourceExpressionStartOffset = rawInnerStart + expressionIndex;
 
     return {
       sourceExpression,
@@ -834,13 +802,18 @@ export class ContextGraphSemanticReadAdapter {
     const [root, ...memberSegments] = segments;
     const bindings = getTemplateBindingsAtOffset(extractTemplateBindings(text), offset);
     const binding = bindings.find(
-      (candidate) => candidate.kind === 'set-variable' && candidate.name === root
+      (candidate) =>
+        candidate.name === root &&
+        (candidate.kind === 'set-variable' ||
+          candidate.kind === 'for-alias' ||
+          candidate.kind === 'for-value-alias') &&
+        Boolean(candidate.inferredPaths?.length)
     );
     if (!binding) {
       return null;
     }
 
-    const parsed = this.parseSetExpressionAtBinding(text, binding);
+    const parsed = this.parseBindingSourceExpressionAtBinding(text, binding);
     if (!parsed) {
       return null;
     }
@@ -962,14 +935,14 @@ export class ContextGraphSemanticReadAdapter {
       context.zoneSegment ??
       context.semanticZone?.segment ??
       (context.contextBlock === 'frontmatter' ? 'metadata' : 'content');
-    const legacyContextBlock = resolvedZoneSegment === 'metadata' ? 'frontmatter' : 'content';
+    const contextBlock = resolvedZoneSegment === 'metadata' ? 'frontmatter' : 'content';
 
     const contextAttributes: Record<string, JsonPrimitive> = {
       operation: context.operation,
       profileId: resolveProfileId(context),
       zoneKind: resolveZoneKind(context),
       zoneSegment: resolvedZoneSegment,
-      contextBlock: legacyContextBlock,
+      contextBlock,
     };
     if (context.documentUri) {
       contextAttributes.documentUri = context.documentUri;

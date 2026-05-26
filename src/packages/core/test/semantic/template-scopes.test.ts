@@ -185,6 +185,29 @@ describe('template-scopes helpers', () => {
     expect(setBinding?.inferredPaths).toEqual(['meta', 'meta.city', 'meta.note', 'name', 'tags']);
   });
 
+  it('infers object-literal member paths for single-alias for bindings', () => {
+    const template =
+      '{% for item in { name: "Ada", meta: { city: "London" } } %}{{ item.meta.city }}{% endfor %}';
+    const bindings = extractTemplateBindings(template);
+    const forBinding = bindings.find((binding) => binding.kind === 'for-alias');
+
+    expect(forBinding?.name).toBe('item');
+    expect(forBinding?.inferredPaths).toEqual(['meta', 'meta.city', 'name']);
+  });
+
+  it('assigns inferred paths to for value aliases while leaving key aliases undefined', () => {
+    const template =
+      '{% for key, value in { name: "Ada", meta: { city: "London" } } %}{{ value.meta.city }}{% endfor %}';
+    const bindings = extractTemplateBindings(template);
+    const keyBinding = bindings.find((binding) => binding.kind === 'for-alias');
+    const valueBinding = bindings.find((binding) => binding.kind === 'for-value-alias');
+
+    expect(keyBinding?.name).toBe('key');
+    expect(keyBinding?.inferredPaths).toBeUndefined();
+    expect(valueBinding?.name).toBe('value');
+    expect(valueBinding?.inferredPaths).toEqual(['meta', 'meta.city', 'name']);
+  });
+
   it('sorts overlapping in-scope bindings by nearest scope start offset', () => {
     const bindings = [
       {

@@ -1,0 +1,16 @@
+{
+  "PLAN_TITLE": "dynamic-local-inference-two-phase",
+  "PLAN_ID": "dynamic-local-inference-two-phase",
+  "CREATED_AT": "2026-05-26T03:07:50Z",
+  "IN_SCOPE_1": "Execute plan dynamic-local-inference-two-phase in deterministic phases",
+  "OUT_SCOPE_1": "Unrelated refactors outside declared step actions",
+  "STEP_ID_1": "analyze-scope",
+  "ACTION_1": "confirm-scope-and-dependencies",
+  "OUTPUT_1": "validated plan scope and dependency graph",
+  "STEP_ID_2": "implement",
+  "ACTION_2": "apply-minimal-patch",
+  "FILES_2": "plan-scoped target files only",
+  "STEP_ID_3": "validate",
+  "STEP_ID_4": "pr-process",
+  "STEP_ID_5": "merge"
+}

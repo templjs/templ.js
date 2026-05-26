@@ -736,7 +736,6 @@ describe('ContextGraphSemanticReadAdapter branch coverage', () => {
         contextBlock: 'content',
         semanticZone: {
           kind: 'body',
-          legacyContextBlock: 'content',
           profileId: 'metadata.frontmatter',
         },
       },

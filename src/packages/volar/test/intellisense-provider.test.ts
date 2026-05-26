@@ -184,6 +184,22 @@ describe('IntellisenseProvider', () => {
     expect(items.some((item) => item.label === 'meta' && item.kind === 'property')).toBe(true);
   });
 
+  it('provides inferred property completions for for aliases with object-literal iterables', () => {
+    const text =
+      '{% for item in { name: "Ada", meta: { city: "London" } } %}{{ item. }}{% endfor %}';
+    const offset = text.lastIndexOf('item.') + 'item.'.length;
+
+    const items = provider.getCompletions(text, offset, {
+      schema: {
+        type: 'object',
+        properties: {},
+      },
+    });
+
+    expect(items.some((item) => item.label === 'name' && item.kind === 'property')).toBe(true);
+    expect(items.some((item) => item.label === 'meta' && item.kind === 'property')).toBe(true);
+  });
+
   it('provides filter completions after pipe', () => {
     const items = provider.getCompletions('{{ user.name | }}', 16, {
       schema: sampleSchema,
@@ -425,6 +441,22 @@ describe('IntellisenseProvider', () => {
     expect(definition?.range).toBeDefined();
     const key = text.slice(definition!.range!.start.character, definition!.range!.end.character);
     expect(key).toBe('users');
+  });
+
+  it('returns inferred local definition for for-alias member paths in object-literal iterables', () => {
+    const text =
+      '{% for item in { profile: { name: "Ada" } } %}{{ item.profile.name }}{% endfor %}';
+    const offset = text.indexOf('item.profile.name') + 'item.profile.name'.length - 1;
+
+    const definition = provider.getDefinition(text, offset, {
+      documentUri: 'file:///workspace/project.md.tpl',
+      schema: sampleSchema,
+    });
+
+    expect(definition?.uri).toBe('file:///workspace/project.md.tpl');
+    expect(definition?.range).toBeDefined();
+    const key = text.slice(definition!.range!.start.character, definition!.range!.end.character);
+    expect(key).toBe('name');
   });
 
   it('returns signature help for filter call', () => {
