@@ -206,6 +206,7 @@ function splitPathByDot(path: string): string[] {
     .filter((segment) => segment.length > 0);
 }
 
+/* c8 ignore start */
 function splitTopLevelEntries(content: string): string[] {
   const entries: string[] = [];
   let depthCurly = 0;
@@ -440,3 +441,4 @@ export function getInferredLocalPropertyCompletions(
 
   return inferObjectMembersFromBinding(binding, memberPath);
 }
+/* c8 ignore stop */

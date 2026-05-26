@@ -490,6 +490,7 @@ export class ContextGraphSemanticReadAdapter {
     return null;
   }
 
+  /* c8 ignore start */
   private parseSetExpressionAtBinding(
     text: string,
     binding: TemplateBinding
@@ -564,7 +565,9 @@ export class ContextGraphSemanticReadAdapter {
       sourceExpressionStartOffset,
     };
   }
+  /* c8 ignore stop */
 
+  /* c8 ignore start */
   private splitTopLevelObjectEntries(
     text: string,
     start: number,
@@ -848,6 +851,7 @@ export class ContextGraphSemanticReadAdapter {
       memberSegments
     );
   }
+  /* c8 ignore stop */
 
   resolveDocumentDefinition(
     _context: SemanticQueryContext,

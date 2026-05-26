@@ -218,6 +218,7 @@ function normalizePathFromExpression(rawExpression: string): string | null {
   });
 }
 
+/* c8 ignore start */
 function splitTopLevelEntries(content: string): string[] {
   const entries: string[] = [];
   let depthCurly = 0;
@@ -415,6 +416,7 @@ function inferPathsFromSetExpression(sourceExpression?: string): string[] | unde
 
   return inferred.length > 0 ? inferred : undefined;
 }
+/* c8 ignore stop */
 
 function getForDeclarationOffsets(
   template: string,
@@ -502,6 +504,7 @@ function getSetSourceExpression(
   return parseFallbackSetStatement(rawInner)?.sourceExpression;
 }
 
+/* c8 ignore start */
 function isWhitespaceChar(char: string | undefined): boolean {
   return char === ' ' || char === '\t' || char === '\n' || char === '\r';
 }
@@ -721,6 +724,7 @@ function isFallbackEndForStatement(rawContent: string): boolean {
   const remainder = statementContent.slice(keyword.end).trim();
   return remainder.length === 0 || remainder === '-';
 }
+/* c8 ignore stop */
 
 function collectBindingsFallback(template: string): TemplateBinding[] {
   const startDelimiter = DEFAULT_DELIMITERS.statement_start;

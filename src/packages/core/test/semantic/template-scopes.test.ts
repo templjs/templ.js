@@ -176,6 +176,15 @@ describe('template-scopes helpers', () => {
     expect(setBinding?.inferredPaths).toEqual(['meta', 'meta.city', 'name']);
   });
 
+  it('infers nested object-literal paths while ignoring unsupported keys', () => {
+    const template =
+      '{% set profile = { "": "skip", name: "Ada", meta: { city: "London", note: "A, B" }, tags: [1, 2] } %}{{ profile.meta.city }}';
+    const bindings = extractTemplateBindings(template);
+    const setBinding = bindings.find((binding) => binding.kind === 'set-variable');
+
+    expect(setBinding?.inferredPaths).toEqual(['meta', 'meta.city', 'meta.note', 'name', 'tags']);
+  });
+
   it('sorts overlapping in-scope bindings by nearest scope start offset', () => {
     const bindings = [
       {
@@ -960,6 +969,103 @@ describe('template-scopes helpers', () => {
         sourcePath: 'users',
       }),
     ]);
+  });
+
+  it('parses trim-marked fallback for statements with key-value aliases', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({ ast: null, errors: [new Error('recover me')] }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    const bindings = module.extractTemplateBindings(
+      '{%- for key, value in users[activeIndex + 1] | reverse -%}{%- endfor -%}'
+    );
+
+    expect(bindings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'key', sourcePath: 'users[0]' }),
+        expect.objectContaining({ name: 'value', sourcePath: 'users[0]' }),
+      ])
+    );
+  });
+
+  it('parses trim-marked fallback set statements with source expression capture', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({
+      tokenize: (value: string) => value,
+    }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({ ast: null, errors: [new Error('recover me')] }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    const bindings = module.extractTemplateBindings('{%- set profile = users[item + 1] -%}');
+
+    expect(bindings).toEqual([
+      expect.objectContaining({
+        kind: 'set-variable',
+        name: 'profile',
+        sourcePath: 'users[0]',
+        sourceExpression: 'users[item + 1]',
+      }),
+    ]);
+  });
+
+  it('skips malformed fallback for-headers with missing iterator identifiers', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({ tokenize: (value: string) => value }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({ ast: null, errors: [new Error('recover me')] }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    expect(module.extractTemplateBindings('{%- for in users -%}{%- endfor -%}')).toEqual([]);
+  });
+
+  it('skips malformed fallback for-headers with invalid in-keyword boundaries', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({ tokenize: (value: string) => value }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({ ast: null, errors: [new Error('recover me')] }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    expect(module.extractTemplateBindings('{% for item inx users %}{% endfor %}')).toEqual([]);
+  });
+
+  it('collects unclosed fallback for-bindings through template end', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({ tokenize: (value: string) => value }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({ ast: null, errors: [new Error('recover me')] }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    const template = '{%- for item in users -%}{{ item }}';
+    const bindings = module.extractTemplateBindings(template);
+
+    expect(bindings).toEqual([
+      expect.objectContaining({
+        name: 'item',
+        sourcePath: 'users',
+        scopeEndOffset: template.length,
+      }),
+    ]);
+  });
+
+  it('skips malformed fallback set statements without assignment expressions', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/lexer/lexer.js', () => ({ tokenize: (value: string) => value }));
+    vi.doMock('../../src/parser/parser.js', () => ({
+      parse: () => ({ ast: null, errors: [new Error('recover me')] }),
+    }));
+
+    const module = await import('../../src/semantic/template-scopes.js');
+    expect(module.extractTemplateBindings('{%- set profile users -%}')).toEqual([]);
   });
 
   it('sorts recovered fallback bindings by scope start offset', async () => {

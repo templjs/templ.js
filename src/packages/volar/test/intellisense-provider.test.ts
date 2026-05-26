@@ -395,6 +395,38 @@ describe('IntellisenseProvider', () => {
     expect(key).toBe('city');
   });
 
+  it('returns inferred local definition for statement expression variables', () => {
+    const text =
+      '{% set profile = { meta: { city: "London" } } %}{% if profile.meta.city %}{% endif %}';
+    const offset = text.indexOf('profile.meta.city') + 'profile.meta.city'.length - 1;
+
+    const definition = provider.getDefinition(text, offset, {
+      documentUri: 'file:///workspace/project.md.tpl',
+      schema: sampleSchema,
+    });
+
+    expect(definition?.uri).toBe('file:///workspace/project.md.tpl');
+    expect(definition?.range).toBeDefined();
+    const key = text.slice(definition!.range!.start.character, definition!.range!.end.character);
+    expect(key).toBe('city');
+  });
+
+  it('returns inferred local definition for for-iterable statement variables', () => {
+    const text =
+      '{% set profile = { users: [{ id: 1 }] } %}{% for item in profile.users %}{{ item.id }}{% endfor %}';
+    const offset = text.indexOf('profile.users') + 'profile.users'.length - 1;
+
+    const definition = provider.getDefinition(text, offset, {
+      documentUri: 'file:///workspace/project.md.tpl',
+      schema: sampleSchema,
+    });
+
+    expect(definition?.uri).toBe('file:///workspace/project.md.tpl');
+    expect(definition?.range).toBeDefined();
+    const key = text.slice(definition!.range!.start.character, definition!.range!.end.character);
+    expect(key).toBe('users');
+  });
+
   it('returns signature help for filter call', () => {
     const help = provider.getSignatureHelp('{{ user.name | replace("a", "b") }}', 28, {
       schema: sampleSchema,
