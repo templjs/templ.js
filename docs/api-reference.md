@@ -38,17 +38,24 @@ const result = renderTemplate('Hello {{ user.name }}', {
 });
 ```
 
-### [`validateTemplate(template)`](../src/packages/core/src/index.ts#L202)
+### [`validateTemplate(template)`](../src/packages/core/src/index.ts#L278)
 
-Validates template syntax and returns `{ valid, errors? }`.
+Validates template syntax and returns `{ valid, syntaxDiagnostics }`.
 
-- Source: [src/packages/core/src/index.ts](../src/packages/core/src/index.ts#L202)
-- Examples/Tests: [src/packages/core/test/index.test.ts](../src/packages/core/test/index.test.ts#L101)
+- `valid`: boolean success flag for the full validation pass
+- `syntaxDiagnostics`: ordered lexical/parse diagnostics for tooling and CLI reporting
+
+- Source: [src/packages/core/src/index.ts](../src/packages/core/src/index.ts#L278)
+- Examples/Tests: [src/packages/core/test/index.test.ts](../src/packages/core/test/index.test.ts#L116)
 
 ```ts
 import { validateTemplate } from '@templjs/core';
 
 const result = validateTemplate('{% if user %}Hello{% endif %}');
+
+if (!result.valid) {
+  console.log(result.syntaxDiagnostics);
+}
 ```
 
 ### [`tokenize(template)`](../src/packages/core/src/lexer/lexer.ts#L21) and [`parse(tokens)`](../src/packages/core/src/parser/parser.ts#L871)
