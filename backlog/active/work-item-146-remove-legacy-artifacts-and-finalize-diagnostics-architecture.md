@@ -17,6 +17,7 @@ links:
     - '[[record-20260523-044941-146-remove-legacy-artifacts-and-finalize-diagnostics-architecture]]'
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/186'
+    - 'https://github.com/templjs/templ.js/pull/188'
 ---
 
 ## Goal
