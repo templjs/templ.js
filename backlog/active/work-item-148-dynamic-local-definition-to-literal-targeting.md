@@ -17,6 +17,7 @@ links:
     - '[[record-20260525-120500-148-dynamic-local-definition-to-literal-targeting]]'
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/187'
+    - 'https://github.com/templjs/templ.js/pull/189'
 ---
 
 ## Goal

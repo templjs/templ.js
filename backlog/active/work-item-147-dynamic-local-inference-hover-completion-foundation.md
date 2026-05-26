@@ -17,6 +17,7 @@ links:
     - '[[record-20260525-120000-147-dynamic-local-inference-hover-completion-foundation]]'
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/187'
+    - 'https://github.com/templjs/templ.js/pull/189'
 ---
 
 ## Goal
