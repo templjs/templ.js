@@ -194,6 +194,23 @@ describe('TemplJS adapters and authoring profile', () => {
     expect(bindingNode?.content.name).toBe('title');
   });
 
+  it('projects inferred local object-literal paths from set bindings', () => {
+    const adapterOutput = createTempljsTemplateAdapterOutput({
+      sourceDocId: 'file:///inferred.tpl',
+      text: '{% set profile = { name: "Ada", meta: { city: "London" } } %}{{ profile.name }}',
+    });
+
+    const inferredNodes = adapterOutput.nodes.filter(
+      (node) => node.kind === 'templjs.inferred-path'
+    );
+    expect(inferredNodes.map((node) => String(node.content.path)).sort()).toEqual([
+      'meta',
+      'meta.city',
+      'name',
+    ]);
+    expect(inferredNodes.every((node) => node.content.inferred === true)).toBe(true);
+  });
+
   it('projects nested schema metadata paths using dotted parent relationships', () => {
     const adapterOutput = createTempljsSchemaAdapterOutput({
       sourceDocId: 'file:///nested-paths.schema.json',

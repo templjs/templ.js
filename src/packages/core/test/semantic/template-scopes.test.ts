@@ -166,6 +166,16 @@ describe('template-scopes helpers', () => {
     ).toBe(false);
   });
 
+  it('infers object-literal member paths for set-variable bindings', () => {
+    const template =
+      '{% set profile = { name: "Ada", meta: { city: "London" } } %}{{ profile.name }}';
+    const bindings = extractTemplateBindings(template);
+    const setBinding = bindings.find((binding) => binding.kind === 'set-variable');
+
+    expect(setBinding?.name).toBe('profile');
+    expect(setBinding?.inferredPaths).toEqual(['meta', 'meta.city', 'name']);
+  });
+
   it('sorts overlapping in-scope bindings by nearest scope start offset', () => {
     const bindings = [
       {

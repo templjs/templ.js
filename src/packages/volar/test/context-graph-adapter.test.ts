@@ -448,6 +448,21 @@ describe('ContextGraphSemanticReadAdapter.resolveLocalAliasDefinition', () => {
       extractSpy.mockRestore();
     }
   });
+
+  it('resolves inferred member key ranges from set object literals', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const text =
+      '{% set profile = { name: "Ada", meta: { city: "London" } } %}{{ profile.meta.city }}';
+    const offset = text.indexOf('profile.meta.city') + 'profile.meta.city'.length - 1;
+
+    const city = adapter.resolveLocalInferredPathDefinition(text, 'profile.meta.city', offset);
+    const name = adapter.resolveLocalInferredPathDefinition(text, 'profile.name', offset);
+
+    expect(city).not.toBeNull();
+    expect(name).not.toBeNull();
+    expect(text.slice(city!.start, city!.end)).toBe('city');
+    expect(text.slice(name!.start, name!.end)).toBe('name');
+  });
 });
 
 describe('ContextGraphSemanticReadAdapter.loadSchemaRef', () => {

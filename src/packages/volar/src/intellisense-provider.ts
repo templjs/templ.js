@@ -18,6 +18,7 @@ import {
 } from './expression-analysis.js';
 import {
   buildForScopesInText,
+  getInferredLocalPropertyCompletions,
   getInScopeTemplateBindings,
   resolveScopedPath,
 } from './scope-resolution.js';
@@ -90,7 +91,13 @@ export type SemanticReadAdapter = Pick<
   | 'resolvePathDefinition'
   | 'resolveDocumentDefinition'
   | 'resolveLocalAliasDefinition'
->;
+> & {
+  resolveLocalInferredPathDefinition?: (
+    text: string,
+    path: string,
+    offset: number
+  ) => { start: number; end: number } | null;
+};
 
 const DEFAULT_KEYWORDS = [
   'if',
@@ -747,6 +754,30 @@ function getExpressionCompletionsAtOffset(
   const resolveBase = (basePath: string): string =>
     pathResolver ? pathResolver(basePath) : basePath;
 
+  const getInferredLocalPropertyItems = (
+    basePath: string,
+    propertyPrefix: string
+  ): CompletionItem[] => {
+    const inferredProperties = getInferredLocalPropertyCompletions(
+      fullText,
+      fullOffset,
+      basePath,
+      delimiters
+    );
+    if (inferredProperties.length === 0) {
+      return [];
+    }
+
+    const inferredItems = inferredProperties.map((label) => ({
+      label,
+      kind: 'property' as const,
+      detail: 'inferred local property',
+    }));
+
+    const filtered = filterAndSortCompletions(inferredItems, propertyPrefix);
+    return filtered.length > 0 ? filtered : inferredItems;
+  };
+
   const logRawDuplicateLabels = (items: CompletionItem[]): void => {
     const duplicates = summarizeDuplicateLabels(items);
     if (duplicates.length > 0) {
@@ -766,13 +797,17 @@ function getExpressionCompletionsAtOffset(
     const lastDot = typedPath.lastIndexOf('.');
     if (lastDot >= 0) {
       // Property completions: keep using semantic read adapter (schema-driven)
-      const resolvedBase = resolveBase(typedPath.slice(0, lastDot));
+      const localBase = typedPath.slice(0, lastDot);
+      const resolvedBase = resolveBase(localBase);
       const propertyPrefix = typedPath.slice(lastDot + 1);
       const graphItems = semanticReadAdapter.getChildCompletions(
         semanticContext,
         resolvedBase,
         semanticOptions
       );
+      if (graphItems.length === 0) {
+        return getInferredLocalPropertyItems(localBase, propertyPrefix);
+      }
       const filtered = filterAndSortCompletions(graphItems, propertyPrefix);
       return filtered.length > 0 ? filtered : graphItems;
     }
@@ -791,13 +826,17 @@ function getExpressionCompletionsAtOffset(
   const lastDot = prefix.lastIndexOf('.');
   if (lastDot >= 0) {
     // Property completions: keep using semantic read adapter (schema-driven)
-    const resolvedBase = resolveBase(prefix.slice(0, lastDot));
+    const localBase = prefix.slice(0, lastDot);
+    const resolvedBase = resolveBase(localBase);
     const propertyPrefix = prefix.slice(lastDot + 1);
     const graphItems = semanticReadAdapter.getChildCompletions(
       semanticContext,
       resolvedBase,
       semanticOptions
     );
+    if (graphItems.length === 0) {
+      return getInferredLocalPropertyItems(localBase, propertyPrefix);
+    }
     const filtered = filterAndSortCompletions(graphItems, propertyPrefix);
     return filtered.length > 0 ? filtered : graphItems;
   }
@@ -1469,6 +1508,24 @@ export class IntellisenseProvider {
         };
       }
 
+      const inferredLocalDefinition = this.semanticReadAdapter.resolveLocalInferredPathDefinition?.(
+        text,
+        variablePath,
+        offset
+      );
+      if (inferredLocalDefinition && options?.documentUri) {
+        options?.debugLog?.(
+          `[intellisense] definition source=local-inferred-path variable=${variablePath} uri=${options.documentUri}`
+        );
+        return {
+          uri: options.documentUri,
+          range: {
+            start: getPositionForOffset(text, inferredLocalDefinition.start),
+            end: getPositionForOffset(text, inferredLocalDefinition.end),
+          },
+        };
+      }
+
       const canonicalPath = resolveDefinitionPath(variablePath);
       options?.debugLog?.(
         `[intellisense] definition source=expression-schema variable=${variablePath} canonical=${canonicalPath}`
@@ -1559,6 +1616,25 @@ export class IntellisenseProvider {
             };
           }
 
+          const inferredLocalDefinition =
+            this.semanticReadAdapter.resolveLocalInferredPathDefinition?.(
+              text,
+              iterablePath,
+              offset
+            );
+          if (inferredLocalDefinition && options?.documentUri) {
+            options?.debugLog?.(
+              `[intellisense] definition source=statement-local-inferred-path variable=${iterablePath} uri=${options.documentUri}`
+            );
+            return {
+              uri: options.documentUri,
+              range: {
+                start: getPositionForOffset(text, inferredLocalDefinition.start),
+                end: getPositionForOffset(text, inferredLocalDefinition.end),
+              },
+            };
+          }
+
           const canonicalPath = resolveDefinitionPath(iterablePath);
           options?.debugLog?.(
             `[intellisense] definition source=statement-for-iterable variable=${iterablePath} canonical=${canonicalPath}`
@@ -1598,6 +1674,24 @@ export class IntellisenseProvider {
         range: {
           start: getPositionForOffset(text, localAlias.declaration.start),
           end: getPositionForOffset(text, localAlias.declaration.end),
+        },
+      };
+    }
+
+    const inferredLocalDefinition = this.semanticReadAdapter.resolveLocalInferredPathDefinition?.(
+      text,
+      variablePath,
+      offset
+    );
+    if (inferredLocalDefinition && options?.documentUri) {
+      options?.debugLog?.(
+        `[intellisense] definition source=statement-local-inferred-path variable=${variablePath} uri=${options.documentUri}`
+      );
+      return {
+        uri: options.documentUri,
+        range: {
+          start: getPositionForOffset(text, inferredLocalDefinition.start),
+          end: getPositionForOffset(text, inferredLocalDefinition.end),
         },
       };
     }

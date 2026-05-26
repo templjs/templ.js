@@ -1,0 +1,67 @@
+{
+  "steps": {
+    "phase-1-analyze-scope": {
+      "status": "done",
+      "type": "analyze",
+      "action": "confirm phase 1 scope, dependency boundaries, and fallback semantics",
+      "depends_on": []
+    },
+    "phase-1-edit-core-semantify": {
+      "status": "done",
+      "type": "edit",
+      "action": "implement dynamic local inferred-path metadata and semantic node projection",
+      "depends_on": ["phase-1-analyze-scope"]
+    },
+    "phase-1-edit-volar-read-paths": {
+      "status": "done",
+      "type": "edit",
+      "action": "wire inferred-path hover and completion read paths with schema fallback",
+      "depends_on": ["phase-1-edit-core-semantify"]
+    },
+    "phase-1-validate": {
+      "status": "done",
+      "type": "validate",
+      "action": "run phase 1 targeted tests and backlog frontmatter lint",
+      "depends_on": ["phase-1-edit-volar-read-paths"]
+    },
+    "phase-2-analyze-definition-targeting": {
+      "status": "done",
+      "type": "analyze",
+      "action": "confirm inferred definition-target precedence and malformed-template confidence thresholds",
+      "depends_on": ["phase-1-validate"]
+    },
+    "phase-2-edit-definition-contracts": {
+      "status": "done",
+      "type": "edit",
+      "action": "implement inferred definition target contracts and resolver precedence",
+      "depends_on": ["phase-2-analyze-definition-targeting"]
+    },
+    "phase-2-validate": {
+      "status": "done",
+      "type": "validate",
+      "action": "run definition-targeting regressions and final lint gates",
+      "depends_on": ["phase-2-edit-definition-contracts"]
+    },
+    "pr-process": {
+      "status": "pending",
+      "type": "pr",
+      "action": "create-or-update-pr",
+      "depends_on": ["phase-2-validate"]
+    },
+    "merge": {
+      "status": "pending",
+      "type": "merge",
+      "action": "run-process-pr",
+      "depends_on": ["pr-process"]
+    },
+    "finalize": {
+      "status": "pending",
+      "type": "finalize",
+      "action": "sync-evidence-and-close-loop",
+      "depends_on": ["merge"]
+    }
+  },
+  "completed": false,
+  "blocked": false,
+  "next_action": "next"
+}

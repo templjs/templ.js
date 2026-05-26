@@ -490,6 +490,365 @@ export class ContextGraphSemanticReadAdapter {
     return null;
   }
 
+  private parseSetExpressionAtBinding(
+    text: string,
+    binding: TemplateBinding
+  ): { sourceExpression: string; sourceExpressionStartOffset: number } | null {
+    if (binding.declarationStartOffset === undefined) {
+      return null;
+    }
+
+    const statementStart = text.lastIndexOf('{%', binding.declarationStartOffset);
+    const statementEnd = text.indexOf('%}', binding.declarationStartOffset);
+    if (statementStart === -1 || statementEnd === -1 || statementEnd <= statementStart) {
+      return null;
+    }
+
+    const rawInnerStart = statementStart + '{%'.length;
+    const rawInner = text.slice(rawInnerStart, statementEnd);
+
+    let cursor = 0;
+    while (cursor < rawInner.length && /\s/.test(rawInner[cursor])) {
+      cursor += 1;
+    }
+    if (rawInner[cursor] === '-') {
+      cursor += 1;
+      while (cursor < rawInner.length && /\s/.test(rawInner[cursor])) {
+        cursor += 1;
+      }
+    }
+
+    if (!rawInner.startsWith('set', cursor)) {
+      return null;
+    }
+    cursor += 3;
+    while (cursor < rawInner.length && /\s/.test(rawInner[cursor])) {
+      cursor += 1;
+    }
+
+    const nameStart = cursor;
+    if (!/[A-Za-z_]/.test(rawInner[nameStart] ?? '')) {
+      return null;
+    }
+    cursor += 1;
+    while (cursor < rawInner.length && /[A-Za-z0-9_]/.test(rawInner[cursor])) {
+      cursor += 1;
+    }
+    const name = rawInner.slice(nameStart, cursor);
+    if (name !== binding.name) {
+      return null;
+    }
+
+    while (cursor < rawInner.length && /\s/.test(rawInner[cursor])) {
+      cursor += 1;
+    }
+    if (rawInner[cursor] !== '=') {
+      return null;
+    }
+    cursor += 1;
+    while (cursor < rawInner.length && /\s/.test(rawInner[cursor])) {
+      cursor += 1;
+    }
+
+    const sourceExpressionStartOffset = rawInnerStart + cursor;
+    const sourceExpression = rawInner
+      .slice(cursor)
+      .trimEnd()
+      .replace(/\s*-\s*$/, '');
+    if (!sourceExpression) {
+      return null;
+    }
+
+    return {
+      sourceExpression,
+      sourceExpressionStartOffset,
+    };
+  }
+
+  private splitTopLevelObjectEntries(
+    text: string,
+    start: number,
+    end: number
+  ): Array<{ start: number; end: number }> {
+    const entries: Array<{ start: number; end: number }> = [];
+    let depthCurly = 0;
+    let depthSquare = 0;
+    let depthParen = 0;
+    let quote: '"' | "'" | null = null;
+    let escape = false;
+    let entryStart = start;
+
+    for (let index = start; index < end; index += 1) {
+      const char = text[index];
+
+      if (quote) {
+        if (escape) {
+          escape = false;
+          continue;
+        }
+        if (char === '\\') {
+          escape = true;
+          continue;
+        }
+        if (char === quote) {
+          quote = null;
+        }
+        continue;
+      }
+
+      if (char === '"' || char === "'") {
+        quote = char;
+        continue;
+      }
+
+      if (char === '{') {
+        depthCurly += 1;
+        continue;
+      }
+      if (char === '}') {
+        depthCurly = Math.max(0, depthCurly - 1);
+        continue;
+      }
+      if (char === '[') {
+        depthSquare += 1;
+        continue;
+      }
+      if (char === ']') {
+        depthSquare = Math.max(0, depthSquare - 1);
+        continue;
+      }
+      if (char === '(') {
+        depthParen += 1;
+        continue;
+      }
+      if (char === ')') {
+        depthParen = Math.max(0, depthParen - 1);
+        continue;
+      }
+
+      if (char === ',' && depthCurly === 0 && depthSquare === 0 && depthParen === 0) {
+        entries.push({ start: entryStart, end: index });
+        entryStart = index + 1;
+      }
+    }
+
+    entries.push({ start: entryStart, end });
+    return entries;
+  }
+
+  private findTopLevelColon(text: string, start: number, end: number): number {
+    let depthCurly = 0;
+    let depthSquare = 0;
+    let depthParen = 0;
+    let quote: '"' | "'" | null = null;
+    let escape = false;
+
+    for (let index = start; index < end; index += 1) {
+      const char = text[index];
+
+      if (quote) {
+        if (escape) {
+          escape = false;
+          continue;
+        }
+        if (char === '\\') {
+          escape = true;
+          continue;
+        }
+        if (char === quote) {
+          quote = null;
+        }
+        continue;
+      }
+
+      if (char === '"' || char === "'") {
+        quote = char;
+        continue;
+      }
+
+      if (char === '{') {
+        depthCurly += 1;
+        continue;
+      }
+      if (char === '}') {
+        depthCurly = Math.max(0, depthCurly - 1);
+        continue;
+      }
+      if (char === '[') {
+        depthSquare += 1;
+        continue;
+      }
+      if (char === ']') {
+        depthSquare = Math.max(0, depthSquare - 1);
+        continue;
+      }
+      if (char === '(') {
+        depthParen += 1;
+        continue;
+      }
+      if (char === ')') {
+        depthParen = Math.max(0, depthParen - 1);
+        continue;
+      }
+
+      if (char === ':' && depthCurly === 0 && depthSquare === 0 && depthParen === 0) {
+        return index;
+      }
+    }
+
+    return -1;
+  }
+
+  private normalizeObjectKey(
+    text: string,
+    start: number,
+    end: number
+  ): { key: string; keyStart: number; keyEnd: number } | null {
+    let keyStart = start;
+    let keyEnd = end;
+
+    while (keyStart < keyEnd && /\s/.test(text[keyStart])) {
+      keyStart += 1;
+    }
+    while (keyEnd > keyStart && /\s/.test(text[keyEnd - 1])) {
+      keyEnd -= 1;
+    }
+
+    if (keyEnd <= keyStart) {
+      return null;
+    }
+
+    const first = text[keyStart];
+    const last = text[keyEnd - 1];
+    if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+      if (keyEnd - keyStart < 2) {
+        return null;
+      }
+      return {
+        key: text.slice(keyStart + 1, keyEnd - 1),
+        keyStart: keyStart + 1,
+        keyEnd: keyEnd - 1,
+      };
+    }
+
+    const raw = text.slice(keyStart, keyEnd);
+    if (!/^[A-Za-z_][\w]*$/.test(raw)) {
+      return null;
+    }
+
+    return {
+      key: raw,
+      keyStart,
+      keyEnd,
+    };
+  }
+
+  private findObjectMemberKeyRange(
+    expression: string,
+    expressionStartOffset: number,
+    segments: string[]
+  ): { start: number; end: number } | null {
+    if (segments.length === 0) {
+      return null;
+    }
+
+    const locate = (
+      objectText: string,
+      objectStartOffset: number,
+      segmentIndex: number
+    ): { start: number; end: number } | null => {
+      const trimmedLeft = objectText.length - objectText.trimStart().length;
+      const trimmedRight = objectText.trimEnd().length;
+      const coreStart = trimmedLeft;
+      const coreEnd = trimmedRight;
+      if (coreEnd <= coreStart) {
+        return null;
+      }
+
+      if (objectText[coreStart] !== '{' || objectText[coreEnd - 1] !== '}') {
+        return null;
+      }
+
+      const innerStart = coreStart + 1;
+      const innerEnd = coreEnd - 1;
+      for (const entry of this.splitTopLevelObjectEntries(objectText, innerStart, innerEnd)) {
+        const colon = this.findTopLevelColon(objectText, entry.start, entry.end);
+        if (colon === -1) {
+          continue;
+        }
+
+        const normalizedKey = this.normalizeObjectKey(objectText, entry.start, colon);
+        if (!normalizedKey) {
+          continue;
+        }
+
+        if (normalizedKey.key !== segments[segmentIndex]) {
+          continue;
+        }
+
+        const absoluteKeyRange = {
+          start: objectStartOffset + normalizedKey.keyStart,
+          end: objectStartOffset + normalizedKey.keyEnd,
+        };
+
+        if (segmentIndex === segments.length - 1) {
+          return absoluteKeyRange;
+        }
+
+        const valueText = objectText.slice(colon + 1, entry.end);
+        const valueStart = objectStartOffset + colon + 1;
+        const nested = locate(valueText, valueStart, segmentIndex + 1);
+        if (nested) {
+          return nested;
+        }
+      }
+
+      return null;
+    };
+
+    return locate(expression, expressionStartOffset, 0);
+  }
+
+  resolveLocalInferredPathDefinition(
+    text: string,
+    path: string,
+    offset: number
+  ): { start: number; end: number } | null {
+    const segments = path
+      .split('.')
+      .map((segment) => segment.trim())
+      .filter((segment) => segment.length > 0)
+      .map((segment) => {
+        const bracketIndex = segment.indexOf('[');
+        return bracketIndex === -1 ? segment : segment.slice(0, bracketIndex);
+      })
+      .filter((segment) => segment.length > 0);
+
+    if (segments.length < 2) {
+      return null;
+    }
+
+    const [root, ...memberSegments] = segments;
+    const bindings = getTemplateBindingsAtOffset(extractTemplateBindings(text), offset);
+    const binding = bindings.find(
+      (candidate) => candidate.kind === 'set-variable' && candidate.name === root
+    );
+    if (!binding) {
+      return null;
+    }
+
+    const parsed = this.parseSetExpressionAtBinding(text, binding);
+    if (!parsed) {
+      return null;
+    }
+
+    return this.findObjectMemberKeyRange(
+      parsed.sourceExpression,
+      parsed.sourceExpressionStartOffset,
+      memberSegments
+    );
+  }
+
   resolveDocumentDefinition(
     _context: SemanticQueryContext,
     text: string,

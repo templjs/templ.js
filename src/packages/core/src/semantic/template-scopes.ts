@@ -22,6 +22,7 @@ export interface TemplateBinding {
   declarationEndOffset?: number;
   sourcePath?: string;
   sourceExpression?: string;
+  inferredPaths?: string[];
 }
 
 interface NormalizedTemplate {
@@ -215,6 +216,204 @@ function normalizePathFromExpression(rawExpression: string): string | null {
 
     return '[0]';
   });
+}
+
+function splitTopLevelEntries(content: string): string[] {
+  const entries: string[] = [];
+  let depthCurly = 0;
+  let depthSquare = 0;
+  let depthParen = 0;
+  let quote: '"' | "'" | null = null;
+  let escape = false;
+  let start = 0;
+
+  for (let index = 0; index < content.length; index += 1) {
+    const char = content[index];
+
+    if (quote) {
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (char === '\\') {
+        escape = true;
+        continue;
+      }
+      if (char === quote) {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (char === '"' || char === "'") {
+      quote = char;
+      continue;
+    }
+
+    if (char === '{') {
+      depthCurly += 1;
+      continue;
+    }
+    if (char === '}') {
+      depthCurly = Math.max(0, depthCurly - 1);
+      continue;
+    }
+    if (char === '[') {
+      depthSquare += 1;
+      continue;
+    }
+    if (char === ']') {
+      depthSquare = Math.max(0, depthSquare - 1);
+      continue;
+    }
+    if (char === '(') {
+      depthParen += 1;
+      continue;
+    }
+    if (char === ')') {
+      depthParen = Math.max(0, depthParen - 1);
+      continue;
+    }
+
+    if (char === ',' && depthCurly === 0 && depthSquare === 0 && depthParen === 0) {
+      const entry = content.slice(start, index).trim();
+      if (entry.length > 0) {
+        entries.push(entry);
+      }
+      start = index + 1;
+    }
+  }
+
+  const trailing = content.slice(start).trim();
+  if (trailing.length > 0) {
+    entries.push(trailing);
+  }
+
+  return entries;
+}
+
+function splitTopLevelKeyValue(entry: string): { keyRaw: string; valueRaw: string } | null {
+  let depthCurly = 0;
+  let depthSquare = 0;
+  let depthParen = 0;
+  let quote: '"' | "'" | null = null;
+  let escape = false;
+
+  for (let index = 0; index < entry.length; index += 1) {
+    const char = entry[index];
+
+    if (quote) {
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (char === '\\') {
+        escape = true;
+        continue;
+      }
+      if (char === quote) {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (char === '"' || char === "'") {
+      quote = char;
+      continue;
+    }
+
+    if (char === '{') {
+      depthCurly += 1;
+      continue;
+    }
+    if (char === '}') {
+      depthCurly = Math.max(0, depthCurly - 1);
+      continue;
+    }
+    if (char === '[') {
+      depthSquare += 1;
+      continue;
+    }
+    if (char === ']') {
+      depthSquare = Math.max(0, depthSquare - 1);
+      continue;
+    }
+    if (char === '(') {
+      depthParen += 1;
+      continue;
+    }
+    if (char === ')') {
+      depthParen = Math.max(0, depthParen - 1);
+      continue;
+    }
+
+    if (char === ':' && depthCurly === 0 && depthSquare === 0 && depthParen === 0) {
+      const keyRaw = entry.slice(0, index).trim();
+      const valueRaw = entry.slice(index + 1).trim();
+      if (!keyRaw || !valueRaw) {
+        return null;
+      }
+      return { keyRaw, valueRaw };
+    }
+  }
+
+  return null;
+}
+
+function normalizeObjectKey(keyRaw: string): string | null {
+  if (/^[A-Za-z_][\w]*$/.test(keyRaw)) {
+    return keyRaw;
+  }
+
+  const quoted = keyRaw.match(/^['"](.+)['"]$/);
+  if (quoted?.[1]) {
+    return quoted[1];
+  }
+
+  return null;
+}
+
+function collectObjectLiteralPaths(expression: string, prefix = ''): string[] {
+  const trimmed = expression.trim();
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+    return [];
+  }
+
+  const inner = trimmed.slice(1, -1).trim();
+  if (!inner) {
+    return [];
+  }
+
+  const paths: string[] = [];
+  for (const entry of splitTopLevelEntries(inner)) {
+    const keyValue = splitTopLevelKeyValue(entry);
+    if (!keyValue) {
+      continue;
+    }
+
+    const key = normalizeObjectKey(keyValue.keyRaw);
+    if (!key) {
+      continue;
+    }
+
+    const path = prefix ? `${prefix}.${key}` : key;
+    paths.push(path);
+    paths.push(...collectObjectLiteralPaths(keyValue.valueRaw, path));
+  }
+
+  return paths;
+}
+
+function inferPathsFromSetExpression(sourceExpression?: string): string[] | undefined {
+  if (!sourceExpression) {
+    return undefined;
+  }
+
+  const inferred = Array.from(new Set(collectObjectLiteralPaths(sourceExpression))).sort((a, b) =>
+    a.localeCompare(b)
+  );
+
+  return inferred.length > 0 ? inferred : undefined;
 }
 
 function getForDeclarationOffsets(
@@ -595,6 +794,7 @@ function collectBindingsFallback(template: string): TemplateBinding[] {
         name: setStatement.name,
         sourceExpression: setStatement.sourceExpression,
         sourcePath: normalizePathFromExpression(setStatement.sourceExpression) ?? undefined,
+        inferredPaths: inferPathsFromSetExpression(setStatement.sourceExpression),
         scopeStartOffset: statementEnd + endDelimiter.length,
         scopeEndOffset: template.length,
         declarationStartOffset: declarationOffset.start,
@@ -719,6 +919,7 @@ function collectBindings(
         name: node.name,
         sourcePath,
         sourceExpression,
+        inferredPaths: inferPathsFromSetExpression(sourceExpression),
         scopeStartOffset,
         scopeEndOffset: scopeBoundary,
         declarationStartOffset: declaration?.start,
