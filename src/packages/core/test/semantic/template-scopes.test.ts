@@ -208,6 +208,29 @@ describe('template-scopes helpers', () => {
     expect(valueBinding?.inferredPaths).toEqual(['meta', 'meta.city', 'name']);
   });
 
+  it('retains single-alias for bindings for empty object-literal iterables', () => {
+    const template = '{% for item in {} %}{{ item }}{% endfor %}';
+    const bindings = extractTemplateBindings(template);
+    const forBinding = bindings.find((binding) => binding.kind === 'for-alias');
+
+    expect(forBinding?.name).toBe('item');
+    expect(forBinding?.sourceExpression).toBe('{}');
+    expect(forBinding?.inferredPaths).toEqual([]);
+  });
+
+  it('retains value aliases for key-value loops over empty object-literal iterables', () => {
+    const template = '{% for key, value in {} %}{{ value }}{% endfor %}';
+    const bindings = extractTemplateBindings(template);
+    const keyBinding = bindings.find((binding) => binding.kind === 'for-alias');
+    const valueBinding = bindings.find((binding) => binding.kind === 'for-value-alias');
+
+    expect(keyBinding?.name).toBe('key');
+    expect(keyBinding?.inferredPaths).toBeUndefined();
+    expect(valueBinding?.name).toBe('value');
+    expect(valueBinding?.sourceExpression).toBe('{}');
+    expect(valueBinding?.inferredPaths).toEqual([]);
+  });
+
   it('sorts overlapping in-scope bindings by nearest scope start offset', () => {
     const bindings = [
       {

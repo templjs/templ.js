@@ -24,6 +24,7 @@ export interface InScopeTemplateBinding {
   name: string;
   kind: TemplateBindingKind;
   sourceExpression?: string;
+  inferredPaths?: string[];
 }
 
 function volarDelimitersToLexerOptions(
@@ -124,6 +125,7 @@ export function getInScopeTemplateBindings(
       name: binding.name,
       kind: binding.kind,
       sourceExpression: binding.sourceExpression,
+      inferredPaths: binding.inferredPaths,
     });
   }
 
@@ -438,8 +440,8 @@ export function getInferredLocalPropertyCompletions(
     (entry) =>
       entry.name === root &&
       (entry.kind === 'set-variable' ||
-        entry.kind === 'for-alias' ||
-        entry.kind === 'for-value-alias')
+        ((entry.kind === 'for-alias' || entry.kind === 'for-value-alias') &&
+          Boolean(entry.inferredPaths?.length)))
   );
   if (!binding) {
     return [];

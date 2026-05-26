@@ -416,6 +416,15 @@ function inferPathsFromSourceExpression(sourceExpression?: string): string[] | u
 
   return inferred.length > 0 ? inferred : undefined;
 }
+
+function isObjectLiteralExpression(sourceExpression?: string): boolean {
+  if (!sourceExpression) {
+    return false;
+  }
+
+  const trimmed = sourceExpression.trim();
+  return trimmed.startsWith('{') && trimmed.endsWith('}');
+}
 /* c8 ignore stop */
 
 function getForDeclarationOffsets(
@@ -882,8 +891,9 @@ function collectBindings(
       const sourceExpression =
         getForSourceExpression(template, node, statementEnd) ?? sourcePath ?? '';
       const inferredPaths = inferPathsFromSourceExpression(sourceExpression);
+      const isObjectLiteralSource = isObjectLiteralExpression(sourceExpression);
 
-      if (sourcePath || inferredPaths?.length) {
+      if (sourcePath || inferredPaths?.length || isObjectLiteralSource) {
         const declarations = getForDeclarationOffsets(template, node, statementEnd);
         const nodeStart = positionToOffset(template, node.start.line, node.start.column);
         const openingTagEnd = template.indexOf(statementEnd, nodeStart);
@@ -905,7 +915,9 @@ function collectBindings(
         for (const nameInfo of names) {
           const declaration = declarations.find((entry) => entry.name === nameInfo.name);
           const bindingInferredPaths =
-            names.length === 1 || nameInfo.kind === 'for-value-alias' ? inferredPaths : undefined;
+            names.length === 1 || nameInfo.kind === 'for-value-alias'
+              ? (inferredPaths ?? (isObjectLiteralSource ? [] : undefined))
+              : undefined;
           bindings.push({
             kind: nameInfo.kind,
             name: nameInfo.name,
