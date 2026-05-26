@@ -249,6 +249,20 @@ Current repository expectations:
   currently represented by the `templjs.authoring.formatting` helper-extension contract.
 - Semantify core must not encode formatter-specific policy, style rules, or edit logic.
 
+## Inferred Local Definition Precedence
+
+- Definition requests for in-scope local alias member paths must resolve in this order:
+  1. local alias declaration (alias token)
+  2. inferred local literal member target (for deterministic object-literal shapes)
+  3. canonical schema-path definition fallback
+- Inferred local targeting is deterministic and source-backed: member ranges resolve to
+  literal key spans in the authoring document when the binding carries inferred-path
+  metadata.
+- Malformed or low-confidence local expressions must degrade safely by returning `null`
+  for inferred targeting and allowing schema fallback (or no-result) behavior to proceed.
+- Key/value `for` bindings only apply inferred local member targeting to value aliases;
+  key aliases intentionally do not expose inferred member resolution.
+
 ## Validation
 
 Documentation linting:
