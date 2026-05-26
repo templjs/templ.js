@@ -6,18 +6,21 @@ summary: Remove all migration and legacy naming artifacts and document the final
 assignee: copilot
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: implementation-complete
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 8
 actual: 6
+completed_date: '2026-05-26'
+commits:
+  a58b69c902b42e90a4b119ebf3500cac660a3ea4: 'docs(backlog): finalize WI-146 diagnostics canonical follow-up'
 links:
   evidence:
     - '[[record-20260523-044941-146-remove-legacy-artifacts-and-finalize-diagnostics-architecture]]'
   pull_requests:
-    - 'https://github.com/templjs/templ.js/pull/186'
-    - 'https://github.com/templjs/templ.js/pull/188'
+    - https://github.com/templjs/templ.js/pull/186
+    - https://github.com/templjs/templ.js/pull/188
 ---
 
 ## Goal
