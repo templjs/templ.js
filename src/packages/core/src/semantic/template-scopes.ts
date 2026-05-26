@@ -417,6 +417,56 @@ function inferPathsFromSourceExpression(sourceExpression?: string): string[] | u
   return inferred.length > 0 ? inferred : undefined;
 }
 
+function inferPathsFromObjectLiteralEntryValues(sourceExpression?: string): string[] | undefined {
+  if (!sourceExpression) {
+    return undefined;
+  }
+
+  const trimmed = sourceExpression.trim();
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+    return undefined;
+  }
+
+  const inner = trimmed.slice(1, -1).trim();
+  if (!inner) {
+    return [];
+  }
+
+  const inferred = new Set<string>();
+  for (const entry of splitTopLevelEntries(inner)) {
+    const keyValue = splitTopLevelKeyValue(entry);
+    if (!keyValue) {
+      continue;
+    }
+
+    for (const path of collectObjectLiteralPaths(keyValue.valueRaw)) {
+      inferred.add(path);
+    }
+  }
+
+  return [...inferred].sort((a, b) => a.localeCompare(b));
+}
+
+function inferForBindingPaths(
+  sourceExpression: string | undefined,
+  aliasCount: number,
+  kind: TemplateBindingKind
+): string[] | undefined {
+  const isObjectLiteralSource = isObjectLiteralExpression(sourceExpression);
+
+  if (aliasCount === 1) {
+    const inferred = inferPathsFromSourceExpression(sourceExpression);
+    return inferred ?? (isObjectLiteralSource ? [] : undefined);
+  }
+
+  if (kind === 'for-value-alias') {
+    const inferred = inferPathsFromObjectLiteralEntryValues(sourceExpression);
+    return inferred ?? (isObjectLiteralSource ? [] : undefined);
+  }
+
+  return undefined;
+}
+
 function isObjectLiteralExpression(sourceExpression?: string): boolean {
   if (!sourceExpression) {
     return false;
@@ -744,7 +794,6 @@ function collectBindingsFallback(template: string): TemplateBinding[] {
     names: Array<{ name: string; kind: TemplateBindingKind }>;
     sourcePath?: string;
     sourceExpression: string;
-    inferredPaths?: string[];
     scopeStartOffset: number;
     declarationOffsets: Record<string, { start: number; end: number } | undefined>;
   };
@@ -771,7 +820,6 @@ function collectBindingsFallback(template: string): TemplateBinding[] {
     if (forStatement) {
       const sourceExpression = forStatement.sourceExpression;
       const sourcePath = normalizePathFromExpression(sourceExpression);
-      const inferredPaths = inferPathsFromSourceExpression(sourceExpression);
 
       const names = forStatement.names.map((nameInfo) => ({
         name: nameInfo.name,
@@ -789,7 +837,6 @@ function collectBindingsFallback(template: string): TemplateBinding[] {
         names,
         sourcePath: sourcePath ?? undefined,
         sourceExpression,
-        inferredPaths,
         scopeStartOffset: statementEnd + endDelimiter.length,
         declarationOffsets,
       });
@@ -826,10 +873,11 @@ function collectBindingsFallback(template: string): TemplateBinding[] {
       if (openLoop) {
         for (const nameInfo of openLoop.names) {
           const declaration = openLoop.declarationOffsets[nameInfo.name];
-          const inferredPaths =
-            openLoop.names.length === 1 || nameInfo.kind === 'for-value-alias'
-              ? openLoop.inferredPaths
-              : undefined;
+          const inferredPaths = inferForBindingPaths(
+            openLoop.sourceExpression,
+            openLoop.names.length,
+            nameInfo.kind
+          );
           bindings.push({
             kind: nameInfo.kind,
             name: nameInfo.name,
@@ -852,10 +900,11 @@ function collectBindingsFallback(template: string): TemplateBinding[] {
     const openLoop = stack.pop()!;
     for (const nameInfo of openLoop.names) {
       const declaration = openLoop.declarationOffsets[nameInfo.name];
-      const inferredPaths =
-        openLoop.names.length === 1 || nameInfo.kind === 'for-value-alias'
-          ? openLoop.inferredPaths
-          : undefined;
+      const inferredPaths = inferForBindingPaths(
+        openLoop.sourceExpression,
+        openLoop.names.length,
+        nameInfo.kind
+      );
       bindings.push({
         kind: nameInfo.kind,
         name: nameInfo.name,
@@ -890,10 +939,13 @@ function collectBindings(
       const sourcePath = expressionToPath(node.iterable) ?? undefined;
       const sourceExpression =
         getForSourceExpression(template, node, statementEnd) ?? sourcePath ?? '';
-      const inferredPaths = inferPathsFromSourceExpression(sourceExpression);
       const isObjectLiteralSource = isObjectLiteralExpression(sourceExpression);
 
-      if (sourcePath || inferredPaths?.length || isObjectLiteralSource) {
+      if (
+        sourcePath ||
+        isObjectLiteralSource ||
+        inferPathsFromSourceExpression(sourceExpression)?.length
+      ) {
         const declarations = getForDeclarationOffsets(template, node, statementEnd);
         const nodeStart = positionToOffset(template, node.start.line, node.start.column);
         const openingTagEnd = template.indexOf(statementEnd, nodeStart);
@@ -914,10 +966,11 @@ function collectBindings(
 
         for (const nameInfo of names) {
           const declaration = declarations.find((entry) => entry.name === nameInfo.name);
-          const bindingInferredPaths =
-            names.length === 1 || nameInfo.kind === 'for-value-alias'
-              ? (inferredPaths ?? (isObjectLiteralSource ? [] : undefined))
-              : undefined;
+          const bindingInferredPaths = inferForBindingPaths(
+            sourceExpression,
+            names.length,
+            nameInfo.kind
+          );
           bindings.push({
             kind: nameInfo.kind,
             name: nameInfo.name,

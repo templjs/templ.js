@@ -195,15 +195,12 @@ describe('scope-resolution', () => {
 
   it('excludes key aliases from inferred completions in key-value object-literal loops', () => {
     const text =
-      '{% for key, value in { name: "Ada", meta: { city: "London" } } %}{{ key. }}{{ value. }}{% endfor %}';
+      '{% for key, value in { profile: { name: "Ada" } } %}{{ key. }}{{ value. }}{% endfor %}';
     const keyOffset = text.indexOf('key.') + 'key.'.length;
     const valueOffset = text.indexOf('value.') + 'value.'.length;
 
     expect(getInferredLocalPropertyCompletions(text, keyOffset, 'key')).toEqual([]);
-    expect(getInferredLocalPropertyCompletions(text, valueOffset, 'value')).toEqual([
-      'meta',
-      'name',
-    ]);
+    expect(getInferredLocalPropertyCompletions(text, valueOffset, 'value')).toEqual(['name']);
   });
 
   it('returns empty inferred completions when set expression is not an object literal', () => {

@@ -485,6 +485,25 @@ describe('ContextGraphSemanticReadAdapter.resolveLocalAliasDefinition', () => {
     expect(adapter.resolveLocalInferredPathDefinition(text, 'key.profile', keyOffset)).toBeNull();
   });
 
+  it('resolves inferred key ranges for value aliases from object-literal entry values', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const text =
+      '{% for key, value in { profile: { name: "Ada" } } %}{{ value.name }} {{ value.profile.name }}{% endfor %}';
+    const nameOffset = text.indexOf('value.name') + 'value.name'.length - 1;
+    const profileNameOffset = text.indexOf('value.profile.name') + 'value.profile.name'.length - 1;
+
+    const nameResult = adapter.resolveLocalInferredPathDefinition(text, 'value.name', nameOffset);
+    const profileNameResult = adapter.resolveLocalInferredPathDefinition(
+      text,
+      'value.profile.name',
+      profileNameOffset
+    );
+
+    expect(nameResult).not.toBeNull();
+    expect(text.slice(nameResult!.start, nameResult!.end)).toBe('name');
+    expect(profileNameResult).toBeNull();
+  });
+
   it('returns null for inferred definitions with non-member paths', () => {
     const adapter = createContextGraphSemanticReadAdapter();
     const text = '{% set profile = { name: "Ada" } %}{{ profile }}';

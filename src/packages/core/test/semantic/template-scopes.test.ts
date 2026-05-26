@@ -197,7 +197,7 @@ describe('template-scopes helpers', () => {
 
   it('assigns inferred paths to for value aliases while leaving key aliases undefined', () => {
     const template =
-      '{% for key, value in { name: "Ada", meta: { city: "London" } } %}{{ value.meta.city }}{% endfor %}';
+      '{% for key, value in { profile: { name: "Ada" } } %}{{ value.name }}{% endfor %}';
     const bindings = extractTemplateBindings(template);
     const keyBinding = bindings.find((binding) => binding.kind === 'for-alias');
     const valueBinding = bindings.find((binding) => binding.kind === 'for-value-alias');
@@ -205,7 +205,17 @@ describe('template-scopes helpers', () => {
     expect(keyBinding?.name).toBe('key');
     expect(keyBinding?.inferredPaths).toBeUndefined();
     expect(valueBinding?.name).toBe('value');
-    expect(valueBinding?.inferredPaths).toEqual(['meta', 'meta.city', 'name']);
+    expect(valueBinding?.inferredPaths).toEqual(['name']);
+  });
+
+  it('unions inferred paths from object-literal entry values for key-value loops', () => {
+    const template =
+      '{% for key, value in { profile: { name: "Ada" }, account: { id: 1 } } %}{{ value }}{% endfor %}';
+    const bindings = extractTemplateBindings(template);
+    const valueBinding = bindings.find((binding) => binding.kind === 'for-value-alias');
+
+    expect(valueBinding?.name).toBe('value');
+    expect(valueBinding?.inferredPaths).toEqual(['id', 'name']);
   });
 
   it('retains single-alias for bindings for empty object-literal iterables', () => {

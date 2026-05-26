@@ -803,6 +803,42 @@ export class ContextGraphSemanticReadAdapter {
     return locate(expression, expressionStartOffset, 0);
   }
 
+  private findObjectMemberKeyRangeInObjectLiteralEntryValues(
+    expression: string,
+    expressionStartOffset: number,
+    segments: string[]
+  ): { start: number; end: number } | null {
+    const trimmedLeft = expression.length - expression.trimStart().length;
+    const trimmedRight = expression.trimEnd().length;
+    const coreStart = trimmedLeft;
+    const coreEnd = trimmedRight;
+    if (coreEnd <= coreStart) {
+      return null;
+    }
+
+    if (expression[coreStart] !== '{' || expression[coreEnd - 1] !== '}') {
+      return null;
+    }
+
+    const innerStart = coreStart + 1;
+    const innerEnd = coreEnd - 1;
+    for (const entry of this.splitTopLevelObjectEntries(expression, innerStart, innerEnd)) {
+      const colon = this.findTopLevelColon(expression, entry.start, entry.end);
+      if (colon === -1) {
+        continue;
+      }
+
+      const valueText = expression.slice(colon + 1, entry.end);
+      const valueStartOffset = expressionStartOffset + colon + 1;
+      const nested = this.findObjectMemberKeyRange(valueText, valueStartOffset, segments);
+      if (nested) {
+        return nested;
+      }
+    }
+
+    return null;
+  }
+
   resolveLocalInferredPathDefinition(
     text: string,
     path: string,
@@ -839,6 +875,14 @@ export class ContextGraphSemanticReadAdapter {
     const parsed = this.parseBindingSourceExpressionAtBinding(text, binding);
     if (!parsed) {
       return null;
+    }
+
+    if (binding.kind === 'for-value-alias') {
+      return this.findObjectMemberKeyRangeInObjectLiteralEntryValues(
+        parsed.sourceExpression,
+        parsed.sourceExpressionStartOffset,
+        memberSegments
+      );
     }
 
     return this.findObjectMemberKeyRange(
