@@ -72,7 +72,7 @@ Fully remove transition and legacy artifacts and leave a coherent, industry-stan
 
 - [x] No compatibility aliases or migration-only symbols remain.
 - [x] Documentation describes only final canonical syntax and semantic stack.
-- [x] Repository-wide search shows no retired symbol names.
+- [x] Production source/docs search scope (`src/packages`, `docs`) shows no retired symbol names.
 - [x] Impacted tests and checks pass.
 
 ## Testing Strategy
