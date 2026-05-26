@@ -517,6 +517,37 @@ export class ContextGraphSemanticReadAdapter {
       return null;
     }
 
+    const isIdentifierPart = (char: string | undefined): boolean => {
+      if (!char) {
+        return false;
+      }
+      const code = char.charCodeAt(0);
+      return (
+        char === '_' ||
+        (code >= 65 && code <= 90) ||
+        (code >= 97 && code <= 122) ||
+        (code >= 48 && code <= 57)
+      );
+    };
+
+    const findForInKeywordStart = (value: string, startOffset: number): number => {
+      for (let index = Math.max(0, startOffset); index < value.length - 1; index += 1) {
+        if (value[index] !== 'i' || value[index + 1] !== 'n') {
+          continue;
+        }
+
+        const before = value[index - 1];
+        const after = value[index + 2];
+        if (isIdentifierPart(before) || isIdentifierPart(after)) {
+          continue;
+        }
+
+        return index;
+      }
+
+      return -1;
+    };
+
     const relativeDeclarationEnd = Math.max(0, binding.declarationEndOffset - rawInnerStart);
     let expressionSearchStart = relativeDeclarationEnd;
 
@@ -526,10 +557,9 @@ export class ContextGraphSemanticReadAdapter {
         expressionSearchStart = assignmentIndex + 1;
       }
     } else if (binding.kind === 'for-alias' || binding.kind === 'for-value-alias') {
-      const inKeywordMatch = /\bin\b/.exec(rawInner.slice(relativeDeclarationEnd));
-      if (inKeywordMatch) {
-        expressionSearchStart =
-          relativeDeclarationEnd + inKeywordMatch.index + inKeywordMatch[0].length;
+      const inKeywordStart = findForInKeywordStart(rawInner, relativeDeclarationEnd);
+      if (inKeywordStart !== -1) {
+        expressionSearchStart = inKeywordStart + 'in'.length;
       }
     }
 

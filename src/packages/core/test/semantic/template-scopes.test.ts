@@ -241,6 +241,16 @@ describe('template-scopes helpers', () => {
     expect(valueBinding?.inferredPaths).toEqual([]);
   });
 
+  it('infers bindings for parenthesized object-literal iterable sources', () => {
+    const template =
+      '{% for item in ({ profile: { name: "Ada" } }) %}{{ item.profile.name }}{% endfor %}';
+    const bindings = extractTemplateBindings(template);
+    const forBinding = bindings.find((binding) => binding.kind === 'for-alias');
+
+    expect(forBinding?.name).toBe('item');
+    expect(forBinding?.inferredPaths).toEqual(['profile', 'profile.name']);
+  });
+
   it('sorts overlapping in-scope bindings by nearest scope start offset', () => {
     const bindings = [
       {
