@@ -878,7 +878,7 @@ function collectBindings(
       }
       return;
     case 'for': {
-      const sourcePath = expressionToPath(node.iterable);
+      const sourcePath = expressionToPath(node.iterable) ?? undefined;
       const sourceExpression =
         getForSourceExpression(template, node, statementEnd) ?? sourcePath ?? '';
       const inferredPaths = inferPathsFromSourceExpression(sourceExpression);
