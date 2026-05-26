@@ -91,7 +91,7 @@ status_reason: completed
 ## Progress Notes
 
 - 2026-05-26: Implementation phases and PR flow completed, including merge of PR #187 to `staging`.
-- 2026-05-26: Finalization complete after adding PR linkage for WI-146 and WI-147 and promoting WI-147/WI-148 to `ready-for-review`.
+- 2026-05-26: Finalization complete after adding PR linkage for WI-147 and WI-148 and promoting WI-147/WI-148 to `ready-for-review`.
 
 ## Completion Criteria
 
