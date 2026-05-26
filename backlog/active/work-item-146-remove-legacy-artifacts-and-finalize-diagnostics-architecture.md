@@ -40,19 +40,19 @@ Fully remove transition and legacy artifacts and leave a coherent, industry-stan
 
 ## File-by-File Cleanup Checklist
 
-- [x] [src/packages/core/src/semantic/semantic-context.ts](src/packages/core/src/semantic/semantic-context.ts)
+- [x] [src/packages/core/src/semantic/semantic-context.ts](../../src/packages/core/src/semantic/semantic-context.ts)
   - remove legacy field names and transitional comments tied to old naming
-- [x] [src/packages/semantify/src/model/public-types.ts](src/packages/semantify/src/model/public-types.ts)
+- [x] [src/packages/semantify/src/model/public-types.ts](../../src/packages/semantify/src/model/public-types.ts)
   - remove superseded diagnostic and helper naming artifacts
-- [x] [src/packages/semantify/src/projector/index.ts](src/packages/semantify/src/projector/index.ts)
+- [x] [src/packages/semantify/src/projector/index.ts](../../src/packages/semantify/src/projector/index.ts)
   - remove transitional normalization helpers introduced only for migration
-- [x] [src/packages/volar/src/diagnostic-types.ts](src/packages/volar/src/diagnostic-types.ts)
+- [x] [src/packages/volar/src/diagnostic-types.ts](../../src/packages/volar/src/diagnostic-types.ts)
   - remove local legacy aliases and outdated type comments
-- [x] [docs/api-reference.md](docs/api-reference.md)
+- [x] [docs/api-reference.md](../../docs/api-reference.md)
   - update diagnostics and semantic contracts to final canonical names
-- [x] [docs/templjs-volar-target-architecture.md](docs/templjs-volar-target-architecture.md)
+- [x] [docs/templjs-volar-target-architecture.md](../../docs/templjs-volar-target-architecture.md)
   - update architecture flow terminology to final canonical stack
-- [x] [docs/adr](docs/adr)
+- [x] [docs/adr](../../docs/adr)
   - add or update ADR for final diagnostics-layer architecture and naming canon
 
 ## Tasks

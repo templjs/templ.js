@@ -260,8 +260,9 @@ Current repository expectations:
   metadata.
 - Malformed or low-confidence local expressions must degrade safely by returning `null`
   for inferred targeting and allowing schema fallback (or no-result) behavior to proceed.
-- Key/value `for` bindings only apply inferred local member targeting to value aliases;
-  key aliases intentionally do not expose inferred member resolution.
+- Inferred local member targeting currently applies to `set-variable` bindings.
+- Key/value `for` alias inferred-member targeting is intentionally deferred to
+  WI-147/WI-148 follow-up implementation.
 
 ## Validation
 
