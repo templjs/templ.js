@@ -448,6 +448,219 @@ describe('ContextGraphSemanticReadAdapter.resolveLocalAliasDefinition', () => {
       extractSpy.mockRestore();
     }
   });
+
+  it('resolves inferred member key ranges from set object literals', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const text =
+      '{% set profile = { name: "Ada", meta: { city: "London" } } %}{{ profile.meta.city }}';
+    const offset = text.indexOf('profile.meta.city') + 'profile.meta.city'.length - 1;
+
+    const city = adapter.resolveLocalInferredPathDefinition(text, 'profile.meta.city', offset);
+    const name = adapter.resolveLocalInferredPathDefinition(text, 'profile.name', offset);
+
+    expect(city).not.toBeNull();
+    expect(name).not.toBeNull();
+    expect(text.slice(city!.start, city!.end)).toBe('city');
+    expect(text.slice(name!.start, name!.end)).toBe('name');
+  });
+
+  it('returns null for inferred definitions with non-member paths', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const text = '{% set profile = { name: "Ada" } %}{{ profile }}';
+    const offset = text.indexOf('profile') + 'profile'.length - 1;
+
+    expect(adapter.resolveLocalInferredPathDefinition(text, 'profile', offset)).toBeNull();
+  });
+
+  it('returns null when set binding exists but declaration offset metadata is missing', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const extractSpy = vi.spyOn(core, 'extractTemplateBindings').mockReturnValue([
+      {
+        kind: 'set-variable',
+        name: 'profile',
+        sourceExpression: '{ name: "Ada" }',
+        scopeStartOffset: 0,
+        scopeEndOffset: 40,
+      },
+    ] as core.TemplateBinding[]);
+
+    try {
+      const result = adapter.resolveLocalInferredPathDefinition(
+        '{% set profile = { name: "Ada" } %}{{ profile.name }}',
+        'profile.name',
+        35
+      );
+      expect(result).toBeNull();
+    } finally {
+      extractSpy.mockRestore();
+    }
+  });
+
+  it('supports quoted object-literal keys for inferred definitions', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const text = '{% set profile = { "display name": "Ada" } %}{{ profile.display name }}';
+    const offset = text.indexOf('profile.display name') + 'profile.display name'.length - 1;
+
+    const result = adapter.resolveLocalInferredPathDefinition(text, 'profile.display name', offset);
+
+    expect(result).not.toBeNull();
+    expect(text.slice(result!.start, result!.end)).toBe('display name');
+  });
+
+  it('returns null when inferred traversal reaches a non-object expression', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const text = '{% set profile = { name: "Ada" } %}{{ profile.name.first }}';
+    const offset = text.indexOf('profile.name.first') + 'profile.name.first'.length - 1;
+
+    expect(
+      adapter.resolveLocalInferredPathDefinition(text, 'profile.name.first', offset)
+    ).toBeNull();
+  });
+
+  it('returns null when statement at declaration offset is not a set statement', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const extractSpy = vi.spyOn(core, 'extractTemplateBindings').mockReturnValue([
+      {
+        kind: 'set-variable',
+        name: 'profile',
+        declarationStartOffset: 0,
+        declarationEndOffset: 7,
+        scopeStartOffset: 0,
+        scopeEndOffset: 40,
+      },
+    ] as core.TemplateBinding[]);
+
+    try {
+      const result = adapter.resolveLocalInferredPathDefinition(
+        '{% if profile %}{{ profile.name }}{% endif %}',
+        'profile.name',
+        22
+      );
+      expect(result).toBeNull();
+    } finally {
+      extractSpy.mockRestore();
+    }
+  });
+
+  it('returns null when object entries are missing key-value separators', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const text = '{% set profile = { name: "Ada", extra } %}{{ profile.extra }}';
+    const offset = text.indexOf('profile.extra') + 'profile.extra'.length - 1;
+
+    expect(adapter.resolveLocalInferredPathDefinition(text, 'profile.extra', offset)).toBeNull();
+  });
+
+  it('handles escaped string values while resolving nested inferred keys', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const text =
+      '{% set profile = { meta: { city: "Lon\\"don", note: "A, B" } } %}{{ profile.meta.note }}';
+    const offset = text.indexOf('profile.meta.note') + 'profile.meta.note'.length - 1;
+
+    const result = adapter.resolveLocalInferredPathDefinition(text, 'profile.meta.note', offset);
+
+    expect(result).not.toBeNull();
+    expect(text.slice(result!.start, result!.end)).toBe('note');
+  });
+
+  it('returns null when set declaration parsing encounters invalid identifier start', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const extractSpy = vi.spyOn(core, 'extractTemplateBindings').mockReturnValue([
+      {
+        kind: 'set-variable',
+        name: 'profile',
+        declarationStartOffset: 0,
+        declarationEndOffset: 7,
+        scopeStartOffset: 0,
+        scopeEndOffset: 40,
+      },
+    ] as core.TemplateBinding[]);
+
+    try {
+      const result = adapter.resolveLocalInferredPathDefinition(
+        '{% set 1profile = user %}{{ profile.name }}',
+        'profile.name',
+        31
+      );
+      expect(result).toBeNull();
+    } finally {
+      extractSpy.mockRestore();
+    }
+  });
+
+  it('returns null when parsed set variable name differs from binding name', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const extractSpy = vi.spyOn(core, 'extractTemplateBindings').mockReturnValue([
+      {
+        kind: 'set-variable',
+        name: 'profile',
+        declarationStartOffset: 0,
+        declarationEndOffset: 7,
+        scopeStartOffset: 0,
+        scopeEndOffset: 40,
+      },
+    ] as core.TemplateBinding[]);
+
+    try {
+      const result = adapter.resolveLocalInferredPathDefinition(
+        '{% set other = user %}{{ profile.name }}',
+        'profile.name',
+        28
+      );
+      expect(result).toBeNull();
+    } finally {
+      extractSpy.mockRestore();
+    }
+  });
+
+  it('returns null when parsed set statement is missing assignment operator', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const extractSpy = vi.spyOn(core, 'extractTemplateBindings').mockReturnValue([
+      {
+        kind: 'set-variable',
+        name: 'profile',
+        declarationStartOffset: 0,
+        declarationEndOffset: 7,
+        scopeStartOffset: 0,
+        scopeEndOffset: 40,
+      },
+    ] as core.TemplateBinding[]);
+
+    try {
+      const result = adapter.resolveLocalInferredPathDefinition(
+        '{% set profile user %}{{ profile.name }}',
+        'profile.name',
+        28
+      );
+      expect(result).toBeNull();
+    } finally {
+      extractSpy.mockRestore();
+    }
+  });
+
+  it('returns null when parsed set expression is empty after trim-marker stripping', () => {
+    const adapter = createContextGraphSemanticReadAdapter();
+    const extractSpy = vi.spyOn(core, 'extractTemplateBindings').mockReturnValue([
+      {
+        kind: 'set-variable',
+        name: 'profile',
+        declarationStartOffset: 0,
+        declarationEndOffset: 7,
+        scopeStartOffset: 0,
+        scopeEndOffset: 40,
+      },
+    ] as core.TemplateBinding[]);
+
+    try {
+      const result = adapter.resolveLocalInferredPathDefinition(
+        '{% set profile = -%}{{ profile.name }}',
+        'profile.name',
+        26
+      );
+      expect(result).toBeNull();
+    } finally {
+      extractSpy.mockRestore();
+    }
+  });
 });
 
 describe('ContextGraphSemanticReadAdapter.loadSchemaRef', () => {

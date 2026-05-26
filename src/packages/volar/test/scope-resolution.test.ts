@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildForScopesInText,
+  getInferredLocalPropertyCompletions,
   resolveScopedPath,
   resolveScopedPathInText,
 } from '../src/scope-resolution.js';
@@ -153,5 +154,74 @@ describe('scope-resolution', () => {
     ];
 
     expect(resolveScopedPath('item.name', 8, scopes)).toBe('42[0].name');
+  });
+
+  it('returns inferred local property completions from nested object literals', () => {
+    const text = [
+      '{% set profile = {',
+      '  name: "Ada",',
+      '  meta: { city: "London", country: "UK" },',
+      '  tags: ["one", "two"],',
+      '} %}',
+      '{{ profile.meta. }}',
+    ].join('\n');
+    const offset = text.indexOf('profile.meta.') + 'profile.meta.'.length;
+
+    expect(getInferredLocalPropertyCompletions(text, offset, 'profile.meta')).toEqual([
+      'city',
+      'country',
+    ]);
+    expect(getInferredLocalPropertyCompletions(text, offset, 'profile')).toEqual([
+      'meta',
+      'name',
+      'tags',
+    ]);
+  });
+
+  it('returns empty inferred completions when root binding is not a set-variable', () => {
+    const text = '{% for item in items %}{{ item. }}{% endfor %}';
+    const offset = text.indexOf('item.') + 'item.'.length;
+
+    expect(getInferredLocalPropertyCompletions(text, offset, 'item')).toEqual([]);
+  });
+
+  it('returns empty inferred completions when set expression is not an object literal', () => {
+    const text = '{% set profile = user.profile %}{{ profile. }}';
+    const offset = text.indexOf('profile.') + 'profile.'.length;
+
+    expect(getInferredLocalPropertyCompletions(text, offset, 'profile')).toEqual([]);
+  });
+
+  it('ignores malformed object entries while preserving valid inferred members', () => {
+    const text =
+      '{% set profile = { "": "skip", meta: { city: "London", note: "A, B" }, valid: true } %}{{ profile. }}';
+    const offset = text.indexOf('profile.') + 'profile.'.length;
+
+    expect(getInferredLocalPropertyCompletions(text, offset, 'profile')).toEqual(['meta', 'valid']);
+  });
+
+  it('returns empty inferred completions when traversing through missing nested segments', () => {
+    const text = '{% set profile = { meta: { city: "London" } } %}{{ profile.meta.country. }}';
+    const offset = text.indexOf('profile.meta.country.') + 'profile.meta.country.'.length;
+
+    expect(getInferredLocalPropertyCompletions(text, offset, 'profile.meta.country')).toEqual([]);
+  });
+
+  it('handles escaped quotes and commas in object values while inferring keys', () => {
+    const text =
+      '{% set profile = { meta: { city: "Lon\\"don, UK", note: "A, B" }, tags: ["x", "y"] } %}{{ profile.meta. }}';
+    const offset = text.indexOf('profile.meta.') + 'profile.meta.'.length;
+
+    expect(getInferredLocalPropertyCompletions(text, offset, 'profile.meta')).toEqual([
+      'city',
+      'note',
+    ]);
+  });
+
+  it('returns empty inferred completions when final traversal target is not an object', () => {
+    const text = '{% set profile = { name: "Ada" } %}{{ profile.name. }}';
+    const offset = text.indexOf('profile.name.') + 'profile.name.'.length;
+
+    expect(getInferredLocalPropertyCompletions(text, offset, 'profile.name')).toEqual([]);
   });
 });

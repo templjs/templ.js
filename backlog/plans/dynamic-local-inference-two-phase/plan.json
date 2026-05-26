@@ -1,0 +1,109 @@
+{
+  "plan_id": "dynamic-local-inference-two-phase",
+  "plan_title": "Two-Phase Dynamic Local Inference Gap Closure",
+  "repository": "templjs/templ.js",
+  "target_branch": "staging",
+  "work_item_ids": [
+    "work-item:147-dynamic-local-inference-hover-completion-foundation",
+    "work-item:148-dynamic-local-definition-to-literal-targeting"
+  ],
+  "constraints": [
+    "Prefer minimal, targeted edits only",
+    "Keep schema-backed behavior stable in mixed contexts",
+    "Prefix shell commands with rtk"
+  ],
+  "created_at": "2026-05-26T03:07:50Z",
+  "steps": [
+    {
+      "step_id": "phase-1-analyze-scope",
+      "type": "analyze",
+      "action": "confirm phase 1 scope, dependency boundaries, and fallback semantics"
+    },
+    {
+      "step_id": "phase-1-edit-core-semantify",
+      "type": "edit",
+      "action": "implement dynamic local inferred-path metadata and semantic node projection",
+      "depends_on": ["phase-1-analyze-scope"],
+      "files": [
+        "src/packages/core/src/semantic/template-scopes.ts",
+        "src/packages/semantify/src/adapters/templjs.ts",
+        "src/packages/semantify/src/model/public-types.ts"
+      ]
+    },
+    {
+      "step_id": "phase-1-edit-volar-read-paths",
+      "type": "edit",
+      "action": "wire inferred-path hover and completion read paths with schema fallback",
+      "depends_on": ["phase-1-edit-core-semantify"],
+      "files": [
+        "src/packages/volar/src/context-graph-adapter.ts",
+        "src/packages/volar/src/intellisense-provider.ts",
+        "src/packages/volar/src/scope-resolution.ts"
+      ]
+    },
+    {
+      "step_id": "phase-1-validate",
+      "type": "validate",
+      "action": "run phase 1 targeted tests and backlog frontmatter lint",
+      "depends_on": ["phase-1-edit-volar-read-paths"],
+      "commands": [
+        "rtk pnpm test --filter @templjs/core --filter @templjs/semantify --filter @templjs/volar",
+        "rtk pnpm run lint:frontmatter"
+      ]
+    },
+    {
+      "step_id": "phase-2-analyze-definition-targeting",
+      "type": "analyze",
+      "action": "confirm inferred definition-target precedence and malformed-template confidence thresholds",
+      "depends_on": ["phase-1-validate"]
+    },
+    {
+      "step_id": "phase-2-edit-definition-contracts",
+      "type": "edit",
+      "action": "implement inferred definition target contracts and resolver precedence",
+      "depends_on": ["phase-2-analyze-definition-targeting"],
+      "files": [
+        "src/packages/semantify/src/model/public-types.ts",
+        "src/packages/volar/src/context-graph-adapter.ts",
+        "src/packages/volar/src/intellisense-provider.ts"
+      ]
+    },
+    {
+      "step_id": "phase-2-validate",
+      "type": "validate",
+      "action": "run definition-targeting regressions and final lint gates",
+      "depends_on": ["phase-2-edit-definition-contracts"],
+      "commands": [
+        "rtk pnpm test --filter @templjs/semantify --filter @templjs/volar",
+        "rtk pnpm run lint:frontmatter",
+        "rtk pnpm test"
+      ]
+    },
+    {
+      "step_id": "pr-process",
+      "type": "pr",
+      "action": "create-or-update-pr",
+      "depends_on": ["phase-2-validate"]
+    },
+    {
+      "step_id": "merge",
+      "type": "merge",
+      "action": "run-process-pr",
+      "depends_on": ["pr-process"]
+    },
+    {
+      "step_id": "finalize",
+      "type": "finalize",
+      "action": "sync-evidence-and-close-loop",
+      "depends_on": ["merge"]
+    }
+  ],
+  "completion_criteria": [
+    "Phase 1 validate commands exit 0",
+    "Phase 2 validate commands exit 0",
+    "Work item 147 progressed to ready-for-review with evidence linkage",
+    "Work item 148 progressed to ready-for-review with evidence linkage",
+    "PR merged to target branch",
+    "Evidence synchronized"
+  ]
+}

@@ -108,6 +108,32 @@ function bindingToNode(binding: TemplateBinding): AdapterNode {
   };
 }
 
+function inferredPathToNode(binding: TemplateBinding, path: string): AdapterNode {
+  return {
+    id: `binding-inferred-path:${binding.name}:${path}`,
+    kind: 'templjs.inferred-path',
+    sourceSpan: bindingSpan(binding),
+    content: {
+      zoneSegment: 'content',
+      path,
+      parentPath: getParentPath(path),
+      label: getLabel(path),
+      profileId: zoneSegmentProfileId('content'),
+      bindingName: binding.name,
+      bindingKind: binding.kind,
+      sourcePath: binding.sourcePath,
+      sourceExpression: binding.sourceExpression,
+      inferred: true,
+    },
+    metadata: {
+      scopeRange: {
+        startOffset: binding.scopeStartOffset,
+        endOffset: binding.scopeEndOffset,
+      },
+    },
+  };
+}
+
 function getParentPath(path: string): string {
   const lastDot = path.lastIndexOf('.');
   return lastDot === -1 ? '' : path.slice(0, lastDot);
@@ -210,7 +236,13 @@ export function createTempljsTemplateAdapterOutput(
   input: TempljsTemplateAdapterInput
 ): AdapterOutput {
   const bindings = extractTemplateBindings(input.text, toLexerOptions(input.delimiters));
-  const nodes = bindings.map(bindingToNode);
+  const nodes = bindings.flatMap((binding) => {
+    const projected: AdapterNode[] = [bindingToNode(binding)];
+    for (const inferredPath of binding.inferredPaths ?? []) {
+      projected.push(inferredPathToNode(binding, inferredPath));
+    }
+    return projected;
+  });
   const zone = resolveSemanticZone(input.text, 0);
 
   nodes.push({
@@ -291,6 +323,10 @@ export function createTempljsAuthoringProfile(): ProfileDefinition {
         description: 'Enum value available for a schema path.',
       },
       {
+        kind: 'templjs.inferred-path',
+        description: 'Inferred local object-literal path available for authoring features.',
+      },
+      {
         kind: 'templjs.semantic-zone',
         description: 'Semantic zone for a source document.',
       },
@@ -315,6 +351,12 @@ export function createTempljsAuthoringProfile(): ProfileDefinition {
         description: 'Project schema enum observation to graph node.',
       }),
       createProjectionRule({
+        id: 'templjs.inferred-path.to-node',
+        sourceNodeKind: 'templjs.inferred-path',
+        targetSemanticKind: 'templjs.inferred-path',
+        description: 'Project inferred local path observation to graph node.',
+      }),
+      createProjectionRule({
         id: 'templjs.semantic-zone.to-node',
         sourceNodeKind: 'templjs.semantic-zone',
         targetSemanticKind: 'templjs.semantic-zone',
@@ -330,6 +372,7 @@ export function createTempljsAuthoringProfile(): ProfileDefinition {
           'templjs.binding',
           'templjs.schema-path',
           'templjs.schema-enum-value',
+          'templjs.inferred-path',
         ],
         description: 'Language-service candidate provider over projected TemplJS authoring facts.',
       },
@@ -337,28 +380,33 @@ export function createTempljsAuthoringProfile(): ProfileDefinition {
         schemaVersion: SEMANTIFY_SCHEMA_VERSION,
         id: 'templjs.authoring.definition',
         kind: 'definition-resolver',
-        consumesSemanticKinds: ['templjs.binding', 'templjs.schema-path'],
+        consumesSemanticKinds: ['templjs.binding', 'templjs.schema-path', 'templjs.inferred-path'],
         description: 'Language-service definition resolver over projected TemplJS authoring facts.',
       },
       {
         schemaVersion: SEMANTIFY_SCHEMA_VERSION,
         id: 'templjs.authoring.hover',
         kind: 'hover-renderer',
-        consumesSemanticKinds: ['templjs.binding', 'templjs.schema-path'],
+        consumesSemanticKinds: ['templjs.binding', 'templjs.schema-path', 'templjs.inferred-path'],
         description: 'Language-service hover renderer over projected TemplJS authoring facts.',
       },
       {
         schemaVersion: SEMANTIFY_SCHEMA_VERSION,
         id: 'templjs.authoring.diagnostic-provider',
         kind: 'diagnostic-provider',
-        consumesSemanticKinds: ['templjs.binding', 'templjs.schema-path'],
+        consumesSemanticKinds: ['templjs.binding', 'templjs.schema-path', 'templjs.inferred-path'],
         description: 'Language-service diagnostic provider over projected TemplJS authoring facts.',
       },
       {
         schemaVersion: SEMANTIFY_SCHEMA_VERSION,
         id: 'templjs.authoring.semantic-tokens',
         kind: 'semantic-token-provider',
-        consumesSemanticKinds: ['templjs.binding', 'templjs.schema-path', 'templjs.semantic-zone'],
+        consumesSemanticKinds: [
+          'templjs.binding',
+          'templjs.schema-path',
+          'templjs.inferred-path',
+          'templjs.semantic-zone',
+        ],
         description:
           'Language-service semantic token planner over projected TemplJS authoring facts.',
       },
@@ -366,7 +414,12 @@ export function createTempljsAuthoringProfile(): ProfileDefinition {
         schemaVersion: SEMANTIFY_SCHEMA_VERSION,
         id: 'templjs.authoring.formatting',
         kind: 'formatting-orchestrator',
-        consumesSemanticKinds: ['templjs.binding', 'templjs.schema-path', 'templjs.semantic-zone'],
+        consumesSemanticKinds: [
+          'templjs.binding',
+          'templjs.schema-path',
+          'templjs.inferred-path',
+          'templjs.semantic-zone',
+        ],
         description:
           'Language-service formatting orchestration metadata over projected TemplJS authoring facts.',
       },
@@ -375,7 +428,7 @@ export function createTempljsAuthoringProfile(): ProfileDefinition {
       {
         adapterId: TEMPLJS_TEMPLATE_ADAPTER_ID,
         adapterVersionRange: '^1.0.0',
-        sourceNodeKinds: ['templjs.binding', 'templjs.semantic-zone'],
+        sourceNodeKinds: ['templjs.binding', 'templjs.inferred-path', 'templjs.semantic-zone'],
       },
       {
         adapterId: TEMPLJS_SCHEMA_ADAPTER_ID,
