@@ -491,11 +491,15 @@ export class ContextGraphSemanticReadAdapter {
   }
 
   /* c8 ignore start */
-  private parseSetExpressionAtBinding(
+  private parseBindingSourceExpressionAtBinding(
     text: string,
     binding: TemplateBinding
   ): { sourceExpression: string; sourceExpressionStartOffset: number } | null {
-    if (binding.declarationStartOffset === undefined) {
+    if (
+      binding.declarationStartOffset === undefined ||
+      binding.declarationEndOffset === undefined ||
+      !binding.sourceExpression
+    ) {
       return null;
     }
 
@@ -508,57 +512,74 @@ export class ContextGraphSemanticReadAdapter {
     const rawInnerStart = statementStart + '{%'.length;
     const rawInner = text.slice(rawInnerStart, statementEnd);
 
-    let cursor = 0;
-    while (cursor < rawInner.length && /\s/.test(rawInner[cursor])) {
-      cursor += 1;
-    }
-    if (rawInner[cursor] === '-') {
-      cursor += 1;
-      while (cursor < rawInner.length && /\s/.test(rawInner[cursor])) {
-        cursor += 1;
-      }
-    }
-
-    if (!rawInner.startsWith('set', cursor)) {
-      return null;
-    }
-    cursor += 3;
-    while (cursor < rawInner.length && /\s/.test(rawInner[cursor])) {
-      cursor += 1;
-    }
-
-    const nameStart = cursor;
-    if (!/[A-Za-z_]/.test(rawInner[nameStart] ?? '')) {
-      return null;
-    }
-    cursor += 1;
-    while (cursor < rawInner.length && /[A-Za-z0-9_]/.test(rawInner[cursor])) {
-      cursor += 1;
-    }
-    const name = rawInner.slice(nameStart, cursor);
-    if (name !== binding.name) {
-      return null;
-    }
-
-    while (cursor < rawInner.length && /\s/.test(rawInner[cursor])) {
-      cursor += 1;
-    }
-    if (rawInner[cursor] !== '=') {
-      return null;
-    }
-    cursor += 1;
-    while (cursor < rawInner.length && /\s/.test(rawInner[cursor])) {
-      cursor += 1;
-    }
-
-    const sourceExpressionStartOffset = rawInnerStart + cursor;
-    const sourceExpression = rawInner
-      .slice(cursor)
-      .trimEnd()
-      .replace(/\s*-\s*$/, '');
+    const sourceExpression = binding.sourceExpression.trim();
     if (!sourceExpression) {
       return null;
     }
+
+    const isIdentifierPart = (char: string | undefined): boolean => {
+      if (!char) {
+        return false;
+      }
+      const code = char.charCodeAt(0);
+      return (
+        char === '_' ||
+        (code >= 65 && code <= 90) ||
+        (code >= 97 && code <= 122) ||
+        (code >= 48 && code <= 57)
+      );
+    };
+
+    const findForInKeywordStart = (value: string, startOffset: number): number => {
+      for (let index = Math.max(0, startOffset); index < value.length - 1; index += 1) {
+        if (value[index] !== 'i' || value[index + 1] !== 'n') {
+          continue;
+        }
+
+        const before = value[index - 1];
+        const after = value[index + 2];
+        if (isIdentifierPart(before) || isIdentifierPart(after)) {
+          continue;
+        }
+
+        return index;
+      }
+
+      return -1;
+    };
+
+    const relativeDeclarationEnd = Math.max(0, binding.declarationEndOffset - rawInnerStart);
+    let expressionSearchStart = relativeDeclarationEnd;
+
+    if (binding.kind === 'set-variable') {
+      const assignmentIndex = rawInner.indexOf('=', relativeDeclarationEnd);
+      if (assignmentIndex !== -1) {
+        expressionSearchStart = assignmentIndex + 1;
+      }
+    } else if (binding.kind === 'for-alias' || binding.kind === 'for-value-alias') {
+      const inKeywordStart = findForInKeywordStart(rawInner, relativeDeclarationEnd);
+      if (inKeywordStart !== -1) {
+        expressionSearchStart = inKeywordStart + 'in'.length;
+      }
+    }
+
+    while (expressionSearchStart < rawInner.length && /\s/.test(rawInner[expressionSearchStart])) {
+      expressionSearchStart += 1;
+    }
+
+    const expressionIndexFromDeclaration = rawInner.indexOf(
+      sourceExpression,
+      expressionSearchStart
+    );
+    const expressionIndex =
+      expressionIndexFromDeclaration >= 0
+        ? expressionIndexFromDeclaration
+        : rawInner.indexOf(sourceExpression);
+    if (expressionIndex === -1) {
+      return null;
+    }
+
+    const sourceExpressionStartOffset = rawInnerStart + expressionIndex;
 
     return {
       sourceExpression,
@@ -812,6 +833,42 @@ export class ContextGraphSemanticReadAdapter {
     return locate(expression, expressionStartOffset, 0);
   }
 
+  private findObjectMemberKeyRangeInObjectLiteralEntryValues(
+    expression: string,
+    expressionStartOffset: number,
+    segments: string[]
+  ): { start: number; end: number } | null {
+    const trimmedLeft = expression.length - expression.trimStart().length;
+    const trimmedRight = expression.trimEnd().length;
+    const coreStart = trimmedLeft;
+    const coreEnd = trimmedRight;
+    if (coreEnd <= coreStart) {
+      return null;
+    }
+
+    if (expression[coreStart] !== '{' || expression[coreEnd - 1] !== '}') {
+      return null;
+    }
+
+    const innerStart = coreStart + 1;
+    const innerEnd = coreEnd - 1;
+    for (const entry of this.splitTopLevelObjectEntries(expression, innerStart, innerEnd)) {
+      const colon = this.findTopLevelColon(expression, entry.start, entry.end);
+      if (colon === -1) {
+        continue;
+      }
+
+      const valueText = expression.slice(colon + 1, entry.end);
+      const valueStartOffset = expressionStartOffset + colon + 1;
+      const nested = this.findObjectMemberKeyRange(valueText, valueStartOffset, segments);
+      if (nested) {
+        return nested;
+      }
+    }
+
+    return null;
+  }
+
   resolveLocalInferredPathDefinition(
     text: string,
     path: string,
@@ -834,15 +891,28 @@ export class ContextGraphSemanticReadAdapter {
     const [root, ...memberSegments] = segments;
     const bindings = getTemplateBindingsAtOffset(extractTemplateBindings(text), offset);
     const binding = bindings.find(
-      (candidate) => candidate.kind === 'set-variable' && candidate.name === root
+      (candidate) =>
+        candidate.name === root &&
+        (candidate.kind === 'set-variable' ||
+          candidate.kind === 'for-alias' ||
+          candidate.kind === 'for-value-alias') &&
+        Boolean(candidate.inferredPaths?.length)
     );
     if (!binding) {
       return null;
     }
 
-    const parsed = this.parseSetExpressionAtBinding(text, binding);
+    const parsed = this.parseBindingSourceExpressionAtBinding(text, binding);
     if (!parsed) {
       return null;
+    }
+
+    if (binding.kind === 'for-value-alias') {
+      return this.findObjectMemberKeyRangeInObjectLiteralEntryValues(
+        parsed.sourceExpression,
+        parsed.sourceExpressionStartOffset,
+        memberSegments
+      );
     }
 
     return this.findObjectMemberKeyRange(
@@ -962,14 +1032,14 @@ export class ContextGraphSemanticReadAdapter {
       context.zoneSegment ??
       context.semanticZone?.segment ??
       (context.contextBlock === 'frontmatter' ? 'metadata' : 'content');
-    const legacyContextBlock = resolvedZoneSegment === 'metadata' ? 'frontmatter' : 'content';
+    const contextBlock = resolvedZoneSegment === 'metadata' ? 'frontmatter' : 'content';
 
     const contextAttributes: Record<string, JsonPrimitive> = {
       operation: context.operation,
       profileId: resolveProfileId(context),
       zoneKind: resolveZoneKind(context),
       zoneSegment: resolvedZoneSegment,
-      contextBlock: legacyContextBlock,
+      contextBlock,
     };
     if (context.documentUri) {
       contextAttributes.documentUri = context.documentUri;

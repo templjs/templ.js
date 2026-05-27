@@ -6,15 +6,18 @@ summary: Add deterministic inferred-path authority for dynamic local hover and c
 type: work-item
 subtype: task
 lifecycle: active
-status: in-progress
-status_reason: implementation
+status: ready-for-review
+status_reason: implementation-complete
 priority: high
 estimated: 16
-actual: 0
+actual: 4
 assignee: copilot
 links:
   evidence:
     - '[[record-20260525-120000-147-dynamic-local-inference-hover-completion-foundation]]'
+  pull_requests:
+    - 'https://github.com/templjs/templ.js/pull/187'
+    - 'https://github.com/templjs/templ.js/pull/189'
 ---
 
 ## Goal
@@ -35,13 +38,13 @@ Current hover and completion behavior relies on schema-backed path details and c
 
 ## Tasks
 
-- [ ] Define inferred-shape rules and canonical path normalization for dynamic locals.
-- [ ] Extend core template binding extraction metadata for inferred member paths.
-- [ ] Extend semantify template adapter outputs to emit inferred-path nodes.
-- [ ] Update volar context graph read APIs for inferred hover and completion.
-- [ ] Update intellisense hover and completion branches to consume inferred paths.
-- [ ] Add malformed-template confidence guardrails for best-effort behavior.
-- [ ] Add focused tests for dynamic locals across core, semantify, and volar.
+- [x] Define inferred-shape rules and canonical path normalization for dynamic locals.
+- [x] Extend core template binding extraction metadata for inferred member paths.
+- [x] Extend semantify template adapter outputs to emit inferred-path nodes.
+- [x] Update volar context graph read APIs for inferred hover and completion.
+- [x] Update intellisense hover and completion branches to consume inferred paths.
+- [x] Add malformed-template confidence guardrails for best-effort behavior.
+- [x] Add focused tests for dynamic locals across core, semantify, and volar.
 
 ## Deliverables
 
@@ -51,11 +54,11 @@ Current hover and completion behavior relies on schema-backed path details and c
 
 ## Acceptance Criteria
 
-- [ ] Hover resolves alias member paths to inferred details when schema is unavailable.
-- [ ] Completion offers inferred member candidates for in-scope dynamic locals.
-- [ ] Mixed schema-plus-dynamic templates preserve existing schema behavior.
-- [ ] Malformed templates degrade safely to deterministic null or best-effort outputs.
-- [ ] Targeted package tests pass for the new dynamic-local behavior.
+- [x] Hover resolves alias member paths to inferred details when schema is unavailable.
+- [x] Completion offers inferred member candidates for in-scope dynamic locals.
+- [x] Mixed schema-plus-dynamic templates preserve existing schema behavior.
+- [x] Malformed templates degrade safely to deterministic null or best-effort outputs.
+- [x] Targeted package tests pass for the new dynamic-local behavior.
 
 ## Testing Strategy
 
@@ -71,3 +74,5 @@ Current hover and completion behavior relies on schema-backed path details and c
 ## Implementation Notes
 
 - 2026-05-25: Started Phase 1 with inferred property completion for `set` object literals in Volar completion fallback when schema child completions are unavailable.
+- 2026-05-26: Completed dynamic-local inference for `for`-introduced locals by extending core binding extraction to emit inferred paths for inferable loop aliases and wiring Volar completion/definition read paths to consume them.
+- 2026-05-26: Added focused tests across core and volar for single-alias `for` object-literal inferred completion/definition behavior, plus key/value guardrails.

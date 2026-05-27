@@ -10,13 +10,14 @@ status: ready-for-review
 status_reason: implementation-complete
 priority: high
 estimated: 24
-actual: 0
+actual: 4
 assignee: copilot
 links:
   evidence:
     - '[[record-20260525-120500-148-dynamic-local-definition-to-literal-targeting]]'
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/187'
+    - 'https://github.com/templjs/templ.js/pull/189'
 ---
 
 ## Goal
@@ -69,3 +70,8 @@ Alias canonicalization currently maps references such as x.name toward canonical
 - `depends_on`: [[work-item-147-dynamic-local-inference-hover-completion-foundation]]
 - `related`: [[work-item-131-semantify-projection-full-cutover-epic]]
 - `related`: [[work-item-146-remove-legacy-artifacts-and-finalize-diagnostics-architecture]]
+
+## Implementation Notes
+
+- 2026-05-26: Re-validated against current `staging` state. Code and test coverage for inferred local definition targeting are complete, and PR #187 is merged.
+- 2026-05-26: Completed documentation follow-up with explicit inferred-first precedence/fallback narrative in [docs/templjs-volar-target-architecture.md](../../docs/templjs-volar-target-architecture.md) and canonical API contract wording in [docs/api-reference.md](../../docs/api-reference.md).

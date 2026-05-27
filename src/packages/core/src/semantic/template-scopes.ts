@@ -375,7 +375,7 @@ function normalizeObjectKey(keyRaw: string): string | null {
 }
 
 function collectObjectLiteralPaths(expression: string, prefix = ''): string[] {
-  const trimmed = expression.trim();
+  const trimmed = unwrapEnclosingParens(expression);
   if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
     return [];
   }
@@ -405,16 +405,142 @@ function collectObjectLiteralPaths(expression: string, prefix = ''): string[] {
   return paths;
 }
 
-function inferPathsFromSetExpression(sourceExpression?: string): string[] | undefined {
+function inferPathsFromSourceExpression(sourceExpression?: string): string[] | undefined {
   if (!sourceExpression) {
     return undefined;
   }
 
-  const inferred = Array.from(new Set(collectObjectLiteralPaths(sourceExpression))).sort((a, b) =>
+  const normalized = unwrapEnclosingParens(sourceExpression);
+
+  const inferred = Array.from(new Set(collectObjectLiteralPaths(normalized))).sort((a, b) =>
     a.localeCompare(b)
   );
 
   return inferred.length > 0 ? inferred : undefined;
+}
+
+function inferPathsFromObjectLiteralEntryValues(sourceExpression?: string): string[] | undefined {
+  if (!sourceExpression) {
+    return undefined;
+  }
+
+  const trimmed = unwrapEnclosingParens(sourceExpression);
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+    return undefined;
+  }
+
+  const inner = trimmed.slice(1, -1).trim();
+  if (!inner) {
+    return [];
+  }
+
+  const inferred = new Set<string>();
+  for (const entry of splitTopLevelEntries(inner)) {
+    const keyValue = splitTopLevelKeyValue(entry);
+    if (!keyValue) {
+      continue;
+    }
+
+    for (const path of collectObjectLiteralPaths(keyValue.valueRaw)) {
+      inferred.add(path);
+    }
+  }
+
+  return [...inferred].sort((a, b) => a.localeCompare(b));
+}
+
+function inferForBindingPaths(
+  sourceExpression: string | undefined,
+  aliasCount: number,
+  kind: TemplateBindingKind,
+  precomputed?: {
+    isObjectLiteralSource?: boolean;
+    sourceInferredPaths?: string[];
+    valueAliasInferredPaths?: string[];
+  }
+): string[] | undefined {
+  const isObjectLiteralSource =
+    precomputed?.isObjectLiteralSource ?? isObjectLiteralExpression(sourceExpression);
+
+  if (aliasCount === 1) {
+    const inferred =
+      precomputed?.sourceInferredPaths ?? inferPathsFromSourceExpression(sourceExpression);
+    return inferred ?? (isObjectLiteralSource ? [] : undefined);
+  }
+
+  if (kind === 'for-value-alias') {
+    const inferred =
+      precomputed?.valueAliasInferredPaths ??
+      inferPathsFromObjectLiteralEntryValues(sourceExpression);
+    return inferred ?? (isObjectLiteralSource ? [] : undefined);
+  }
+
+  return undefined;
+}
+
+function isObjectLiteralExpression(sourceExpression?: string): boolean {
+  if (!sourceExpression) {
+    return false;
+  }
+
+  const trimmed = unwrapEnclosingParens(sourceExpression);
+  return trimmed.startsWith('{') && trimmed.endsWith('}');
+}
+
+function unwrapEnclosingParens(expression: string): string {
+  let value = expression.trim();
+
+  while (value.startsWith('(') && value.endsWith(')')) {
+    let depth = 0;
+    let quote: '"' | "'" | null = null;
+    let escape = false;
+    let wrapsWholeExpression = true;
+
+    for (let index = 0; index < value.length; index += 1) {
+      const char = value[index];
+
+      if (quote) {
+        if (escape) {
+          escape = false;
+          continue;
+        }
+        if (char === '\\') {
+          escape = true;
+          continue;
+        }
+        if (char === quote) {
+          quote = null;
+        }
+        continue;
+      }
+
+      if (char === '"' || char === "'") {
+        quote = char;
+        continue;
+      }
+
+      if (char === '(') {
+        depth += 1;
+        continue;
+      }
+
+      if (char === ')') {
+        depth -= 1;
+        if (depth === 0 && index < value.length - 1) {
+          wrapsWholeExpression = false;
+          break;
+        }
+      }
+    }
+
+    if (!wrapsWholeExpression || depth !== 0) {
+      break;
+    }
+
+    value = value.slice(1, -1).trim();
+  }
+
+  return value;
 }
 /* c8 ignore stop */
 
@@ -798,7 +924,7 @@ function collectBindingsFallback(template: string): TemplateBinding[] {
         name: setStatement.name,
         sourceExpression: setStatement.sourceExpression,
         sourcePath: normalizePathFromExpression(setStatement.sourceExpression) ?? undefined,
-        inferredPaths: inferPathsFromSetExpression(setStatement.sourceExpression),
+        inferredPaths: inferPathsFromSourceExpression(setStatement.sourceExpression),
         scopeStartOffset: statementEnd + endDelimiter.length,
         scopeEndOffset: template.length,
         declarationStartOffset: declarationOffset.start,
@@ -814,11 +940,17 @@ function collectBindingsFallback(template: string): TemplateBinding[] {
       if (openLoop) {
         for (const nameInfo of openLoop.names) {
           const declaration = openLoop.declarationOffsets[nameInfo.name];
+          const inferredPaths = inferForBindingPaths(
+            openLoop.sourceExpression,
+            openLoop.names.length,
+            nameInfo.kind
+          );
           bindings.push({
             kind: nameInfo.kind,
             name: nameInfo.name,
             sourcePath: openLoop.sourcePath,
             sourceExpression: openLoop.sourceExpression,
+            inferredPaths,
             scopeStartOffset: openLoop.scopeStartOffset,
             scopeEndOffset: statementStart,
             declarationStartOffset: declaration?.start,
@@ -835,11 +967,17 @@ function collectBindingsFallback(template: string): TemplateBinding[] {
     const openLoop = stack.pop()!;
     for (const nameInfo of openLoop.names) {
       const declaration = openLoop.declarationOffsets[nameInfo.name];
+      const inferredPaths = inferForBindingPaths(
+        openLoop.sourceExpression,
+        openLoop.names.length,
+        nameInfo.kind
+      );
       bindings.push({
         kind: nameInfo.kind,
         name: nameInfo.name,
         sourcePath: openLoop.sourcePath,
         sourceExpression: openLoop.sourceExpression,
+        inferredPaths,
         scopeStartOffset: openLoop.scopeStartOffset,
         scopeEndOffset: template.length,
         declarationStartOffset: declaration?.start,
@@ -865,11 +1003,13 @@ function collectBindings(
       }
       return;
     case 'for': {
-      const sourcePath = expressionToPath(node.iterable);
+      const sourcePath = expressionToPath(node.iterable) ?? undefined;
       const sourceExpression =
         getForSourceExpression(template, node, statementEnd) ?? sourcePath ?? '';
+      const sourceInferredPaths = inferPathsFromSourceExpression(sourceExpression);
+      const isObjectLiteralSource = isObjectLiteralExpression(sourceExpression);
 
-      if (sourcePath) {
+      if (sourcePath || isObjectLiteralSource || sourceInferredPaths?.length) {
         const declarations = getForDeclarationOffsets(template, node, statementEnd);
         const nodeStart = positionToOffset(template, node.start.line, node.start.column);
         const openingTagEnd = template.indexOf(statementEnd, nodeStart);
@@ -887,14 +1027,27 @@ function collectBindings(
         if (node.valueIterator) {
           names.push({ name: node.valueIterator, kind: 'for-value-alias' });
         }
+        const valueAliasInferredPaths =
+          names.length > 1 ? inferPathsFromObjectLiteralEntryValues(sourceExpression) : undefined;
 
         for (const nameInfo of names) {
           const declaration = declarations.find((entry) => entry.name === nameInfo.name);
+          const bindingInferredPaths = inferForBindingPaths(
+            sourceExpression,
+            names.length,
+            nameInfo.kind,
+            {
+              isObjectLiteralSource,
+              sourceInferredPaths,
+              valueAliasInferredPaths,
+            }
+          );
           bindings.push({
             kind: nameInfo.kind,
             name: nameInfo.name,
             sourcePath,
             sourceExpression,
+            inferredPaths: bindingInferredPaths,
             scopeStartOffset,
             scopeEndOffset,
             declarationStartOffset: declaration?.start,
@@ -923,7 +1076,7 @@ function collectBindings(
         name: node.name,
         sourcePath,
         sourceExpression,
-        inferredPaths: inferPathsFromSetExpression(sourceExpression),
+        inferredPaths: inferPathsFromSourceExpression(sourceExpression),
         scopeStartOffset,
         scopeEndOffset: scopeBoundary,
         declarationStartOffset: declaration?.start,

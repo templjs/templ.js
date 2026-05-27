@@ -24,6 +24,7 @@ export interface InScopeTemplateBinding {
   name: string;
   kind: TemplateBindingKind;
   sourceExpression?: string;
+  inferredPaths?: string[];
 }
 
 function volarDelimitersToLexerOptions(
@@ -124,6 +125,7 @@ export function getInScopeTemplateBindings(
       name: binding.name,
       kind: binding.kind,
       sourceExpression: binding.sourceExpression,
+      inferredPaths: binding.inferredPaths,
     });
   }
 
@@ -207,218 +209,43 @@ function splitPathByDot(path: string): string[] {
 }
 
 /* c8 ignore start */
-function splitTopLevelEntries(content: string): string[] {
-  const entries: string[] = [];
-  let depthCurly = 0;
-  let depthSquare = 0;
-  let depthParen = 0;
-  let quote: '"' | "'" | null = null;
-  let escape = false;
-  let start = 0;
-
-  for (let index = 0; index < content.length; index += 1) {
-    const char = content[index];
-
-    if (quote) {
-      if (escape) {
-        escape = false;
-        continue;
-      }
-      if (char === '\\') {
-        escape = true;
-        continue;
-      }
-      if (char === quote) {
-        quote = null;
-      }
-      continue;
-    }
-
-    if (char === '"' || char === "'") {
-      quote = char;
-      continue;
-    }
-
-    if (char === '{') {
-      depthCurly += 1;
-      continue;
-    }
-    if (char === '}') {
-      depthCurly = Math.max(0, depthCurly - 1);
-      continue;
-    }
-    if (char === '[') {
-      depthSquare += 1;
-      continue;
-    }
-    if (char === ']') {
-      depthSquare = Math.max(0, depthSquare - 1);
-      continue;
-    }
-    if (char === '(') {
-      depthParen += 1;
-      continue;
-    }
-    if (char === ')') {
-      depthParen = Math.max(0, depthParen - 1);
-      continue;
-    }
-
-    if (char === ',' && depthCurly === 0 && depthSquare === 0 && depthParen === 0) {
-      const entry = content.slice(start, index).trim();
-      if (entry.length > 0) {
-        entries.push(entry);
-      }
-      start = index + 1;
-    }
-  }
-
-  const trailing = content.slice(start).trim();
-  if (trailing.length > 0) {
-    entries.push(trailing);
-  }
-
-  return entries;
-}
-
-function splitTopLevelKeyValue(entry: string): { keyRaw: string; valueRaw: string } | null {
-  let depthCurly = 0;
-  let depthSquare = 0;
-  let depthParen = 0;
-  let quote: '"' | "'" | null = null;
-  let escape = false;
-
-  for (let index = 0; index < entry.length; index += 1) {
-    const char = entry[index];
-
-    if (quote) {
-      if (escape) {
-        escape = false;
-        continue;
-      }
-      if (char === '\\') {
-        escape = true;
-        continue;
-      }
-      if (char === quote) {
-        quote = null;
-      }
-      continue;
-    }
-
-    if (char === '"' || char === "'") {
-      quote = char;
-      continue;
-    }
-
-    if (char === '{') {
-      depthCurly += 1;
-      continue;
-    }
-    if (char === '}') {
-      depthCurly = Math.max(0, depthCurly - 1);
-      continue;
-    }
-    if (char === '[') {
-      depthSquare += 1;
-      continue;
-    }
-    if (char === ']') {
-      depthSquare = Math.max(0, depthSquare - 1);
-      continue;
-    }
-    if (char === '(') {
-      depthParen += 1;
-      continue;
-    }
-    if (char === ')') {
-      depthParen = Math.max(0, depthParen - 1);
-      continue;
-    }
-
-    if (char === ':' && depthCurly === 0 && depthSquare === 0 && depthParen === 0) {
-      const keyRaw = entry.slice(0, index).trim();
-      const valueRaw = entry.slice(index + 1).trim();
-      if (!keyRaw || !valueRaw) {
-        return null;
-      }
-      return { keyRaw, valueRaw };
-    }
-  }
-
-  return null;
-}
-
-function normalizeObjectKey(keyRaw: string): string | null {
-  if (/^[A-Za-z_][\w]*$/.test(keyRaw)) {
-    return keyRaw;
-  }
-
-  const quoted = keyRaw.match(/^['"](.+)['"]$/);
-  if (quoted?.[1]) {
-    return quoted[1];
-  }
-
-  return null;
-}
-
-function parseObjectLiteralEntries(expression: string): Map<string, string> | null {
-  const trimmed = expression.trim();
-  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
-    return null;
-  }
-
-  const inner = trimmed.slice(1, -1).trim();
-  if (!inner) {
-    return new Map();
-  }
-
-  const entries = splitTopLevelEntries(inner);
-  const map = new Map<string, string>();
-  for (const entry of entries) {
-    const keyValue = splitTopLevelKeyValue(entry);
-    if (!keyValue) {
-      continue;
-    }
-    const key = normalizeObjectKey(keyValue.keyRaw);
-    if (!key) {
-      continue;
-    }
-    map.set(key, keyValue.valueRaw);
-  }
-
-  return map;
-}
-
 function inferObjectMembersFromBinding(
   binding: InScopeTemplateBinding,
   memberPath: string[]
 ): string[] {
-  let currentExpression = binding.sourceExpression;
-  if (!currentExpression) {
+  const inferredPaths = binding.inferredPaths;
+  if (!inferredPaths || inferredPaths.length === 0) {
     return [];
   }
 
-  for (const segment of memberPath) {
-    const objectEntries = parseObjectLiteralEntries(currentExpression);
-    if (!objectEntries) {
-      return [];
+  const prefix = memberPath.join('.');
+  const childSegments = new Set<string>();
+
+  for (const path of inferredPaths) {
+    if (!path) {
+      continue;
     }
 
-    const nextExpression = objectEntries.get(segment);
-    if (!nextExpression) {
-      return [];
+    if (!prefix) {
+      const [segment] = path.split('.');
+      if (segment) {
+        childSegments.add(segment);
+      }
+      continue;
     }
 
-    currentExpression = nextExpression;
+    if (!path.startsWith(`${prefix}.`)) {
+      continue;
+    }
+
+    const remainder = path.slice(prefix.length + 1);
+    const [segment] = remainder.split('.');
+    if (segment) {
+      childSegments.add(segment);
+    }
   }
 
-  const objectEntries = parseObjectLiteralEntries(currentExpression);
-  if (!objectEntries) {
-    return [];
-  }
-
-  return [...objectEntries.keys()].sort((left, right) => left.localeCompare(right));
+  return [...childSegments].sort((left, right) => left.localeCompare(right));
 }
 
 export function getInferredLocalPropertyCompletions(
@@ -434,7 +261,13 @@ export function getInferredLocalPropertyCompletions(
 
   const [root, ...memberPath] = segments;
   const bindings = getInScopeTemplateBindings(text, offset, delimiters);
-  const binding = bindings.find((entry) => entry.name === root && entry.kind === 'set-variable');
+  const binding = bindings.find(
+    (entry) =>
+      entry.name === root &&
+      (entry.kind === 'set-variable' ||
+        ((entry.kind === 'for-alias' || entry.kind === 'for-value-alias') &&
+          Boolean(entry.inferredPaths?.length)))
+  );
   if (!binding) {
     return [];
   }

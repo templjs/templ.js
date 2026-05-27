@@ -185,6 +185,82 @@ describe('template-scopes helpers', () => {
     expect(setBinding?.inferredPaths).toEqual(['meta', 'meta.city', 'meta.note', 'name', 'tags']);
   });
 
+  it('infers object-literal member paths for single-alias for bindings', () => {
+    const template =
+      '{% for item in { name: "Ada", meta: { city: "London" } } %}{{ item.meta.city }}{% endfor %}';
+    const bindings = extractTemplateBindings(template);
+    const forBinding = bindings.find((binding) => binding.kind === 'for-alias');
+
+    expect(forBinding?.name).toBe('item');
+    expect(forBinding?.inferredPaths).toEqual(['meta', 'meta.city', 'name']);
+  });
+
+  it('assigns inferred paths to for value aliases while leaving key aliases undefined', () => {
+    const template =
+      '{% for key, value in { profile: { name: "Ada" } } %}{{ value.name }}{% endfor %}';
+    const bindings = extractTemplateBindings(template);
+    const keyBinding = bindings.find((binding) => binding.kind === 'for-alias');
+    const valueBinding = bindings.find((binding) => binding.kind === 'for-value-alias');
+
+    expect(keyBinding?.name).toBe('key');
+    expect(keyBinding?.inferredPaths).toBeUndefined();
+    expect(valueBinding?.name).toBe('value');
+    expect(valueBinding?.inferredPaths).toEqual(['name']);
+  });
+
+  it('unions inferred paths from object-literal entry values for key-value loops', () => {
+    const template =
+      '{% for key, value in { profile: { name: "Ada" }, account: { id: 1 } } %}{{ value }}{% endfor %}';
+    const bindings = extractTemplateBindings(template);
+    const valueBinding = bindings.find((binding) => binding.kind === 'for-value-alias');
+
+    expect(valueBinding?.name).toBe('value');
+    expect(valueBinding?.inferredPaths).toEqual(['id', 'name']);
+  });
+
+  it('infers paths from parenthesized object-literal entry values in key-value loops', () => {
+    const template =
+      '{% for key, value in { profile: ({ name: "Ada" }) } %}{{ value.name }}{% endfor %}';
+    const bindings = extractTemplateBindings(template);
+    const valueBinding = bindings.find((binding) => binding.kind === 'for-value-alias');
+
+    expect(valueBinding?.name).toBe('value');
+    expect(valueBinding?.inferredPaths).toEqual(['name']);
+  });
+
+  it('retains single-alias for bindings for empty object-literal iterables', () => {
+    const template = '{% for item in {} %}{{ item }}{% endfor %}';
+    const bindings = extractTemplateBindings(template);
+    const forBinding = bindings.find((binding) => binding.kind === 'for-alias');
+
+    expect(forBinding?.name).toBe('item');
+    expect(forBinding?.sourceExpression).toBe('{}');
+    expect(forBinding?.inferredPaths).toEqual([]);
+  });
+
+  it('retains value aliases for key-value loops over empty object-literal iterables', () => {
+    const template = '{% for key, value in {} %}{{ value }}{% endfor %}';
+    const bindings = extractTemplateBindings(template);
+    const keyBinding = bindings.find((binding) => binding.kind === 'for-alias');
+    const valueBinding = bindings.find((binding) => binding.kind === 'for-value-alias');
+
+    expect(keyBinding?.name).toBe('key');
+    expect(keyBinding?.inferredPaths).toBeUndefined();
+    expect(valueBinding?.name).toBe('value');
+    expect(valueBinding?.sourceExpression).toBe('{}');
+    expect(valueBinding?.inferredPaths).toEqual([]);
+  });
+
+  it('infers bindings for parenthesized object-literal iterable sources', () => {
+    const template =
+      '{% for item in ({ profile: { name: "Ada" } }) %}{{ item.profile.name }}{% endfor %}';
+    const bindings = extractTemplateBindings(template);
+    const forBinding = bindings.find((binding) => binding.kind === 'for-alias');
+
+    expect(forBinding?.name).toBe('item');
+    expect(forBinding?.inferredPaths).toEqual(['profile', 'profile.name']);
+  });
+
   it('sorts overlapping in-scope bindings by nearest scope start offset', () => {
     const bindings = [
       {
