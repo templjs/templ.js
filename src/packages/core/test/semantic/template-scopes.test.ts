@@ -218,6 +218,16 @@ describe('template-scopes helpers', () => {
     expect(valueBinding?.inferredPaths).toEqual(['id', 'name']);
   });
 
+  it('infers paths from parenthesized object-literal entry values in key-value loops', () => {
+    const template =
+      '{% for key, value in { profile: ({ name: "Ada" }) } %}{{ value.name }}{% endfor %}';
+    const bindings = extractTemplateBindings(template);
+    const valueBinding = bindings.find((binding) => binding.kind === 'for-value-alias');
+
+    expect(valueBinding?.name).toBe('value');
+    expect(valueBinding?.inferredPaths).toEqual(['name']);
+  });
+
   it('retains single-alias for bindings for empty object-literal iterables', () => {
     const template = '{% for item in {} %}{{ item }}{% endfor %}';
     const bindings = extractTemplateBindings(template);

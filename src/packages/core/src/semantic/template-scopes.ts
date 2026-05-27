@@ -375,7 +375,7 @@ function normalizeObjectKey(keyRaw: string): string | null {
 }
 
 function collectObjectLiteralPaths(expression: string, prefix = ''): string[] {
-  const trimmed = expression.trim();
+  const trimmed = unwrapEnclosingParens(expression);
   if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
     return [];
   }
