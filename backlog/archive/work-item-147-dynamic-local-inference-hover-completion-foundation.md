@@ -3,21 +3,22 @@ $schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:147-dynamic-local-inference-hover-completion-foundation
 title: '147: Dynamic Local Inference Foundation for Hover and Completion'
 summary: Add deterministic inferred-path authority for dynamic local hover and completion without schema-only dependence
+assignee: copilot
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: implementation-complete
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 16
 actual: 4
-assignee: copilot
+completed_date: '2026-05-27'
 links:
   evidence:
     - '[[record-20260525-120000-147-dynamic-local-inference-hover-completion-foundation]]'
   pull_requests:
-    - 'https://github.com/templjs/templ.js/pull/187'
-    - 'https://github.com/templjs/templ.js/pull/189'
+    - https://github.com/templjs/templ.js/pull/187
+    - https://github.com/templjs/templ.js/pull/189
 ---
 
 ## Goal

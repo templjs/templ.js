@@ -3,21 +3,22 @@ $schema: schemas/work-management/frontmatter/work-item.json
 id: work-item:148-dynamic-local-definition-to-literal-targeting
 title: '148: Dynamic Local Definition Targeting to Literal Source Spans'
 summary: Resolve dynamic local member definitions to inferred literal declaration spans with deterministic fallback semantics
+assignee: copilot
 type: work-item
 subtype: task
-lifecycle: active
-status: ready-for-review
-status_reason: implementation-complete
+lifecycle: inactive
+status: closed
+status_reason: completed
 priority: high
 estimated: 24
 actual: 4
-assignee: copilot
+completed_date: '2026-05-27'
 links:
   evidence:
     - '[[record-20260525-120500-148-dynamic-local-definition-to-literal-targeting]]'
   pull_requests:
-    - 'https://github.com/templjs/templ.js/pull/187'
-    - 'https://github.com/templjs/templ.js/pull/189'
+    - https://github.com/templjs/templ.js/pull/187
+    - https://github.com/templjs/templ.js/pull/189
 ---
 
 ## Goal
