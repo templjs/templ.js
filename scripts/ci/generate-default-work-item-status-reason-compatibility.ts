@@ -1,0 +1,345 @@
+#!/usr/bin/env tsx
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createSchemaRegistry, readSchemaEnum } from './transition-profile.ts';
+
+type JsonRecord = Record<string, unknown>;
+
+export interface StatusReasonCompatibilityGenerationOptions {
+  generatedSchemaId: string;
+  title: string;
+  statusDimension: string;
+  reasonDimension: string;
+}
+
+const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+const WORKSPACE_ROOT = resolve(SCRIPT_DIR, '..', '..');
+const DEFAULT_WORKFLOW_DIR = join(
+  WORKSPACE_ROOT,
+  'schemas',
+  'work-management',
+  'workflows',
+  'default'
+);
+const PROFILE_PATH = join(DEFAULT_WORKFLOW_DIR, 'transition-profile.json');
+const STATUS_DEFINITIONS_SCHEMA_PATH = join(DEFAULT_WORKFLOW_DIR, 'status-definitions.schema.json');
+const GENERATED_SCHEMA_PATH = join(
+  DEFAULT_WORKFLOW_DIR,
+  'generated',
+  'status-reason-compatibility.schema.json'
+);
+const DEFAULT_OPTIONS: StatusReasonCompatibilityGenerationOptions = {
+  generatedSchemaId:
+    '/work-management/workflows/default/generated/status-reason-compatibility.schema.json',
+  title: 'work-management/workflows/default/generated/status-reason-compatibility',
+  statusDimension: 'status',
+  reasonDimension: 'reason',
+};
+
+export class StatusReasonCompatibilityGenerationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'StatusReasonCompatibilityGenerationError';
+  }
+}
+
+function isRecord(value: unknown): value is JsonRecord {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readRecord(value: unknown, path: string): JsonRecord {
+  if (!isRecord(value)) {
+    throw new StatusReasonCompatibilityGenerationError(`${path} must be an object`);
+  }
+
+  return value;
+}
+
+function readString(value: unknown, path: string): string {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new StatusReasonCompatibilityGenerationError(`${path} must be a non-empty string`);
+  }
+
+  return value;
+}
+
+function readOptionalString(value: unknown, path: string): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return readString(value, path);
+}
+
+function readOptionalUniqueStringArray(value: unknown, path: string): readonly string[] {
+  if (value === undefined) {
+    return [];
+  }
+
+  if (!Array.isArray(value) || !value.every((entry) => typeof entry === 'string')) {
+    throw new StatusReasonCompatibilityGenerationError(`${path} must be an array of strings`);
+  }
+
+  if (new Set(value).size !== value.length) {
+    throw new StatusReasonCompatibilityGenerationError(`${path} must not contain duplicates`);
+  }
+
+  return value;
+}
+
+function hasOwn(record: JsonRecord, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(record, key);
+}
+
+function wrapGenerationError(error: unknown): StatusReasonCompatibilityGenerationError {
+  return error instanceof StatusReasonCompatibilityGenerationError
+    ? error
+    : new StatusReasonCompatibilityGenerationError((error as Error).message);
+}
+
+export function generateStatusReasonCompatibilitySchema(
+  profileDocument: unknown,
+  schemaDocuments: readonly JsonRecord[],
+  options: StatusReasonCompatibilityGenerationOptions = DEFAULT_OPTIONS
+): JsonRecord {
+  try {
+    const profile = readRecord(profileDocument, 'transition profile');
+    const sourceDimensions = readRecord(profile.sourceDimensions, 'sourceDimensions');
+    const statusDimension = readRecord(
+      sourceDimensions[options.statusDimension],
+      `sourceDimensions.${options.statusDimension}`
+    );
+    const reasonDimension = readRecord(
+      sourceDimensions[options.reasonDimension],
+      `sourceDimensions.${options.reasonDimension}`
+    );
+    const statusDomain = readString(
+      statusDimension.domain,
+      `sourceDimensions.${options.statusDimension}.domain`
+    );
+    const domainBy = readRecord(
+      reasonDimension.domainBy,
+      `sourceDimensions.${options.reasonDimension}.domainBy`
+    );
+    const dependencyName = readString(
+      domainBy.dimension,
+      `sourceDimensions.${options.reasonDimension}.domainBy.dimension`
+    );
+    if (dependencyName !== options.statusDimension) {
+      throw new StatusReasonCompatibilityGenerationError(
+        `sourceDimensions.${options.reasonDimension}.domainBy.dimension must reference '${options.statusDimension}'`
+      );
+    }
+
+    const registry = createSchemaRegistry(schemaDocuments, profile);
+    const statuses = readSchemaEnum(registry, statusDomain);
+    const cases = readRecord(
+      domainBy.cases,
+      `sourceDimensions.${options.reasonDimension}.domainBy.cases`
+    );
+    const requiredCases = readOptionalUniqueStringArray(
+      domainBy.requiredCases,
+      `sourceDimensions.${options.reasonDimension}.domainBy.requiredCases`
+    );
+    const extensionDomain = readOptionalString(
+      domainBy.extensionDomain,
+      `sourceDimensions.${options.reasonDimension}.domainBy.extensionDomain`
+    );
+    if (extensionDomain) {
+      registry.resolve(extensionDomain);
+    }
+
+    const statusSet = new Set(statuses);
+    for (const caseName of Object.keys(cases)) {
+      if (!statusSet.has(caseName)) {
+        throw new StatusReasonCompatibilityGenerationError(
+          `sourceDimensions.${options.reasonDimension}.domainBy.cases contains unknown ${options.statusDimension} case '${caseName}'`
+        );
+      }
+    }
+
+    for (const requiredCase of requiredCases) {
+      if (!statusSet.has(requiredCase) || !hasOwn(cases, requiredCase)) {
+        throw new StatusReasonCompatibilityGenerationError(
+          `sourceDimensions.${options.reasonDimension}.domainBy.requiredCases contains unknown ${options.statusDimension} case '${requiredCase}'`
+        );
+      }
+    }
+
+    const branches = statuses.map((status) => {
+      const casePath = `sourceDimensions.${options.reasonDimension}.domainBy.cases.${status}`;
+      if (!hasOwn(cases, status)) {
+        throw new StatusReasonCompatibilityGenerationError(`${casePath} is required`);
+      }
+
+      const reasonDomain = readString(cases[status], casePath);
+      readSchemaEnum(registry, reasonDomain);
+
+      return {
+        type: 'object',
+        required: requiredCases.includes(status) ? ['status', 'status_reason'] : ['status'],
+        properties: {
+          status: {
+            const: status,
+          },
+          status_reason: {
+            anyOf: [
+              {
+                $ref: reasonDomain,
+              },
+              ...(extensionDomain ? [{ $ref: extensionDomain }] : []),
+            ],
+          },
+        },
+      };
+    });
+
+    return {
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      $id: options.generatedSchemaId,
+      title: options.title,
+      description: 'Generated from the default work-item transition profile. Do not edit manually.',
+      $comment:
+        "GENERATED FILE. Run 'pnpm run schemas:work-item-workflow:generate' after editing ../transition-profile.json or ../status-definitions.schema.json.",
+      oneOf: branches,
+    };
+  } catch (error) {
+    throw wrapGenerationError(error);
+  }
+}
+
+export function serializeGeneratedSchema(schema: JsonRecord): string {
+  return `${serializeJson(schema)}\n`;
+}
+
+function serializeJson(value: unknown, depth = 0): string {
+  const indentation = '  '.repeat(depth);
+  const childIndentation = '  '.repeat(depth + 1);
+
+  if (Array.isArray(value)) {
+    const compact = `[${value.map((entry) => JSON.stringify(entry)).join(', ')}]`;
+    const containsOnlyScalars = value.every(
+      (entry) =>
+        entry === null ||
+        typeof entry === 'string' ||
+        typeof entry === 'number' ||
+        typeof entry === 'boolean'
+    );
+    if (containsOnlyScalars && indentation.length + compact.length <= 100) {
+      return compact;
+    }
+
+    return `[\n${value
+      .map((entry) => `${childIndentation}${serializeJson(entry, depth + 1)}`)
+      .join(',\n')}\n${indentation}]`;
+  }
+
+  if (isRecord(value)) {
+    const entries = Object.entries(value);
+    return `{\n${entries
+      .map(
+        ([key, entry]) =>
+          `${childIndentation}${JSON.stringify(key)}: ${serializeJson(entry, depth + 1)}`
+      )
+      .join(',\n')}\n${indentation}}`;
+  }
+
+  const serialized = JSON.stringify(value);
+  if (serialized === undefined) {
+    throw new StatusReasonCompatibilityGenerationError(
+      'Generated schema contains an unsupported value'
+    );
+  }
+
+  return serialized;
+}
+
+function readJsonFile(path: string): JsonRecord {
+  try {
+    return readRecord(JSON.parse(readFileSync(path, 'utf8')) as unknown, path);
+  } catch (error) {
+    throw new StatusReasonCompatibilityGenerationError(
+      `Unable to read JSON file '${relative(WORKSPACE_ROOT, path)}': ${(error as Error).message}`
+    );
+  }
+}
+
+function writeGeneratedSchema(content: string): void {
+  const outputDirectory = dirname(GENERATED_SCHEMA_PATH);
+  const temporaryPath = `${GENERATED_SCHEMA_PATH}.${process.pid}.tmp`;
+
+  mkdirSync(outputDirectory, { recursive: true });
+  try {
+    writeFileSync(temporaryPath, content, 'utf8');
+    renameSync(temporaryPath, GENERATED_SCHEMA_PATH);
+  } finally {
+    if (existsSync(temporaryPath)) {
+      unlinkSync(temporaryPath);
+    }
+  }
+}
+
+function checkGeneratedSchema(content: string): void {
+  if (!existsSync(GENERATED_SCHEMA_PATH)) {
+    throw new StatusReasonCompatibilityGenerationError(
+      `Generated schema '${relative(WORKSPACE_ROOT, GENERATED_SCHEMA_PATH)}' is missing. Run 'pnpm run schemas:work-item-workflow:generate'.`
+    );
+  }
+
+  if (readFileSync(GENERATED_SCHEMA_PATH, 'utf8') !== content) {
+    throw new StatusReasonCompatibilityGenerationError(
+      `Generated schema '${relative(WORKSPACE_ROOT, GENERATED_SCHEMA_PATH)}' is stale. Run 'pnpm run schemas:work-item-workflow:generate'.`
+    );
+  }
+}
+
+export function main(args: readonly string[]): number {
+  if (args.length > 1 || (args.length === 1 && args[0] !== '--check')) {
+    console.error(
+      'Usage: pnpm run schemas:work-item-workflow:generate | pnpm run schemas:work-item-workflow:check'
+    );
+    return 1;
+  }
+
+  try {
+    const profile = readJsonFile(PROFILE_PATH);
+    const generated = serializeGeneratedSchema(
+      generateStatusReasonCompatibilitySchema(profile, [
+        profile,
+        readJsonFile(STATUS_DEFINITIONS_SCHEMA_PATH),
+      ])
+    );
+
+    if (args[0] === '--check') {
+      checkGeneratedSchema(generated);
+      console.log('Generated work-item status-reason compatibility schema is current.');
+    } else {
+      writeGeneratedSchema(generated);
+      console.log(
+        `Generated ${relative(WORKSPACE_ROOT, GENERATED_SCHEMA_PATH)} from ${relative(WORKSPACE_ROOT, PROFILE_PATH)}.`
+      );
+    }
+
+    return 0;
+  } catch (error) {
+    console.error(
+      `Failed to generate work-item status-reason compatibility schema: ${(error as Error).message}`
+    );
+    return 1;
+  }
+}
+
+const isEntryPoint =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
+
+if (isEntryPoint) {
+  process.exitCode = main(process.argv.slice(2));
+}

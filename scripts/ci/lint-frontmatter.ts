@@ -7,6 +7,12 @@ import type { ValidateFunction } from 'ajv';
 import Ajv from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import { fileURLToPath } from 'url';
+import { evaluateTransition } from './state-transition-evaluator.ts';
+import {
+  compileTransitionProfile,
+  resolveStateVector,
+  type CompiledTransitionProfile,
+} from './transition-profile.ts';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const BACKLOG_DIR = join(process.cwd(), 'backlog');
@@ -176,6 +182,7 @@ function loadSchemas() {
     ...collectSchemaFiles(SCHEMA_DIR),
     ...collectSchemaFiles(WORK_MANAGEMENT_SCHEMA_DIR),
   ].sort();
+  const workManagementSchemas: Record<string, unknown>[] = [];
 
   for (const schemaFile of schemaFiles) {
     const relativePath = toPosixPath(relative(SCHEMA_DIR, schemaFile));
@@ -190,15 +197,20 @@ function loadSchemas() {
     const schema = parseJsonFile<Record<string, unknown>>(schemaFile);
     ajv.addSchema(schema);
     workManagementAjv.addSchema(schema);
+    if (schemaFile.startsWith(WORK_MANAGEMENT_SCHEMA_DIR)) {
+      workManagementSchemas.push(schema);
+    }
   }
 
-  const baseSchema = parseJsonFile<{ $defs?: { statusTransitions?: { properties?: object } } }>(
-    resolveSchemaPath(schemaMap.support.base)
+  const transitionProfile = compileTransitionProfile(
+    parseJsonFile<Record<string, unknown>>(
+      join(WORK_MANAGEMENT_SCHEMA_DIR, 'workflows', 'default', 'transition-profile.json')
+    ),
+    parseJsonFile<Record<string, unknown>>(
+      join(WORK_MANAGEMENT_SCHEMA_DIR, 'support', 'transition-profile.schema.json')
+    ),
+    workManagementSchemas
   );
-  const statusTransitions = baseSchema.$defs?.statusTransitions?.properties as Record<
-    string,
-    { items: { enum: string[] } }
-  >;
 
   const validators = new Map<string, ValidateFunction<unknown>>();
   const schemaValidators = new Map<string, ValidateFunction<unknown>>();
@@ -217,7 +229,7 @@ function loadSchemas() {
     workManagementAjv,
     validators,
     schemaValidators,
-    statusTransitions,
+    transitionProfile,
     supportedTypes,
   };
 }
@@ -266,31 +278,6 @@ function resolveValidatorForFrontmatter(
 
   const type = typeof frontmatter.type === 'string' ? frontmatter.type : null;
   return type ? validators.get(type) : undefined;
-}
-
-/**
- * Validate status transitions based on statusTransitions schema
- */
-function validateStatusTransition(
-  status: string,
-  previousStatus: string | null,
-  statusTransitions: Record<string, { items: { enum: string[] } }>
-): string | null {
-  // If no previous status (new file) or status unchanged, no transition check needed.
-  if (!previousStatus || previousStatus === status) {
-    return null;
-  }
-
-  // Get allowed transitions for the previous status
-  const allowedTransitions = statusTransitions[previousStatus]?.items?.enum || [];
-
-  // Check if current status is in allowed transitions
-  const disableTransitionCheck = true;
-  if (!disableTransitionCheck && !allowedTransitions.includes(status)) {
-    return `Invalid status transition from '${previousStatus}' to '${status}'. Allowed transitions: [${allowedTransitions.join(', ')}]`;
-  }
-
-  return null;
 }
 
 let cachedComparisonRef: string | null | undefined;
@@ -360,11 +347,11 @@ function hasBacklogFileChangedSinceComparison(file: string): boolean {
 }
 
 /**
- * Get previous committed status from git for a backlog file.
+ * Get previous committed frontmatter from git for a backlog file.
  * Uses a stable baseline ref (PR base SHA, merge-base, or HEAD~1 fallback).
  * Returns null for new/untracked files or files without valid frontmatter.
  */
-function getPreviousStatusFromGit(file: string): string | null {
+function getPreviousFrontmatterFromGit(file: string): Record<string, unknown> | null {
   const comparisonRef = resolveComparisonRef();
   if (!comparisonRef) {
     return null;
@@ -382,13 +369,20 @@ function getPreviousStatusFromGit(file: string): string | null {
   }
 
   try {
-    const previousFrontmatter = parseFrontmatter(result.stdout);
-
-    const previousStatus = previousFrontmatter.status;
-    return typeof previousStatus === 'string' ? previousStatus : null;
+    return parseFrontmatter(result.stdout);
   } catch {
     return null;
   }
+}
+
+function describeState(
+  profile: CompiledTransitionProfile,
+  frontmatter: Record<string, unknown>
+): string {
+  const state = resolveStateVector(profile, frontmatter);
+  return Object.entries(state)
+    .map(([dimension, value]) => `${dimension}=${value ?? '<missing>'}`)
+    .join(', ');
 }
 
 function toPosixPath(pathValue: string): string {
@@ -455,7 +449,7 @@ function validateFrontmatter(): boolean {
     workManagementAjv,
     validators,
     schemaValidators,
-    statusTransitions,
+    transitionProfile,
     supportedTypes,
   } = loadSchemas();
   const allBacklogFiles = collectBacklogMarkdownFiles(BACKLOG_DIR);
@@ -560,7 +554,9 @@ function validateFrontmatter(): boolean {
       // Work-item-only validations: status transitions and dependency checks
       if (type === 'work-item') {
         const status = frontmatter.status as string;
-        const previousStatus = getPreviousStatusFromGit(file);
+        const previousFrontmatter = getPreviousFrontmatterFromGit(file);
+        const previousStatus =
+          typeof previousFrontmatter?.status === 'string' ? previousFrontmatter.status : null;
 
         const pullRequests = Array.isArray(frontmatter.links?.pull_requests)
           ? (frontmatter.links.pull_requests as string[])
@@ -614,18 +610,26 @@ function validateFrontmatter(): boolean {
           }
         }
 
-        const transitionError =
-          typeof status === 'string'
-            ? validateStatusTransition(status, previousStatus, statusTransitions)
-            : null;
-        if (transitionError) {
-          hasViolations = true;
-          hasItemViolations = true;
-          if (!validator.errors || validator.errors.length === 0) {
-            console.error(`❌ ${file}`);
-          }
+        if (previousFrontmatter && typeof status === 'string') {
+          const previousState = resolveStateVector(transitionProfile, previousFrontmatter);
+          const currentState = resolveStateVector(transitionProfile, frontmatter);
+          const transition = evaluateTransition(
+            previousState,
+            currentState,
+            transitionProfile.transitions
+          );
 
-          console.error(`   /status: ${transitionError}`);
+          if (!transition.allowed) {
+            hasViolations = true;
+            hasItemViolations = true;
+            if (!validator.errors || validator.errors.length === 0) {
+              console.error(`❌ ${file}`);
+            }
+
+            console.error(
+              `   /status: Invalid transition from '${describeState(transitionProfile, previousFrontmatter)}' to '${describeState(transitionProfile, frontmatter)}'`
+            );
+          }
         }
 
         const legacyDependsOn = Array.isArray(frontmatter.links?.depends_on)
