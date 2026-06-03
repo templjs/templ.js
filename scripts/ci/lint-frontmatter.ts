@@ -1,13 +1,13 @@
-import { existsSync, readFileSync, readdirSync } from 'fs';
-import { dirname, isAbsolute, join, normalize, relative, resolve } from 'path';
-import { spawnSync } from 'child_process';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { dirname, isAbsolute, join, normalize, relative, resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import * as yaml from 'yaml';
 import { Ajv as LegacyAjv } from 'ajv';
 import type { ValidateFunction } from 'ajv';
 import Ajv from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
-import { fileURLToPath } from 'url';
-import { evaluateTransition } from './state-transition-evaluator.ts';
+import { fileURLToPath } from 'node:url';
+import { evaluateTransition as evaluateTransitionCore } from './state-transition-evaluator.ts';
 import {
   compileTransitionProfile,
   resolveStateVector,
@@ -35,10 +35,138 @@ interface WorkItemRef {
   title: string;
 }
 
+type Severity = 'error' | 'warn' | 'info';
+
+interface FrontmatterDiagnostic {
+  code: string;
+  path: string;
+  message: string;
+  severity: Severity;
+  semantic?: boolean;
+}
+
+interface StrictSeverityResult {
+  severity: Severity;
+  masked: boolean;
+}
+
+interface ConsumerSeverityConfig {
+  automation?: {
+    prePushValidation?: {
+      severity?: Record<string, string>;
+    };
+  };
+}
+
 interface AjvLike {
   addSchema: (schema: Record<string, unknown>) => AjvLike;
   getSchema: (keyRef: string) => ValidateFunction<unknown> | undefined;
   compile: (schema: Record<string, unknown>) => ValidateFunction<unknown>;
+}
+
+function normalizeSeverity(value: unknown): Severity | null {
+  return value === 'error' || value === 'warn' || value === 'info' ? value : null;
+}
+
+function resolveConfiguredSeverity(
+  diagnostic: FrontmatterDiagnostic,
+  consumerConfig: ConsumerSeverityConfig
+): Severity | null {
+  const severities = consumerConfig.automation?.prePushValidation?.severity;
+  if (!severities) {
+    return null;
+  }
+
+  const byCode = normalizeSeverity(severities[diagnostic.code]);
+  if (byCode) {
+    return byCode;
+  }
+
+  if (diagnostic.semantic) {
+    const byCategory = normalizeSeverity(severities.semantic);
+    if (byCategory) {
+      return byCategory;
+    }
+  }
+
+  return null;
+}
+
+export function applyStrictSeverity(
+  diagnostic: FrontmatterDiagnostic,
+  strictMode: boolean,
+  consumerConfig: ConsumerSeverityConfig
+): StrictSeverityResult {
+  const configuredSeverity = resolveConfiguredSeverity(diagnostic, consumerConfig);
+
+  if (diagnostic.severity === 'error') {
+    return { severity: 'error', masked: false };
+  }
+
+  const effectiveSeverity = configuredSeverity ?? diagnostic.severity;
+
+  if (strictMode && diagnostic.semantic === true && diagnostic.severity === 'warn') {
+    if (configuredSeverity === 'warn' || configuredSeverity === 'info') {
+      return { severity: effectiveSeverity, masked: true };
+    }
+
+    return { severity: 'error', masked: false };
+  }
+
+  return { severity: effectiveSeverity, masked: false };
+}
+
+type TransitionContractLike = Parameters<typeof evaluateTransitionCore>[2];
+
+let cachedDefaultTransitionProfile: CompiledTransitionProfile | undefined;
+
+function isTransitionContractLike(contract: unknown): contract is TransitionContractLike {
+  return (
+    !!contract &&
+    typeof contract === 'object' &&
+    Array.isArray((contract as { precedence?: unknown }).precedence) &&
+    Array.isArray((contract as { rules?: unknown }).rules)
+  );
+}
+
+function getDefaultTransitionProfile(): CompiledTransitionProfile {
+  if (!cachedDefaultTransitionProfile) {
+    cachedDefaultTransitionProfile = loadSchemas().transitionProfile;
+  }
+
+  return cachedDefaultTransitionProfile;
+}
+
+function normalizeDefaultTransitionInput(
+  value: Parameters<typeof evaluateTransitionCore>[0]
+): Parameters<typeof evaluateTransitionCore>[0] {
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  const snapshot = { ...(value as Record<string, unknown>) };
+  if (typeof snapshot.reason === 'string' && snapshot.status_reason === undefined) {
+    snapshot.status_reason = snapshot.reason;
+  }
+
+  return snapshot as Parameters<typeof evaluateTransitionCore>[0];
+}
+
+export function evaluateTransition(
+  previous: Parameters<typeof evaluateTransitionCore>[0],
+  current: Parameters<typeof evaluateTransitionCore>[1],
+  contract?: unknown
+): ReturnType<typeof evaluateTransitionCore> {
+  if (!isTransitionContractLike(contract)) {
+    const profile = getDefaultTransitionProfile();
+    return evaluateTransitionCore(
+      resolveStateVector(profile, normalizeDefaultTransitionInput(previous)),
+      resolveStateVector(profile, normalizeDefaultTransitionInput(current)),
+      profile.transitions
+    );
+  }
+
+  return evaluateTransitionCore(previous, current, contract);
 }
 
 /**
@@ -56,6 +184,35 @@ function parseFrontmatter(content: string): Record<string, any> {
 
 function parseJsonFile<T>(filePath: string): T {
   return JSON.parse(readFileSync(filePath, 'utf-8')) as T;
+}
+
+function loadConsumerSeverityConfig(): ConsumerSeverityConfig {
+  const consumerConfigPath = join(process.cwd(), '.doc-vader', 'backlog-consumer.json');
+  if (!existsSync(consumerConfigPath)) {
+    return {};
+  }
+
+  try {
+    return parseJsonFile<ConsumerSeverityConfig>(consumerConfigPath);
+  } catch {
+    return {};
+  }
+}
+
+function parseCliArgs(argv: string[]): { strict: boolean; fileArgs: string[] } {
+  const fileArgs: string[] = [];
+  let strict = false;
+
+  for (const arg of argv) {
+    if (arg === '--strict') {
+      strict = true;
+      continue;
+    }
+
+    fileArgs.push(arg);
+  }
+
+  return { strict, fileArgs };
 }
 
 function resolveSchemaPath(schemaPath: string): string {
@@ -375,6 +532,10 @@ function getPreviousFrontmatterFromGit(file: string): Record<string, unknown> | 
   }
 }
 
+function isWorkManagementWorkItemSchema(frontmatter: Record<string, unknown>): boolean {
+  return frontmatter.$schema === 'schemas/work-management/frontmatter/work-item.json';
+}
+
 function describeState(
   profile: CompiledTransitionProfile,
   frontmatter: Record<string, unknown>
@@ -443,7 +604,7 @@ function resolveFilesToValidate(allBacklogFiles: string[], cliArgs: string[]): s
 /**
  * Main validation function
  */
-function validateFrontmatter(): boolean {
+export function validateFrontmatter(): boolean {
   const {
     ajv,
     workManagementAjv,
@@ -452,9 +613,12 @@ function validateFrontmatter(): boolean {
     transitionProfile,
     supportedTypes,
   } = loadSchemas();
+  const consumerConfig = loadConsumerSeverityConfig();
+  const { strict: strictMode, fileArgs } = parseCliArgs(process.argv.slice(2));
   const allBacklogFiles = collectBacklogMarkdownFiles(BACKLOG_DIR);
-  const files = resolveFilesToValidate(allBacklogFiles, process.argv.slice(2));
+  const files = resolveFilesToValidate(allBacklogFiles, fileArgs);
   let hasViolations = false;
+  let warningCount = 0;
 
   if (files.length === 0) {
     console.log('\nNo backlog frontmatter files to validate.\n');
@@ -515,11 +679,9 @@ function validateFrontmatter(): boolean {
         schemaValidators,
         frontmatter
       );
-      let hasItemViolations = false;
 
       if (!validator) {
         hasViolations = true;
-        hasItemViolations = true;
         const received = typeof type === 'string' ? type : '<missing>';
         console.error(`❌ ${file}`);
         console.error(
@@ -530,33 +692,53 @@ function validateFrontmatter(): boolean {
       }
 
       const valid = validator(frontmatter);
-      if (!valid) {
-        hasItemViolations = true;
-      }
+
+      const diagnostics: FrontmatterDiagnostic[] = [];
+      const strictMaskingNotices = new Set<string>();
 
       // Schema validation errors
       if (!valid && validator.errors) {
         hasViolations = true;
 
-        console.error(`❌ ${file}`);
-
         for (const error of validator.errors) {
           const path = error.instancePath || '(root)';
           const message = error.message || 'validation error';
 
-          console.error(`   ${path}: ${message}`);
-          if (error.params && Object.keys(error.params).length > 0) {
-            console.error(`      params: ${JSON.stringify(error.params)}`);
-          }
+          diagnostics.push({
+            code: 'schema-validation',
+            path,
+            message:
+              error.params && Object.keys(error.params).length > 0
+                ? `${message} params=${JSON.stringify(error.params)}`
+                : message,
+            severity: 'error',
+          });
         }
       }
 
       // Work-item-only validations: status transitions and dependency checks
       if (type === 'work-item') {
+        const isDefaultWorkManagementWorkItem = isWorkManagementWorkItemSchema(frontmatter);
         const status = frontmatter.status as string;
         const previousFrontmatter = getPreviousFrontmatterFromGit(file);
         const previousStatus =
           typeof previousFrontmatter?.status === 'string' ? previousFrontmatter.status : null;
+        const previousReason =
+          typeof previousFrontmatter?.status_reason === 'string'
+            ? previousFrontmatter.status_reason.trim()
+            : null;
+        const currentReason =
+          typeof frontmatter.status_reason === 'string' ? frontmatter.status_reason.trim() : null;
+
+        if (previousFrontmatter && status === previousStatus && currentReason !== previousReason) {
+          diagnostics.push({
+            code: 'transition-reason-churn',
+            path: '/status_reason',
+            message: 'Status reason changed without changing status',
+            severity: 'warn',
+            semantic: true,
+          });
+        }
 
         const pullRequests = Array.isArray(frontmatter.links?.pull_requests)
           ? (frontmatter.links.pull_requests as string[])
@@ -565,15 +747,12 @@ function validateFrontmatter(): boolean {
         const isEnteringReadyForReview =
           status === 'ready-for-review' && previousStatus !== 'ready-for-review';
         if (isEnteringReadyForReview && pullRequests.length === 0) {
-          hasViolations = true;
-          hasItemViolations = true;
-          if (!validator.errors || validator.errors.length === 0) {
-            console.error(`❌ ${file}`);
-          }
-
-          console.error(
-            "   /links/pull_requests: Work item is entering 'ready-for-review' but has no linked pull request"
-          );
+          diagnostics.push({
+            code: 'ready-for-review-pr-link',
+            path: '/links/pull_requests',
+            message: "Work item is entering 'ready-for-review' but has no linked pull request",
+            severity: 'error',
+          });
         }
 
         const isClosed = status === 'closed';
@@ -582,35 +761,31 @@ function validateFrontmatter(): boolean {
           isClosed && (isEnteringClosed || hasBacklogFileChangedSinceComparison(file));
 
         if (shouldEnforceClosedInvariants) {
-          const statusReason =
+          const closedStatusReason =
             typeof frontmatter.status_reason === 'string' ? frontmatter.status_reason.trim() : '';
           const completedDate =
             typeof frontmatter.completed_date === 'string' ? frontmatter.completed_date.trim() : '';
 
-          if (!statusReason) {
-            hasViolations = true;
-            hasItemViolations = true;
-            if (!validator.errors || validator.errors.length === 0) {
-              console.error(`❌ ${file}`);
-            }
-
-            console.error("   /status_reason: Work item is 'closed' but status_reason is missing");
+          if (!closedStatusReason) {
+            diagnostics.push({
+              code: 'closed-missing-reason',
+              path: '/status_reason',
+              message: "Work item is 'closed' but status_reason is missing",
+              severity: 'error',
+            });
           }
 
           if (!completedDate) {
-            hasViolations = true;
-            hasItemViolations = true;
-            if (!validator.errors || validator.errors.length === 0) {
-              console.error(`❌ ${file}`);
-            }
-
-            console.error(
-              "   /completed_date: Work item is 'closed' but completed_date is missing"
-            );
+            diagnostics.push({
+              code: 'closed-missing-completed-date',
+              path: '/completed_date',
+              message: "Work item is 'closed' but completed_date is missing",
+              severity: 'error',
+            });
           }
         }
 
-        if (previousFrontmatter && typeof status === 'string') {
+        if (isDefaultWorkManagementWorkItem && previousFrontmatter && typeof status === 'string') {
           const previousState = resolveStateVector(transitionProfile, previousFrontmatter);
           const currentState = resolveStateVector(transitionProfile, frontmatter);
           const transition = evaluateTransition(
@@ -620,15 +795,12 @@ function validateFrontmatter(): boolean {
           );
 
           if (!transition.allowed) {
-            hasViolations = true;
-            hasItemViolations = true;
-            if (!validator.errors || validator.errors.length === 0) {
-              console.error(`❌ ${file}`);
-            }
-
-            console.error(
-              `   /status: Invalid transition from '${describeState(transitionProfile, previousFrontmatter)}' to '${describeState(transitionProfile, frontmatter)}'`
-            );
+            diagnostics.push({
+              code: 'status-transition-invalid',
+              path: '/status',
+              message: `Invalid transition from '${describeState(transitionProfile, previousFrontmatter)}' to '${describeState(transitionProfile, frontmatter)}'`,
+              severity: 'error',
+            });
           }
         }
 
@@ -649,36 +821,29 @@ function validateFrontmatter(): boolean {
               const depItem = workItemsMap.get(depRef);
 
               if (!depItem) {
-                hasViolations = true;
-                hasItemViolations = true;
-                if (!validator.errors || validator.errors.length === 0) {
-                  console.error(`❌ ${file}`);
-                }
-
-                console.error(`   /links/depends_on: Dependency '${dep}' not found in backlog`);
+                diagnostics.push({
+                  code: 'depends-on-not-found',
+                  path: '/links/depends_on',
+                  message: `Dependency '${dep}' not found in backlog`,
+                  severity: 'error',
+                });
               } else if (status === 'closed' && depItem.status !== 'closed') {
-                hasViolations = true;
-                hasItemViolations = true;
-                if (!validator.errors || validator.errors.length === 0) {
-                  console.error(`❌ ${file}`);
-                }
-
-                console.error(
-                  `   /links/depends_on: Dependency '${dep}' (${depItem.id}: ${depItem.title}) must be 'closed' but is '${depItem.status}'`
-                );
+                diagnostics.push({
+                  code: 'depends-on-closed-required',
+                  path: '/links/depends_on',
+                  message: `Dependency '${dep}' (${depItem.id}: ${depItem.title}) must be 'closed' but is '${depItem.status}'`,
+                  severity: 'error',
+                });
               } else if (
                 status === 'in-progress' &&
                 !['in-progress', 'ready-for-review', 'closed'].includes(depItem.status)
               ) {
-                hasViolations = true;
-                hasItemViolations = true;
-                if (!validator.errors || validator.errors.length === 0) {
-                  console.error(`❌ ${file}`);
-                }
-
-                console.error(
-                  `   /links/depends_on: Dependency '${dep}' (${depItem.id}: ${depItem.title}) must be 'in-progress', 'ready-for-review', or 'closed' but is '${depItem.status}'`
-                );
+                diagnostics.push({
+                  code: 'depends-on-in-progress-required',
+                  path: '/links/depends_on',
+                  message: `Dependency '${dep}' (${depItem.id}: ${depItem.title}) must be 'in-progress', 'ready-for-review', or 'closed' but is '${depItem.status}'`,
+                  severity: 'error',
+                });
               }
             }
           }
@@ -692,33 +857,57 @@ function validateFrontmatter(): boolean {
           );
 
           if (uncheckedTasks.length > 0) {
-            hasViolations = true;
-            hasItemViolations = true;
-            if (!validator.errors || validator.errors.length === 0) {
-              console.error(`❌ ${file}`);
-            }
-
-            console.error(
-              `   /status: Work item is 'closed' but has unchecked Tasks checklist items (${uncheckedTasks.length})`
-            );
+            diagnostics.push({
+              code: 'closed-unchecked-tasks',
+              path: '/status',
+              message: `Work item is 'closed' but has unchecked Tasks checklist items (${uncheckedTasks.length})`,
+              severity: 'error',
+            });
           }
 
           if (uncheckedAcceptance.length > 0) {
-            hasViolations = true;
-            hasItemViolations = true;
-            if (!validator.errors || validator.errors.length === 0) {
-              console.error(`❌ ${file}`);
-            }
-
-            console.error(
-              `   /status: Work item is 'closed' but has unchecked Acceptance Criteria checklist items (${uncheckedAcceptance.length})`
-            );
+            diagnostics.push({
+              code: 'closed-unchecked-acceptance',
+              path: '/status',
+              message: `Work item is 'closed' but has unchecked Acceptance Criteria checklist items (${uncheckedAcceptance.length})`,
+              severity: 'error',
+            });
           }
         }
-      }
 
-      if (hasItemViolations) {
-        console.error();
+        let printedHeader = false;
+
+        for (const diagnostic of diagnostics) {
+          const strictResult = applyStrictSeverity(diagnostic, strictMode, consumerConfig);
+          const effectiveSeverity = strictResult.severity;
+
+          if (effectiveSeverity === 'error') {
+            hasViolations = true;
+          } else if (effectiveSeverity === 'warn') {
+            warningCount += 1;
+          }
+
+          if (!printedHeader) {
+            printedHeader = true;
+            console.error(`❌ ${file}`);
+          }
+
+          if (strictResult.masked) {
+            strictMaskingNotices.add(
+              `strict escalation masked by consumer policy for diagnostic '${diagnostic.code}'`
+            );
+          }
+
+          console.error(`   [${effectiveSeverity}] ${diagnostic.path}: ${diagnostic.message}`);
+        }
+
+        for (const notice of strictMaskingNotices) {
+          console.error(`   [info] ${notice}`);
+        }
+
+        if (printedHeader) {
+          console.error();
+        }
       }
     } catch (e) {
       hasViolations = true;
@@ -729,6 +918,9 @@ function validateFrontmatter(): boolean {
 
   if (!hasViolations) {
     console.log('✅ All backlog frontmatter files passed schema validation\n');
+    if (warningCount > 0) {
+      console.log(`⚠️  ${warningCount} warning(s) reported`);
+    }
   } else {
     console.error('\n❌ Schema validation failed. Please fix the above issues.\n');
   }
@@ -736,6 +928,7 @@ function validateFrontmatter(): boolean {
   return !hasViolations;
 }
 
-// Run validation
-const success = validateFrontmatter();
-process.exit(success ? 0 : 1);
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const success = validateFrontmatter();
+  process.exit(success ? 0 : 1);
+}

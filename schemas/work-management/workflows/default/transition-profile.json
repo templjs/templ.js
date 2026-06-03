@@ -10,7 +10,7 @@
     },
     "reason": {
       "path": "/status_reason",
-      "allowUnknown": true,
+      "allowUnknown": false,
       "domainBy": {
         "dimension": "status",
         "cases": {
@@ -20,8 +20,7 @@
           "ready-for-review": "/work-management/workflows/default/status-definitions.schema.json#/$defs/readyForReviewReason",
           "closed": "/work-management/workflows/default/status-definitions.schema.json#/$defs/closedReason"
         },
-        "requiredCases": ["closed"],
-        "extensionDomain": "/work-management/workflows/default/status-definitions.schema.json#/$defs/statusReasonExtensionToken"
+        "requiredCases": ["closed"]
       }
     }
   },

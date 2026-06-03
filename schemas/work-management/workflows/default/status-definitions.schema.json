@@ -64,9 +64,6 @@
     "connectivityClass": {
       "type": "string",
       "enum": ["start", "intermediate", "end"]
-    },
-    "statusReasonExtensionToken": {
-      "$ref": "https://raw.githubusercontent.com/templjs/templ.js/main/schemas/frontmatter/support/base/current.json#/$defs/statusReasonExtensionToken"
     }
   }
 }

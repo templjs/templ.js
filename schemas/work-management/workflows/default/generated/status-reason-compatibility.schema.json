@@ -16,9 +16,6 @@
           "anyOf": [
             {
               "$ref": "/work-management/workflows/default/status-definitions.schema.json#/$defs/proposedReason"
-            },
-            {
-              "$ref": "/work-management/workflows/default/status-definitions.schema.json#/$defs/statusReasonExtensionToken"
             }
           ]
         }
@@ -35,9 +32,6 @@
           "anyOf": [
             {
               "$ref": "/work-management/workflows/default/status-definitions.schema.json#/$defs/readyReason"
-            },
-            {
-              "$ref": "/work-management/workflows/default/status-definitions.schema.json#/$defs/statusReasonExtensionToken"
             }
           ]
         }
@@ -54,9 +48,6 @@
           "anyOf": [
             {
               "$ref": "/work-management/workflows/default/status-definitions.schema.json#/$defs/inProgressReason"
-            },
-            {
-              "$ref": "/work-management/workflows/default/status-definitions.schema.json#/$defs/statusReasonExtensionToken"
             }
           ]
         }
@@ -73,9 +64,6 @@
           "anyOf": [
             {
               "$ref": "/work-management/workflows/default/status-definitions.schema.json#/$defs/readyForReviewReason"
-            },
-            {
-              "$ref": "/work-management/workflows/default/status-definitions.schema.json#/$defs/statusReasonExtensionToken"
             }
           ]
         }
@@ -92,9 +80,6 @@
           "anyOf": [
             {
               "$ref": "/work-management/workflows/default/status-definitions.schema.json#/$defs/closedReason"
-            },
-            {
-              "$ref": "/work-management/workflows/default/status-definitions.schema.json#/$defs/statusReasonExtensionToken"
             }
           ]
         }
