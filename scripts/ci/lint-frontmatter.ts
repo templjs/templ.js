@@ -4,8 +4,9 @@ import { spawnSync } from 'node:child_process';
 import * as yaml from 'yaml';
 import { Ajv as LegacyAjv } from 'ajv';
 import type { ValidateFunction } from 'ajv';
-import Ajv from 'ajv/dist/2020.js';
-import addFormats from 'ajv-formats';
+import { Ajv2020 } from 'ajv/dist/2020.js';
+import * as formatsPluginModule from 'ajv-formats';
+import type { FormatsPlugin } from 'ajv-formats';
 import { fileURLToPath } from 'node:url';
 import { evaluateTransition as evaluateTransitionCore } from './state-transition-evaluator.ts';
 import {
@@ -63,6 +64,8 @@ interface AjvLike {
   getSchema: (keyRef: string) => ValidateFunction<unknown> | undefined;
   compile: (schema: Record<string, unknown>) => ValidateFunction<unknown>;
 }
+
+const addFormats = formatsPluginModule.default as unknown as FormatsPlugin;
 
 function normalizeSeverity(value: unknown): Severity | null {
   return value === 'error' || value === 'warn' || value === 'info' ? value : null;
@@ -321,7 +324,7 @@ function loadSchemas() {
     validateSchema: false, // Skip meta-schema validation (we trust our schemas)
   });
 
-  const workManagementAjv = new Ajv({
+  const workManagementAjv = new Ajv2020({
     schemas: [],
     strict: false,
     allErrors: true,
