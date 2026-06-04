@@ -1,10 +1,10 @@
 ---
-id: adr-011
+id: adr-012
 type: document
 subtype: architecture-decision
 lifecycle: active
 status: ready
-title: 'ADR-011: Composable Work-Item Workflow Profiles'
+title: 'ADR-012: Composable Work-Item Workflow Profiles'
 ---
 
 ## Status

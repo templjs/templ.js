@@ -95,6 +95,31 @@ function readOptionalUniqueStringArray(value: unknown, path: string): readonly s
   return value;
 }
 
+function readOptionalJsonPointerProperty(path: unknown, fieldPath: string): string | undefined {
+  if (path === undefined) {
+    return undefined;
+  }
+
+  const pointer = readString(path, fieldPath);
+  if (!pointer.startsWith('/')) {
+    throw new StatusReasonCompatibilityGenerationError(
+      `${fieldPath} must be a JSON Pointer beginning with '/'`
+    );
+  }
+
+  const segments = pointer
+    .split('/')
+    .slice(1)
+    .filter((segment) => segment.length > 0);
+  if (segments.length === 0) {
+    throw new StatusReasonCompatibilityGenerationError(
+      `${fieldPath} must reference an object property`
+    );
+  }
+
+  return segments.at(-1);
+}
+
 function hasOwn(record: JsonRecord, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(record, key);
 }
@@ -125,6 +150,19 @@ export function generateStatusReasonCompatibilitySchema(
       statusDimension.domain,
       `sourceDimensions.${options.statusDimension}.domain`
     );
+    const statusField = readOptionalJsonPointerProperty(
+      statusDimension.path,
+      `sourceDimensions.${options.statusDimension}.path`
+    );
+    const reasonField = readOptionalJsonPointerProperty(
+      reasonDimension.path,
+      `sourceDimensions.${options.reasonDimension}.path`
+    );
+    if (!statusField) {
+      throw new StatusReasonCompatibilityGenerationError(
+        `sourceDimensions.${options.statusDimension}.path is required`
+      );
+    }
     const domainBy = readRecord(
       reasonDimension.domainBy,
       `sourceDimensions.${options.reasonDimension}.domainBy`
@@ -183,22 +221,32 @@ export function generateStatusReasonCompatibilitySchema(
       const reasonDomain = readString(cases[status], casePath);
       readSchemaEnum(registry, reasonDomain);
 
+      const required = [statusField];
+      if (reasonField && requiredCases.includes(status)) {
+        required.push(reasonField);
+      }
+
+      const properties: Record<string, unknown> = {
+        [statusField]: {
+          const: status,
+        },
+      };
+
+      if (reasonField) {
+        properties[reasonField] = {
+          anyOf: [
+            {
+              $ref: reasonDomain,
+            },
+            ...(extensionDomain ? [{ $ref: extensionDomain }] : []),
+          ],
+        };
+      }
+
       return {
         type: 'object',
-        required: requiredCases.includes(status) ? ['status', 'status_reason'] : ['status'],
-        properties: {
-          status: {
-            const: status,
-          },
-          status_reason: {
-            anyOf: [
-              {
-                $ref: reasonDomain,
-              },
-              ...(extensionDomain ? [{ $ref: extensionDomain }] : []),
-            ],
-          },
-        },
+        required,
+        properties,
       };
     });
 

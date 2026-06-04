@@ -789,19 +789,28 @@ export function validateFrontmatter(): boolean {
         }
 
         if (isDefaultWorkManagementWorkItem && previousFrontmatter && typeof status === 'string') {
-          const previousState = resolveStateVector(transitionProfile, previousFrontmatter);
-          const currentState = resolveStateVector(transitionProfile, frontmatter);
-          const transition = evaluateTransition(
-            previousState,
-            currentState,
-            transitionProfile.transitions
-          );
+          try {
+            const previousState = resolveStateVector(transitionProfile, previousFrontmatter);
+            const currentState = resolveStateVector(transitionProfile, frontmatter);
+            const transition = evaluateTransition(
+              previousState,
+              currentState,
+              transitionProfile.transitions
+            );
 
-          if (!transition.allowed) {
+            if (!transition.allowed) {
+              diagnostics.push({
+                code: 'status-transition-invalid',
+                path: '/status',
+                message: `Invalid transition from '${describeState(transitionProfile, previousFrontmatter)}' to '${describeState(transitionProfile, frontmatter)}'`,
+                severity: 'error',
+              });
+            }
+          } catch (error) {
             diagnostics.push({
-              code: 'status-transition-invalid',
+              code: 'status-transition-state-invalid',
               path: '/status',
-              message: `Invalid transition from '${describeState(transitionProfile, previousFrontmatter)}' to '${describeState(transitionProfile, frontmatter)}'`,
+              message: (error as Error).message,
               severity: 'error',
             });
           }
@@ -882,40 +891,40 @@ export function validateFrontmatter(): boolean {
             });
           }
         }
+      }
 
-        let printedHeader = false;
+      let printedHeader = false;
 
-        for (const diagnostic of diagnostics) {
-          const strictResult = applyStrictSeverity(diagnostic, strictMode, consumerConfig);
-          const effectiveSeverity = strictResult.severity;
+      for (const diagnostic of diagnostics) {
+        const strictResult = applyStrictSeverity(diagnostic, strictMode, consumerConfig);
+        const effectiveSeverity = strictResult.severity;
 
-          if (effectiveSeverity === 'error') {
-            hasViolations = true;
-          } else if (effectiveSeverity === 'warn') {
-            warningCount += 1;
-          }
-
-          if (!printedHeader) {
-            printedHeader = true;
-            console.error(`❌ ${file}`);
-          }
-
-          if (strictResult.masked) {
-            strictMaskingNotices.add(
-              `strict escalation masked by consumer policy for diagnostic '${diagnostic.code}'`
-            );
-          }
-
-          console.error(`   [${effectiveSeverity}] ${diagnostic.path}: ${diagnostic.message}`);
+        if (effectiveSeverity === 'error') {
+          hasViolations = true;
+        } else if (effectiveSeverity === 'warn') {
+          warningCount += 1;
         }
 
-        for (const notice of strictMaskingNotices) {
-          console.error(`   [info] ${notice}`);
+        if (!printedHeader) {
+          printedHeader = true;
+          console.error(`❌ ${file}`);
         }
 
-        if (printedHeader) {
-          console.error();
+        if (strictResult.masked) {
+          strictMaskingNotices.add(
+            `strict escalation masked by consumer policy for diagnostic '${diagnostic.code}'`
+          );
         }
+
+        console.error(`   [${effectiveSeverity}] ${diagnostic.path}: ${diagnostic.message}`);
+      }
+
+      for (const notice of strictMaskingNotices) {
+        console.error(`   [info] ${notice}`);
+      }
+
+      if (printedHeader) {
+        console.error();
       }
     } catch (e) {
       hasViolations = true;

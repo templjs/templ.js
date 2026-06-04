@@ -1,8 +1,10 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   generateStatusReasonCompatibilitySchema,
+  main,
+  serializeGeneratedSchema,
   StatusReasonCompatibilityGenerationError,
 } from './generate-default-work-item-status-reason-compatibility.ts';
 
@@ -13,6 +15,8 @@ function readJson(path: string): Record<string, unknown> {
 const TRANSITION_PROFILE_PATH = 'schemas/work-management/workflows/default/transition-profile.json';
 const STATUS_DEFINITIONS_SCHEMA_PATH =
   'schemas/work-management/workflows/default/status-definitions.schema.json';
+const GENERATED_SCHEMA_PATH =
+  'schemas/work-management/workflows/default/generated/status-reason-compatibility.schema.json';
 
 function readDefaultInputs() {
   const profile = readJson(TRANSITION_PROFILE_PATH);
@@ -63,6 +67,54 @@ describe('default work-item status-reason compatibility generator', () => {
     );
   });
 
+  it('derives emitted field names from source dimension paths', () => {
+    const vocabulary = {
+      $id: '/consumer/status-definitions.schema.json',
+      $defs: {
+        status: {
+          type: 'string',
+          enum: ['todo', 'done'],
+        },
+        todoReason: {
+          type: 'string',
+          enum: ['planned'],
+        },
+        doneReason: {
+          type: 'string',
+          enum: ['delivered'],
+        },
+      },
+    };
+    const profile = {
+      sourceDimensions: {
+        status: {
+          path: '/state',
+          domain: '/consumer/status-definitions.schema.json#/$defs/status',
+        },
+        reason: {
+          path: '/state_reason',
+          domainBy: {
+            dimension: 'status',
+            cases: {
+              todo: '/consumer/status-definitions.schema.json#/$defs/todoReason',
+              done: '/consumer/status-definitions.schema.json#/$defs/doneReason',
+            },
+            requiredCases: ['done'],
+          },
+        },
+      },
+    };
+
+    const generated = generateStatusReasonCompatibilitySchema(profile, [vocabulary]) as {
+      oneOf: Array<{ required: string[]; properties: Record<string, unknown> }>;
+    };
+
+    expect(generated.oneOf[0].required).toEqual(['state']);
+    expect(generated.oneOf[1].required).toEqual(['state', 'state_reason']);
+    expect(generated.oneOf[0].properties).toHaveProperty('state');
+    expect(generated.oneOf[1].properties).toHaveProperty('state_reason');
+  });
+
   it('rejects required cases that are not declared by the dependent domain', () => {
     const profile = cloneDefaultProfile();
     readReasonDomainBy(profile).requiredCases.push('unknown');
@@ -108,9 +160,11 @@ describe('default work-item status-reason compatibility generator', () => {
     const profile = {
       sourceDimensions: {
         status: {
+          path: '/status',
           domain: '/consumer/status-definitions.schema.json#/$defs/status',
         },
         reason: {
+          path: '/status_reason',
           domainBy: {
             dimension: 'status',
             cases: {
@@ -132,5 +186,27 @@ describe('default work-item status-reason compatibility generator', () => {
       required: ['status', 'status_reason'],
       properties: { status: { const: 'done' } },
     });
+  });
+
+  it('serializes generated schemas deterministically with trailing newline', () => {
+    const { profile, schemas } = readDefaultInputs();
+    const generated = generateStatusReasonCompatibilitySchema(profile, schemas);
+    const serialized = serializeGeneratedSchema(generated);
+
+    expect(serialized.endsWith('\n')).toBe(true);
+    expect(serialized).toContain('"$schema": "https://json-schema.org/draft/2020-12/schema"');
+    expect(serialized).toContain('"oneOf": [');
+  });
+
+  it('fails --check when generated schema is stale', () => {
+    const generatedPath = join(process.cwd(), GENERATED_SCHEMA_PATH);
+    const original = readFileSync(generatedPath, 'utf8');
+
+    try {
+      writeFileSync(generatedPath, `${original}\n`, 'utf8');
+      expect(main(['--check'])).toBe(1);
+    } finally {
+      writeFileSync(generatedPath, original, 'utf8');
+    }
   });
 });
