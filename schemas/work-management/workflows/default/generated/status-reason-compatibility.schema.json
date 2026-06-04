@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "/work-management/workflows/default/generated/status-reason-compatibility.schema.json",
+  "title": "work-management/workflows/default/generated/status-reason-compatibility",
+  "description": "Generated from the default work-item transition profile. Do not edit manually.",
+  "$comment": "GENERATED FILE. Run 'pnpm run schemas:work-item-workflow:generate' after editing ../transition-profile.json or ../status-definitions.schema.json.",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "const": "proposed"
+        },
+        "status_reason": {
+          "anyOf": [
+            {
+              "$ref": "/work-management/workflows/default/status-definitions.schema.json#/$defs/proposedReason"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "const": "ready"
+        },
+        "status_reason": {
+          "anyOf": [
+            {
+              "$ref": "/work-management/workflows/default/status-definitions.schema.json#/$defs/readyReason"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "const": "in-progress"
+        },
+        "status_reason": {
+          "anyOf": [
+            {
+              "$ref": "/work-management/workflows/default/status-definitions.schema.json#/$defs/inProgressReason"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "const": "ready-for-review"
+        },
+        "status_reason": {
+          "anyOf": [
+            {
+              "$ref": "/work-management/workflows/default/status-definitions.schema.json#/$defs/readyForReviewReason"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["status", "status_reason"],
+      "properties": {
+        "status": {
+          "const": "closed"
+        },
+        "status_reason": {
+          "anyOf": [
+            {
+              "$ref": "/work-management/workflows/default/status-definitions.schema.json#/$defs/closedReason"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
