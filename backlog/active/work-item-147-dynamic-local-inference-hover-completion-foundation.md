@@ -18,6 +18,7 @@ links:
   pull_requests:
     - 'https://github.com/templjs/templ.js/pull/187'
     - 'https://github.com/templjs/templ.js/pull/189'
+    - 'https://github.com/templjs/templ.js/pull/191'
 ---
 
 ## Goal
