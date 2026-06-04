@@ -830,7 +830,11 @@ export function validateFrontmatter(): boolean {
                   message: `Dependency '${dep}' not found in backlog`,
                   severity: 'error',
                 });
-              } else if (status === 'closed' && depItem.status !== 'closed') {
+              } else if (
+                isDefaultWorkManagementWorkItem &&
+                status === 'closed' &&
+                depItem.status !== 'closed'
+              ) {
                 diagnostics.push({
                   code: 'depends-on-closed-required',
                   path: '/links/depends_on',
