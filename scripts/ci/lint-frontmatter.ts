@@ -197,8 +197,11 @@ function loadConsumerSeverityConfig(): ConsumerSeverityConfig {
 
   try {
     return parseJsonFile<ConsumerSeverityConfig>(consumerConfigPath);
-  } catch {
-    return {};
+  } catch (error) {
+    throw new Error(
+      `Failed to parse consumer severity config at '${consumerConfigPath}': ${(error as Error).message}`,
+      { cause: error }
+    );
   }
 }
 

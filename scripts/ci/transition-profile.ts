@@ -53,6 +53,7 @@ interface CompiledSourceDimension extends Omit<SourceDimension, 'domain' | 'doma
   domainBy?: {
     dimension: DimensionName;
     cases: Record<ScalarValue, CompiledEnum>;
+    extensionDomain?: CompiledEnum;
   };
 }
 
@@ -284,6 +285,22 @@ function compileSourceDimensions(
       domainBy: {
         dimension: dimension.domainBy.dimension,
         cases,
+        ...(dimension.domainBy.extensionDomain
+          ? {
+              extensionDomain: (() => {
+                try {
+                  return readEnum(registry, dimension.domainBy!.extensionDomain!);
+                } catch (error) {
+                  addDiagnostic(
+                    diagnostics,
+                    `/sourceDimensions/${dimensionName}/domainBy/extensionDomain`,
+                    (error as Error).message
+                  );
+                  return undefined;
+                }
+              })(),
+            }
+          : {}),
       },
     };
   }
@@ -333,13 +350,16 @@ function getDimensionValues(
   if (sourceDimension?.domainBy) {
     const dependencyValue = assignments[sourceDimension.domainBy.dimension];
     if (dependencyValue) {
-      return sourceDimension.domainBy.cases[dependencyValue]?.values ?? [];
+      const caseValues = sourceDimension.domainBy.cases[dependencyValue]?.values ?? [];
+      const extensionValues = sourceDimension.domainBy.extensionDomain?.values ?? [];
+      return [...new Set([...caseValues, ...extensionValues])];
     }
 
     return [
-      ...new Set(
-        Object.values(sourceDimension.domainBy.cases).flatMap((domain) => [...domain.values])
-      ),
+      ...new Set([
+        ...Object.values(sourceDimension.domainBy.cases).flatMap((domain) => [...domain.values]),
+        ...(sourceDimension.domainBy.extensionDomain?.values ?? []),
+      ]),
     ];
   }
 
@@ -740,7 +760,9 @@ export function resolveStateVector(
     const domain = dimension.domain
       ? dimension.domain
       : dimension.domainBy?.cases[state[dimension.domainBy.dimension] ?? ''];
-    if (!domain?.valueSet.has(value)) {
+    const inDomain = domain?.valueSet.has(value);
+    const inExtension = dimension.domainBy?.extensionDomain?.valueSet.has(value) ?? false;
+    if (!inDomain && !inExtension) {
       throw new Error(`Unknown '${dimensionName}' value '${value}'`);
     }
   }

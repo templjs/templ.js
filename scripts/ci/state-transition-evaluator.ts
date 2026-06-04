@@ -24,7 +24,9 @@ export interface TransitionEvaluation {
 
 function stateVectorsEqual(left: StateVector, right: StateVector): boolean {
   const dimensions = new Set([...Object.keys(left), ...Object.keys(right)]);
-  return [...dimensions].every((dimension) => left[dimension] === right[dimension]);
+  return [...dimensions].every(
+    (dimension) => (left[dimension] ?? null) === (right[dimension] ?? null)
+  );
 }
 
 function selectorValueMatches(

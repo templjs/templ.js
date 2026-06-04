@@ -1,7 +1,6 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "baseUrl": null,
     "paths": {},
     "module": "esnext",
     "moduleResolution": "bundler",

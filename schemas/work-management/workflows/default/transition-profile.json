@@ -125,7 +125,7 @@
       },
       {
         "id": "decision-close-from-any-active",
-        "from": { "status": "*" },
+        "from": { "status": ["proposed", "ready", "in-progress", "ready-for-review"] },
         "to": { "status": "closed", "category": "decision" },
         "decision": "allow"
       },

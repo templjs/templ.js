@@ -36,6 +36,11 @@ const GENERATED_SCHEMA_PATH = join(
   'generated',
   'status-reason-compatibility.schema.json'
 );
+
+function resolveGeneratedSchemaPath(): string {
+  const override = process.env.TEMPLJS_GENERATED_SCHEMA_PATH;
+  return override ? resolve(WORKSPACE_ROOT, override) : GENERATED_SCHEMA_PATH;
+}
 const DEFAULT_OPTIONS: StatusReasonCompatibilityGenerationOptions = {
   generatedSchemaId:
     '/work-management/workflows/default/generated/status-reason-compatibility.schema.json',
@@ -192,7 +197,7 @@ export function generateStatusReasonCompatibilitySchema(
       `sourceDimensions.${options.reasonDimension}.domainBy.extensionDomain`
     );
     if (extensionDomain) {
-      registry.resolve(extensionDomain);
+      readSchemaEnum(registry, extensionDomain);
     }
 
     const statusSet = new Set(statuses);
@@ -321,13 +326,14 @@ function readJsonFile(path: string): JsonRecord {
 }
 
 function writeGeneratedSchema(content: string): void {
-  const outputDirectory = dirname(GENERATED_SCHEMA_PATH);
-  const temporaryPath = `${GENERATED_SCHEMA_PATH}.${process.pid}.tmp`;
+  const generatedSchemaPath = resolveGeneratedSchemaPath();
+  const outputDirectory = dirname(generatedSchemaPath);
+  const temporaryPath = `${generatedSchemaPath}.${process.pid}.tmp`;
 
   mkdirSync(outputDirectory, { recursive: true });
   try {
     writeFileSync(temporaryPath, content, 'utf8');
-    renameSync(temporaryPath, GENERATED_SCHEMA_PATH);
+    renameSync(temporaryPath, generatedSchemaPath);
   } finally {
     if (existsSync(temporaryPath)) {
       unlinkSync(temporaryPath);
@@ -336,15 +342,17 @@ function writeGeneratedSchema(content: string): void {
 }
 
 function checkGeneratedSchema(content: string): void {
-  if (!existsSync(GENERATED_SCHEMA_PATH)) {
+  const generatedSchemaPath = resolveGeneratedSchemaPath();
+
+  if (!existsSync(generatedSchemaPath)) {
     throw new StatusReasonCompatibilityGenerationError(
-      `Generated schema '${relative(WORKSPACE_ROOT, GENERATED_SCHEMA_PATH)}' is missing. Run 'pnpm run schemas:work-item-workflow:generate'.`
+      `Generated schema '${relative(WORKSPACE_ROOT, generatedSchemaPath)}' is missing. Run 'pnpm run schemas:work-item-workflow:generate'.`
     );
   }
 
-  if (readFileSync(GENERATED_SCHEMA_PATH, 'utf8') !== content) {
+  if (readFileSync(generatedSchemaPath, 'utf8') !== content) {
     throw new StatusReasonCompatibilityGenerationError(
-      `Generated schema '${relative(WORKSPACE_ROOT, GENERATED_SCHEMA_PATH)}' is stale. Run 'pnpm run schemas:work-item-workflow:generate'.`
+      `Generated schema '${relative(WORKSPACE_ROOT, generatedSchemaPath)}' is stale. Run 'pnpm run schemas:work-item-workflow:generate'.`
     );
   }
 }

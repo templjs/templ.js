@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
@@ -200,13 +201,22 @@ describe('default work-item status-reason compatibility generator', () => {
 
   it('fails --check when generated schema is stale', () => {
     const generatedPath = join(process.cwd(), GENERATED_SCHEMA_PATH);
+    const tempDir = mkdtempSync(join(tmpdir(), 'templjs-schema-check-'));
+    const tempGeneratedPath = join(tempDir, 'status-reason-compatibility.schema.json');
     const original = readFileSync(generatedPath, 'utf8');
+    const previousOverride = process.env.TEMPLJS_GENERATED_SCHEMA_PATH;
 
     try {
-      writeFileSync(generatedPath, `${original}\n`, 'utf8');
+      writeFileSync(tempGeneratedPath, `${original}\n`, 'utf8');
+      process.env.TEMPLJS_GENERATED_SCHEMA_PATH = tempGeneratedPath;
       expect(main(['--check'])).toBe(1);
     } finally {
-      writeFileSync(generatedPath, original, 'utf8');
+      if (previousOverride === undefined) {
+        delete process.env.TEMPLJS_GENERATED_SCHEMA_PATH;
+      } else {
+        process.env.TEMPLJS_GENERATED_SCHEMA_PATH = previousOverride;
+      }
+      rmSync(tempDir, { recursive: true, force: true });
     }
   });
 });
