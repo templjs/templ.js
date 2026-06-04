@@ -832,6 +832,7 @@ export function validateFrontmatter(): boolean {
                 });
               } else if (
                 isDefaultWorkManagementWorkItem &&
+                !file.startsWith('archive/') &&
                 status === 'closed' &&
                 depItem.status !== 'closed'
               ) {
