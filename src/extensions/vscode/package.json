@@ -255,7 +255,7 @@
     "@types/vscode": "^1.85.0",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.9.0",
-    "esbuild": "0.27.7",
+    "esbuild": "0.28.1",
     "mocha": "^11.7.5",
     "playwright": "^1.59.1",
     "vscode-oniguruma": "^2.0.1",
