@@ -92,7 +92,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
     "markdownlint-shell": "^0.2.0",
-    "nx": "^22.5.1",
+    "nx": "^22.7.7",
     "prettier": "^3.8.1",
     "ts-node": "^10.9.2",
     "tsx": "4.21.0",
